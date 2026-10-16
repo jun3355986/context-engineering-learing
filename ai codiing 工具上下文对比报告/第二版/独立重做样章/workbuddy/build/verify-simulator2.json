@@ -1,0 +1,89 @@
+{
+  "s0": {
+    "reported": "12,000",
+    "cands": [
+      {
+        "text": "Earlier models",
+        "cls": "expn-title",
+        "ariaSelected": null,
+        "dataState": null
+      },
+      {
+        "text": "Earlier models",
+        "cls": "_SegmentedControlOption_16x8u_142",
+        "ariaSelected": null,
+        "dataState": "off"
+      },
+      {
+        "text": "GPT-5.6+",
+        "cls": "_SegmentedControlOption_16x8u_142",
+        "ariaSelected": null,
+        "dataState": "on"
+      },
+      {
+        "text": "Earlier models",
+        "cls": "expn-title",
+        "ariaSelected": null,
+        "dataState": null
+      }
+    ]
+  },
+  "s1": {
+    "reported": "12,000",
+    "cands": [
+      {
+        "text": "Earlier models",
+        "cls": "expn-title",
+        "ariaSelected": null,
+        "dataState": null
+      },
+      {
+        "text": "Earlier models",
+        "cls": "_SegmentedControlOption_16x8u_142",
+        "ariaSelected": null,
+        "dataState": "off"
+      },
+      {
+        "text": "GPT-5.6+",
+        "cls": "_SegmentedControlOption_16x8u_142",
+        "ariaSelected": null,
+        "dataState": "on"
+      },
+      {
+        "text": "Earlier models",
+        "cls": "expn-title",
+        "ariaSelected": null,
+        "dataState": null
+      }
+    ]
+  },
+  "s2": {
+    "reported": "12,000",
+    "cands": [
+      {
+        "text": "Earlier models",
+        "cls": "expn-title",
+        "ariaSelected": null,
+        "dataState": null
+      },
+      {
+        "text": "Earlier models",
+        "cls": "_SegmentedControlOption_16x8u_142",
+        "ariaSelected": null,
+        "dataState": "off"
+      },
+      {
+        "text": "GPT-5.6+",
+        "cls": "_SegmentedControlOption_16x8u_142",
+        "ariaSelected": null,
+        "dataState": "on"
+      },
+      {
+        "text": "Earlier models",
+        "cls": "expn-title",
+        "ariaSelected": null,
+        "dataState": null
+      }
+    ]
+  }
+}

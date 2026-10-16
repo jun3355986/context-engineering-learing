@@ -1,0 +1,33 @@
+{
+  "packageId": "T03-DATA-TRIP-v1",
+  "toolCallId": "call_c1",
+  "toolName": "ticket_price_query",
+  "query": "2026-10-23 周五 团体报价（64 人：60 学生 + 4 老师）",
+  "results": [
+    {
+      "venueId": "LOC-BOTANIC",
+      "name": "市植物园",
+      "ticket": {"student": 0, "teacher": 0},
+      "guide": 200,
+      "subtotal": 200,
+      "note": "门票免费；讲解 200 元/场，可 1 场带 64 人"
+    },
+    {
+      "venueId": "LOC-ZOO",
+      "name": "市动物园",
+      "ticket": {"student": 40, "teacher": 80},
+      "guide": 200,
+      "subtotal": 2720,
+      "note": "门票 60×40 + 4×80 = 2720；讲解 200 元/场，subtotal 含讲解"
+    }
+  ],
+  "vehicleQuote": {
+    "vendor": "绿源巴士",
+    "items": [
+      {"vehicleId": "BUS-55", "seats": 55, "dayRate": 900},
+      {"vehicleId": "BUS-33", "seats": 33, "dayRate": 500}
+    ],
+    "suggestedCombo": {"vehicles": ["BUS-55", "BUS-33"], "seats": 88, "cost": 1400, "note": "64 人可同批出行（两车同行）"}
+  },
+  "synthetic": true
+}

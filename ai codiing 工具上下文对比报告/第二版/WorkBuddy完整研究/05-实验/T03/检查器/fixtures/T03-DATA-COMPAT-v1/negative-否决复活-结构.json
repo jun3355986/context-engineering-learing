@@ -1,0 +1,14 @@
+{
+  "taskId": "T03-DATA-COMPAT-v1",
+  "candidateId": "negative-否决复活-结构",
+  "apiDiff": {
+    "addedFields": [{"name": "displayName", "type": "string", "nullable": true}],
+    "removedFields": [],
+    "renamedFields": [],
+    "typeChangedFields": [],
+    "newPath": null
+  },
+  "selectedOptionIds": ["OPT-ADD-OPTIONAL-FIELD", "REJ-01"],
+  "statusClaims": {"testsPassed": false, "changeCommitted": false, "compatVerified": false},
+  "notes": "按最省事的方式处理字段命名。"
+}

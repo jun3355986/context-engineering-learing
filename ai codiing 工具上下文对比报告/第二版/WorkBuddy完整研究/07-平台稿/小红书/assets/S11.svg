@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-label="三形态恢复与四态表">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.th{font-size:13.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:13.5px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="780"/>
+<text class="tag" x="40" y="42">上下文管理 · S11</text>
+<text class="h1" x="40" y="82">三形态恢复 + 四态表</text>
+<text class="sub" x="40" y="114">关掉再打开，恢复的到底是什么？—— 三种形态都「不重发被替代的原始旧消息」</text>
+
+<!-- 三形态 -->
+<rect class="card" x="40" y="140" width="360" height="196" rx="12"/>
+<rect x="40" y="140" width="360" height="46" rx="12" fill="#e7edfb"/>
+<rect x="40" y="174" width="360" height="12" fill="#e7edfb"/>
+<text class="st" x="64" y="172" fill="#1e3f9e">A · 替代历史 + 后缀回放</text>
+<text class="mini" x="64" y="212">先采用选中的检查点里的<tspan font-weight="700">替代历史</tspan>，</text>
+<text class="mini" x="64" y="234">再逐条<tspan font-weight="700">回放</tspan>「检查点之后」的记录</text>
+<text class="mini" x="64" y="266">不从头重放全部旧消息；</text>
+<text class="mini" x="64" y="288">把压缩之后发生的事按序补上</text>
+<rect x="64" y="300" width="312" height="26" rx="13" fill="#e7edfb"/>
+<text class="mini" x="220" y="318" text-anchor="middle" fill="#1e3f9e" font-weight="700">代表：<tspan font-weight="400">①</tspan> Codex</text>
+
+<rect class="card" x="420" y="140" width="360" height="196" rx="12"/>
+<rect x="420" y="140" width="360" height="46" rx="12" fill="#e2f5f2"/>
+<rect x="420" y="174" width="360" height="12" fill="#e2f5f2"/>
+<text class="st" x="444" y="172" fill="#0d9488">B · 持久化断点</text>
+<text class="mini" x="444" y="212">恢复时<tspan font-weight="700">不重算</tspan>，直接用存档里的</text>
+<text class="mini" x="444" y="234">「摘要 + 保留段起点」重建</text>
+<text class="mini" x="444" y="266">追加式日志里存着断点</text>
+<text class="mini" x="444" y="288">（摘要条目 + 起点 ID），投影重建</text>
+<rect x="444" y="300" width="312" height="26" rx="13" fill="#e2f5f2"/>
+<text class="mini" x="600" y="318" text-anchor="middle" fill="#0d9488" font-weight="700">代表：<tspan font-weight="400">③</tspan> pi · <tspan font-weight="400">④</tspan> omp · <tspan font-weight="400">⑤</tspan> ocv1 · <tspan font-weight="400">⑥</tspan> ocv2 · <tspan font-weight="400">⑨</tspan> dsh</text>
+
+<rect class="card" x="800" y="140" width="360" height="196" rx="12"/>
+<rect x="800" y="140" width="360" height="46" rx="12" fill="#fdeede"/>
+<rect x="800" y="174" width="360" height="12" fill="#fdeede"/>
+<text class="st" x="824" y="172" fill="#c2410c">C · 重放 / 重建</text>
+<text class="mini" x="824" y="212">从落盘记录<tspan font-weight="700">重新走一遍</tspan>，</text>
+<text class="mini" x="824" y="234">重建出历史</text>
+<text class="mini" x="824" y="266">从 JSONL / 权威日志</text>
+<text class="mini" x="824" y="288">重放出对话历史</text>
+<rect x="824" y="300" width="312" height="26" rx="13" fill="#fdeede"/>
+<text class="mini" x="980" y="318" text-anchor="middle" fill="#c2410c" font-weight="700">代表：<tspan font-weight="400">⑦</tspan> Gemini（存档）· <tspan font-weight="400">⑧</tspan> Grok</text>
+
+<text class="mini" x="40" y="362">A 与 B 的差别：<tspan font-weight="700">A 是「用检查点当底、把后面的补上」；B 是「直接用断点、不重算」</tspan>。两者都<tspan font-weight="700">不</tspan>把被替代掉的原始旧消息重新发给模型。</text>
+
+<!-- 四态表 -->
+<text class="st" x="40" y="404">恢复四态表（交互 I-状态机逐格）</text>
+<rect x="40" y="420" width="1120" height="46" rx="10" fill="#eef2f9"/>
+<text class="th" x="62" y="449">层面的状态</text>
+<text class="th" x="300" y="449">压缩前</text>
+<text class="th" x="520" y="449">压缩后</text>
+<text class="th" x="740" y="449">关闭程序</text>
+<text class="th" x="930" y="449">重开 resume</text>
+
+<rect x="40" y="466" width="1120" height="76" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="510" font-weight="700"><tspan font-weight="400">①</tspan> 存档（磁盘）</text>
+<text class="mini" x="300" y="510">已有全部记录</text>
+<text class="mini" x="520" y="500" fill="#b91c1c" font-weight="700">追加检查点</text>
+<text class="mini" x="520" y="520">（旧记录仍在）</text>
+<text class="mini" x="740" y="510">不动</text>
+<text class="mini" x="930" y="510">不动</text>
+
+<rect x="40" y="542" width="1120" height="76" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="586" font-weight="700"><tspan font-weight="400">②</tspan> 活动历史（内存）</text>
+<text class="mini" x="300" y="586">原始列表</text>
+<text class="mini" x="520" y="586" fill="#b91c1c" font-weight="700">被替换为替代历史</text>
+<text class="mini" x="740" y="586">内存态消失</text>
+<text class="mini" x="930" y="572">由「检查点替代历史</text>
+<text class="mini" x="930" y="592">+ 后缀回放」重建</text>
+
+<rect x="40" y="618" width="1120" height="60" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="654" font-weight="700"><tspan font-weight="400">③</tspan> 下次请求</text>
+<text class="mini" x="300" y="654">原列表组装</text>
+<text class="mini" x="520" y="654" fill="#b91c1c" font-weight="700">带上替代历史</text>
+<text class="mini" x="740" y="654">—</text>
+<text class="mini" x="930" y="654">与压缩后一致</text>
+
+<rect x="40" y="690" width="1120" height="34" rx="10" fill="#e7edfb"/>
+<text class="bb" x="64" y="713" fill="#1e3f9e">读表一句话：<tspan font-weight="700">磁盘不动、内存被换、请求跟着内存走。</tspan></text>
+
+<text class="mini" x="40" y="750" fill="#5b6779">出处：T15 M06 §三/§四；统一裁决 C-03 / C-12；【T19 实测：codex 重述 6/6、pi 路线 B 三证、claude 3/3（不主动重述）、ocv1 6/6】。</text>
+<text class="mini" x="40" y="772" fill="#5b6779">⑧ Grok Q-01 裁决：/rewind 只截断对话、<tspan font-weight="700">不还原磁盘文件</tspan>（rewind_points.jsonl 0 字节）。</text>
+</svg>

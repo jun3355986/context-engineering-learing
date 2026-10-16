@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img" aria-label="摘要增长曲线（示意）">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.bb{font-size:14.5px;fill:#1b2330}
+.mini{font-size:13px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="720"/>
+<text class="tag" x="40" y="42">上下文管理 · S8</text>
+<text class="h1" x="40" y="82">摘要会「越压越长」（pi）</text>
+<text class="sub" x="40" y="114">增量摘要 = 在旧摘要上继续压（PRESERVE + ADD），未见去重 → 摘要体积单调增长</text>
+
+<!-- chart -->
+<rect class="card" x="40" y="140" width="1120" height="380" rx="12"/>
+<line x1="200" y1="180" x2="200" y2="480" stroke="#dfe5ef" stroke-width="1.5"/>
+<line x1="200" y1="480" x2="1060" y2="480" stroke="#dfe5ef" stroke-width="1.5"/>
+<g stroke="#eef2f9" stroke-width="1">
+<line x1="200" y1="405" x2="1060" y2="405"/>
+<line x1="200" y1="330" x2="1060" y2="330"/>
+<line x1="200" y1="255" x2="1060" y2="255"/>
+<line x1="200" y1="180" x2="1060" y2="180"/>
+</g>
+<text class="mini" x="192" y="484" text-anchor="end">低</text>
+<text class="mini" x="192" y="184" text-anchor="end">高</text>
+<text class="mini" x="150" y="340" transform="rotate(-90 150 340)" text-anchor="middle">摘要体积（相对）</text>
+
+<!-- x labels -->
+<text class="mini" x="200" y="504" text-anchor="middle">压缩 1</text>
+<text class="mini" x="340" y="504" text-anchor="middle">2</text>
+<text class="mini" x="480" y="504" text-anchor="middle">3</text>
+<text class="mini" x="620" y="504" text-anchor="middle">4</text>
+<text class="mini" x="760" y="504" text-anchor="middle">5</text>
+<text class="mini" x="900" y="504" text-anchor="middle">6</text>
+<text class="mini" x="1040" y="504" text-anchor="middle">7</text>
+<text class="mini" x="620" y="524" text-anchor="middle" fill="#5b6779">连续压缩次数</text>
+
+<!-- 增量摘要（pi 实测方向） -->
+<polyline points="200,405 340,378 480,348 620,318 760,288 900,258 1040,228" fill="none" stroke="#0d9488" stroke-width="3"/>
+<g fill="#0d9488">
+<circle cx="200" cy="405" r="5"/><circle cx="340" cy="378" r="5"/><circle cx="480" cy="348" r="5"/>
+<circle cx="620" cy="318" r="5"/><circle cx="760" cy="288" r="5"/><circle cx="900" cy="258" r="5"/><circle cx="1040" cy="228" r="5"/>
+</g>
+<text class="bb" x="1054" y="222" fill="#0d9488" font-weight="700">单调增长</text>
+
+<!-- 对照：重新摘要（假设） -->
+<polyline points="200,405 340,412 480,416 620,414 760,412 900,410 1040,408" fill="none" stroke="#5b6779" stroke-width="2.5" stroke-dasharray="7 5"/>
+<text class="mini" x="1054" y="412" fill="#5b6779">「重新摘要」假设（对照）</text>
+
+<!-- legend -->
+<rect x="220" y="184" width="16" height="4" fill="#0d9488"/>
+<text class="mini" x="244" y="192">增量摘要（在旧摘要上继续压）</text>
+<rect x="480" y="184" width="16" height="4" fill="#5b6779"/>
+<text class="mini" x="504" y="192">重新摘要（若每次从头压，体积应更稳定）</text>
+
+<!-- notes -->
+<rect x="40" y="544" width="1120" height="120" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="576" fill="#c2410c" font-weight="700">【演示】本曲线为示意 —— 用于说明「单调增长」的方向，不是逐点实测数值</text>
+<text class="mini" x="64" y="604">· pi 摘要为<tspan font-weight="700">固定结构</tspan>：Goal / Constraints &amp; Preferences / Progress(Done·In Progress·Blocked) / Key Decisions / Next Steps / Critical Context + 文件清单。</text>
+<text class="mini" x="64" y="626">· 有旧摘要时改用 <tspan class="mono">UPDATE</tspan> 提示词（PRESERVE all existing information… ADD new…），旧摘要作为 &lt;previous-summary&gt; 传入。</text>
+<text class="mini" x="64" y="648">· T19 实测：pi 3 次重复各得 3 次压缩，摘要<tspan font-weight="700">单调增长</tspan>（增量累积、未见去重）；<tspan font-weight="700">增量摘要判为有损</tspan>。</text>
+
+<text class="mini" x="40" y="692" fill="#5b6779">出处：T19 `02-pi.md` §2；T15 M04 §八工具对照（表 A 摘要机制 ③ pi）；术语表 §3「增量摘要」。</text>
+</svg>

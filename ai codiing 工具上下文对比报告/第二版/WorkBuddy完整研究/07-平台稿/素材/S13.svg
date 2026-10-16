@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" width="1200" height="820" role="img" aria-label="缓存四边界与拆账三关系">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.th{font-size:13.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:13.5px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="820"/>
+<text class="tag" x="40" y="42">上下文管理 · S13</text>
+<text class="h1" x="40" y="82">缓存四边界 + 拆账三关系</text>
+<text class="sub" x="40" y="114">缓存省的是「重新计算」，不是「少发材料」—— 四个边界必须背下（R14 强制）</text>
+
+<!-- 四边界 -->
+<rect class="card" x="40" y="140" width="266" height="150" rx="12"/>
+<rect x="40" y="140" width="266" height="42" rx="12" fill="#e7edfb"/>
+<rect x="40" y="170" width="266" height="12" fill="#e7edfb"/>
+<text class="st" x="60" y="168" fill="#1e3f9e">≠ 摘要（压缩）</text>
+<text class="mini" x="60" y="206">缓存<tspan font-weight="700">不改变材料</tspan>（前缀原样复用）；</text>
+<text class="mini" x="60" y="228">摘要<tspan font-weight="700">改变材料</tspan>（替换历史）。</text>
+<text class="mini" x="60" y="258" fill="#c2410c">目的相反：一个省重算，</text>
+<text class="mini" x="60" y="278" fill="#c2410c">一个减体积。</text>
+
+<rect class="card" x="324" y="140" width="266" height="150" rx="12"/>
+<rect x="324" y="140" width="266" height="42" rx="12" fill="#e2f5f2"/>
+<rect x="324" y="170" width="266" height="12" fill="#e2f5f2"/>
+<text class="st" x="344" y="168" fill="#0d9488">≠ 外部记忆</text>
+<text class="mini" x="344" y="206">外部记忆是「不在消息列表里、</text>
+<text class="mini" x="344" y="228">可再取用」的记忆；</text>
+<text class="mini" x="344" y="258" fill="#c2410c">缓存在服务端存 KV 状态，</text>
+<text class="mini" x="344" y="278" fill="#c2410c">不改变本次请求带哪些材料。</text>
+
+<rect class="card" x="608" y="140" width="266" height="150" rx="12"/>
+<rect x="608" y="140" width="266" height="42" rx="12" fill="#fdeede"/>
+<rect x="608" y="170" width="266" height="12" fill="#fdeede"/>
+<text class="st" x="628" y="168" fill="#c2410c">≠ 容量扩展</text>
+<text class="mini" x="628" y="206">缓存<tspan font-weight="700">不缩窗口占用</tspan>——</text>
+<text class="mini" x="628" y="228">cached 输入仍占本次上下文。</text>
+<text class="mini" x="628" y="258" fill="#c2410c">命中 token 依然计入</text>
+<text class="mini" x="628" y="278" fill="#c2410c">速率限制（TPM）。</text>
+
+<rect class="card" x="892" y="140" width="268" height="150" rx="12"/>
+<rect x="892" y="140" width="268" height="42" rx="12" fill="#fdeaea"/>
+<rect x="892" y="170" width="268" height="12" fill="#fdeaea"/>
+<text class="st" x="912" y="168" fill="#b91c1c">≠ 少发材料</text>
+<text class="mini" x="912" y="206">「少发」是压缩 / 检索的产物；</text>
+<text class="mini" x="912" y="228">缓存<tspan font-weight="700">一个 token 都不少发</tspan>。</text>
+<text class="mini" x="912" y="258" fill="#c2410c">❌「缓存让上下文变短 /</text>
+<text class="mini" x="912" y="278" fill="#c2410c">窗口变大」都不对。</text>
+
+<!-- 拆账三关系 -->
+<text class="st" x="40" y="332">拆账三关系（先记死，别算错）</text>
+<rect class="card" x="40" y="348" width="1120" height="120" rx="12"/>
+<text class="bb" x="64" y="380">① <tspan class="mono">cached_tokens</tspan> 与 <tspan class="mono">cache_write_tokens</tspan> <tspan font-weight="700">都是 <tspan class="mono">input_tokens</tspan> 的明细拆分</tspan>，<tspan font-weight="700" fill="#b91c1c">不能再加到 input_tokens 上</tspan>。</text>
+<text class="bb" x="64" y="410">② 普通输入 = <tspan class="mono">input_tokens</tspan> − <tspan class="mono">cached_tokens</tspan> − <tspan class="mono">cache_write_tokens</tspan></text>
+<text class="bb" x="64" y="440">③ 计费当量 = 普通×1 + 读取×0.1 + 写入×1.25　<tspan class="mini">（写入的 1.25 是完整单价，不是「普通价再加 1.25 倍」）</tspan></text>
+
+<!-- 三账对照 -->
+<text class="st" x="40" y="512">三账对照【演示】　舞台：输入 100,000（稳定前缀 96,000、本次新增 4,000）；费率 普通 1× / 读 0.1× / 写 1.25×</text>
+<rect x="40" y="528" width="1120" height="44" rx="10" fill="#eef2f9"/>
+<text class="th" x="62" y="556">账</text>
+<text class="th" x="240" y="556">场景</text>
+<text class="th" x="620" y="556">当量【演示】</text>
+<text class="th" x="790" y="556">相对全额</text>
+<text class="th" x="940" y="556">一句话</text>
+
+<rect x="40" y="572" width="1120" height="52" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="604" font-weight="700"><tspan font-weight="400">①</tspan></text>
+<text class="mini" x="240" y="604">一次命中（前缀未变，完整命中）</text>
+<text class="bb" x="620" y="604" font-weight="700" fill="#15803d">13,600</text>
+<text class="mini" x="790" y="604">≈ 0.14×</text>
+<text class="mini" x="940" y="604">缓存应有的样子</text>
+
+<rect x="40" y="624" width="1120" height="52" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="656" font-weight="700"><tspan font-weight="400">②</tspan></text>
+<text class="mini" x="240" y="656">一次失效（前缀被改：改旧消息 / 工具集变）</text>
+<text class="bb" x="620" y="656" font-weight="700" fill="#b91c1c">125,000</text>
+<text class="mini" x="790" y="656">1.25×</text>
+<text class="mini" x="940" y="656">比不缓存还贵（写入溢价）</text>
+
+<rect x="40" y="676" width="1120" height="52" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="708" font-weight="700"><tspan font-weight="400">③</tspan></text>
+<text class="mini" x="240" y="708">一次压缩周转（压缩替换历史 → 前缀退化）</text>
+<text class="bb" x="620" y="708" font-weight="700" fill="#c2410c">92,000</text>
+<text class="mini" x="790" y="708">≈ 0.92×</text>
+<text class="mini" x="940" y="708">压缩后首请求更慢更贵，随后回升</text>
+
+<rect x="40" y="740" width="1120" height="52" rx="10" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="mini" x="64" y="764" fill="#c2410c" font-weight="700">红线：服务端命中 / TTL 九工具全部 UNOBSERVABLE —— 不承诺任何命中率。</text>
+<text class="mini" x="64" y="784">费率 0.1×/1.25× 为服务端文档示例（非实测）；三组账单数字均为【演示】。压缩改变前缀 → 缓存按前缀退化，<tspan font-weight="700">但不会整体归零</tspan>。</text>
+
+<text class="mini" x="40" y="812" fill="#5b6779">出处：T15 M07 §二/§usage 拆账；术语表 §6（缓存族，与摘要 / 记忆严格分开）；R14 边界强制。</text>
+</svg>

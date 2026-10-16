@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 850" width="1200" height="850" role="img" aria-label="场景决策表与反例">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.th{font-size:13.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:13px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="850"/>
+<text class="tag" x="40" y="42">上下文管理 · S19</text>
+<text class="h1" x="40" y="82">场景决策表 + 一个反例</text>
+<text class="sub" x="40" y="114">按场景查、不排名次 —— 反例才是决策表的灵魂：它告诉你「什么情况下这个建议会翻车」</text>
+
+<rect x="40" y="146" width="1120" height="46" rx="10" fill="#eef2f9"/>
+<text class="th" x="62" y="175">场景</text>
+<text class="th" x="342" y="175">建议</text>
+<text class="th" x="762" y="175">反例 / 陷阱（★ 反例自检项）</text>
+
+<g>
+<rect x="40" y="192" width="1120" height="60" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="218" font-weight="700">需要找回被压缩掉的原文</text>
+<text class="mini" x="62" y="238">任何工具：走磁盘 / 存档入口</text>
+<text class="mini" x="342" y="218">走各工具落盘 / 存档入口（各包 SP-08）</text>
+<text class="mini" x="762" y="218" fill="#b91c1c">❌ 别信「绝不可能找回」</text>
+<text class="mini" x="762" y="238">（C-12：仅「模型可见层」成立）</text>
+
+<rect x="40" y="252" width="1120" height="60" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="278" font-weight="700">估算中文内容的成本</text>
+<text class="mini" x="62" y="298">用真实 tokenizer（T19 可核）</text>
+<text class="mini" x="342" y="278">用真实 tokenizer；以服务端 usage 为准</text>
+<text class="mini" x="762" y="278" fill="#b91c1c">❌ chars/4 系列会低估（dsh 实测 400 汉字 = 108）</text>
+<text class="mini" x="762" y="298" fill="#b91c1c">（ocv1/ocv2 4 字 = 1）；Gemini 非 ASCII ≈1.5/字符则高估（C-06）</text>
+
+<rect x="40" y="312" width="1120" height="60" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="338" font-weight="700">依赖子代理工作流</text>
+<text class="mini" x="62" y="358">选默认含子代理的工具（④/⑨ 等）</text>
+<text class="mini" x="342" y="338">选默认含子代理的工具（④ omp / ⑨ dsh 等）</text>
+<text class="mini" x="762" y="338" fill="#b91c1c">❌ pi 刻意不含（设计选择）</text>
+<text class="mini" x="762" y="358">——「没找到」≠「忘了做」</text>
+
+<rect x="40" y="372" width="1120" height="60" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="398" font-weight="700">想要开箱即用的长期记忆</text>
+<text class="mini" x="62" y="418">注意：大多默认关</text>
+<text class="mini" x="342" y="398">先查默认开关：多数默认关</text>
+<text class="mini" x="762" y="398" fill="#b91c1c">❌ 别写「有记忆 = 默认开」</text>
+<text class="mini" x="762" y="418">（④off / ⑦false / ⑧关；② auto memory 默认开但后台线文档未描述）</text>
+
+<rect x="40" y="432" width="1120" height="60" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="458" font-weight="700">引用「统一压缩阈值」</text>
+<text class="mini" x="62" y="478">逐工具列口径</text>
+<text class="mini" x="342" y="458">逐工具列口径（T14 B 行 / 见 S4）</text>
+<text class="mini" x="762" y="458" fill="#b91c1c">❌「90–95% 总括句」被九工具全部否证</text>
+<text class="mini" x="762" y="478">（C-01 / C-02）</text>
+
+<rect x="40" y="492" width="1120" height="60" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="518" font-weight="700">大窗口模型「不会压缩」</text>
+<text class="mini" x="62" y="538">反例：Gemini 1M 仍触发</text>
+<text class="mini" x="342" y="518">反例：Gemini 1M 窗口仍 0.5×W 触发</text>
+<text class="mini" x="762" y="518" fill="#b91c1c">❌ C-08 旧标签已撤回</text>
+<text class="mini" x="762" y="538">（Gemini 存档证据；⑦仅历史存档）</text>
+
+<rect x="40" y="552" width="1120" height="60" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="578" font-weight="700">缓存省钱承诺</text>
+<text class="mini" x="62" y="598">只说 CLI 侧可观测字段</text>
+<text class="mini" x="342" y="578">只说 CLI 侧可观测字段（读 / 写明细、桶）</text>
+<text class="mini" x="762" y="578" fill="#b91c1c">❌ 服务端命中 / TTL 全部 UNOBSERVABLE</text>
+<text class="mini" x="762" y="598">—— 不得承诺命中率</text>
+
+<rect x="40" y="612" width="1120" height="60" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="638" font-weight="700">版本引用</text>
+<text class="mini" x="62" y="658">快照 SHA + 分发件双口径</text>
+<text class="mini" x="342" y="638">快照 SHA + 分发件双口径（三行写法）</text>
+<text class="mini" x="762" y="638" fill="#b91c1c">❌ Grok 版本漂移（1.0.50→1.0.52）；OpenCode 同源 ≠ 零耦合</text>
+<text class="mini" x="762" y="658">（分界按出货 + 引用）</text>
+</g>
+
+<rect x="40" y="690" width="1120" height="86" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="720" font-weight="700" fill="#c2410c">怎么用它：设计时按你的场景查行，把该行的「反例」抄进你的方案，作为「反例自检」——这正是设计四件套第四件（检查方法）的一部分。</text>
+<text class="mini" x="64" y="748">三条使用纪律：① 按场景查，不排名次（矩阵不含任何「谁更省 / 更快 / 更强」排序）；② 每个决定配一个反例；③ 未知保留未知（口径不一登记不裁决）。</text>
+<text class="mini" x="64" y="768" fill="#5b6779">【T19 实测：已获各工具用量数据（总表 §3），但执行模型 / provider 不同 → 条件不可比，仍不排名次；小样本（3 次）不声称统计显著】</text>
+
+<text class="mini" x="40" y="806" fill="#5b6779">出处：T15 M11 §场景决策表（引 T14 §G「场景决策表与反例」8 场景）；冲突裁决 C-01/C-02、C-06、C-08、C-12。</text>
+<text class="mini" x="40" y="828" fill="#5b6779">⚠ 教学效果未验证（需真实读者完成迁移任务与三件套）。</text>
+</svg>

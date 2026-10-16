@@ -1,0 +1,63 @@
+{
+  "status": "completed",
+  "before_checkpoints": 0,
+  "after_checkpoints": 1,
+  "inputs": [
+    {
+      "elapsed_seconds": 8.001,
+      "label": "type literal /compact",
+      "text": "/compact"
+    },
+    {
+      "elapsed_seconds": 9.009,
+      "label": "submit literal /compact",
+      "text": "\r"
+    },
+    {
+      "elapsed_seconds": 20.164,
+      "label": "type explicit new user continuation",
+      "text": "不要使用工具。请从刚才整理后的上下文核对 RETURN_BY、BUDGET_CNY、MEETING_POINT，输出这三项的JSON。"
+    },
+    {
+      "elapsed_seconds": 21.174,
+      "label": "submit explicit new user continuation",
+      "text": "\r"
+    }
+  ],
+  "quiet_seconds": 6,
+  "quiet_record_growth": 0,
+  "quiet_user_message_count": 0,
+  "continuation_completed": true,
+  "checkpoint": {
+    "source": "manual-tui/after-compact-rollout.jsonl",
+    "source_line": 36,
+    "timestamp": "2026-10-14T15:28:54.998Z",
+    "type": "compacted",
+    "message_is_empty": true,
+    "replacement_item_count": 4,
+    "replacement_types": {
+      "message": 3,
+      "compaction": 1
+    },
+    "message_roles": {
+      "user": 3
+    },
+    "encrypted_block_present": true,
+    "note": "只公布结构；不公布不可读的 encrypted_content，也不编造摘要正文。"
+  },
+  "final": "{\"RETURN_BY\":\"16:00\",\"BUDGET_CNY\":1280,\"MEETING_POINT\":\"东门\"}",
+  "last_usage": {
+    "input_tokens": 12446,
+    "cached_input_tokens": 8448,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 28,
+    "reasoning_output_tokens": 0,
+    "total_tokens": 12474
+  },
+  "evidence_sources": [
+    "manual-tui/results.json",
+    "manual-tui/after-compact-rollout.jsonl:36",
+    "manual-tui/after-continuation-rollout.jsonl:46,49,52"
+  ],
+  "interpretation_limit": "第46行重新注入的 AGENTS 已含三项约束；最终答案不能单独证明这些约束来自压缩块。"
+}

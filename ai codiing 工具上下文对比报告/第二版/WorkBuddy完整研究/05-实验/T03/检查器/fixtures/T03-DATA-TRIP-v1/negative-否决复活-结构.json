@@ -1,0 +1,11 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "negative-否决复活-结构",
+  "returnTime": "15:45",
+  "costBreakdown": {"vehicle": 1400, "tickets": 0, "guide": 200},
+  "headcount": 64,
+  "assemblyPointId": "REJ-02",
+  "selectedOptionIds": ["OPT-BOTANIC", "OPT-BUS-1450", "REJ-02"],
+  "statusClaims": {"车辆预订": "未开始", "校方报备": "未开始", "行程已确认": false},
+  "notes": "集合点仍沿用之前讨论的安排，方便大巴停靠。"
+}

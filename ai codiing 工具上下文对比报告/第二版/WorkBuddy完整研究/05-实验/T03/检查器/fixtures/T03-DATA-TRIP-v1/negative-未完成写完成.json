@@ -1,0 +1,11 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "negative-未完成写完成",
+  "returnTime": "15:45",
+  "costBreakdown": {"vehicle": 1400, "tickets": 0, "guide": 200},
+  "headcount": 64,
+  "assemblyPointId": "LOC-PLAYGROUND",
+  "selectedOptionIds": ["OPT-BOTANIC", "OPT-BUS-1450"],
+  "statusClaims": {"车辆预订": "已完成", "校方报备": "已完成", "行程已确认": true},
+  "notes": "全部准备就绪，可以直接通知家长。"
+}

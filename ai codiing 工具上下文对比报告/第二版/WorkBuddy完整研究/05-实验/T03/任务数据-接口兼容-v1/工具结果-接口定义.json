@@ -1,0 +1,24 @@
+{
+  "packageId": "T03-DATA-COMPAT-v1",
+  "toolCallId": "call_c001",
+  "toolName": "read_file",
+  "files": [
+    {
+      "path": "src/main/java/com/example/user/UserController.java",
+      "excerpt": "@GetMapping(\"/api/user/{id}\") public UserDto getUser(@PathVariable Long id) { ... }"
+    },
+    {
+      "path": "src/main/java/com/example/user/UserDto.java",
+      "fields": [
+        {"name": "user_name", "type": "string", "required": true},
+        {"name": "age", "type": "int", "required": true},
+        {"name": "email", "type": "string", "required": true}
+      ]
+    },
+    {
+      "path": "docs/api-contract-v1.md",
+      "excerpt": "旧客户端 App v1 契约：字段名、类型、路径均不得变更；新增字段必须可选（nullable）。"
+    }
+  ],
+  "synthetic": true
+}

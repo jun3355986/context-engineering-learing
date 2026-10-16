@@ -1,0 +1,18 @@
+{"seq":1,"id":"MSG-001","role":"user","turn":"T1","content":"帮我安排下周五的班级郊游：一(2)班和一(3)班，共 60 名学生，再加 4 名老师。硬要求是**下午 4 点前必须回到学校**，另外顺便看看操场集合点怎么排。","carries":["HC-01","HC-03"]}
+{"seq":2,"id":"MSG-002","role":"assistant","turn":"T1","content":"收到。按 64 人先排一个初稿：建议 9:00 出发，16:30 结束，17:30 返程；集合点暂定校门口，方便大巴上下客。","carries":["REJ-01(临时提议)","REJ-02(临时提议)"]}
+{"seq":3,"id":"MSG-003","role":"user","turn":"T2","content":"预算这一块我也定一下：**总费用不能超过 6000 元**，含车费、门票、讲解。","carries":["HC-02"]}
+{"seq":4,"id":"MSG-004","role":"user","turn":"T2","content":"**17:30 返程太晚了，这个方案我不要**——必须保证 4 点前到校。别再提 17:30 返程。","carries":["REJ-01(否决)"],"negates":["REJ-01"]}
+{"seq":5,"id":"MSG-005","role":"assistant","turn":"T2","content":"好的，撤掉 17:30 返程。那集合点就定校门口，我来排车。","carries":["REJ-02(临时提议)"]}
+{"seq":6,"id":"MSG-006","role":"user","turn":"T3","content":"**校门口不行**，门口在施工封闭。集合点用**操场**。之前说的校门口集合作废。","carries":["SP-02","REJ-02(否决)"],"negates":["REJ-02"]}
+{"seq":7,"id":"MSG-007","role":"user","turn":"T3","content":"地点偏好说一下：**植物园、动物园这类户外优先**，室内场馆作为次选也行。","carries":["SP-01"]}
+{"seq":8,"id":"MSG-008","role":"assistant","turn":"T4","content":"我查了下：科技馆内容挺对口，先按**科技馆为首选**排一版。","carries":["REJ-03(临时提议)"]}
+{"seq":9,"id":"MSG-009","role":"user","turn":"T4","content":"查一下开放日。","carries":[]}
+{"seq":10,"id":"MSG-010","role":"tool","turn":"T4","toolName":"venue_opening_lookup","toolCallId":"call_a1","contentRef":"工具结果-场馆开放.json","summary":"科技馆周五闭馆；植物园、动物园周五正常开放。","carries":["REJ-03(证据)"]}
+{"seq":11,"id":"MSG-011","role":"assistant","turn":"T4","content":"科技馆周五闭馆，不可用。所以把**科技馆作为首选这个方案否决**，改回植物园/动物园。","carries":["REJ-03(否决)"],"negates":["REJ-03"]}
+{"seq":12,"id":"MSG-012","role":"user","turn":"T4","content":"对，科技馆就算了。","carries":["REJ-03(确认否决)"],"negates":["REJ-03"]}
+{"seq":13,"id":"MSG-013","role":"tool","turn":"T5","toolName":"bus_schedule_query","toolCallId":"call_b1","contentRef":"长工具结果-公交查询-v1.txt","contentLines":300,"summary":"336 条周五班次，含返程班次与车辆日租报价（关键结论在头/中/尾三处）","carries":["HC-01(证据)","HC-02(证据)"]}
+{"seq":14,"id":"MSG-014","role":"tool","turn":"T5","toolName":"ticket_price_query","toolCallId":"call_c1","contentRef":"工具结果-门票报价.json","summary":"植物园免费；动物园学生 40 元、老师 80 元；讲解 200 元/场。","carries":["HC-02(证据)"]}
+{"seq":15,"id":"MSG-015","role":"user","turn":"T6","content":"先聊到这，**你整理一下当前状态**，我下午回来接着弄。","carries":["整理触发点"]}
+{"seq":16,"id":"MSG-016","role":"assistant","turn":"T6","contentRef":"坏摘要样例.md","kind":"summary","content":"【会话整理产物，见 坏摘要样例.md】","summary":"故意漏掉 16:00 硬约束、复活 17:30 返程、把未完成的准备项写成已完成","carries":["坏摘要"]}
+{"seq":17,"id":"MSG-017","role":"user","turn":"T7(隔天恢复)","content":"我回来了，接着上面的郊游任务，**给出最终方案**。另外先说一遍：现在有效的约束还有哪些？","carries":["恢复后先验证"]}
+{"seq":18,"id":"MSG-018","role":"assistant","turn":"T7(隔天恢复)","content":"【候选最终方案，见检查器 fixtures】","carries":["待检查产物"]}

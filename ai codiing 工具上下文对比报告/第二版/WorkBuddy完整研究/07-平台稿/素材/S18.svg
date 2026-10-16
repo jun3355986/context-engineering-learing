@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" role="img" aria-label="pi 六节点调用链与 Codex 差异表">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16px;font-weight:700;fill:#1b2330}
+.th{font-size:13px;font-weight:700;fill:#1b2330}
+.bb{font-size:13px;fill:#1b2330}
+.mini{font-size:12px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="900"/>
+<text class="tag" x="40" y="42">上下文管理 · S18</text>
+<text class="h1" x="40" y="82">pi 六节点调用链 + 差异表</text>
+<text class="sub" x="40" y="114">换一个工具再走一遍：同一机制、不同实现 —— 六节点同形，差别在每一段的具体做法</text>
+
+<!-- 六节点 -->
+<rect class="card" x="40" y="140" width="360" height="118" rx="12"/>
+<rect x="40" y="140" width="360" height="36" rx="12" fill="#e7edfb"/><rect x="40" y="164" width="360" height="12" fill="#e7edfb"/>
+<text class="st" x="60" y="165" fill="#1e3f9e">① 组装</text>
+<text class="mini" x="60" y="200">_installAgentRequestProjection：</text>
+<text class="mini" x="60" y="220">projection.messages + tools</text>
+<text class="mini" x="60" y="240">系统提示词具名 section + 逐段 diff</text>
+
+<rect class="card" x="420" y="140" width="360" height="118" rx="12"/>
+<rect x="420" y="140" width="360" height="36" rx="12" fill="#e7edfb"/><rect x="420" y="164" width="360" height="12" fill="#e7edfb"/>
+<text class="st" x="440" y="165" fill="#1e3f9e">② 触发</text>
+<text class="mini" x="440" y="200">一条阈值线：</text>
+<text class="mini" x="440" y="220" font-weight="700">A &gt; W − reserveTokens(16384)</text>
+<text class="mini" x="440" y="240">时机：轮中 / 新提示前 / 结束后 / 手动</text>
+
+<rect class="card" x="800" y="140" width="360" height="118" rx="12"/>
+<rect x="800" y="140" width="360" height="36" rx="12" fill="#e7edfb"/><rect x="800" y="164" width="360" height="12" fill="#e7edfb"/>
+<text class="st" x="820" y="165" fill="#1e3f9e">③ 摘要</text>
+<text class="mini" x="820" y="200">固定结构摘要 + UPDATE 增量</text>
+<text class="mini" x="820" y="220">（PRESERVE + ADD）</text>
+<text class="mini" x="820" y="240">序列化截 toolResult 2000 字符</text>
+
+<rect class="card" x="40" y="272" width="360" height="118" rx="12"/>
+<rect x="40" y="272" width="360" height="36" rx="12" fill="#e2f5f2"/><rect x="40" y="296" width="360" height="12" fill="#e2f5f2"/>
+<text class="st" x="60" y="297" fill="#0d9488">④ 保留</text>
+<text class="mini" x="60" y="332">切点 = user/assistant 等边界，</text>
+<text class="mini" x="60" y="352" font-weight="700">绝不切 toolResult</text>
+<text class="mini" x="60" y="372">keepRecentTokens 20000；无切点退回起点</text>
+
+<rect class="card" x="420" y="272" width="360" height="118" rx="12"/>
+<rect x="420" y="272" width="360" height="36" rx="12" fill="#e2f5f2"/><rect x="420" y="296" width="360" height="12" fill="#e2f5f2"/>
+<text class="st" x="440" y="297" fill="#0d9488">⑤ 工具输出</text>
+<text class="mini" x="440" y="332" font-weight="700">2000 行 / 50KB 先到者</text>
+<text class="mini" x="440" y="352">read 族保头 / bash 保尾</text>
+<text class="mini" x="440" y="372">bash 超限落临时文件（预览 + 路径）</text>
+
+<rect class="card" x="800" y="272" width="360" height="118" rx="12"/>
+<rect x="800" y="272" width="360" height="36" rx="12" fill="#e2f5f2"/><rect x="800" y="296" width="360" height="12" fill="#e2f5f2"/>
+<text class="st" x="820" y="297" fill="#0d9488">⑥ 恢复</text>
+<text class="mini" x="820" y="332">持久化断点：</text>
+<text class="mini" x="820" y="352" font-weight="700">摘要 + firstKeptEntryId</text>
+<text class="mini" x="820" y="372">直接重建（不重跑压缩）</text>
+
+<!-- 差异表 -->
+<text class="st" x="40" y="428">差异表（只讲差异，不排名次）　对照基准 Codex = <tspan class="mono" font-weight="400">a07c8eb</tspan>；pi = <tspan class="mono" font-weight="400">b45e0eb</tspan></text>
+<rect x="40" y="442" width="1120" height="44" rx="10" fill="#eef2f9"/>
+<text class="th" x="62" y="470">维度</text>
+<text class="th" x="290" y="470">① Codex（a07c8eb）</text>
+<text class="th" x="720" y="470">② pi（b45e0eb）</text>
+
+<g>
+<rect x="40" y="486" width="1120" height="46" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="514" font-weight="700">D4 触发公式</text>
+<text class="mini" x="290" y="514">两条线：min(M, 90%W) OR W×95%</text>
+<text class="mini" x="720" y="514">一条线：A &gt; W − reserveTokens(16384)</text>
+
+<rect x="40" y="532" width="1120" height="46" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="560" font-weight="700">D7 切点规则</text>
+<text class="mini" x="290" y="560">候选 = 真用户消息，从新到旧装 20,000 预算，边界截短单条</text>
+<text class="mini" x="720" y="560">切点只在 user/assistant 等边界，绝不切 toolResult</text>
+
+<rect x="40" y="578" width="1120" height="46" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="606" font-weight="700">D8 摘要机制</text>
+<text class="mini" x="290" y="606">本地模板 / 远端 v2（encrypted_content）；成功后一次性提交</text>
+<text class="mini" x="720" y="606">固定结构 + UPDATE 增量；序列化截 toolResult 2000 字符</text>
+
+<rect x="40" y="624" width="1120" height="46" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="652" font-weight="700">D9 落盘（会话）</text>
+<text class="mini" x="290" y="652">rollout 存档追加；替换内存 + 追加 CompactedItem</text>
+<text class="mini" x="720" y="652">只追加 JSONL 树（id/parentId，版本 3）；追加 CompactionEntry</text>
+
+<rect x="40" y="670" width="1120" height="46" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="698" font-weight="700">D10 落盘（工具输出）</text>
+<text class="mini" x="290" y="698">落盘 + 请求里留预览头部；rollout 留未裁剪原载荷</text>
+<text class="mini" x="720" y="698">bash 超限落临时文件，请求里留尾部预览 + 路径</text>
+
+<rect x="40" y="716" width="1120" height="46" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="744" font-weight="700">D11 恢复路线</text>
+<text class="mini" x="290" y="744">替代历史 + 后缀回放</text>
+<text class="mini" x="720" y="744">持久化断点：摘要 + firstKeptEntryId 直接重建</text>
+
+<rect x="40" y="762" width="1120" height="46" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="790" font-weight="700">D12 摘要的角色</text>
+<text class="mini" x="290" y="790">替代历史列表（ResponseItem 层）</text>
+<text class="mini" x="720" y="790">一条 user 消息（&lt;summary&gt;…&lt;/summary&gt; 包前后缀）</text>
+
+<rect x="40" y="808" width="1120" height="46" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="836" font-weight="700">D13 失败处理</text>
+<text class="mini" x="290" y="836">溢出移除最早项 / retries=0；压缩失败须保持 live 历史与 rollout 不变</text>
+<text class="mini" x="720" y="836">溢出恢复仅一次；摘要失败不落盘；成功才 appendCompaction</text>
+</g>
+
+<text class="mini" x="40" y="878" fill="#5b6779">共同点（不是差异，但别漏）：两侧都<tspan font-weight="700">只追加、不删旧记录</tspan>；都只在成功后提交压缩；服务端缓存命中 / TTL 两侧都 UNOBSERVABLE。</text>
+<text class="mini" x="40" y="896" fill="#5b6779">出处：T16-第二套链与差异 §0–§8（差异表 D1–D15 摘选）；六节点链路＝固定快照静态阅读结论，非运行时实测。</text>
+</svg>

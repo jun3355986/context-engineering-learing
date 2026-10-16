@@ -1,0 +1,22 @@
+{
+  "source_call": "truncation-config/rollout.jsonl:12",
+  "source_output": "truncation-config/rollout.jsonl:13",
+  "call_id": "call_3e18b03ee6794254b9e167c2b787dd5d",
+  "tool_name": "exec",
+  "actual_call_input": "const r = await tools.exec_command({\n  cmd: \"cat long-output.txt\",\n  workdir: \"<LAB>/workspace\",\n  yield_time_ms: 10000,\n  max_output_tokens: 60000\n});\ntext(JSON.stringify(r));\n",
+  "raw_execution_utf8_bytes": 136009,
+  "saved_output_json_utf8_bytes": 40712,
+  "saved_text_block_utf8_bytes": [
+    47,
+    40107
+  ],
+  "markers": {
+    "head": true,
+    "middle": false,
+    "tail": true
+  },
+  "saw_truncation": true,
+  "final": "{\"head_marker\":\"ALPHA_20261014\",\"middle_marker\":\"UNKNOWN\",\"tail_marker\":\"OMEGA_20261014\",\"saw_truncation_marker\":true}",
+  "saved_output_excerpt": "Warning: truncated output (original token count: 34430)\nTotal output lines: 1\n\n{\"chunk_id\":\"560665\",\"wall_time_seconds\":0.000001583,\"exit_code\":0,\"original_token_count\":34003,\"output\":\"HEAD_MARKER=ALPHA_20261014\\nrow-0001 | meaningless synthetic padding to expose length limits | checksum 000003e5\\nrow-0002 | meaningless synthetic padding to expose length limits | checksum 000007ca\\nrow-0003 | meaningless synthetic padding to expose length limits | checksum 00000baf\\nrow-0004 \n[这里省略已保存的头尾正文，只摘录外层警告]\netic padding to expose length limits | checksum 00184f76\\nrow-1599 | meaningless synthetic padding to expose length limits | checksum 0018535b\\nrow-1600 | meaningless synthetic padding to expose length limits | checksum 00185740\\nTAIL_MARKER=OMEGA_20261014\\n\"}",
+  "configuration_clamp_status": "证据不充分：未捕获最终请求中工具项的逐层大小。"
+}

@@ -1,0 +1,14 @@
+{
+  "taskId": "T03-DATA-COMPAT-v1",
+  "candidateId": "negative-硬约束-新增字段必填",
+  "apiDiff": {
+    "addedFields": [{"name": "displayName", "type": "string", "nullable": false}],
+    "removedFields": [],
+    "renamedFields": [],
+    "typeChangedFields": [],
+    "newPath": null
+  },
+  "selectedOptionIds": ["OPT-ADD-REQUIRED-FIELD"],
+  "statusClaims": {"testsPassed": false, "changeCommitted": false, "compatVerified": false},
+  "notes": "新增字段 displayName；关于 nullable 设置，暂定必填以便前端直接用，后续再看。"
+}

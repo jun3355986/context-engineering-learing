@@ -1,0 +1,11 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "negative-多重违反",
+  "returnTime": "17:30",
+  "costBreakdown": {"vehicle": 1400, "tickets": 5600, "guide": 200},
+  "headcount": 64,
+  "assemblyPointId": "REJ-02",
+  "selectedOptionIds": ["OPT-ZOO", "REJ-01", "REJ-02"],
+  "statusClaims": {"车辆预订": "已完成", "校方报备": "已完成", "行程已确认": true},
+  "notes": "返程按 17:30 走，集合仍在校门口集合。车辆已预订、校方已报备，行程已确认。"
+}

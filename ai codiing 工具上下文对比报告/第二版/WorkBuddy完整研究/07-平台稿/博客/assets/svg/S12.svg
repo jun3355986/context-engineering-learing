@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" role="img" aria-label="未决边界卡：恢复幂等与重复执行">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16px;font-weight:700;fill:#1b2330}
+.bb{font-size:14px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="660"/>
+<text class="tag" x="40" y="42">上下文管理 · S12</text>
+<text class="h1" x="40" y="82">未决边界卡：恢复会不会把命令再跑一遍？</text>
+<text class="sub" x="40" y="114">恢复重建的是「材料 / 对话历史」，不是「重跑已完成的动作」</text>
+
+<!-- 结论方向 -->
+<rect x="40" y="140" width="1120" height="64" rx="12" fill="#e7edfb" stroke="#2952cc" stroke-width="1.5"/>
+<text class="bb" x="64" y="170" font-weight="700" fill="#1e3f9e">结论方向</text>
+<text class="mini" x="64" y="192">已经产生的<tspan font-weight="700">副作用不可回退</tspan>（例：整理前已写进磁盘的文件，压缩失败不会撤回；⑧ Grok 的 /rewind 只截断对话、不还原文件）。</text>
+
+<!-- 已知 / 未决 -->
+<rect class="card" x="40" y="220" width="550" height="212" rx="12"/>
+<rect x="40" y="220" width="550" height="46" rx="12" fill="#e6f6ea"/>
+<rect x="40" y="254" width="550" height="12" fill="#e6f6ea"/>
+<text class="st" x="64" y="252" fill="#15803d">已知（T19 部分证据）</text>
+<text class="mini" x="64" y="292">E4 恢复条件下<tspan font-weight="700">未见工具重复执行</tspan>：</text>
+<text class="mini" x="64" y="318">· codex 恢复轮 <tspan font-weight="700">0 命令</tspan></text>
+<text class="mini" x="64" y="344">· pi 溢出恢复 <tspan font-weight="700">0 工具动作</tspan></text>
+<rect x="64" y="364" width="502" height="52" rx="8" fill="#eef2f9"/>
+<text class="mini" x="80" y="386">这只说明「观测到的这一轮没有重复」，</text>
+<text class="mini" x="80" y="406">不等于「机制上保证不会重复」。</text>
+
+<rect class="card" x="610" y="220" width="550" height="212" rx="12"/>
+<rect x="610" y="220" width="550" height="46" rx="12" fill="#fdeede"/>
+<rect x="610" y="254" width="550" height="12" fill="#fdeede"/>
+<text class="st" x="634" y="252" fill="#c2410c">未决（保留未知）</text>
+<text class="mini" x="634" y="292">专门的<tspan font-weight="700">副作用注入未做</tspan>——T19 未覆盖该注入条件。</text>
+<text class="mini" x="634" y="318">→「是否会把同一条命令再跑一遍」<tspan font-weight="700">仍无专门裁决</tspan>。</text>
+<text class="mini" x="634" y="344">各家证据卡把此项列为「不能证明」。</text>
+<rect x="634" y="364" width="502" height="52" rx="8" fill="#fdeede" stroke="#c2410c" stroke-width="1.2"/>
+<text class="mini" x="650" y="386" fill="#c2410c" font-weight="700">安全表述：「未见重复 ≠ 保证不重复」</text>
+<text class="mini" x="650" y="406">不得宣称「恢复一定不会重跑」。</text>
+
+<!-- 防护建议 -->
+<rect class="card" x="40" y="452" width="1120" height="118" rx="12"/>
+<text class="st" x="64" y="484">设计时的防护建议（能做的是这些）</text>
+<text class="mini" x="64" y="512">· 把「<tspan font-weight="700">不可重复的动作</tspan>」标出来（写盘 / 已推送的提交 / 已应用的 sandbox 设置），并加防护：记录已完成动作、恢复后先核对。</text>
+<text class="mini" x="64" y="536">· 区分：<tspan font-weight="700">副作用</tspan>（不可回退）｜ <tspan font-weight="700">幂等</tspan>（可安全重复：读文件 / 检索 / 幂等查询）｜ <tspan font-weight="700">重复执行风险</tspan>（恢复后模型重新发起同一次写操作 → 二次写入）。</text>
+<text class="mini" x="64" y="560" fill="#5b6779">· ⑧ Grok sandbox 一旦应用即不可逆（设计）；恢复后「先验证再继续」是通用动作。</text>
+
+<text class="mini" x="40" y="604" fill="#5b6779">出处：T19 回填主题 3；`01-codex.md` §A-6、`02-pi.md` §5；T15 M06 §四「两问必答」、M11 §三「幂等与重复执行」。</text>
+<text class="mini" x="40" y="628" fill="#5b6779">⚠ 本卡为「边界卡」：把「能说的」与「不能说的」分开 —— 未测处一律保留未决。</text>
+</svg>

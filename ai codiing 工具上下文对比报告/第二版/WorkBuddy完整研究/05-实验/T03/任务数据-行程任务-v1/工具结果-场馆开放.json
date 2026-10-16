@@ -1,0 +1,12 @@
+{
+  "packageId": "T03-DATA-TRIP-v1",
+  "toolCallId": "call_a1",
+  "toolName": "venue_opening_lookup",
+  "query": "2026-10-23 周五 场馆开放情况",
+  "results": [
+    {"venueId": "LOC-BOTANIC", "name": "市植物园", "open": true, "hours": "08:30-17:30", "ticket": "免费", "note": "需提前 3 天团体预约"},
+    {"venueId": "LOC-ZOO", "name": "市动物园", "open": true, "hours": "08:30-17:00", "ticket": "学生 40 元 / 成人 80 元", "note": "团体可走西门入口"},
+    {"venueId": "LOC-SCITECH", "name": "市科技馆", "open": false, "hours": "-", "ticket": "-", "note": "周五闭馆（例行检修），周末才开放"}
+  ],
+  "synthetic": true
+}

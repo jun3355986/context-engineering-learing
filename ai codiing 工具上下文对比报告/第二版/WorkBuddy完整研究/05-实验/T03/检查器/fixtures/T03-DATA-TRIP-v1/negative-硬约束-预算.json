@@ -1,0 +1,11 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "negative-硬约束-预算",
+  "returnTime": "15:45",
+  "costBreakdown": {"vehicle": 1400, "tickets": 5600, "guide": 200},
+  "headcount": 64,
+  "assemblyPointId": "LOC-PLAYGROUND",
+  "selectedOptionIds": ["OPT-ZOO", "OPT-BUS-1450"],
+  "statusClaims": {"车辆预订": "未开始", "校方报备": "未开始", "行程已确认": false},
+  "notes": "预算已按 6000 元以内目标控制，实际略有超出但可控。"
+}

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="1200" height="620" role="img" aria-label="材料去向图：记录、选材、请求三格">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5;rx:14}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.ct{font-size:17px;font-weight:700;fill:#1b2330}
+.cb{font-size:14.5px;fill:#1b2330}
+.mut{font-size:13.5px;fill:#5b6779}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="620"/>
+<text class="tag" x="40" y="42">上下文管理 · S1</text>
+<text class="h1" x="40" y="82">材料去向图：记录 ≠ 选材 ≠ 请求</text>
+<text class="sub" x="40" y="114">一条约束完全可能「记录里有、列表里也有、但这一次实际请求里没有」</text>
+
+<!-- Column 1 -->
+<rect class="card" x="40" y="146" width="330" height="330" rx="14"/>
+<rect x="40" y="146" width="330" height="52" rx="14" fill="#e7edfb"/>
+<rect x="40" y="184" width="330" height="14" fill="#e7edfb"/>
+<text class="ct" x="64" y="180" fill="#1e3f9e">① 保存的记录</text>
+<text class="mini" x="64" y="220" fill="#5b6779">磁盘 · 会话存档</text>
+<text class="cb" x="64" y="256">都存档了，但柜子不是桌子</text>
+<rect x="64" y="280" width="282" height="46" rx="9" fill="#e6f6ea" stroke="#15803d" stroke-width="1.2"/>
+<text class="cb" x="80" y="309" fill="#15803d">「下午 4 点前必须返校」 ✓ 在</text>
+<text class="mini" x="64" y="352">查公交结果（300 行）/ 读说明 / 查天气…</text>
+<text class="mini" x="64" y="376">「存档完整」要看实际写入，</text>
+<text class="mini" x="64" y="398">磁盘原文在保留期内可查（C-03/C-12）</text>
+<text class="mini" x="64" y="440" fill="#5b6779">最易误解：柜里有 ≠ 桌上摊着</text>
+
+<!-- arrow 1 -->
+<path d="M 378 300 L 418 300" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a1)"/>
+<defs>
+<marker id="a1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#2952cc"/></marker>
+<marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#2952cc"/></marker>
+</defs>
+<text class="mini" x="398" y="288" text-anchor="middle" fill="#2952cc">恢复/继续</text>
+<text class="mini" x="398" y="322" text-anchor="middle" fill="#2952cc">时读取</text>
+
+<!-- Column 2 -->
+<rect class="card" x="428" y="146" width="330" height="330" rx="14"/>
+<rect x="428" y="146" width="330" height="52" rx="14" fill="#e2f5f2"/>
+<rect x="428" y="184" width="330" height="14" fill="#e2f5f2"/>
+<text class="ct" x="452" y="180" fill="#0d9488">② 当前选中的材料</text>
+<text class="mini" x="452" y="220" fill="#5b6779">内存 · 消息列表</text>
+<text class="cb" x="452" y="256">挑出来摊在桌上的纸</text>
+<rect x="452" y="280" width="282" height="46" rx="9" fill="#fdeede" stroke="#c2410c" stroke-width="1.2"/>
+<text class="cb" x="468" y="309" fill="#c2410c">「下午 4 点前返校」 还在？未必！</text>
+<text class="mini" x="452" y="352">查公交结果（被限长）/ 读说明 / 查天气…</text>
+<text class="mini" x="452" y="376">挑出来 ≠ 全交给 AI；</text>
+<text class="mini" x="452" y="398">可能已被限长 / 整理动过</text>
+<text class="mini" x="452" y="440" fill="#5b6779">最易误解：进列表 ≠ 进请求</text>
+
+<!-- arrow 2 -->
+<path d="M 766 300 L 806 300" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a2)"/>
+<text class="mini" x="786" y="278" text-anchor="middle" fill="#2952cc">请求组装</text>
+<text class="mini" x="786" y="326" text-anchor="middle" fill="#2952cc">配对检查</text>
+<text class="mini" x="786" y="344" text-anchor="middle" fill="#2952cc">限长 / 整理</text>
+
+<!-- Column 3 -->
+<rect class="card" x="816" y="146" width="344" height="330" rx="14"/>
+<rect x="816" y="146" width="344" height="52" rx="14" fill="#fdeaea"/>
+<rect x="816" y="184" width="344" height="14" fill="#fdeaea"/>
+<text class="ct" x="840" y="180" fill="#b91c1c">③ 实际发出的请求</text>
+<text class="mini" x="840" y="220" fill="#5b6779">发给模型的那一份</text>
+<text class="cb" x="840" y="256">真正推给专家看的</text>
+<rect x="840" y="272" width="296" height="62" rx="9" fill="#ffffff" stroke="#b91c1c" stroke-width="1.2"/>
+<text class="mini" x="856" y="296">基础指令 + 工具说明 + 当前材料</text>
+<text class="mini" x="856" y="318">+ 你这次的新输入</text>
+<rect x="840" y="352" width="296" height="46" rx="9" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.2"/>
+<text class="cb" x="856" y="381" fill="#b91c1c">「下午 4 点前返校」——在，还是不在？</text>
+<text class="mini" x="840" y="440" fill="#5b6779">最易误解：顺序和内容都会被处理</text>
+
+<!-- bottom note -->
+<rect x="40" y="500" width="1120" height="86" rx="12" fill="#ffffff" stroke="#dfe5ef" stroke-width="1.5"/>
+<text class="cb" x="64" y="532">一句话读懂：<tspan font-weight="700">「记录里存着」和「这一次请求里带着」，是两件事。</tspan></text>
+<text class="mini" x="64" y="558">从「列表」到「请求」中间还有配对检查、限长、整理等步骤（M02 起逐步揭开）。</text>
+<text class="mini" x="64" y="578" fill="#5b6779">出处：T15 M01 §图与数据（三格/四对象，第四格「外部记忆」见 M08）；数字为教学示意【演示】。</text>
+</svg>

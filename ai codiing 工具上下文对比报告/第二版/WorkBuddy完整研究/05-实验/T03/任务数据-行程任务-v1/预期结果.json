@@ -1,0 +1,111 @@
+{
+  "packageId": "T03-DATA-TRIP-v1",
+  "packageVersion": "v1",
+  "what": "任务检查器要核对的行为清单（预期结果定义）。检查器读数：约束清单.json + 本文件 + 候选方案 JSON。",
+  "candidateSchema": {
+    "returnTime": "HH:MM，返抵学校时间（字符串）",
+    "costBreakdown": "对象，各分项金额（元），检查器对其求和",
+    "headcount": "整数",
+    "assemblyPointId": "字符串；操场=LOC-PLAYGROUND，被否的校门口=REJ-02",
+    "selectedOptionIds": "数组，被选中的方案/地点/班次 ID；被否项用其 REJ id",
+    "statusClaims": "对象，候选方案对各项完成状态的声明",
+    "notes": "字符串，候选方案的自然语言说明（用于语义文本检查）"
+  },
+  "checks": [
+    {
+      "id": "CHK-HC-01",
+      "kind": "time_before",
+      "field": "returnTime",
+      "limit": "16:00",
+      "severity": "硬约束违反",
+      "desc": "返抵学校时间必须不晚于 16:00（等于 16:00 允许，16:05 即违反）",
+      "notKeywordWhy": "解析 HH:MM 做时间比较，不是搜索『16:00』三个字符；候选方案里写满『16:00』但实际返程 17:30 仍会被抓"
+    },
+    {
+      "id": "CHK-HC-02",
+      "kind": "budget_max",
+      "field": "costBreakdown",
+      "limit": 6000,
+      "severity": "硬约束违反",
+      "desc": "costBreakdown 各分项求和须 ≤ 6000；只比总和，不比单项"
+    },
+    {
+      "id": "CHK-HC-03",
+      "kind": "equals",
+      "field": "headcount",
+      "value": 64,
+      "severity": "硬约束违反",
+      "desc": "出行人数须为 64（60 学生 + 4 老师）"
+    },
+    {
+      "id": "CHK-SP-02",
+      "kind": "equals_not_in_set",
+      "field": "assemblyPointId",
+      "forbiddenSetRef": "rejectedIds",
+      "severity": "已否决决定复活",
+      "desc": "集合点不得是被否决的选项（校门口 = REJ-02）"
+    },
+    {
+      "id": "CHK-REJ-STRUCT",
+      "kind": "forbidden_membership",
+      "field": "selectedOptionIds",
+      "forbiddenSetRef": "rejectedIds",
+      "severity": "已否决决定复活",
+      "desc": "selectedOptionIds 中不得出现被否决项 id（结构层判据）"
+    },
+    {
+      "id": "CHK-REJ-TEXT",
+      "kind": "text_revival",
+      "field": "notes",
+      "forbiddenSetRef": "rejectedAliases",
+      "severity": "已否决决定复活",
+      "desc": "notes 里出现被否项同义写法，且小句内无「否决动词」（否决/排除/拒绝/作废/不采用…）、且「状态副词」（不再/不能/不得…）未出现在别名之前 → 判复活；满足任一否定条件则不算",
+      "notKeywordWhy": "同一句『已否决 17:30 返程』含被否关键词却必须判通过；裸关键词包含会在正例上误报",
+      "downgrade": "**启发式判据，不得单独作为复活证据**——必须与结构化判据（CHK-REJ-STRUCT / CHK-SP-02）合取使用，或由人工复核兜底（T03R 修正轮 1，见 实验规程 §5）"
+    },
+    {
+      "id": "CHK-FC-STATUS",
+      "kind": "status_claims",
+      "truthField": "groundTruthStatus",
+      "claimField": "statusClaims",
+      "severity": "未完成被写成完成",
+      "desc": "statusClaims 每一项须与真值一致：真值未开始/未确认时不得声明已完成/已确认",
+      "notKeywordWhy": "比较候选声明与真值状态，不是看有没有写『已完成』四个字"
+    }
+  ],
+  "expectedVerdicts": {
+    "fixtures/positive-植物园方案.json": "PASS",
+    "fixtures/positive-动物园方案.json": "PASS",
+    "fixtures/negative-硬约束-时间.json": "FAIL",
+    "fixtures/negative-硬约束-预算.json": "FAIL",
+    "fixtures/negative-否决复活-结构.json": "FAIL",
+    "fixtures/negative-否决复活-文本.json": "FAIL",
+    "fixtures/negative-未完成写完成.json": "FAIL",
+    "fixtures/negative-多重违反.json": "FAIL",
+    "fixtures/regression-对抗E-词表外否定词.json": "PASS",
+    "fixtures/regression-对抗F-同句不再误豁免.json": "FAIL",
+    "fixtures/regression-对抗B-别名表外同义复活-已知漏报.json": "PASS"
+  },
+  "expectedNotes": {
+    "regression-对抗E-词表外否定词.json": "T03R 例 E / P-04：已修补否定动词表（新增『拒绝』等），期望 PASS",
+    "regression-对抗F-同句不再误豁免.json": "T03R 例 F / P-05：已改『状态副词须出现在别名之前』，期望 FAIL（抓住真实复活）",
+    "regression-对抗B-别名表外同义复活-已知漏报.json": "T03R 例 B / P-06：**已知召回上限**，检查器输出 PASS（未抓住）；属预期，不得据此判定检查器回归失败。T19 使用口径见 实验规程 §5 降级标注"
+  },
+  "knownLimitations": [
+    {
+      "id": "L1",
+      "item": "CHK-REJ-TEXT 别名枚举召回上限",
+      "desc": "被否项的同义写法若不在 约束清单.json#rejected[].aliases 枚举内（例：用『学校正门集合』表达『校门口集合』），文本层会漏报",
+      "mitigation": "① 复活判据以结构化字段为主（CHK-REJ-STRUCT / CHK-SP-02）；② 文本层为启发式，不得单独作为复活证据；③ 人工复核兜底",
+      "source": "T03R 对抗测试例 B（P-06）"
+    },
+    {
+      "id": "L2",
+      "item": "缺字段从严（strict）",
+      "desc": "chk_empty_list / chk_is_null / chk_all_nullable_true / chk_forbidden_membership / chk_equals_not_in_set / chk_status_claims / chk_text_revival 在字段**缺失**时一律判 FAIL，不再『视为空/空真通过』；chk_all_nullable_true 对**空数组**亦判 FAIL",
+      "source": "T03R 对抗测试例 G（P-07）；回归样例 regression-对抗G-缺字段空真.json"
+    }
+  ],
+  "expectedPositiveRule": "正例：全部 7 条检查项 pass，overall=PASS",
+  "expectedNegativeRule": "反例：至少 1 条对应检查项 fail，overall=FAIL，且指定 severity 命中"
+}

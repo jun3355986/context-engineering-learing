@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 830" width="1200" height="830" role="img" aria-label="评估四维与六项能力落点">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.ct{font-size:15.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:13px;fill:#1b2330}
+.mini{font-size:12px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="830"/>
+<text class="tag" x="40" y="42">上下文管理 · S20</text>
+<text class="h1" x="40" y="82">评估四维 + 六项能力落点</text>
+<text class="sub" x="40" y="114">四维并查、缺一不可 —— 只看一个维度，一定会被骗</text>
+
+<!-- 四维 -->
+<rect class="card" x="40" y="140" width="266" height="220" rx="12"/>
+<rect x="40" y="140" width="266" height="44" rx="12" fill="#e7edfb"/><rect x="40" y="172" width="266" height="12" fill="#e7edfb"/>
+<text class="ct" x="60" y="170" fill="#1e3f9e">质量（对不对）</text>
+<text class="mini" x="60" y="208">任务通过与否；<tspan font-weight="700">关键约束违背数</tspan>；</text>
+<text class="mini" x="60" y="228">旧决定复活数</text>
+<text class="mini" x="60" y="252" fill="#5b6779">样本含：否定 / 精确数字 / 过期决定</text>
+<rect x="60" y="270" width="226" height="72" rx="8" fill="#e6f6ea"/>
+<text class="mini" x="76" y="294" fill="#15803d" font-weight="700">T19 已运行</text>
+<text class="mini" x="76" y="316">E1 检查器全 PASS（6 工具）</text>
+<text class="mini" x="76" y="334">约束违背 / 复活 0</text>
+
+<rect class="card" x="324" y="140" width="266" height="220" rx="12"/>
+<rect x="324" y="140" width="266" height="44" rx="12" fill="#e2f5f2"/><rect x="324" y="172" width="266" height="12" fill="#e2f5f2"/>
+<text class="ct" x="344" y="170" fill="#0d9488">成本（多少钱）</text>
+<text class="mini" x="344" y="208">普通输入 / 缓存读取 / 缓存写入</text>
+<text class="mini" x="344" y="228"><tspan font-weight="700">分开拆账</tspan>；整理本身的额外请求</text>
+<text class="mini" x="344" y="252" fill="#5b6779">服务端 usage 为准；本地估算标「近似」</text>
+<rect x="344" y="270" width="226" height="72" rx="8" fill="#e6f6ea"/>
+<text class="mini" x="360" y="294" fill="#15803d" font-weight="700">T19 已运行</text>
+<text class="mini" x="360" y="316">用量字段已录（codex 37,632~48,896 等）</text>
+<text class="mini" x="360" y="334">ocv1 cost=0 可核验；其余订阅/代理不可核验</text>
+
+<rect class="card" x="608" y="140" width="266" height="220" rx="12"/>
+<rect x="608" y="140" width="266" height="44" rx="12" fill="#fdeede"/><rect x="608" y="172" width="266" height="12" fill="#fdeede"/>
+<text class="ct" x="628" y="170" fill="#c2410c">延迟（多少时间）</text>
+<text class="mini" x="628" y="208">首字延迟、总时长；</text>
+<text class="mini" x="628" y="228"><tspan font-weight="700">整理期间</tspan>额外耗时</text>
+<text class="mini" x="628" y="252" fill="#5b6779">记录触发时刻与耗时本身</text>
+<rect x="628" y="270" width="226" height="72" rx="8" fill="#e6f6ea"/>
+<text class="mini" x="644" y="294" fill="#15803d" font-weight="700">T19 已运行</text>
+<text class="mini" x="644" y="316">各条件耗时已录</text>
+<text class="mini" x="644" y="334">（如 codex 21~66s）</text>
+
+<rect class="card" x="892" y="140" width="268" height="220" rx="12"/>
+<rect x="892" y="140" width="268" height="44" rx="12" fill="#fdeaea"/><rect x="892" y="172" width="268" height="12" fill="#fdeaea"/>
+<text class="ct" x="912" y="170" fill="#b91c1c">可恢复（查得回）</text>
+<text class="mini" x="912" y="208">磁盘原文 / 断点 / 重放入口；</text>
+<text class="mini" x="912" y="228">恢复后<tspan font-weight="700">重读次数</tspan></text>
+<text class="mini" x="912" y="252" fill="#5b6779">恢复后先验证（重述检查）再继续</text>
+<rect x="912" y="270" width="228" height="72" rx="8" fill="#e6f6ea"/>
+<text class="mini" x="928" y="294" fill="#15803d" font-weight="700">T19 已运行</text>
+<text class="mini" x="928" y="316">恢复后重述检查通过</text>
+<text class="mini" x="928" y="334">codex 6/6、pi 6/6、claude 3/3、ocv1 6/6</text>
+
+<!-- 拉扯 -->
+<rect x="40" y="376" width="1120" height="66" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="404" font-weight="700" fill="#c2410c">四者互相拉扯：压得更狠 → 成本↓ 质量？　恢复更全 → 可恢复↑ 成本↑　—— 只看一个维度，一定被骗</text>
+<text class="mini" x="64" y="428">省 ≠ 对：<tspan class="mono">1 − 处理后 / 处理前</tspan> 只是<tspan font-weight="700">体积缩减率</tspan>，不能替代任务质量；压缩率再漂亮，约束丢了就是丢了。</text>
+
+<!-- 六项能力 -->
+<text class="st" x="40" y="482">六项能力落点（三级：已展示 / 需提示 / 尚未展示）</text>
+<rect class="card" x="40" y="498" width="1120" height="196" rx="12"/>
+<g>
+<rect x="64" y="518" width="348" height="52" rx="10" fill="#eef2f9"/>
+<text class="bb" x="82" y="540" font-weight="700"><tspan font-weight="400">①</tspan> 解释信息流</text>
+<text class="mini" x="82" y="560">落点：M01–M02、M06</text>
+<rect x="428" y="518" width="348" height="52" rx="10" fill="#eef2f9"/>
+<text class="bb" x="446" y="540" font-weight="700"><tspan font-weight="400">②</tspan> 推演预算与信息损失</text>
+<text class="mini" x="446" y="560">落点：M03、M05</text>
+<rect x="792" y="518" width="344" height="52" rx="10" fill="#e7edfb" stroke="#2952cc" stroke-width="1.5"/>
+<text class="bb" x="810" y="540" font-weight="700" fill="#1e3f9e"><tspan font-weight="400">③</tspan> 选择策略　<tspan class="mini" fill="#2952cc">● L5 主落点</tspan></text>
+<text class="mini" x="810" y="560">落点：M04、M11</text>
+
+<rect x="64" y="580" width="348" height="52" rx="10" fill="#eef2f9"/>
+<text class="bb" x="82" y="602" font-weight="700"><tspan font-weight="400">④</tspan> 阅读核心源码</text>
+<text class="mini" x="82" y="622">落点：M10（+ 各工具源码导读）</text>
+<rect x="428" y="580" width="348" height="52" rx="10" fill="#e7edfb" stroke="#2952cc" stroke-width="1.5"/>
+<text class="bb" x="446" y="602" font-weight="700" fill="#1e3f9e"><tspan font-weight="400">⑤</tspan> 设计与排障　<tspan class="mini" fill="#2952cc">● L5 主落点</tspan></text>
+<text class="mini" x="446" y="622">落点：M11</text>
+<rect x="792" y="580" width="344" height="52" rx="10" fill="#e7edfb" stroke="#2952cc" stroke-width="1.5"/>
+<text class="bb" x="810" y="602" font-weight="700" fill="#1e3f9e"><tspan font-weight="400">⑥</tspan> 评估与迁移　<tspan class="mini" fill="#2952cc">● L5 主落点</tspan></text>
+<text class="mini" x="810" y="622">落点：M12（本单元）</text>
+</g>
+<text class="mini" x="64" y="662">L5 主落点是 ③⑤⑥（三个 ●）；①②④ 在 L5 是附带复现。「需提示」是正常的——不代表没学会，代表还需练习与迁移验证。</text>
+<text class="mini" x="64" y="682" fill="#5b6779">可停靠级：停 L3 =「能算账、能选策略」（不宣称达标）；完成 L4+L5 = 对应「上下文管理专项中级」（仍需练习与迁移验证）。</text>
+
+<text class="mini" x="40" y="730" fill="#5b6779">证据分级：看角标——【源码常量】/【演示】/【测试样本】；没有实测角标的数字不能当「跑出来的结果」引用。</text>
+<text class="mini" x="40" y="754" fill="#5b6779">出处：T15 M12 §一/§二/§三；回填主题 12（四维均已运行）；T14 不排名次声明（唯一允许排名次时机 = T19 统一条件实测后）。</text>
+<text class="mini" x="40" y="782" fill="#5b6779">⚠ 教学效果待验证：需真实读者完成迁移任务与三件套；Agent 自评与作者自读不替代读者验证。</text>
+<text class="mini" x="40" y="806" fill="#5b6779">❌ 三个别写错：「压缩率高 = 方案好」「只看成本」「四维可以排名次」。</text>
+</svg>

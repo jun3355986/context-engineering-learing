@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-label="三问判断卡（静态）">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.th{font-size:13.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:13.5px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="780"/>
+<text class="tag" x="40" y="42">上下文管理 · S15</text>
+<text class="h1" x="40" y="82">三问判断卡（记忆默认开还是关？）</text>
+<text class="sub" x="40" y="114">拿到任一工具，先问三句，就能判断它的「记忆」是什么货色</text>
+
+<!-- 四边界 -->
+<rect x="40" y="140" width="1120" height="60" rx="12" fill="#e7edfb" stroke="#2952cc" stroke-width="1.5"/>
+<text class="bb" x="64" y="168" font-weight="700" fill="#1e3f9e">先分清四个边界：记忆 ≠ 会话 ≠ 磁盘原文 ≠ 缓存</text>
+<text class="mini" x="64" y="190">四样都可能「让 AI 想起点什么」，但只有「被组装进请求」的那一份才影响行为 —— <tspan font-weight="700">能想起 ≠ 进请求</tspan>。</text>
+
+<!-- 三问卡 -->
+<text class="st" x="40" y="238">三问判断卡</text>
+<rect x="40" y="254" width="1120" height="46" rx="10" fill="#eef2f9"/>
+<text class="th" x="62" y="283">工具</text>
+<text class="th" x="250" y="283">① 默认开还是关</text>
+<text class="th" x="560" y="283">② 后台跑还是会话内跑</text>
+<text class="th" x="900" y="283">③ 人工审批还是自动写入</text>
+
+<g>
+<rect x="40" y="300" width="1120" height="46" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="329" font-weight="700"><tspan font-weight="400">①</tspan> Codex</text>
+<text class="mini" x="250" y="329">未核（有 memories crate）</text>
+<text class="mini" x="560" y="329">未核</text>
+<text class="mini" x="900" y="329">未核</text>
+
+<rect x="40" y="346" width="1120" height="52" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="377" font-weight="700"><tspan font-weight="400">②</tspan> Claude Code</text>
+<text class="mini" x="250" y="371" fill="#15803d" font-weight="700">开</text><text class="mini" x="250" y="389">（auto memory）</text>
+<text class="mini" x="560" y="371" fill="#0d9488" font-weight="700">会话内</text><text class="mini" x="560" y="389">模型自己读写；后台机制文档未描述</text>
+<text class="mini" x="900" y="371" fill="#c2410c" font-weight="700">自动</text><text class="mini" x="900" y="389">Claude 写；用户可整体关闭</text>
+
+<rect x="40" y="398" width="1120" height="46" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="427" font-weight="700"><tspan font-weight="400">③</tspan> pi</text>
+<text class="mini" x="250" y="427">无（未发现默认，推断）</text>
+<text class="mini" x="560" y="427">—</text>
+<text class="mini" x="900" y="427">—</text>
+
+<rect x="40" y="444" width="1120" height="52" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="475" font-weight="700"><tspan font-weight="400">④</tspan> oh-my-pi</text>
+<text class="mini" x="250" y="469" fill="#b91c1c" font-weight="700">关</text><text class="mini" x="250" y="487">（默认 off，4 后端可选）</text>
+<text class="mini" x="560" y="469" fill="#0d9488" font-weight="700">会话内</text><text class="mini" x="560" y="487">选定后端后注入（上限 5000 token）</text>
+<text class="mini" x="900" y="469" fill="#c2410c" font-weight="700">自动</text><text class="mini" x="900" y="487">无审批环节</text>
+
+<rect x="40" y="496" width="1120" height="46" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="525" font-weight="700"><tspan font-weight="400">⑤</tspan> ocv1 / <tspan font-weight="400">⑥</tspan> ocv2</text>
+<text class="mini" x="250" y="525">无（未发现默认，推断）</text>
+<text class="mini" x="560" y="525">—</text>
+<text class="mini" x="900" y="525">—</text>
+
+<rect x="40" y="542" width="1120" height="52" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="573" font-weight="700"><tspan font-weight="400">⑦</tspan> Gemini（存档）</text>
+<text class="mini" x="250" y="567" fill="#b91c1c" font-weight="700">关</text><text class="mini" x="250" y="585">（后台提取默认关）</text>
+<text class="mini" x="560" y="567" fill="#0d9488" font-weight="700">后台</text><text class="mini" x="560" y="585">空闲 ≥3h 且 ≥10 条 user 消息</text>
+<text class="mini" x="900" y="567" fill="#15803d" font-weight="700">人工审批</text><text class="mini" x="900" y="585">/memory inbox</text>
+
+<rect x="40" y="594" width="1120" height="52" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="625" font-weight="700"><tspan font-weight="400">⑧</tspan> Grok</text>
+<text class="mini" x="250" y="619" fill="#b91c1c" font-weight="700">关</text><text class="mini" x="250" y="637">（实验特性）</text>
+<text class="mini" x="560" y="619" fill="#0d9488" font-weight="700">后台</text><text class="mini" x="560" y="637">每轮复盘 + Dream 折叠</text>
+<text class="mini" x="900" y="619" fill="#c2410c" font-weight="700">自动</text><text class="mini" x="900" y="637">写入 inbox 后自动折叠</text>
+
+<rect x="40" y="646" width="1120" height="46" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="bb" x="62" y="675" font-weight="700"><tspan font-weight="400">⑨</tspan> dsh</text>
+<text class="mini" x="250" y="675">无（未发现默认，推断）</text>
+<text class="mini" x="560" y="675">—</text>
+<text class="mini" x="900" y="675">—</text>
+</g>
+
+<rect x="40" y="700" width="1120" height="34" rx="10" fill="#e2f5f2"/>
+<text class="bb" x="64" y="723" fill="#0d9488">读卡一句话：② 是「默认开但会话内」；⑦⑧ 是「后台但默认关」；④ 是「会话内、默认关」；③⑤⑥⑨ 是「未发现默认」。</text>
+
+<text class="mini" x="40" y="756" fill="#5b6779">出处：T15 M08 §三问判断卡；T14 矩阵 C 表「长期记忆（默认）」；LQ-08 裁决。⚠「未发现」≠「没有」——照抄「未发现默认实现（推断）」。</text>
+</svg>

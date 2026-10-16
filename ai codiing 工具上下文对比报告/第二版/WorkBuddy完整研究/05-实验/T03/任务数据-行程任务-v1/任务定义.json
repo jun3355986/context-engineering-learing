@@ -1,0 +1,30 @@
+{
+  "packageId": "T03-DATA-TRIP-v1",
+  "packageVersion": "v1",
+  "frozenAt": "2026-10-15",
+  "synthetic": true,
+  "modelCallsRequired": false,
+  "taskName": "班级郊游行程规划",
+  "lifecycle": "读目标 → 多轮讨论（含否决）→ 长工具结果 → 会话整理（压缩）→ 隔天恢复 → 出最终方案",
+  "goal": "为下周五（合成日期 2026-10-23）两个班共 60 名学生 + 4 名老师的班级郊游制定完整行程，并给出操场集合点安排。",
+  "hardConstraints": ["HC-01", "HC-02", "HC-03"],
+  "softPreferences": ["SP-01", "SP-02"],
+  "knownFailureModes": [
+    "整理后忘掉『下午 4 点前返校』（关键约束保留）",
+    "把『已否决的地点/时间』复活（过期决定复活）",
+    "把『未完成的准备项』写成『已完成』（未完成写完成）"
+  ],
+  "candidateSchemaRef": "检查规范.json#candidateSchema",
+  "checks": [
+    "硬约束违反（时间 / 预算 / 人数）",
+    "已否决决定复活（结构化字段 + 说明文本）",
+    "未完成被写成完成（声明 vs 真值）"
+  ],
+  "expectedResultFile": "预期结果.json",
+  "groundTruthStatus": {
+    "车辆预订": "未开始",
+    "校方报备": "未开始",
+    "行程已确认": false
+  },
+  "notes": "本包不依赖任何真实模型或真实工具；全部内容为合成。字段口径与 T02 问题地图 FB-12（可复现实验：成功/约束丢失/token/时延/重读/失败恢复）对齐。"
+}

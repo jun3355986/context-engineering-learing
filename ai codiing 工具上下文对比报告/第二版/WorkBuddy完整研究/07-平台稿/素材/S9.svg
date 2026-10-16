@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" role="img" aria-label="三处限长链">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:14px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="760"/>
+<text class="tag" x="40" y="42">上下文管理 · S9</text>
+<text class="h1" x="40" y="82">三处限长：一条约束的过关路线</text>
+<text class="sub" x="40" y="114">同一条信息，在三个时刻被三个不同的「人」动刀 —— 三份不同的东西，不能画成一个全局滑块</text>
+
+<defs><marker id="ar9" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2952cc"/></marker></defs>
+
+<!-- chain -->
+<rect x="40" y="150" width="150" height="72" rx="12" fill="#eef2f9" stroke="#dfe5ef" stroke-width="1.5"/>
+<text class="bb" x="115" y="182" text-anchor="middle" font-weight="700">工具执行</text>
+<text class="mini" x="115" y="204" text-anchor="middle">全量输出</text>
+
+<path d="M 192 186 L 226 186" stroke="#2952cc" stroke-width="2.5" marker-end="url(#ar9)"/>
+
+<rect x="232" y="140" width="272" height="92" rx="12" fill="#e7edfb" stroke="#2952cc" stroke-width="1.5"/>
+<text class="st" x="254" y="170" fill="#1e3f9e">① 出口限长</text>
+<text class="mini" x="254" y="194">工具结果交给模型消费之前</text>
+<text class="mini" x="254" y="214">动刀者：工具结果包装函数</text>
+
+<path d="M 506 186 L 540 186" stroke="#2952cc" stroke-width="2.5" marker-end="url(#ar9)"/>
+
+<rect x="546" y="140" width="272" height="92" rx="12" fill="#e2f5f2" stroke="#0d9488" stroke-width="1.5"/>
+<text class="st" x="568" y="170" fill="#0d9488">② 活动历史</text>
+<text class="mini" x="568" y="194">结果登记进当前列表时</text>
+<text class="mini" x="568" y="214">动刀者：历史管理函数</text>
+
+<path d="M 820 186 L 854 186" stroke="#2952cc" stroke-width="2.5" marker-end="url(#ar9)"/>
+
+<rect x="860" y="140" width="272" height="92" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="st" x="882" y="170" fill="#c2410c">③ 摘要请求</text>
+<text class="mini" x="882" y="194">到线整理时</text>
+<text class="mini" x="882" y="214">动刀者：压缩 / 摘要流程</text>
+
+<path d="M 1132 186 L 1152 186" stroke="#2952cc" stroke-width="2.5" marker-end="url(#ar9)"/>
+<text class="mini" x="1148" y="178" text-anchor="middle" fill="#2952cc">下一次</text>
+<text class="mini" x="1148" y="196" text-anchor="middle" fill="#2952cc">请求</text>
+
+<!-- 产物形态 -->
+<text class="mini" x="254" y="252">产物：带警告头的<tspan font-weight="700">预览</tspan></text>
+<text class="mini" x="568" y="252">产物：列表里的<tspan font-weight="700">裁剪副本</tspan></text>
+<text class="mini" x="882" y="252">产物：给模型看的<tspan font-weight="700">历史副本</tspan></text>
+
+<!-- 落盘支线 -->
+<path d="M 378 236 L 378 300" stroke="#5b6779" stroke-width="1.8" stroke-dasharray="5 4"/>
+<path d="M 682 236 L 682 300" stroke="#5b6779" stroke-width="1.8" stroke-dasharray="5 4"/>
+<rect x="180" y="304" width="700" height="56" rx="10" fill="#ffffff" stroke="#5b6779" stroke-width="1.3"/>
+<text class="bb" x="200" y="330" font-weight="700">存档 / 落盘（原载荷）</text>
+<text class="mini" x="200" y="350">活动历史裁剪<tspan font-weight="700">只作用于 live 副本</tspan>；写入会话存档的是<tspan font-weight="700">未裁剪原载荷</tspan>，另有独立预算（如分片持久化 64 KiB 上限）</text>
+<text class="mini" x="900" y="336" fill="#5b6779">→ 磁盘可查</text>
+<text class="mini" x="900" y="356" fill="#5b6779">（保留期内）</text>
+
+<!-- 头尾裁剪 -->
+<text class="st" x="40" y="410">头尾裁剪（保头尾、删中间、标记另加）</text>
+<rect x="40" y="426" width="1120" height="96" rx="12" fill="#ffffff" stroke="#dfe5ef" stroke-width="1.5"/>
+<rect x="64" y="446" width="240" height="42" rx="7" fill="#e7edfb" stroke="#2952cc" stroke-width="1.2"/>
+<text class="bb" x="184" y="473" text-anchor="middle" fill="#1e3f9e">头部（预算内）</text>
+<text class="mini" x="320" y="473" text-anchor="middle">+</text>
+<rect x="340" y="446" width="250" height="42" rx="7" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text class="bb" x="465" y="473" text-anchor="middle" fill="#b91c1c">…N tokens truncated…</text>
+<text class="mini" x="606" y="473" text-anchor="middle">+</text>
+<rect x="626" y="446" width="240" height="42" rx="7" fill="#e7edfb" stroke="#2952cc" stroke-width="1.2"/>
+<text class="bb" x="746" y="473" text-anchor="middle" fill="#1e3f9e">尾部（预算内）</text>
+<text class="mini" x="886" y="466">标记另加，<tspan font-weight="700">不占预算</tspan>；</text>
+<text class="mini" x="886" y="484">左右非严格均分（奇数差 1 字节归尾）</text>
+<text class="mini" x="64" y="512">为什么保尾：结论常在末尾（BUILD FAILURE / Tests run 42, Failures 1）；为什么保头：开头常有上下文（路径、命令、表头）。</text>
+
+<!-- 工程建议 -->
+<rect x="40" y="546" width="1120" height="112" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="578" font-weight="700" fill="#c2410c">最实用的一条工程建议：关键约束放头尾，别指望它躺在中段侥幸过关</text>
+<text class="mini" x="64" y="604">约束放<tspan font-weight="700">中部</tspan> → ① 出口裁剪阶段就消失，后面三步再努力也没机会看见它；放<tspan font-weight="700">头/尾部</tspan> → 还能过 ①，但仍可能被 ② 历史裁剪或 ③ 摘要带走。</text>
+<text class="mini" x="64" y="628">单位口径必须逐工具看（<tspan font-weight="700" fill="#b91c1c">不得互套</tspan>）：字节（Codex / omp / Grok）· 字符（Claude / Gemini / dsh-bash）· 行（pi / OpenCode / dsh-read）· token（近似）。</text>
+<text class="mini" x="64" y="650">例：pi <tspan font-weight="700">2000 行 / 50KB 先到者</tspan>（read 保头 / bash 保尾）；Claude Bash 内联约 30,000 <tspan font-weight="700">字符</tspan>；Grok bash 上限 65,536 <tspan font-weight="700">字节</tspan> —— 「数字大」≠「实际留得多」。</text>
+
+<text class="mini" x="40" y="694" fill="#5b6779">出处：T15 M05 §二/§三/§四；T14 矩阵 C 表「工具输出治理」；样章 C10/C11；【T19 实测形态见回填主题 5】。</text>
+<text class="mini" x="40" y="718" fill="#5b6779">两层事实（C-03/C-12）：模型可见层不可自动恢复；磁盘原文层保留期内可查 —— ❌「超限就永久丢」只在模型可见层成立。</text>
+</svg>

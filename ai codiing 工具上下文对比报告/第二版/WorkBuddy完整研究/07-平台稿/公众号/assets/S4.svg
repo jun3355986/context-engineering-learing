@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 880" width="1200" height="880" role="img" aria-label="九工具触发口径全表">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.th{font-size:14px;font-weight:700;fill:#1b2330}
+.td{font-size:14px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="880"/>
+<text class="tag" x="40" y="42">上下文管理 · S4</text>
+<text class="h1" x="40" y="82">九工具触发口径全表</text>
+<text class="sub" x="40" y="114">同一件事，九种画法 —— 逐工具列口径，不排名次（⑦ Gemini 官方已弃用，仅作历史存档）</text>
+
+<!-- table -->
+<rect x="40" y="138" width="1120" height="52" rx="10" fill="#eef2f9"/>
+<text class="th" x="62" y="170">工具</text>
+<text class="th" x="228" y="170">口径类别</text>
+<text class="th" x="358" y="170">触发口径（一句话）</text>
+<text class="th" x="830" y="170">证据等级 / 边界</text>
+
+<g>
+<rect x="40" y="196" width="1120" height="64" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="234" font-weight="700">① Codex</text>
+<rect x="228" y="214" width="106" height="28" rx="14" fill="#e7edfb"/><text class="mini" x="281" y="233" text-anchor="middle" fill="#1e3f9e">两线式</text>
+<text class="td" x="358" y="234">两条线 OR：范围线 min(M, 90%W)　或　整段线 W × 95%</text>
+<text class="mini" x="830" y="234">函数级；M 为 Codex 专有</text>
+
+<rect x="40" y="260" width="1120" height="64" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="298" font-weight="700">② Claude Code</text>
+<rect x="228" y="278" width="106" height="28" rx="14" fill="#e2f5f2"/><text class="mini" x="281" y="297" text-anchor="middle" fill="#0d9488">比例式</text>
+<text class="td" x="358" y="298">占窗口百分比（PCT_OVERRIDE 只能调低，高于默认被忽略）</text>
+<text class="mini" x="830" y="292">文档级（闭源）；默认值未公布</text>
+<text class="mini" x="830" y="312" fill="#c2410c">T19 实测：代理条件下触发于 ≈98%</text>
+
+<rect x="40" y="324" width="1120" height="64" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="362" font-weight="700">③ pi</text>
+<rect x="228" y="342" width="106" height="28" rx="14" fill="#e2f5f2"/><text class="mini" x="281" y="361" text-anchor="middle" fill="#0d9488">预留式</text>
+<text class="td" x="358" y="362" font-weight="700">W − 16384</text><text class="td" x="470" y="362">（唯一阈值，单条预留线）</text>
+<text class="mini" x="830" y="362">入口级；reserveTokens 缺省 16384</text>
+
+<rect x="40" y="388" width="1120" height="64" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="426" font-weight="700">④ oh-my-pi</text>
+<rect x="228" y="406" width="106" height="28" rx="14" fill="#e2f5f2"/><text class="mini" x="281" y="425" text-anchor="middle" fill="#0d9488">预留式</text>
+<text class="td" x="358" y="426" font-weight="700">W − max(15%W, 16384)</text><text class="td" x="600" y="426">→ 200K = <tspan font-weight="700">170,000</tspan></text>
+<text class="mini" x="830" y="426">入口已装；函数级</text>
+
+<rect x="40" y="452" width="1120" height="64" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="490" font-weight="700">⑤ OpenCode v1</text>
+<rect x="228" y="470" width="106" height="28" rx="14" fill="#e2f5f2"/><text class="mini" x="281" y="489" text-anchor="middle" fill="#0d9488">预留式</text>
+<text class="td" x="358" y="490">绝对预留：reserved = min(20000, maxOutput)</text>
+<text class="mini" x="830" y="490">函数级；与窗口大小无关</text>
+
+<rect x="40" y="516" width="1120" height="64" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="554" font-weight="700">⑥ OpenCode v2</text>
+<rect x="228" y="534" width="106" height="28" rx="14" fill="#e2f5f2"/><text class="mini" x="281" y="553" text-anchor="middle" fill="#0d9488">预留式</text>
+<text class="td" x="358" y="554" font-weight="700">W − max(10%W, 16000)</text><text class="td" x="600" y="554">→ 200K = <tspan font-weight="700">180,000</tspan></text>
+<text class="mini" x="830" y="554">函数级</text>
+
+<rect x="40" y="580" width="1120" height="64" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="618" font-weight="700">⑦ Gemini</text>
+<rect x="228" y="598" width="106" height="28" rx="14" fill="#e2f5f2"/><text class="mini" x="281" y="617" text-anchor="middle" fill="#0d9488">比例式</text>
+<text class="td" x="358" y="618" font-weight="700">0.5 × W</text><text class="td" x="448" y="618">→ 1M = 524,288</text>
+<text class="mini" x="830" y="618" fill="#b91c1c">已弃后续；仅历史存档</text>
+
+<rect x="40" y="644" width="1120" height="64" fill="#fafbfe" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="682" font-weight="700">⑧ Grok Build</text>
+<rect x="228" y="662" width="106" height="28" rx="14" fill="#e2f5f2"/><text class="mini" x="281" y="681" text-anchor="middle" fill="#0d9488">比例式</text>
+<text class="td" x="358" y="682" font-weight="700">85% × W</text><text class="td" x="470" y="682">→ 200K = <tspan font-weight="700">170,000</tspan></text>
+<text class="mini" x="830" y="682">文档级（闭源）</text>
+
+<rect x="40" y="708" width="1120" height="64" fill="#ffffff" stroke="#dfe5ef" stroke-width="1"/>
+<text class="td" x="62" y="746" font-weight="700">⑨ dsh</text>
+<rect x="228" y="726" width="106" height="28" rx="14" fill="#fdeede"/><text class="mini" x="281" y="745" text-anchor="middle" fill="#c2410c">双上限</text>
+<text class="td" x="358" y="746" font-weight="700">floor(min(0.8W, W − O − 65536))</text>
+<text class="mini" x="830" y="746">函数级 OBSERVED；无 M 字段</text>
+</g>
+
+<!-- notes -->
+<rect x="40" y="786" width="1120" height="76" rx="12" fill="#ffffff" stroke="#dfe5ef" stroke-width="1.5"/>
+<text class="mini" x="64" y="812">读表三件事：① 三大类＝<tspan fill="#1e3f9e">比例式（②⑧⑦）</tspan>／<tspan fill="#0d9488">预留式（③④⑤⑥⑨）</tspan>／<tspan fill="#c2410c">两线式（①）</tspan>；② 「预留」都在给输出与整理动作留空间，但按比例还是按绝对值各家不同；</text>
+<text class="mini" x="64" y="832">③ <tspan font-weight="700" fill="#c2410c">数字相同 ≠ 机制相同</tspan>：⑧ Grok（85%×W）与 ④ oh-my-pi（预留 15%）在 200K 下同为 170,000，口径完全不同。❌「统一 90–95% 压缩」已被九工具全部否证（C-01/C-02）。</text>
+<text class="mini" x="64" y="852" fill="#5b6779">出处：T15 M03 §八工具对照全表（口径来自 T14 矩阵 B 表，逐格附证据 ID）；不排名次。</text>
+</svg>

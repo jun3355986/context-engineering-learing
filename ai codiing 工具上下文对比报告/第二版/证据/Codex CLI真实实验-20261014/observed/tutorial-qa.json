@@ -1,0 +1,57 @@
+{
+  "checked_on": "2026-10-15",
+  "scope": "真实实验补充后的本地教学HTML与公开包；不是额外模型实验",
+  "chapter_navigation": "10/10",
+  "manual_and_automatic_step_review": "两种模式各5步保持对应说明",
+  "experiment_anchor_navigation": "5个入口可跳转，4项深链接重新打开仍在第10章",
+  "expanded_details": "12/12实际点击展开；四种宽度无页面与对照卡片横向溢出",
+  "viewport_widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "final_widths": [
+    {
+      "width": 320,
+      "scrollWidth": 320,
+      "experimentStates": [
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象"
+      ]
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "experimentStates": [
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象"
+      ]
+    },
+    {
+      "width": 768,
+      "scrollWidth": 768,
+      "experimentStates": [
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象"
+      ]
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "experimentStates": [
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象",
+        "本次状态：已观察到目标现象"
+      ]
+    }
+  ],
+  "page_errors": []
+}

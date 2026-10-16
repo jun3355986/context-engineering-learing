@@ -1,0 +1,40 @@
+const { chromium } = require('playwright-core');
+const fs = require('fs');
+const path = require('path');
+const BASE = '/Users/junjielong/Library/Mobile Documents/iCloud~md~obsidian/Documents/我的笔记/程序猿/ai/上下文管理/ai codiing 工具上下文对比报告/第二版/独立重做样章/workbuddy';
+const OUT = path.join(BASE, 'build/screenshots');
+(async () => {
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const ctx = await browser.newContext({ viewport: { width: 1200, height: 950 } });
+  const page = await ctx.newPage();
+  await page.goto('https://developers.openai.com/api/docs/guides/prompt-caching', { waitUntil: 'domcontentloaded', timeout: 25000 });
+  await page.waitForTimeout(4500);
+  await page.evaluate(() => {
+    const h = Array.from(document.querySelectorAll('h1,h2,h3')).find(x => /prefix matching/i.test(x.textContent || ''));
+    if (h) h.scrollIntoView({ block: 'start' });
+  });
+  await page.waitForTimeout(1200);
+  const read = () => page.evaluate(() => {
+    const t = document.body.innerText;
+    const m = t.match(/([\d,]+)\s*Reported cached tokens/);
+    const m2 = t.match(/([\d,]+)\s*Last matched breakpoint/);
+    const m3 = t.match(/−\s*([\d,]+)\s*Hidden tokens/);
+    const st = {};
+    document.querySelectorAll('[class*="SegmentedControlOption"]').forEach(el => { st[(el.textContent||'').trim()] = el.getAttribute('data-state'); });
+    return { reported: m && m[1], breakpoint: m2 && m2[1], hidden: m3 && m3[1], states: st };
+  });
+  console.log('初始:', JSON.stringify(await read()));
+  await page.locator('[class*="SegmentedControlOption"]', { hasText: 'Earlier models' }).click();
+  await page.waitForTimeout(2000);
+  const s1 = await read();
+  console.log('点击 Earlier models 后:', JSON.stringify(s1));
+  await page.screenshot({ path: path.join(OUT, '23-模拟器-Earlier选中.png') });
+  await page.locator('[class*="SegmentedControlOption"]', { hasText: 'GPT-5.6+' }).click();
+  await page.waitForTimeout(2000);
+  const s2 = await read();
+  console.log('点回 GPT-5.6+ 后:', JSON.stringify(s2));
+  await page.screenshot({ path: path.join(OUT, '24-模拟器-GPT56选中.png') });
+  fs.writeFileSync(path.join(BASE, 'build/verify-simulator3.json'), JSON.stringify({ s1, s2 }, null, 2));
+  console.log('数字变化:', s1.reported, '→', s2.reported, '（变化=' + (s1.reported !== s2.reported) + '）');
+  await browser.close();
+})().catch(e => { console.error('ERR', e.message); process.exit(1); });

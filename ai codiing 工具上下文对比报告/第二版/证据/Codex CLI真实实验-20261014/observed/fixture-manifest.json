@@ -1,0 +1,32 @@
+[
+  {
+    "file": "AGENTS.md",
+    "utf8_bytes": 338,
+    "lines": 4,
+    "sha256": "23d6e6f331b62e68584bcaf6657732ba6ca592d8d3836a6df5e1ff0968a20f63"
+  },
+  {
+    "file": "context-A.txt",
+    "utf8_bytes": 19654,
+    "lines": 122,
+    "sha256": "bc526d82e26f109bf655c6c5ee67b7cea8ce0e91da9544f5d6d230f614ff1cdd"
+  },
+  {
+    "file": "context-B.txt",
+    "utf8_bytes": 19654,
+    "lines": 122,
+    "sha256": "717d8dab49ca0fa77f7773d02b6f2bbc6d91c7ac6148242ec0782245cad75ad2"
+  },
+  {
+    "file": "context-C.txt",
+    "utf8_bytes": 19654,
+    "lines": 122,
+    "sha256": "2266a8c46b01e270a6d77eade63e99671a239f41e44f3567303822b627cc7d21"
+  },
+  {
+    "file": "long-output.txt",
+    "utf8_bytes": 136009,
+    "lines": 1602,
+    "sha256": "8f5a1c6ec63d54656fc343ce3ef93832e36be56f1446ba7dd06493a0eb0c36d9"
+  }
+]

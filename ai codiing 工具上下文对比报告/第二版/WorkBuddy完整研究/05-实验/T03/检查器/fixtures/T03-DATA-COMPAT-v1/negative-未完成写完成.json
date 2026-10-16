@@ -1,0 +1,14 @@
+{
+  "taskId": "T03-DATA-COMPAT-v1",
+  "candidateId": "negative-未完成写完成",
+  "apiDiff": {
+    "addedFields": [{"name": "displayName", "type": "string", "nullable": true}],
+    "removedFields": [],
+    "renamedFields": [],
+    "typeChangedFields": [],
+    "newPath": null
+  },
+  "selectedOptionIds": ["OPT-ADD-OPTIONAL-FIELD"],
+  "statusClaims": {"testsPassed": true, "changeCommitted": false, "compatVerified": true},
+  "notes": "契约测试已全部通过，旧客户端兼容性已验证，可以准备提交。"
+}

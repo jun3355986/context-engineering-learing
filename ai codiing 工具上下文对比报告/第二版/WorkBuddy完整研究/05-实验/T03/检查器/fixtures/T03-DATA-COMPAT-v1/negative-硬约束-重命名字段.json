@@ -1,0 +1,14 @@
+{
+  "taskId": "T03-DATA-COMPAT-v1",
+  "candidateId": "negative-硬约束-重命名字段",
+  "apiDiff": {
+    "addedFields": [{"name": "displayName", "type": "string", "nullable": true}],
+    "removedFields": [],
+    "renamedFields": ["user_name->displayName"],
+    "typeChangedFields": [],
+    "newPath": null
+  },
+  "selectedOptionIds": ["OPT-RENAME-FIELD"],
+  "statusClaims": {"testsPassed": false, "changeCommitted": false, "compatVerified": false},
+  "notes": "为让命名更清晰，把 user_name 字段名调整了一下，旧字段保留一个版本过渡。"
+}

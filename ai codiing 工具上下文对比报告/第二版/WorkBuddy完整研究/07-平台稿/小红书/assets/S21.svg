@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" width="1200" height="820" role="img" aria-label="设计四件套">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.ct{font-size:15.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:13px;fill:#1b2330}
+.mini{font-size:12px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="820"/>
+<text class="tag" x="40" y="42">上下文管理 · S21</text>
+<text class="h1" x="40" y="82">设计四件套</text>
+<text class="sub" x="40" y="114">L5 的最小交付：不必写代码，但要交四样东西，缺一不可 —— 最易漏的是第 ④ 件</text>
+
+<!-- 四件套 -->
+<rect class="card" x="40" y="140" width="266" height="196" rx="12"/>
+<rect x="40" y="140" width="266" height="44" rx="12" fill="#e7edfb"/><rect x="40" y="172" width="266" height="12" fill="#e7edfb"/>
+<text class="ct" x="60" y="170" fill="#1e3f9e">① 状态图</text>
+<text class="mini" x="60" y="206">有哪些状态对象：</text>
+<text class="mini" x="60" y="226">材料列表 / 约束表 / 用量计 / 检查点</text>
+<text class="mini" x="60" y="252">各自何时被读、被写</text>
+<text class="mini" x="60" y="278" fill="#5b6779">每个对象都标「一轮任务里</text>
+<text class="mini" x="60" y="296" fill="#5b6779">哪一刻读、哪一刻写」</text>
+<rect x="60" y="308" width="226" height="20" rx="6" fill="#eef2f9"/>
+<text class="mini" x="68" y="322">对应：M02 / M03 / M04</text>
+
+<rect class="card" x="324" y="140" width="266" height="196" rx="12"/>
+<rect x="324" y="140" width="266" height="44" rx="12" fill="#e2f5f2"/><rect x="324" y="172" width="266" height="12" fill="#e2f5f2"/>
+<text class="ct" x="344" y="170" fill="#0d9488">② 伪代码</text>
+<text class="mini" x="344" y="206">一轮任务的流程：</text>
+<text class="mini" x="344" y="226">读输入 → 更新约束 → 组装 → 调模型</text>
+<text class="mini" x="344" y="246">→ 工具 → 用量检查 → 整理 / 恢复</text>
+<text class="mini" x="344" y="272" fill="#c2410c">必须写出「取舍理由」</text>
+<text class="mini" x="344" y="292" fill="#5b6779">（为什么用户消息优先；</text>
+<text class="mini" x="344" y="310" fill="#5b6779">为什么约束单独建表）</text>
+<text class="mini" x="344" y="330" fill="#5b6779">对应：M03 / M04 / M06</text>
+
+<rect class="card" x="608" y="140" width="266" height="196" rx="12"/>
+<rect x="608" y="140" width="266" height="44" rx="12" fill="#fdeede"/><rect x="608" y="172" width="266" height="12" fill="#fdeede"/>
+<text class="ct" x="628" y="170" fill="#c2410c">③ 失败处理</text>
+<text class="mini" x="628" y="206">失败分类 + 有界重试 + 副作用 / 幂等</text>
+<text class="mini" x="628" y="232">给一张「失败 → 检查 → 行动」表；</text>
+<text class="mini" x="628" y="252" font-weight="700">标出不可重复执行的动作</text>
+<text class="mini" x="628" y="278" fill="#5b6779">缩副本循环 ≠ 退避循环</text>
+<text class="mini" x="628" y="296" fill="#5b6779">（retries=0 不是死循环）</text>
+<text class="mini" x="628" y="330" fill="#5b6779">对应：M04 / M06 / §三</text>
+
+<rect class="card" x="892" y="140" width="268" height="196" rx="12"/>
+<rect x="892" y="140" width="268" height="44" rx="12" fill="#fdeaea"/><rect x="892" y="172" width="268" height="12" fill="#fdeaea"/>
+<text class="ct" x="912" y="170" fill="#b91c1c">④ 检查方法</text>
+<text class="mini" x="912" y="206">怎么发现它坏了：</text>
+<text class="mini" x="912" y="226">排障清单 + 评估维度</text>
+<text class="mini" x="912" y="252" fill="#b91c1c" font-weight="700">★ 最易漏的一件</text>
+<text class="mini" x="912" y="278" fill="#5b6779">没有检查方法，方案就无法</text>
+<text class="mini" x="912" y="296" fill="#5b6779">被独立验证，也谈不上迁移</text>
+<text class="mini" x="912" y="330" fill="#5b6779">对应：§五 / M12</text>
+
+<!-- 相互关系 -->
+<path d="M 306 240 L 322 240" stroke="#2952cc" stroke-width="2" marker-end="url(#a21)"/>
+<path d="M 590 240 L 606 240" stroke="#2952cc" stroke-width="2" marker-end="url(#a21)"/>
+<path d="M 874 240 L 890 240" stroke="#2952cc" stroke-width="2" marker-end="url(#a21)"/>
+<defs><marker id="a21" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#2952cc"/></marker></defs>
+
+<!-- 整理四步 -->
+<text class="st" x="40" y="378">整理四步与失败分支（写进「失败处理」的骨架）</text>
+<rect class="card" x="40" y="394" width="1120" height="120" rx="12"/>
+<rect x="64" y="418" width="236" height="72" rx="10" fill="#eef2f9"/>
+<text class="bb" x="82" y="448" font-weight="700"><tspan font-weight="400">①</tspan> 准备</text>
+<text class="mini" x="82" y="470">复制当前历史做「整理副本」</text>
+<path d="M 308 454 L 340 454" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a21)"/>
+<rect x="348" y="418" width="236" height="72" rx="10" fill="#eef2f9"/>
+<text class="bb" x="366" y="448" font-weight="700"><tspan font-weight="400">②</tspan> 请求</text>
+<text class="mini" x="366" y="470">发给模型（本地摘要 / 远端压缩）</text>
+<path d="M 592 454 L 624 454" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a21)"/>
+<rect x="632" y="418" width="236" height="72" rx="10" fill="#fdeede"/>
+<text class="bb" x="650" y="448" font-weight="700" fill="#c2410c"><tspan font-weight="400">③</tspan> 验收</text>
+<text class="mini" x="650" y="470">产物合格吗？（完成事件 / 条目数）</text>
+<path d="M 876 454 L 908 454" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a21)"/>
+<rect x="916" y="418" width="220" height="72" rx="10" fill="#e6f6ea"/>
+<text class="bb" x="934" y="448" font-weight="700" fill="#15803d"><tspan font-weight="400">④</tspan> 安装</text>
+<text class="mini" x="934" y="470">替换内存 + 追加检查点</text>
+<text class="mini" x="64" y="506">③ 失败 → ④ 不执行 → <tspan font-weight="700">活动历史保持原样</tspan>（没被换坏）；④ 一旦执行 → 成功路径（不可回滚）。</text>
+
+<!-- 检查方法 -->
+<rect x="40" y="534" width="1120" height="140" rx="12" fill="#ffffff" stroke="#dfe5ef" stroke-width="1.5"/>
+<text class="st" x="64" y="566">④ 检查方法：排障第一原则 —— 先分清「哪一层」</text>
+<text class="mini" x="64" y="594">症状 → 机制 → 单元：<tspan font-weight="700">关键约束丢了</tspan>（先查请求里还有没有它 → M04/M05/M09）｜<tspan font-weight="700">已否决方案复活</tspan>（摘要 vs 约束表 → M04/M08）｜</text>
+<text class="mini" x="64" y="616"><tspan font-weight="700">压缩失败</tspan>（四步哪一步断的 → M04/M06）｜<tspan font-weight="700">恢复后重复执行</tspan>（幂等 / 副作用 → M06）｜<tspan font-weight="700">缓存没命中</tspan>（前缀是否变了 → M07）｜<tspan font-weight="700">账单不对</tspan>（分开拆账 → M07）。</text>
+<text class="mini" x="64" y="642" fill="#c2410c" font-weight="700">「我看到」（磁盘 / 历史）与「模型看到」（请求）经常不一致 —— 把三层当一层，是绝大多数排障绕弯路的根源。</text>
+<text class="mini" x="64" y="664" fill="#5b6779">「反例自检」：把场景决策表中你的场景那一行的反例抄进来，作为「我的方案在什么情况下会翻车」的自检项（见 S19）。</text>
+
+<text class="mini" x="40" y="712" fill="#5b6779">⚠ 最常见的漏项是第 ④ 件：很多人只交状态图与伪代码，不写「怎么检查」——但 L5 的验收口径是「可复核」。</text>
+<text class="mini" x="40" y="736" fill="#5b6779">⚠ 一条全教程反复提醒的纪律：<tspan class="mono">1 − 处理后 / 处理前</tspan> 只是体积缩减率，不能替代任务质量。</text>
+<text class="mini" x="40" y="764" fill="#5b6779">出处：T15 M11 §一（设计四件套）/§二（整理四步与失败分支）/§五（排障检查清单）/§产出物示范；T14 §G 反例。</text>
+<text class="mini" x="40" y="790" fill="#5b6779">教学效果未验证；「恢复后是否重复执行工具」保留未决（专门副作用注入未做）。</text>
+</svg>

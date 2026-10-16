@@ -1,0 +1,17 @@
+{
+  "taskId": "T03-DATA-COMPAT-v1",
+  "candidateId": "positive-已修复版",
+  "apiDiff": {
+    "addedFields": [
+      {"name": "displayName", "type": "string", "nullable": true},
+      {"name": "displayNameSource", "type": "string", "nullable": true}
+    ],
+    "removedFields": [],
+    "renamedFields": [],
+    "typeChangedFields": [],
+    "newPath": null
+  },
+  "selectedOptionIds": ["OPT-ADD-OPTIONAL-FIELD", "OPT-RERUN-CONTRACT-TEST"],
+  "statusClaims": {"testsPassed": false, "changeCommitted": false, "compatVerified": false},
+  "notes": "按坏摘要修复后重做：兼容约束重新写入约束清单并在恢复后重述验证。两个新增字段都是可选。之前否决的改法（重命名 user_name、新增 v2 路径、改 age 类型）一律不用。测试仍需修复后重跑。"
+}

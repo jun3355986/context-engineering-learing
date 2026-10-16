@@ -1,0 +1,285 @@
+# T03 检查器自测 · 原始运行输出（不调用真实模型）
+# 生成时间: 2026-10-15 00:28:33 CST
+# 命令: T03_DATA_ROOT=<05-实验/T03> ./run_selftest.sh
+# 数据包: 任务数据-行程任务-v1 (T03-DATA-TRIP-v1) / 任务数据-接口兼容-v1 (T03-DATA-COMPAT-v1)
+# 说明: 含 T03R 修正轮 1 的 4 个回归样例；已知漏报样例期望即 PASS（见各包 预期结果.json#knownLimitations L1）
+
+# T03 检查器自测（不调用真实模型）
+# 时间: 2026-10-15 00:28:33 CST
+# 脚本: /Users/junjielong/workspace/agent-context-research/experiments/t03/checker/check_task.py
+# 数据根: /Users/junjielong/Library/Mobile Documents/iCloud~md~obsidian/Documents/我的笔记/程序猿/ai/上下文管理/ai codiing 工具上下文对比报告/第二版/WorkBuddy完整研究/05-实验/T03
+
+########## 数据包 任务数据-接口兼容-v1 ##########
+===== 自测：T03-DATA-COMPAT-v1（fixtures=/Users/junjielong/workspace/agent-context-research/experiments/t03/checker/fixtures/T03-DATA-COMPAT-v1） =====
+=== T03-DATA-COMPAT-v1 | 候选：negative-否决复活-文本.json | overall=FAIL ===
+  [PASS] CHK-HC-01a     apiDiff.removedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01b     apiDiff.renamedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01c     apiDiff.newPath=null（须为 null）
+  [PASS] CHK-HC-02      新增字段 ['displayName']，nullable!=true 的：[]
+  [PASS] CHK-HC-03      apiDiff.typeChangedFields=[] 应等于 []
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ADD-OPTIONAL-FIELD'] 命中被否项 []
+  [FAIL] CHK-REJ-TEXT   命中且无否定语境：['user_name 改成 displayName']
+         └ 判据：notes 里出现被否项同义写法，且小句内无「否决动词」、且「状态副词」未出现在别名之前 → 判复活（severity=已否决决定复活）
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['已否决决定复活']
+
+=== T03-DATA-COMPAT-v1 | 候选：negative-否决复活-结构.json | overall=FAIL ===
+  [PASS] CHK-HC-01a     apiDiff.removedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01b     apiDiff.renamedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01c     apiDiff.newPath=null（须为 null）
+  [PASS] CHK-HC-02      新增字段 ['displayName']，nullable!=true 的：[]
+  [PASS] CHK-HC-03      apiDiff.typeChangedFields=[] 应等于 []
+  [FAIL] CHK-REJ-STRUCT selectedOptionIds=['OPT-ADD-OPTIONAL-FIELD', 'REJ-01'] 命中被否项 ['REJ-01']
+         └ 判据：selectedOptionIds 中不得出现被否决项 id（如 REJ-01/REJ-02/REJ-03）（severity=已否决决定复活）
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['已否决决定复活']
+
+=== T03-DATA-COMPAT-v1 | 候选：negative-未完成写完成.json | overall=FAIL ===
+  [PASS] CHK-HC-01a     apiDiff.removedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01b     apiDiff.renamedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01c     apiDiff.newPath=null（须为 null）
+  [PASS] CHK-HC-02      新增字段 ['displayName']，nullable!=true 的：[]
+  [PASS] CHK-HC-03      apiDiff.typeChangedFields=[] 应等于 []
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ADD-OPTIONAL-FIELD'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [FAIL] CHK-FC-STATUS  与真值不一致项：[{"key": "testsPassed", "claim": true, "truth": false, "type": "未完成写成完成"}, {"key": "compatVerified", "claim": true, "truth": false, "type": "未完成写成完成"}]
+         └ 判据：statusClaims 每项须与真值一致：testsPassed 真值为 false，声明 true 即违规（severity=未完成被写成完成）
+  命中问题类别：['未完成被写成完成']
+
+=== T03-DATA-COMPAT-v1 | 候选：negative-硬约束-改路径.json | overall=FAIL ===
+  [PASS] CHK-HC-01a     apiDiff.removedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01b     apiDiff.renamedFields 长度 0（须为 0）
+  [FAIL] CHK-HC-01c     apiDiff.newPath="/api/v2/user/{id}"（须为 null）
+         └ 判据：不得新增 v2 路径替换原路径（severity=硬约束违反）
+  [PASS] CHK-HC-02      新增字段 ['displayName']，nullable!=true 的：[]
+  [PASS] CHK-HC-03      apiDiff.typeChangedFields=[] 应等于 []
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ADD-V2-PATH'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['硬约束违反']
+
+=== T03-DATA-COMPAT-v1 | 候选：negative-硬约束-新增字段必填.json | overall=FAIL ===
+  [PASS] CHK-HC-01a     apiDiff.removedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01b     apiDiff.renamedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01c     apiDiff.newPath=null（须为 null）
+  [FAIL] CHK-HC-02      新增字段 ['displayName']，nullable!=true 的：['displayName']
+         └ 判据：新增字段必须全部 nullable=true（severity=硬约束违反）
+  [PASS] CHK-HC-03      apiDiff.typeChangedFields=[] 应等于 []
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ADD-REQUIRED-FIELD'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['硬约束违反']
+
+=== T03-DATA-COMPAT-v1 | 候选：negative-硬约束-重命名字段.json | overall=FAIL ===
+  [PASS] CHK-HC-01a     apiDiff.removedFields 长度 0（须为 0）
+  [FAIL] CHK-HC-01b     apiDiff.renamedFields 长度 1（须为 0）
+         └ 判据：不得重命名既有字段（severity=硬约束违反）
+  [PASS] CHK-HC-01c     apiDiff.newPath=null（须为 null）
+  [PASS] CHK-HC-02      新增字段 ['displayName']，nullable!=true 的：[]
+  [PASS] CHK-HC-03      apiDiff.typeChangedFields=[] 应等于 []
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-RENAME-FIELD'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['硬约束违反']
+
+=== T03-DATA-COMPAT-v1 | 候选：positive-只加可选字段.json | overall=PASS ===
+  [PASS] CHK-HC-01a     apiDiff.removedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01b     apiDiff.renamedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01c     apiDiff.newPath=null（须为 null）
+  [PASS] CHK-HC-02      新增字段 ['displayName']，nullable!=true 的：[]
+  [PASS] CHK-HC-03      apiDiff.typeChangedFields=[] 应等于 []
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ADD-OPTIONAL-FIELD'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]；命中但有否定语境（不判违规）：['/api/v2/user', '重命名 user_name']
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+
+=== T03-DATA-COMPAT-v1 | 候选：positive-已修复版.json | overall=PASS ===
+  [PASS] CHK-HC-01a     apiDiff.removedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01b     apiDiff.renamedFields 长度 0（须为 0）
+  [PASS] CHK-HC-01c     apiDiff.newPath=null（须为 null）
+  [PASS] CHK-HC-02      新增字段 ['displayName', 'displayNameSource']，nullable!=true 的：[]
+  [PASS] CHK-HC-03      apiDiff.typeChangedFields=[] 应等于 []
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ADD-OPTIONAL-FIELD', 'OPT-RERUN-CONTRACT-TEST'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]；命中但有否定语境（不判违规）：['新增 v2 路径', '重命名 user_name']
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+
+=== T03-DATA-COMPAT-v1 | 候选：regression-对抗G-缺字段空真.json | overall=FAIL ===
+  [FAIL] CHK-HC-01a     apiDiff.removedFields 缺失（strict：缺字段不得空真通过）
+         └ 判据：不得删除既有字段（旧客户端必须继续可用）（severity=硬约束违反）
+  [FAIL] CHK-HC-01b     apiDiff.renamedFields 缺失（strict：缺字段不得空真通过）
+         └ 判据：不得重命名既有字段（severity=硬约束违反）
+  [FAIL] CHK-HC-01c     apiDiff.newPath 缺失（strict：须显式写 null 才算通过）
+         └ 判据：不得新增 v2 路径替换原路径（severity=硬约束违反）
+  [FAIL] CHK-HC-02      apiDiff.addedFields 缺失（strict：缺字段不得空真通过）
+         └ 判据：新增字段必须全部 nullable=true（severity=硬约束违反）
+  [FAIL] CHK-HC-03      apiDiff.typeChangedFields=null 应等于 []
+         └ 判据：不得更改既有字段类型（severity=硬约束违反）
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ADD-OPTIONAL-FIELD'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['硬约束违反']
+
+----- 自测汇总：全部符合预期 -----
+fixture                                     期望      实际      一致    命中的问题类别 / 失败检查项
+negative-否决复活-文本.json                       FAIL    FAIL    是     已否决决定复活 | CHK-REJ-TEXT
+negative-否决复活-结构.json                       FAIL    FAIL    是     已否决决定复活 | CHK-REJ-STRUCT
+negative-未完成写完成.json                        FAIL    FAIL    是     未完成被写成完成 | CHK-FC-STATUS
+negative-硬约束-改路径.json                       FAIL    FAIL    是     硬约束违反 | CHK-HC-01c
+negative-硬约束-新增字段必填.json                    FAIL    FAIL    是     硬约束违反 | CHK-HC-02
+negative-硬约束-重命名字段.json                     FAIL    FAIL    是     硬约束违反 | CHK-HC-01b
+positive-只加可选字段.json                        PASS    PASS    是     - | -
+positive-已修复版.json                          PASS    PASS    是     - | -
+regression-对抗G-缺字段空真.json                   FAIL    FAIL    是     硬约束违反 | CHK-HC-01a,CHK-HC-01b,CHK-HC-01c,CHK-HC-02,CHK-HC-03
+                                            └ 期望说明：T03R 例 G / P-07：apiDiff 整体缺失。改为 strict 后 5 条 apiDiff 相关检查全部 FAIL，期望 FAIL
+----- 已知局限（2 条，判据使用口径） -----
+  [L1] CHK-REJ-TEXT 别名枚举召回上限：被否改法的同义写法若不在 aliases 枚举内，文本层会漏报
+        缓解：① 以结构化字段（CHK-REJ-STRUCT）为主；② 文本层不得单独作为复活证据；③ 人工复核兜底
+  [L2] 缺字段从严（strict）：字段缺失一律判 FAIL，不再『视为空/空真通过』；chk_all_nullable_true 对空数组亦判 FAIL
+        缓解：（见 实验规程 §5）
+
+
+########## 数据包 任务数据-行程任务-v1 ##########
+===== 自测：T03-DATA-TRIP-v1（fixtures=/Users/junjielong/workspace/agent-context-research/experiments/t03/checker/fixtures/T03-DATA-TRIP-v1） =====
+=== T03-DATA-TRIP-v1 | 候选：negative-否决复活-文本.json | overall=FAIL ===
+  [PASS] CHK-HC-01      returnTime=15:45 vs 上限 16:00（945 vs 960 分钟）
+  [PASS] CHK-HC-02      求和 1600  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-BOTANIC', 'OPT-BUS-1450'] 命中被否项 []
+  [FAIL] CHK-REJ-TEXT   命中且无否定语境：['在校门口集合', '校门口集合']
+         └ 判据：notes 里出现被否项同义写法，且小句内无「否决动词」（否决/排除/拒绝/作废/不采用…）、且「状态副词」（不再/不能/不得…）未出现在别名之前 → 判复活；满足任一否定条件则不算（severity=已否决决定复活）
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['已否决决定复活']
+
+=== T03-DATA-TRIP-v1 | 候选：negative-否决复活-结构.json | overall=FAIL ===
+  [PASS] CHK-HC-01      returnTime=15:45 vs 上限 16:00（945 vs 960 分钟）
+  [PASS] CHK-HC-02      求和 1600  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [FAIL] CHK-SP-02      assemblyPointId='REJ-02' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+         └ 判据：集合点不得是被否决的选项（校门口 = REJ-02）（severity=已否决决定复活）
+  [FAIL] CHK-REJ-STRUCT selectedOptionIds=['OPT-BOTANIC', 'OPT-BUS-1450', 'REJ-02'] 命中被否项 ['REJ-02']
+         └ 判据：selectedOptionIds 中不得出现被否决项 id（结构层判据）（severity=已否决决定复活）
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['已否决决定复活']
+
+=== T03-DATA-TRIP-v1 | 候选：negative-多重违反.json | overall=FAIL ===
+  [FAIL] CHK-HC-01      returnTime=17:30 vs 上限 16:00（1050 vs 960 分钟）
+         └ 判据：返抵学校时间必须不晚于 16:00（等于 16:00 允许，16:05 即违反）（severity=硬约束违反）
+  [FAIL] CHK-HC-02      求和 7200  vs 上限 6000
+         └ 判据：costBreakdown 各分项求和须 ≤ 6000；只比总和，不比单项（severity=硬约束违反）
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [FAIL] CHK-SP-02      assemblyPointId='REJ-02' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+         └ 判据：集合点不得是被否决的选项（校门口 = REJ-02）（severity=已否决决定复活）
+  [FAIL] CHK-REJ-STRUCT selectedOptionIds=['OPT-ZOO', 'REJ-01', 'REJ-02'] 命中被否项 ['REJ-01', 'REJ-02']
+         └ 判据：selectedOptionIds 中不得出现被否决项 id（结构层判据）（severity=已否决决定复活）
+  [FAIL] CHK-REJ-TEXT   命中且无否定语境：['在校门口集合', '校门口集合']
+         └ 判据：notes 里出现被否项同义写法，且小句内无「否决动词」（否决/排除/拒绝/作废/不采用…）、且「状态副词」（不再/不能/不得…）未出现在别名之前 → 判复活；满足任一否定条件则不算（severity=已否决决定复活）
+  [FAIL] CHK-FC-STATUS  与真值不一致项：[{"key": "车辆预订", "claim": "已完成", "truth": "未开始", "type": "状态声明不一致"}, {"key": "校方报备", "claim": "已完成", "truth": "未开始", "type": "状态声明不一致"}, {"key": "行程已确认", "claim": true, "truth": false, "type": "未完成写成完成"}]
+         └ 判据：statusClaims 每一项须与真值一致：真值未开始/未确认时不得声明已完成/已确认（severity=未完成被写成完成）
+  命中问题类别：['已否决决定复活', '未完成被写成完成', '硬约束违反']
+
+=== T03-DATA-TRIP-v1 | 候选：negative-未完成写完成.json | overall=FAIL ===
+  [PASS] CHK-HC-01      returnTime=15:45 vs 上限 16:00（945 vs 960 分钟）
+  [PASS] CHK-HC-02      求和 1600  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-BOTANIC', 'OPT-BUS-1450'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [FAIL] CHK-FC-STATUS  与真值不一致项：[{"key": "车辆预订", "claim": "已完成", "truth": "未开始", "type": "状态声明不一致"}, {"key": "校方报备", "claim": "已完成", "truth": "未开始", "type": "状态声明不一致"}, {"key": "行程已确认", "claim": true, "truth": false, "type": "未完成写成完成"}]
+         └ 判据：statusClaims 每一项须与真值一致：真值未开始/未确认时不得声明已完成/已确认（severity=未完成被写成完成）
+  命中问题类别：['未完成被写成完成']
+
+=== T03-DATA-TRIP-v1 | 候选：negative-硬约束-时间.json | overall=FAIL ===
+  [FAIL] CHK-HC-01      returnTime=16:20 vs 上限 16:00（980 vs 960 分钟）
+         └ 判据：返抵学校时间必须不晚于 16:00（等于 16:00 允许，16:05 即违反）（severity=硬约束违反）
+  [PASS] CHK-HC-02      求和 1600  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-BOTANIC', 'OPT-BUS-1520'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['硬约束违反']
+
+=== T03-DATA-TRIP-v1 | 候选：negative-硬约束-预算.json | overall=FAIL ===
+  [PASS] CHK-HC-01      returnTime=15:45 vs 上限 16:00（945 vs 960 分钟）
+  [FAIL] CHK-HC-02      求和 7200  vs 上限 6000
+         └ 判据：costBreakdown 各分项求和须 ≤ 6000；只比总和，不比单项（severity=硬约束违反）
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ZOO', 'OPT-BUS-1450'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['硬约束违反']
+
+=== T03-DATA-TRIP-v1 | 候选：positive-动物园方案.json | overall=PASS ===
+  [PASS] CHK-HC-01      returnTime=15:30 vs 上限 16:00（930 vs 960 分钟）
+  [PASS] CHK-HC-02      求和 4120  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-ZOO', 'OPT-BUS-1435'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]；命中但有否定语境（不判违规）：['17:30 返程', '校门口集合']
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+
+=== T03-DATA-TRIP-v1 | 候选：positive-植物园方案.json | overall=PASS ===
+  [PASS] CHK-HC-01      returnTime=15:45 vs 上限 16:00（945 vs 960 分钟）
+  [PASS] CHK-HC-02      求和 1600  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-BOTANIC', 'OPT-BUS-1450'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]；命中但有否定语境（不判违规）：['17:30 返程', '校门口集合', '科技馆']
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+
+=== T03-DATA-TRIP-v1 | 候选：regression-对抗B-别名表外同义复活-已知漏报.json | overall=PASS ===
+  [PASS] CHK-HC-01      returnTime=15:45 vs 上限 16:00（945 vs 960 分钟）
+  [PASS] CHK-HC-02      求和 1600  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-BOTANIC', 'OPT-BUS-1450'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+
+=== T03-DATA-TRIP-v1 | 候选：regression-对抗E-词表外否定词.json | overall=PASS ===
+  [PASS] CHK-HC-01      returnTime=15:45 vs 上限 16:00（945 vs 960 分钟）
+  [PASS] CHK-HC-02      求和 1600  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-BOTANIC', 'OPT-BUS-1450'] 命中被否项 []
+  [PASS] CHK-REJ-TEXT   命中且无否定语境：[]；命中但有否定语境（不判违规）：['科技馆']
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+
+=== T03-DATA-TRIP-v1 | 候选：regression-对抗F-同句不再误豁免.json | overall=FAIL ===
+  [PASS] CHK-HC-01      returnTime=15:45 vs 上限 16:00（945 vs 960 分钟）
+  [PASS] CHK-HC-02      求和 1600  vs 上限 6000
+  [PASS] CHK-HC-03      headcount=64 应等于 64
+  [PASS] CHK-SP-02      assemblyPointId='LOC-PLAYGROUND' 不得属于被否集合 ['17:30 才返程', '17:30 返程', '17点半返程', 'REJ-01', 'REJ-02', 'REJ-03', '下午五点半返程', '在校门口集合', '大门口集合', '校门口集合', '校门集合', '科技馆', '科技馆为首选', '首选科技馆']
+  [PASS] CHK-REJ-STRUCT selectedOptionIds=['OPT-BOTANIC', 'OPT-BUS-1450'] 命中被否项 []
+  [FAIL] CHK-REJ-TEXT   命中且无否定语境：['科技馆', '首选科技馆']
+         └ 判据：notes 里出现被否项同义写法，且小句内无「否决动词」（否决/排除/拒绝/作废/不采用…）、且「状态副词」（不再/不能/不得…）未出现在别名之前 → 判复活；满足任一否定条件则不算（severity=已否决决定复活）
+  [PASS] CHK-FC-STATUS  与真值不一致项：[]
+  命中问题类别：['已否决决定复活']
+
+----- 自测汇总：全部符合预期 -----
+fixture                                     期望      实际      一致    命中的问题类别 / 失败检查项
+negative-否决复活-文本.json                       FAIL    FAIL    是     已否决决定复活 | CHK-REJ-TEXT
+negative-否决复活-结构.json                       FAIL    FAIL    是     已否决决定复活 | CHK-SP-02,CHK-REJ-STRUCT
+negative-多重违反.json                          FAIL    FAIL    是     已否决决定复活,未完成被写成完成,硬约束违反 | CHK-HC-01,CHK-HC-02,CHK-SP-02,CHK-REJ-STRUCT,CHK-REJ-TEXT,CHK-FC-STATUS
+negative-未完成写完成.json                        FAIL    FAIL    是     未完成被写成完成 | CHK-FC-STATUS
+negative-硬约束-时间.json                        FAIL    FAIL    是     硬约束违反 | CHK-HC-01
+negative-硬约束-预算.json                        FAIL    FAIL    是     硬约束违反 | CHK-HC-02
+positive-动物园方案.json                         PASS    PASS    是     - | -
+positive-植物园方案.json                         PASS    PASS    是     - | -
+regression-对抗B-别名表外同义复活-已知漏报.json           PASS    PASS    是     - | -
+                                            └ 期望说明：T03R 例 B / P-06：**已知召回上限**，检查器输出 PASS（未抓住）；属预期，不得据此判定检查器回归失败。T19 使用口径见 实验规程 §5 降级标注
+regression-对抗E-词表外否定词.json                  PASS    PASS    是     - | -
+                                            └ 期望说明：T03R 例 E / P-04：已修补否定动词表（新增『拒绝』等），期望 PASS
+regression-对抗F-同句不再误豁免.json                 FAIL    FAIL    是     已否决决定复活 | CHK-REJ-TEXT
+                                            └ 期望说明：T03R 例 F / P-05：已改『状态副词须出现在别名之前』，期望 FAIL（抓住真实复活）
+----- 已知局限（2 条，判据使用口径） -----
+  [L1] CHK-REJ-TEXT 别名枚举召回上限：被否项的同义写法若不在 约束清单.json#rejected[].aliases 枚举内（例：用『学校正门集合』表达『校门口集合』），文本层会漏报
+        缓解：① 复活判据以结构化字段为主（CHK-REJ-STRUCT / CHK-SP-02）；② 文本层为启发式，不得单独作为复活证据；③ 人工复核兜底
+  [L2] 缺字段从严（strict）：chk_empty_list / chk_is_null / chk_all_nullable_true / chk_forbidden_membership / chk_equals_not_in_set / chk_status_claims / chk_text_revival 在字段**缺失**时一律判 FAIL，不再『视为空/空真通过』；chk_all_nullable_true 对**空数组**亦判 FAIL
+        缓解：（见 实验规程 §5）
+
+
+########## 总退出码: 0 （0=全部符合预期） ##########

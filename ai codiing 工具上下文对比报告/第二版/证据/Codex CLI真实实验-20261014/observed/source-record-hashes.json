@@ -1,0 +1,37 @@
+[
+  {
+    "file": "automatic/events.jsonl",
+    "sha256": "981fbbe3c45aa7e1dec09b495c7c0d5a6212a4122ed29a9ebeef5a3799468851",
+    "purpose": "识别本次私有原始记录；公开包只提供筛选摘录，不提供完整记录。"
+  },
+  {
+    "file": "automatic/rollout.jsonl",
+    "sha256": "f6d1e96896c4b42f5561b85cf74000613df0b5ed3e6b9e093de0e44d5ab2f67b",
+    "purpose": "识别本次私有原始记录；公开包只提供筛选摘录，不提供完整记录。"
+  },
+  {
+    "file": "manual-tui/results.json",
+    "sha256": "b5cbe08596bda5da6332331efffd2c2dd09f057bc53a9827bbacc4fe2dcbb5f1",
+    "purpose": "识别本次私有原始记录；公开包只提供筛选摘录，不提供完整记录。"
+  },
+  {
+    "file": "manual-tui/after-continuation-rollout.jsonl",
+    "sha256": "b766079da179cb43d60337e2088d2712fd6f06511b0bdd537f7f60965b059392",
+    "purpose": "识别本次私有原始记录；公开包只提供筛选摘录，不提供完整记录。"
+  },
+  {
+    "file": "cache/events.jsonl",
+    "sha256": "d9d10f989cdebad4eb326da193bcc9c26b108cf9b910780b32f912a1444637ec",
+    "purpose": "识别本次私有原始记录；公开包只提供筛选摘录，不提供完整记录。"
+  },
+  {
+    "file": "truncation-call/rollout.jsonl",
+    "sha256": "306b7d84710ba87988c49f60a53a99af86581f1ddf286529a96934a01b7eccce",
+    "purpose": "识别本次私有原始记录；公开包只提供筛选摘录，不提供完整记录。"
+  },
+  {
+    "file": "truncation-config/rollout.jsonl",
+    "sha256": "63d4553ac20697328db31152faab5285eaec4bc4b07cc5ed6a7449d836cf07d1",
+    "purpose": "识别本次私有原始记录；公开包只提供筛选摘录，不提供完整记录。"
+  }
+]

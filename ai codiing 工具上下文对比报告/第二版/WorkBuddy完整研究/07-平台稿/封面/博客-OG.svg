@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <clipPath id="clip"><rect x="0" y="0" width="1200" height="630" rx="0"/></clipPath>
+  </defs>
+  <g clip-path="url(#clip)">
+    <image x="0" y="0" width="1200" height="630" preserveAspectRatio="xMidYMid slice"
+           xlink:href="bases/B5-博客OG.png"/>
+  </g>
+
+  <rect x="78" y="35" width="151" height="37" rx="18.5" fill="rgba(255,255,255,0.92)"/>
+  <text x="153.5" y="53.5" text-anchor="middle" dominant-baseline="central"
+        font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="19" font-weight="700" fill="#2952cc">博客 · 阅读入口</text>
+
+  <rect x="1067" y="35" width="55" height="37" rx="18.5" fill="#2952cc"/>
+  <text x="1094.5" y="53.5" text-anchor="middle" dominant-baseline="central"
+        font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="19" font-weight="700" fill="#ffffff">OG</text>
+  <rect x="78" y="208" width="1044" height="220" rx="19"
+        fill="rgba(255,255,255,0.90)" stroke="rgba(41,82,204,0.16)" stroke-width="2"/>
+  <rect x="78" y="226" width="13"
+        height="185" rx="7" fill="#2952cc"/>
+
+  <text x="150" y="302" text-anchor="start"
+        font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="67" font-weight="800" fill="#10203a">AI 上下文管理 · 完整教程入口</text>
+  <text x="150" y="407"
+        text-anchor="start" font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="34"
+        font-weight="500" fill="#5b6b82">为什么 AI 明明“记得”，这次却没把材料用上</text>
+  <rect x="0" y="567" width="1200" height="63" fill="rgba(255,255,255,0.94)"/>
+  <rect x="0" y="567" width="1200" height="2" fill="rgba(13,148,136,0.55)"/>
+  <text x="600" y="598.5" text-anchor="middle" dominant-baseline="central"
+        font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="21" font-weight="600"
+        fill="#5b6b82">八工具实测 · 有来源可查</text>
+</svg>

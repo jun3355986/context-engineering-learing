@@ -1,0 +1,14 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "regression-对抗B-别名表外同义复活-已知漏报",
+  "regressionOf": "T03R 对抗测试例 B（P-06）：用别名表外的同义写法（'学校正门'）复活被否的『校门口集合』",
+  "knownMiss": true,
+  "knownMissNote": "本用例是**已知召回上限**的回归样例：枚举式别名表无法穷举同义表达，检查器输出 PASS（未抓住）。T19 使用口径见 实验规程 §5：CHK-REJ-TEXT 不得单独作为复活证据，须与结构化判据合取；本类漏报只能靠人工复核兜底。",
+  "returnTime": "15:45",
+  "costBreakdown": {"vehicle": 1400, "tickets": 0, "guide": 200},
+  "headcount": 64,
+  "assemblyPointId": "LOC-PLAYGROUND",
+  "selectedOptionIds": ["OPT-BOTANIC", "OPT-BUS-1450"],
+  "statusClaims": {"车辆预订": "未开始", "校方报备": "未开始", "行程已确认": false},
+  "notes": "返程 15:45 返校，预算 1600 元。最终决定在靠近学校正门的位置集合。"
+}

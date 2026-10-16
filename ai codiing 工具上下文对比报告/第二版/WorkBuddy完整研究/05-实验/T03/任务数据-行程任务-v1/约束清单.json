@@ -1,0 +1,89 @@
+{
+  "packageId": "T03-DATA-TRIP-v1",
+  "packageVersion": "v1",
+  "semantics": {
+    "status": "active = 当前有效约束；rejected = 已被用户否决，必须保留『已否决』状态而不是删除",
+    "whyKeepRejected": "把『否决』当作状态保存（T02 数据地图例③），才能检查‘是否复活了过期决定’",
+    "aliases": "每个被否项给多个同义写法，供检查器做语义命中（含否定语境判断），不做裸关键词匹配",
+    "rejectedAt口径": "填**用户确认否决**的那条消息 ID；若否决由助手先提出、用户随后确认，另用 proposedRejectionAt 记录助手侧消息",
+    "aliasEnumerationLimit": "aliases 为**枚举式**，天然有召回上限：词表外的同义表达（例：用『学校正门集合』表达『校门口集合』）会使文本层漏报。复活判据以结构化字段为主，文本层不得单独作为 resurrection 证据（见 预期结果.json#knownLimitations L1）"
+  },
+  "activeConstraints": [
+    {
+      "id": "HC-01",
+      "kind": "hard",
+      "checkKind": "time_before",
+      "field": "returnTime",
+      "limit": "16:00",
+      "text": "下午 4 点前必须返校",
+      "origin": "MSG-001",
+      "status": "active"
+    },
+    {
+      "id": "HC-02",
+      "kind": "hard",
+      "checkKind": "budget_max",
+      "field": "costBreakdown",
+      "limit": 6000,
+      "unit": "元",
+      "text": "总费用不超过 6000 元",
+      "origin": "MSG-003",
+      "status": "active"
+    },
+    {
+      "id": "HC-03",
+      "kind": "hard",
+      "checkKind": "equals",
+      "field": "headcount",
+      "value": 64,
+      "text": "两个班 60 名学生 + 4 名老师共 64 人同批出行",
+      "origin": "MSG-001",
+      "status": "active"
+    },
+    {
+      "id": "SP-01",
+      "kind": "soft",
+      "checkKind": "none",
+      "text": "地点偏好：植物园 / 动物园优先，室内场馆次之",
+      "origin": "MSG-007",
+      "status": "active"
+    },
+    {
+      "id": "SP-02",
+      "kind": "soft",
+      "checkKind": "equals_not_in_set",
+      "field": "assemblyPointId",
+      "text": "集合点使用操场",
+      "origin": "MSG-006",
+      "status": "active"
+    }
+  ],
+  "rejected": [
+    {
+      "id": "REJ-01",
+      "text": "17:30 返程",
+      "aliases": ["17:30 返程", "17点半返程", "下午五点半返程", "17:30 才返程"],
+      "rejectedAt": "MSG-004",
+      "reason": "来不及在 16:00 前返校",
+      "status": "rejected"
+    },
+    {
+      "id": "REJ-02",
+      "text": "校门口集合",
+      "aliases": ["校门口集合", "校门集合", "大门口集合", "在校门口集合"],
+      "rejectedAt": "MSG-006",
+      "reason": "校门口施工封闭",
+      "status": "rejected"
+    },
+    {
+      "id": "REJ-03",
+      "text": "科技馆（室内）作为首选地点",
+      "aliases": ["科技馆", "科技馆为首选", "首选科技馆"],
+      "rejectedAt": "MSG-012",
+      "proposedRejectionAt": "MSG-011",
+      "rejectedAtNote": "MSG-011 为助手依据闭馆证据提出否决、MSG-012 为用户确认（『对，科技馆就算了』）；本字段口径=用户确认消息",
+      "reason": "科技馆周五闭馆",
+      "status": "rejected"
+    }
+  ]
+}

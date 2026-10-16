@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1080" height="1440" viewBox="0 0 1080 1440">
+  <defs>
+    <clipPath id="clip"><rect x="0" y="0" width="1080" height="1440" rx="0"/></clipPath>
+  </defs>
+  <g clip-path="url(#clip)">
+    <image x="0" y="0" width="1080" height="1440" preserveAspectRatio="xMidYMid slice"
+           xlink:href="bases/B3-小红书B.png"/>
+  </g>
+
+  <rect x="70" y="79" width="481" height="84" rx="42" fill="rgba(255,255,255,0.92)"/>
+  <text x="310.5" y="121" text-anchor="middle" dominant-baseline="central"
+        font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="42" font-weight="700" fill="#2952cc">上下文管理 · 八工具实测</text>
+
+  <rect x="813" y="79" width="197" height="84" rx="42" fill="#2952cc"/>
+  <text x="911.5" y="121" text-anchor="middle" dominant-baseline="central"
+        font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="42" font-weight="700" fill="#ffffff">第14条</text>
+  <rect x="70" y="432" width="940" height="253" rx="43"
+        fill="rgba(255,255,255,0.90)" stroke="rgba(41,82,204,0.16)" stroke-width="2"/>
+  <rect x="70" y="472" width="12"
+        height="172" rx="6" fill="#2952cc"/>
+
+  <text x="540" y="593" text-anchor="middle"
+        font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="88" font-weight="800" fill="#10203a">缓存 ≠ 摘要 ≠ 记忆</text>
+  <rect x="0" y="1296" width="1080" height="144" fill="rgba(255,255,255,0.94)"/>
+  <rect x="0" y="1296" width="1080" height="2" fill="rgba(13,148,136,0.55)"/>
+  <text x="540" y="1368" text-anchor="middle" dominant-baseline="central"
+        font-family='"PingFang SC","Hiragino Sans GB","Heiti SC","Microsoft YaHei","Noto Sans SC",sans-serif' font-size="49" font-weight="600"
+        fill="#5b6b82">八工具实测 · 有来源可查</text>
+</svg>

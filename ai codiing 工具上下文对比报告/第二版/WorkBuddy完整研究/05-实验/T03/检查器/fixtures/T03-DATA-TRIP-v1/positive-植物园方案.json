@@ -1,0 +1,11 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "positive-植物园方案",
+  "returnTime": "15:45",
+  "costBreakdown": {"vehicle": 1400, "tickets": 0, "guide": 200},
+  "headcount": 64,
+  "assemblyPointId": "LOC-PLAYGROUND",
+  "selectedOptionIds": ["OPT-BOTANIC", "OPT-BUS-1450"],
+  "statusClaims": {"车辆预订": "未开始", "校方报备": "未开始", "行程已确认": false},
+  "notes": "返程选 14:50 班次，15:45 返校，早于 16:00。已否决 17:30 返程、已否决校门口集合、已否决科技馆首选；集合点在操场。预算合计 1600 元。车辆预订与校方报备均未开始，行程尚未确认。"
+}

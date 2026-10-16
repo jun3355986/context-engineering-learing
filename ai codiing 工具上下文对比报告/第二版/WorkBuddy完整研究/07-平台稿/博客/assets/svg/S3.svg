@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" role="img" aria-label="三线关系：范围线 OR 整段线">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:17px;font-weight:700;fill:#1b2330}
+.bb{font-size:14.5px;fill:#1b2330}
+.mini{font-size:13px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.f{font-size:15px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="760"/>
+<text class="tag" x="40" y="42">上下文管理 · S3</text>
+<text class="h1" x="40" y="82">三线关系：触发到线 = 范围线 OR 整段线</text>
+<text class="sub" x="40" y="114">程序心里有四本账，判定「该收拾桌子了」用的是三条线</text>
+
+<!-- 四本账 -->
+<text class="st" x="40" y="156">一、四本账</text>
+<rect class="card" x="40" y="172" width="1120" height="96" rx="12"/>
+<g>
+<text class="mini" x="68" y="204">W 上下文窗口</text><text class="bb" x="68" y="232">桌子总共多大</text>
+<text class="mini" x="268" y="204">p 有效窗口比例</text><text class="bb" x="268" y="232">缺省 95，可被配置改写</text>
+<text class="mini" x="548" y="204">H 有效窗口</text><text class="f" x="548" y="232">H = W × p ÷ 100</text>
+<text class="mini" x="828" y="204">A 当前用量</text><text class="bb" x="828" y="232">桌上现在堆了多少</text>
+</g>
+<text class="mini" x="68" y="258">P 输入基线：你收拾过一次桌子后的起点高度（锚点＝上次服务端 usage + 本地新增估算）</text>
+
+<!-- 三条线 -->
+<text class="st" x="40" y="314">二、三条线</text>
+<rect class="card" x="40" y="330" width="360" height="140" rx="12"/>
+<text class="bb" x="64" y="362" font-weight="700">基础线（90%）</text>
+<text class="f" x="64" y="392">(W × 9) / 10</text>
+<text class="mini" x="64" y="420">范围线的默认原料</text>
+<text class="mini" x="64" y="442">非模型原理规定；整数除法</text>
+<text class="mini" x="64" y="462" fill="#c2410c">不是「玄学比例」</text>
+
+<rect class="card" x="420" y="330" width="360" height="140" rx="12"/>
+<text class="bb" x="444" y="362" font-weight="700">范围线</text>
+<text class="f" x="444" y="392">min(M, 基础线)</text>
+<text class="mini" x="444" y="420">对 total 口径＝全部材料；</text>
+<text class="mini" x="444" y="442">对增长口径＝基线之后的增长量</text>
+<text class="mini" x="444" y="462" fill="#c2410c">M 为 Codex 专有口径</text>
+
+<rect class="card" x="800" y="330" width="360" height="140" rx="12"/>
+<text class="bb" x="824" y="362" font-weight="700">整段线</text>
+<text class="f" x="824" y="392">H = W × p ÷ 100</text>
+<text class="mini" x="824" y="420">硬检查线：</text>
+<text class="mini" x="824" y="442">所有材料都不得超过</text>
+<text class="mini" x="824" y="462" fill="#c2410c">与窗口比例绑定</text>
+
+<!-- 判定 -->
+<rect x="40" y="494" width="1120" height="72" rx="12" fill="#e7edfb" stroke="#2952cc" stroke-width="1.5"/>
+<text class="bb" x="64" y="524">判定：<tspan font-weight="700">触发线（伞名）= 范围线 OR 整段线</tspan>　—— 任一为真，就叫「触发到线」</text>
+<text class="mini" x="64" y="550" fill="#5b6779">源码形态：<tspan class="mono">is_some_and(… ) || full_context_window_limit_reached</tspan>【源码常量 codex-trigger-01】</text>
+
+<!-- 算例 -->
+<text class="st" x="40" y="612">三、算例【演示】　W = 200,000　p = 95　模型字段 M = 150,000　当前用量 A = 152,000</text>
+<rect class="card" x="40" y="628" width="1120" height="110" rx="12"/>
+<text class="bb" x="64" y="660">基础线 = 200,000 × 9 ÷ 10 = <tspan font-weight="700">180,000</tspan>　　范围线 = min(150,000, 180,000) = <tspan font-weight="700">150,000</tspan>　　整段线 H = 200,000 × 95% = <tspan font-weight="700">190,000</tspan></text>
+<text class="bb" x="64" y="692">A = 152,000：152,000 ≥ 150,000 → <tspan font-weight="700" fill="#c2410c">范围线到线</tspan>（整段 152,000 &lt; 190,000 未到）　⇒ <tspan font-weight="700">到线成立</tspan></text>
+<text class="mini" x="64" y="720" fill="#5b6779">数字均为教学假设【演示】，不得暗示为真实阈值；口径逐工具列，勿写「90–95% 统一阈值」（C-01/C-02 已否证）。</text>
+</svg>

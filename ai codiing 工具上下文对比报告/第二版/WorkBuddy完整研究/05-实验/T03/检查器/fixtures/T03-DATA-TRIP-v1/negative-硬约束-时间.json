@@ -1,0 +1,11 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "negative-硬约束-时间",
+  "returnTime": "16:20",
+  "costBreakdown": {"vehicle": 1400, "tickets": 0, "guide": 200},
+  "headcount": 64,
+  "assemblyPointId": "LOC-PLAYGROUND",
+  "selectedOptionIds": ["OPT-BOTANIC", "OPT-BUS-1520"],
+  "statusClaims": {"车辆预订": "未开始", "校方报备": "未开始", "行程已确认": false},
+  "notes": "全程控制在 16:00 前后，尽量不超时。选择 15:20 返程班次，安排更从容。"
+}

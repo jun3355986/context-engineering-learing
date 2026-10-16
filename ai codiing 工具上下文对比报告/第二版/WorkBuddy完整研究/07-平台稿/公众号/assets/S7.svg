@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" role="img" aria-label="三压缩前后对照：grok / claude / pi">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.ct{font-size:17px;font-weight:700;fill:#1b2330}
+.bb{font-size:14px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="760"/>
+<text class="tag" x="40" y="42">上下文管理 · S7</text>
+<text class="h1" x="40" y="82">三压缩前后对照（grok / claude / pi）</text>
+<text class="sub" x="40" y="114">连续压三次，约束还在吗？—— 方向已证、程度未证</text>
+
+<!-- grok -->
+<rect class="card" x="40" y="140" width="360" height="356" rx="12"/>
+<rect x="40" y="140" width="360" height="50" rx="12" fill="#fdeaea"/>
+<rect x="40" y="178" width="360" height="12" fill="#fdeaea"/>
+<text class="ct" x="64" y="172" fill="#b91c1c">⑧ grok</text>
+<text class="mini" x="64" y="212">压缩 1 次</text>
+<rect x="64" y="220" width="312" height="34" rx="7" fill="#e6f6ea"/><text class="bb" x="80" y="243" fill="#15803d">约束保留（E1 结构化判据 3/3）</text>
+<text class="mini" x="64" y="282">压缩 2 次</text>
+<rect x="64" y="290" width="312" height="34" rx="7" fill="#e6f6ea"/><text class="bb" x="80" y="313" fill="#15803d">约束保留</text>
+<text class="mini" x="64" y="352">压缩 3 次</text>
+<rect x="64" y="360" width="312" height="34" rx="7" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.2"/><text class="bb" x="80" y="383" fill="#b91c1c" font-weight="700">硬约束丢失（HC-01 空、HC-03=0）</text>
+<text class="mini" x="64" y="420">模型如实承认「不能确定」——<tspan font-weight="700">非复活、非幻觉</tspan></text>
+<rect x="64" y="438" width="312" height="42" rx="8" fill="#fdeaea"/>
+<text class="mini" x="80" y="464" fill="#b91c1c" font-weight="700">首例直证：连续压缩可致关键约束丢失</text>
+
+<!-- claude -->
+<rect class="card" x="420" y="140" width="360" height="356" rx="12"/>
+<rect x="420" y="140" width="360" height="50" rx="12" fill="#e7edfb"/>
+<rect x="420" y="178" width="360" height="12" fill="#e7edfb"/>
+<text class="ct" x="444" y="172" fill="#1e3f9e">② claude</text>
+<text class="mini" x="444" y="212">压缩 1 次</text>
+<rect x="444" y="220" width="312" height="34" rx="7" fill="#e6f6ea"/><text class="bb" x="460" y="243" fill="#15803d">成功（preTokens 40,134 → post 5,512）</text>
+<text class="mini" x="444" y="282">压缩 2 次</text>
+<rect x="444" y="290" width="312" height="34" rx="7" fill="#e6f6ea"/><text class="bb" x="460" y="313" fill="#15803d">成功</text>
+<text class="mini" x="444" y="352">压缩 3 次</text>
+<rect x="444" y="360" width="312" height="34" rx="7" fill="#fdeede" stroke="#c2410c" stroke-width="1.2"/><text class="bb" x="460" y="383" fill="#c2410c" font-weight="700">被拒（"Not enough messages…"）</text>
+<text class="mini" x="444" y="420">第 3 次压缩<tspan font-weight="700">未发生</tspan>——机制上未测到失真</text>
+<rect x="444" y="438" width="312" height="42" rx="8" fill="#fdeede"/>
+<text class="mini" x="460" y="464" fill="#c2410c" font-weight="700">样本不足以判定连续压缩失真</text>
+
+<!-- pi -->
+<rect class="card" x="800" y="140" width="360" height="356" rx="12"/>
+<rect x="800" y="140" width="360" height="50" rx="12" fill="#e2f5f2"/>
+<rect x="800" y="178" width="360" height="12" fill="#e2f5f2"/>
+<text class="ct" x="824" y="172" fill="#0d9488">③ pi</text>
+<text class="mini" x="824" y="212">压缩 1 次</text>
+<rect x="824" y="220" width="312" height="34" rx="7" fill="#e2f5f2"/><text class="bb" x="840" y="243">结构化摘要 + UPDATE 增量</text>
+<text class="mini" x="824" y="282">压缩 2 次</text>
+<rect x="824" y="290" width="312" height="34" rx="7" fill="#e2f5f2"/><text class="bb" x="840" y="313">摘要<tspan font-weight="700">变长</tspan>（在旧摘要上继续压）</text>
+<text class="mini" x="824" y="352">压缩 3 次</text>
+<rect x="824" y="360" width="312" height="34" rx="7" fill="#e2f5f2"/><text class="bb" x="840" y="383">摘要<tspan font-weight="700">单调增长</tspan>（增量累积、未见去重）</text>
+<text class="mini" x="824" y="420">增量摘要<tspan font-weight="700">判为有损</tspan>；3 次重复各得 3 次压缩</text>
+<rect x="824" y="438" width="312" height="42" rx="8" fill="#e2f5f2"/>
+<text class="mini" x="840" y="464" fill="#0d9488" font-weight="700">「越压越长」——不是「越压越短」</text>
+
+<!-- banner -->
+<rect x="40" y="518" width="1120" height="96" rx="12" fill="#ffffff" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="550" font-weight="700" fill="#c2410c">方向已证 / 程度未证</text>
+<text class="mini" x="64" y="578">· <tspan font-weight="700" fill="#1b2330">方向已证</tspan>：单次 / 多轮压缩后约束<tspan font-weight="700">基本未丢</tspan>（E1 判据全 PASS，人工复核复活 0）；<tspan font-weight="700" fill="#b91c1c">但 grok 为反例</tspan>——3 次连续压缩后硬约束丢失。</text>
+<text class="mini" x="64" y="600">· <tspan font-weight="700" fill="#1b2330">程度未证</tspan>：失真程度未量化（摘要内容逐字对比未做）——保留「程度未证」，但方向已证。</text>
+
+<text class="mini" x="40" y="648">补充（同批实测）：⑨ dsh 单会话 <tspan font-weight="700">9 份摘要</tspan>（摘要再摘要，第 7 份显式含 &lt;compacted-summary&gt;）后 HC / REJ 全未丢；② claude 第 3 次被拒。</text>
+<text class="mini" x="40" y="676" fill="#5b6779">出处：T19 `07-grok.md` §1/§2/§3、`03-claude.md` §6、`02-pi.md` §2、`05-dsh.md` §连续压缩；回填主题 1。</text>
+<text class="mini" x="40" y="704" fill="#5b6779">⚠ 各工具执行模型 / provider 不同，条件不可比——<tspan font-weight="700" fill="#b91c1c">不排名次</tspan>；小样本（3 次）不声称统计显著。</text>
+<text class="mini" x="40" y="730" fill="#5b6779">「HC」＝硬约束条目（Hard Constraint）；「REJ」＝被否决项。</text>
+</svg>

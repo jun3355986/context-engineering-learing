@@ -1,0 +1,15 @@
+{
+  "before": {
+    "reported": "12,000",
+    "breakpoint": "15,000"
+  },
+  "afterGpt56": {
+    "reported": "12,000",
+    "breakpoint": "15,000"
+  },
+  "afterEarlier": {
+    "reported": "12,000",
+    "breakpoint": "15,000"
+  },
+  "changed": false
+}

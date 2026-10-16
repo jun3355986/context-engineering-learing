@@ -1,0 +1,6 @@
+constants: DEFAULT_MAX_LINES=3000 DEFAULT_MAX_BYTES=51200
+[PASS] under-limit passthrough :: truncated=undefined contentUnchanged=true
+[PASS] over-lines truncates to DEFAULT_MAX_LINES :: truncatedBy=lines outputLines=3000 totalLines=3500
+[PASS] single line over byte cap -> firstLineExceedsLimit :: truncatedBy=bytes firstLineExceedsLimit=true outBytes=0
+[PASS] CJK truncation keeps valid UTF-8 and within byte budget :: truncatedBy=bytes outBytes=51174 utf8Valid=true
+RESULT: ALL_PASS

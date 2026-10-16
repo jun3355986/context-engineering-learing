@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img" aria-label="实测触发读数条形图（grok）带口径注">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.bb{font-size:14.5px;fill:#1b2330}
+.mini{font-size:13px;fill:#5b6779}
+.lab{font-size:14.5px;font-weight:700;fill:#1b2330}
+.val{font-size:15px;font-weight:700;fill:#1b2330}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="720"/>
+<text class="tag" x="40" y="42">上下文管理 · S5</text>
+<text class="h1" x="40" y="82">实测触发读数条形图（grok）</text>
+<text class="sub" x="40" y="114">阈值是「下限判定线」、判定在轮界执行 —— 所以实测触发读数 ≥ 阈值</text>
+
+<!-- chart frame -->
+<rect class="card" x="40" y="140" width="1120" height="330" rx="12"/>
+<!-- axis -->
+<line x1="240" y1="170" x2="240" y2="440" stroke="#dfe5ef" stroke-width="1.5"/>
+<g stroke="#eef2f9" stroke-width="1">
+<line x1="240" y1="170" x2="1040" y2="170"/>
+<line x1="436" y1="170" x2="436" y2="440"/>
+<line x1="632" y1="170" x2="632" y2="440"/>
+<line x1="828" y1="170" x2="828" y2="440"/>
+<line x1="1024" y1="170" x2="1024" y2="440"/>
+</g>
+<text class="mini" x="240" y="458" text-anchor="middle">0%</text>
+<text class="mini" x="436" y="458" text-anchor="middle">25%</text>
+<text class="mini" x="632" y="458" text-anchor="middle">50%</text>
+<text class="mini" x="828" y="458" text-anchor="middle">75%</text>
+<text class="mini" x="1024" y="458" text-anchor="middle">100%</text>
+<text class="mini" x="1040" y="176" text-anchor="end" fill="#5b6779">占窗口比例</text>
+
+<!-- bar 1: 阈值 70 -->
+<text class="lab" x="52" y="204">阈值 70%（设定）</text>
+<text class="mini" x="52" y="222">小步长实验的下限判定线</text>
+<rect x="240" y="186" width="547" height="30" rx="6" fill="#e2f5f2" stroke="#0d9488" stroke-width="1.4"/>
+<text class="val" x="799" y="207" fill="#0d9488">70%</text>
+
+<!-- bar 2: 实测 72 -->
+<text class="lab" x="52" y="262">实测读数 72%</text>
+<text class="mini" x="52" y="280">小步长：读数 = 阈值 + 轮内增量</text>
+<rect x="240" y="244" width="563" height="30" rx="6" fill="#0d9488"/>
+<text class="val" x="815" y="265" fill="#0d9488">72%</text>
+<line x1="787" y1="238" x2="787" y2="280" stroke="#0d9488" stroke-width="1.4" stroke-dasharray="4 3"/>
+
+<!-- bar 3: 阈值 85 -->
+<text class="lab" x="52" y="320">阈值 85%（默认线）</text>
+<text class="mini" x="52" y="338">context_window × 85%</text>
+<rect x="240" y="302" width="663" height="30" rx="6" fill="#e7edfb" stroke="#2952cc" stroke-width="1.4"/>
+<text class="val" x="915" y="323" fill="#1e3f9e">85%</text>
+
+<!-- bar 4: 实测 97 -->
+<text class="lab" x="52" y="378">实测读数 97%</text>
+<text class="mini" x="52" y="396">大步长：一步跨过 70/85 两线</text>
+<rect x="240" y="360" width="757" height="30" rx="6" fill="#2952cc"/>
+<text class="val" x="1009" y="381" fill="#1e3f9e">97%</text>
+<line x1="903" y1="354" x2="903" y2="396" stroke="#1e3f9e" stroke-width="1.4" stroke-dasharray="4 3"/>
+
+<!-- legend -->
+<rect x="700" y="404" width="14" height="14" rx="3" fill="#e2f5f2" stroke="#0d9488"/>
+<text class="mini" x="722" y="416">设定阈值</text>
+<rect x="820" y="404" width="14" height="14" rx="3" fill="#0d9488"/>
+<text class="mini" x="842" y="416">实测读数（小步长）</text>
+<rect x="700" y="428" width="14" height="14" rx="3" fill="#e7edfb" stroke="#2952cc"/>
+<text class="mini" x="722" y="440">设定阈值（默认）</text>
+<rect x="820" y="428" width="14" height="14" rx="3" fill="#2952cc"/>
+<text class="mini" x="842" y="440">实测读数（大步长）</text>
+
+<!-- 口径注 -->
+<rect x="40" y="490" width="1120" height="150" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="522" fill="#c2410c" font-weight="700">口径注（引用必须带）</text>
+<text class="mini" x="64" y="550">· <tspan font-weight="700" fill="#1b2330">读数 ≥ 阈值</tspan>：阈值是下限判定线、判定在轮界执行，实测读数 = 阈值 + 轮内增量（grok 70 → 72% 实测）。</text>
+<text class="mini" x="64" y="574">· <tspan font-weight="700" fill="#1b2330">横向比较须注口径</tspan>：不同工具的执行模型 / provider 不同（条件不可比），任何「谁更早 / 更晚触发」的排序一律作废 —— <tspan font-weight="700" fill="#b91c1c">不排名次</tspan>。</text>
+<text class="mini" x="64" y="598">· 另一参照（<tspan font-weight="700">仅作口径示例，非并列比较</tspan>）：claude 在代理条件下、100k 窗口实测触发于 ≈98%（98,014/98,202/98,015）。</text>
+<text class="mini" x="64" y="622" fill="#5b6779">· 小样本探索性（每条件首轮 3 次），不声称统计显著；「大步长跨线」指一次增量同时越过两条设定线。</text>
+
+<text class="mini" x="40" y="676" fill="#5b6779">出处：T19 记录 `07-grok.md` §12 / T19 总表 §7-9；回填主题 13③。grok 触发线 = <tspan class="mono">context_window × 85%</tspan>，轮界判定。</text>
+<text class="mini" x="40" y="698" fill="#5b6779">⚠ 本节为「实测读数」；其余八工具的触发口径为源码常量 / 文档级，见 S4。</text>
+</svg>

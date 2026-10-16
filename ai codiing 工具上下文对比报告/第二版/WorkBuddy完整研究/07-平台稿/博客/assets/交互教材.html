@@ -1,0 +1,2004 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>上下文管理 · 交互教材（T17 · 单文件离线版）</title>
+<meta name="description" content="基于 T15 课程母稿的上下文管理交互教材：预算触发、裁剪、压缩四幕、状态机、检索记忆交接、账单器、时间线演化器。单文件、可离线。">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef2f9; --ink:#1b2330; --muted:#5b6779;
+  --brand:#2952cc; --brandink:#1e3f9e; --brandsoft:#e7edfb;
+  --teal:#0d9488; --tealsoft:#e2f5f2;
+  --ok:#15803d; --oksoft:#e6f6ea;
+  --warn:#c2410c; --warnsoft:#fdeede;
+  --bad:#b91c1c; --badsoft:#fdeaea;
+  --line:#dfe5ef; --codebg:#eef1f7; --mark:#ffe9a8; --markink:#7a4a00;
+  --shadow:0 1px 2px rgba(20,30,60,.06),0 8px 24px rgba(20,30,60,.06);
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1420; --panel:#161d2c; --panel2:#1b2437; --ink:#e7ecf5; --muted:#9aa7bd;
+    --brand:#7c9dff; --brandink:#9db6ff; --brandsoft:#1d2a4a;
+    --teal:#4fd1c5; --tealsoft:#12312e;
+    --ok:#4ade80; --oksoft:#133322;
+    --warn:#fb923c; --warnsoft:#3a2413;
+    --bad:#f87171; --badsoft:#3b1717;
+    --line:#2a3550; --codebg:#111827; --mark:#7a5b00; --markink:#ffe9a8;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:84px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.85 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;min-height:42px}
+button:disabled{opacity:.45;cursor:not-allowed}
+a{color:var(--brand);text-underline-offset:3px}
+a:hover{color:var(--brandink)}
+h1,h2,h3,h4,p{margin:0}
+h1{font-size:clamp(26px,3.4vw,40px);line-height:1.35;letter-spacing:-.02em}
+h2{font-size:22px;line-height:1.5;letter-spacing:-.01em}
+h3{font-size:17px;line-height:1.6}
+p+p{margin-top:12px}
+strong{font-weight:700}
+small{font-size:13.5px;line-height:1.75}
+.muted{color:var(--muted)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+code{font:.88em/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--codebg);padding:.14em .4em;border-radius:6px;overflow-wrap:anywhere}
+pre{margin:14px 0;padding:16px 18px;background:var(--codebg);border:1px solid var(--line);border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;font-size:13.8px}
+pre code{background:none;padding:0;font-size:inherit}
+mark{background:var(--mark);color:var(--markink);padding:.05em .25em;border-radius:4px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:12px;top:12px;background:var(--panel);padding:10px 14px;border-radius:8px;z-index:99}
+
+/* ===== shell ===== */
+.shell{display:block}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:272px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:14px;padding:18px 14px;overflow-y:auto;z-index:60;transform:translateX(-100%);transition:transform .22s ease}
+.sidebar.open{transform:none}
+.scrim{position:fixed;inset:0;background:rgba(10,16,30,.45);z-index:55;display:none}
+.scrim.open{display:block}
+@media (min-width:1000px){
+  .shell{display:grid;grid-template-columns:272px minmax(0,1fr)}
+  .sidebar{position:sticky;transform:none;height:100dvh}
+  .scrim{display:none !important}
+  .menu-btn{display:none}
+}
+.brand{display:flex;gap:10px;align-items:center;padding:2px 6px}
+.logo{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:10px;background:var(--brand);color:#fff;font-weight:800;font-size:14px}
+.brand b{font-size:15px;line-height:1.35;display:block}
+.brand small{display:block;font-size:11.5px}
+.side-note{font-size:12px;line-height:1.8;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;margin-top:auto}
+.navlist{display:grid;gap:4px;list-style:none;margin:0;padding:0}
+.navlink{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:9px 10px;line-height:1.5;font-size:14px}
+.navlink .n{font-size:11.5px;font-weight:750;color:var(--brand);min-width:20px}
+.navlink:hover{background:var(--panel2)}
+.navlink[aria-current="page"]{background:var(--brand);color:#fff}
+.navlink[aria-current="page"] .n{color:#fff}
+.navlink small{display:block;font-size:11.5px;color:inherit;opacity:.75}
+.main{min-width:0;display:flex;flex-direction:column;min-height:100dvh}
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;padding:10px 16px;background:color-mix(in srgb, var(--panel) 88%, transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar .where{font-size:13px;font-weight:650;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:7px 12px;font-size:13.5px}
+.icon-btn:hover{background:var(--panel2)}
+.pager{display:flex;gap:8px}
+.content{padding:30px 0 90px}
+
+/* ===== unit ===== */
+.unit{display:none;animation:fadein .18s ease}
+.unit.active{display:block}
+@keyframes fadein{from{opacity:.4}to{opacity:1}}
+.unithead{margin-bottom:22px}
+.kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--brand);background:var(--brandsoft);border-radius:999px;padding:5px 12px;margin-bottom:12px}
+.lead{font-size:17.5px;color:var(--muted)}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0 6px}
+.meta-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.75}
+.meta-card b{display:block;font-size:12px;color:var(--muted);margin-bottom:2px;font-weight:650}
+@media (max-width:720px){.meta-grid{grid-template-columns:1fr}}
+
+section.block{margin:30px 0}
+h2.sec{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+h2.sec .tag{font-size:12px;color:var(--muted);font-weight:600}
+
+/* callouts */
+.callout{border:1px solid var(--line);border-left:5px solid var(--brand);background:var(--panel);border-radius:12px;padding:14px 16px;margin:16px 0;font-size:15px;line-height:1.85}
+.callout.warn{border-left-color:var(--warn);background:var(--warnsoft)}
+.callout.ok{border-left-color:var(--ok);background:var(--oksoft)}
+.callout.bad{border-left-color:var(--bad);background:var(--badsoft)}
+.callout .ttl{font-weight:750;display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:14px}
+.callout.warn .ttl{color:var(--warn)}
+.callout.ok .ttl{color:var(--ok)}
+.callout.bad .ttl{color:var(--bad)}
+
+/* tables */
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:14px 0;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:560px;background:var(--panel);font-size:14px;line-height:1.7}
+th,td{padding:9px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:var(--panel2);font-size:13px;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+@media (max-width:680px){
+  .tblwrap{border:0;overflow:visible}
+  table,thead,tbody,tr,th,td{display:block;min-width:0}
+  thead{display:none}
+  tr{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--panel);overflow:hidden}
+  td{border-bottom:1px dashed var(--line);padding:9px 12px}
+  td:last-child{border-bottom:0}
+  td::before{content:attr(data-th);display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px}
+}
+
+/* interactive boxes */
+.interact{background:var(--panel);border:1.5px solid var(--brand);border-radius:var(--radius);padding:16px 16px 18px;margin:18px 0;box-shadow:var(--shadow)}
+.interact .caption{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
+.interact .caption .tt{font-weight:750;font-size:15px}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.pill.demo{background:var(--brandsoft);color:var(--brand);border-color:transparent}
+.pill.const{background:var(--tealsoft);color:var(--teal);border-color:transparent}
+.pill.test{background:var(--warnsoft);color:var(--warn);border-color:transparent}
+.pill.live{background:var(--oksoft);color:var(--ok);border-color:transparent}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 14px;font-size:14px}
+.btn:hover{background:var(--panel2)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brandink)}
+.btn.ghost{background:transparent}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btnrow .spacer{flex:1}
+.stepdots{display:flex;gap:6px;flex-wrap:wrap}
+.stepdot{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:700;display:grid;place-items:center;min-height:30px;padding:0}
+.stepdot.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.stepdot.done{border-color:var(--brand);color:var(--brand)}
+.hidden{display:none !important}
+.numbadge{display:inline-block;font-size:11.5px;font-weight:750;border-radius:7px;padding:2px 8px;background:var(--brandsoft);color:var(--brand)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+
+/* material list */
+.mlist{display:grid;gap:8px;margin:10px 0}
+.mitem{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:11px;background:var(--panel2);padding:9px 12px;font-size:13.8px;line-height:1.65}
+.mitem .ic{flex:none;width:58px;text-align:center;font-size:11px;font-weight:750;border-radius:7px;padding:3px 0;background:var(--brandsoft);color:var(--brand)}
+.mitem.keep{border-color:var(--ok);background:var(--oksoft)}
+.mitem.cut{border-color:var(--bad);background:var(--badsoft);text-decoration:line-through;opacity:.8}
+.mitem.new{border-color:var(--teal);background:var(--tealsoft)}
+.mitem.dim{opacity:.62}
+.mitem .body{min-width:0;flex:1}
+.mitem .tok{color:var(--muted);font-size:12px;white-space:nowrap}
+.stage-note{font-size:14px;background:var(--brandsoft);border-radius:10px;padding:10px 13px;margin:10px 0;line-height:1.75}
+.data-table{margin-top:12px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--panel)}
+.data-row{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:8px 12px;border-bottom:1px dashed var(--line);font-size:13.5px;align-items:baseline}
+.data-row:last-child{border-bottom:0}
+.data-row .k{color:var(--muted)}
+.data-row .v{font-weight:650;text-align:right;overflow-wrap:anywhere}
+.data-row .v.ok{color:var(--ok)}
+.data-row .v.bad{color:var(--bad)}
+.data-row .v.warn{color:var(--warn)}
+.reason-line{font-size:13.5px;line-height:1.75;background:var(--warnsoft);border-radius:10px;padding:10px 13px;margin-top:10px;color:var(--warn)}
+.reason-line.ok{background:var(--oksoft);color:var(--ok)}
+.reason-line.info{background:var(--panel2);color:var(--muted)}
+
+/* budget calculator */
+.calc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:720px){.calc-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:460px){.calc-grid{grid-template-columns:1fr}}
+.field label{display:block;font-size:12.5px;color:var(--muted);font-weight:650;margin-bottom:4px}
+.field input,.field select{display:block;margin:0;width:100%;min-width:0;max-width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--panel2);font-size:14px}
+.field input[type=range]{padding:0}
+.calc-grid>*{min-width:0}
+.preset-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.preset{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 13px;font-size:12.8px;min-height:34px}
+.preset.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.calc-out{margin-top:12px}
+.bar{height:26px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);position:relative;overflow:hidden;margin:6px 0 3px}
+.bar .fill{position:absolute;inset:0 auto 0 0;background:var(--brandsoft);border-right:2px solid var(--brand)}
+.bar .fill.over{background:var(--badsoft);border-right-color:var(--bad)}
+.bar .fill.near{background:var(--warnsoft);border-right-color:var(--warn)}
+.bar .fill.hard{background:var(--tealsoft);border-right-color:var(--teal)}
+.bar .lbl{position:absolute;right:8px;top:0;bottom:0;display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--muted)}
+.bar-cap{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px;gap:10px;flex-wrap:wrap}
+
+/* compression theatre / general steps */
+.theatre .scenebox{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:12px;min-height:120px}
+.theatre .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:860px){.theatre .cols{grid-template-columns:1fr}}
+.phase-label{font-size:12px;font-weight:750;color:var(--brand);letter-spacing:.02em;margin-bottom:6px}
+.modebox{display:grid;gap:10px;grid-template-columns:1fr 1fr;border:1px dashed var(--line);border-radius:12px;padding:12px;margin:12px 0}
+@media (max-width:720px){.modebox{grid-template-columns:1fr}}
+.modebox .grp{font-size:13px;line-height:1.7}
+.modebox .grp b{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.switchrow{display:flex;flex-wrap:wrap;gap:8px}
+.switch{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 13px;font-size:13.5px;min-height:38px}
+.switch.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.playing-strip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-height:24px;margin-top:8px;flex-wrap:wrap}
+
+/* truncation */
+.logbox{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:10px 12px;font:12.8px/1.75 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.logbox .l{white-space:pre-wrap;overflow-wrap:anywhere;border-radius:6px;padding:1px 6px}
+.logbox .l.head{background:var(--tealsoft)}
+.logbox .l.tail{background:var(--tealsoft)}
+.logbox .l.crit{background:var(--mark);color:var(--markink);font-weight:700}
+.logbox .l.gone{background:var(--badsoft);color:var(--bad);text-decoration:line-through;opacity:.75}
+.logbox .marker{color:var(--bad);font-weight:700;background:var(--badsoft);border-radius:6px;padding:2px 8px;display:inline-block;margin:6px 0}
+
+/* state machine */
+.threecol{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:920px){.threecol{grid-template-columns:1fr}}
+.colcard{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:11px}
+.colcard h4{font-size:13px;letter-spacing:.02em;margin-bottom:8px;color:var(--brand)}
+.entry{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12.8px;line-height:1.6;margin-bottom:6px}
+.entry.sum{border-color:var(--teal);background:var(--tealsoft)}
+.entry.frozen{opacity:.55}
+.entry.gone{opacity:.45;text-decoration:line-through}
+.entry.hl{border-color:var(--brand);box-shadow:0 0 0 2px var(--brandsoft)}
+
+/* cache / bill */
+.cachebar{display:grid;gap:6px;margin:10px 0}
+.seg{display:flex;height:34px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
+.seg span{display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap;padding:0 4px}
+.seg .s-sys{background:#64748b}.seg .s-tools{background:#7c3aed}.seg .s-hist{background:#2952cc}.seg .s-new{background:#ea580c}
+.seg .reuse{outline:3px solid var(--ok);outline-offset:0;position:relative}
+.seg .noreuse{opacity:.4}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted)}
+.legend .sw{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+
+/* checklist */
+.checklist{display:grid;gap:8px}
+.checkitem{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--panel);font-size:14px;line-height:1.7}
+.checkitem input{margin-top:4px;width:17px;height:17px;flex:none}
+.checkitem.done{background:var(--oksoft);border-color:var(--ok)}
+
+/* details */
+details{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:0;margin:14px 0;overflow:hidden}
+details>summary{cursor:pointer;padding:11px 14px;font-size:14px;font-weight:650;list-style:none;display:flex;align-items:center;gap:8px}
+details>summary::before{content:"▸";color:var(--brand);font-size:13px}
+details[open]>summary::before{content:"▾"}
+details>summary::marker{content:""}
+details .inner{padding:2px 14px 14px}
+details.src[open]{border-color:var(--brand)}
+details.answer{border-left:4px solid var(--teal)}
+
+/* selftest */
+.qs{display:grid;gap:12px;counter-reset:qq}
+.q{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:12px 14px}
+.q .qt{font-weight:650;font-size:14.5px;line-height:1.75}
+.q .qt::before{counter-increment:qq;content:"Q" counter(qq) " · ";color:var(--brand);font-weight:800;font-size:13px}
+
+/* predict widget */
+.predict{border:1px dashed var(--brand);border-radius:12px;background:var(--brandsoft);padding:12px 14px;margin:12px 0}
+.predict .pq{font-size:14px;font-weight:650;line-height:1.75;margin-bottom:8px}
+.predict .pbtns{display:flex;flex-wrap:wrap;gap:8px}
+.predict .pfb{font-size:13.5px;line-height:1.75;margin-top:10px}
+.predict .pfb.good{color:var(--ok);font-weight:650}
+.predict .pfb.bad{color:var(--bad);font-weight:650}
+
+/* pager */
+.unitfoot{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);margin-top:40px;padding-top:18px}
+.unitfoot .btn{flex:1;text-align:center}
+.unitfoot .btn small{display:block;font-size:11.5px;color:inherit;opacity:.7}
+
+/* misc */
+.src-line{font-size:13px;line-height:1.8;margin:6px 0;overflow-wrap:anywhere}
+.flowline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13.5px;margin:10px 0}
+.flowline .node{border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:6px 11px;font-weight:650}
+.flowline .arr{color:var(--muted)}
+.foot{color:var(--muted);font-size:12.5px;line-height:1.9;border-top:1px solid var(--line);margin-top:36px;padding-top:14px}
+.kbd{font:12px ui-monospace,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px;background:var(--panel2)}
+@media (max-width:540px){
+  body{font-size:15.5px}
+  .wrap{padding:0 14px}
+  .content{padding:20px 0 70px}
+  pre{font-size:12.8px;padding:12px}
+  h2{font-size:19px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<div class="scrim" id="scrim"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="目录">
+    <div class="brand">
+      <div class="logo">T17</div>
+      <div><b>上下文管理 · 交互教材</b><small>单文件 · 可离线</small></div>
+    </div>
+    <nav>
+      <ul class="navlist" id="navlist">
+        <li><button class="navlink" data-go="intro"><span class="n">◇</span><span>开始之前<small>读法 · 数值口径 · 证据纪律</small></span></button></li>
+        <li><button class="navlink" data-go="b1"><span class="n">①</span><span>预算与触发<small>四本账 · 八工具口径演算器</small></span></button></li>
+        <li><button class="navlink" data-go="b2"><span class="n">②</span><span>裁剪与损失点<small>头尾裁剪 · 三处限长定位</small></span></button></li>
+        <li><button class="navlink" data-go="b3"><span class="n">③</span><span>压缩四幕<small>保留骨架 · 连续压缩演推</small></span></button></li>
+        <li><button class="navlink" data-go="b4"><span class="n">④</span><span>保存与恢复<small>四态对照 · 恢复三形态</small></span></button></li>
+        <li><button class="navlink" data-go="b5"><span class="n">⑤</span><span>检索 · 记忆 · 交接<small>按需读入 · 三问判断卡</small></span></button></li>
+        <li><button class="navlink" data-go="b6"><span class="n">⑥</span><span>账单器<small>三组账单 · 场景决策表</small></span></button></li>
+        <li><button class="navlink" data-go="b7"><span class="n">⑦</span><span>时间线与演化器<small>请求组装逐块生长</small></span></button></li>
+        <li><button class="navlink" data-go="appendix"><span class="n">附录</span><span>术语 · 数值总表 · 边界<small>与官方入口</small></span></button></li>
+      </ul>
+    </nav>
+    <div class="side-note">
+      课程母稿：T15（M01–M12）；比较矩阵：T14。<br>
+      全部讲解与交互可离线使用；<br>官方缓存原版嵌入需联网（已备离线回退）。
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="打开目录">目录</button>
+      <div class="where" id="where">开始之前</div>
+      <div class="pager">
+        <button class="icon-btn" id="prevBtn">上一节</button>
+        <button class="icon-btn" id="nextBtn">下一节</button>
+      </div>
+    </header>
+    <main id="main">
+      <div class="content wrap">
+
+<section class="unit" id="intro">
+        <div class="unithead">
+          <span class="kicker">开始之前 · 先读三分钟</span>
+          <h1>桌子满了要收拾，<br>可东西去哪了？</h1>
+          <p class="lead" style="margin-top:14px">这是 <b>T15 课程母稿的交互版</b>：七个可操作的实验台，把「预算与触发 → 裁剪 → 压缩 → 恢复 → 检索/记忆/交接 → 缓存账单 → 请求组装」串成一条线。每个实验台都能改参数、逐步回看、先猜后看。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">怎么用这份教材</h2>
+          <p>七个实验台各自独立，但建议按 ①→⑦ 顺序读——前一个的结论是后一个的前提。每台都包含六件事：</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>默认样例</b>用真实/源码常量口径的默认参数，打开就能算。</div>
+            <div class="meta-card"><b>参数说明</b>每个输入框旁标出它是什么、来自哪个字段。</div>
+            <div class="meta-card"><b>逐步 · 暂停 · 回看 · 重置</b>所有演推都可单步、连续播放、任意跳步、一键重置。</div>
+            <div class="meta-card"><b>预测题（先猜后看）</b>先点你的判断，再看系统给出的结论与理由。</div>
+            <div class="meta-card"><b>数据表</b>每一步的数值以表格呈现，便于核对。</div>
+            <div class="meta-card"><b>答案反馈</b>猜对/猜错都给解释，并指回 T15 的对应单元。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">数值口径三条纪律<span class="tag">读任何数字前先看角标</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>角标</th><th>含义</th><th>本教材里的例子</th></tr></thead>
+            <tbody>
+              <tr><td data-th="角标"><span class="pill const">源码常量</span></td><td data-th="含义">固定快照源码里的真实常量/公式（附文件+行号+证据ID）</td><td data-th="例子">20,000 / 64,000 保留预算；`(W×9)/10` 基础线</td></tr>
+              <tr><td data-th="角标"><span class="pill demo">演示</span></td><td data-th="含义">教学假设数字，<b>不是</b>真实阈值，不得暗示为实测</td><td data-th="例子">W=200,000、A=152,000、三组账单数字</td></tr>
+              <tr><td data-th="角标"><span class="pill test">待回填</span></td><td data-th="含义">尚未实测，标 <code>【T19 待回填】</code>，一律按「演示」对待</td><td data-th="例子">连续压缩失真、服务端缓存命中率、恢复后幂等</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout warn">
+            <div class="ttl">三条不可越过的红线</div>
+            <p>① <b>不排名次</b>：本教材不出现任何「谁更省 / 更快 / 更强」的排序；唯一允许排名次的时机是 T19 统一条件实测后。<br>
+               ② <b>未知保留未知</b>：文档没给的数字就写「未公布 / 未发现（推断）」，不臆造。<br>
+               ③ <b>不承诺命中率</b>：服务端缓存命中/TTL 九工具全部 <b>UNOBSERVABLE</b>，只能讲 CLI 侧可观测字段。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">七台实验台一览</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>#</th><th>实验台</th><th>形态</th><th>对应母稿</th></tr></thead>
+            <tbody>
+              <tr><td data-th="#">①</td><td data-th="实验台">预算/触发演算器</td><td data-th="形态">四本账 + 八工具口径切换（含预测）</td><td data-th="母稿">M03</td></tr>
+              <tr><td data-th="#">②</td><td data-th="实验台">裁剪器</td><td data-th="形态">头尾裁剪条带 + 损失点定位（含预测）</td><td data-th="母稿">M05</td></tr>
+              <tr><td data-th="#">③</td><td data-th="实验台">压缩四幕</td><td data-th="形态">五步骨架逐步演推 + 连续压缩</td><td data-th="母稿">M04</td></tr>
+              <tr><td data-th="#">④</td><td data-th="实验台">状态机</td><td data-th="形态">压缩前/后·关闭·重开 四态 × 三层</td><td data-th="母稿">M06</td></tr>
+              <tr><td data-th="#">⑤</td><td data-th="实验台">检索/记忆/交接</td><td data-th="形态">按需读入 + 三问判断卡</td><td data-th="母稿">M09 / M08</td></tr>
+              <tr><td data-th="#">⑥</td><td data-th="实验台">账单器</td><td data-th="形态">三组账单拆账 + 场景决策表</td><td data-th="母稿">M07 / M11</td></tr>
+              <tr><td data-th="#">⑦</td><td data-th="实验台">时间线/演化器</td><td data-th="形态">请求组装逐块生长（可播放）</td><td data-th="母稿">M02</td></tr>
+            </tbody>
+          </table></div>
+          <p class="muted">复杂交互（①②③④⑥⑦）都另配了 <code>T17-静态替代.md</code> 的同数据文字/表格版本，供无 JS 或打印场景使用。</p>
+        </div>
+
+        <div class="unitfoot">
+          <span></span>
+          <button class="btn primary" data-next="b1">下一节 <small>① 预算与触发</small></button>
+        </div>
+</section>
+
+<section class="unit" id="b1">
+        <div class="unithead">
+          <span class="kicker">实验台 ① · 掌握机制（M03）</span>
+          <h1>它怎么知道「桌子快满了」？</h1>
+          <p class="lead" style="margin-top:14px">程序一直维护着<b>几条数字</b>，每拍对着<b>几条线</b>比一比——到线了就动手。这一台给你窗口、用量与一组配置，让你自己算出「到没到线」，并切换八种工具口径看同一件事的九种画法。</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>M02（请求是「拼」出来的）。</div>
+            <div class="meta-card"><b>读完你能</b>手算一条自动整理线到没到线，并说出用的是哪条线。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">人话直给<span class="tag">四本账 + 三条线</span></h2>
+          <p>程序不是「每拍把所有字重数一遍」，而是以<b>服务端上次的实测为锚点</b>，加上本地刚加进来的材料，得到「当前用量 A」；再拿 A 去和几条<b>预先算好的线</b>比。四本账是 <b>W</b>（窗口）、<b>p</b>（有效窗口比例，缺省 95）、<b>H = W×p÷100</b>（有效窗口）、<b>A</b>（当前用量）；外加 <b>P</b>（输入基线）。</p>
+          <p>三条线：<b>基础线</b> <code>(W×9)/10</code>（90% 向下取整，范围线的默认原料）→ <b>范围线</b> <code>min(M, 基础线)</code>（M = 模型字段，Codex 专有）→ <b>整段线</b> = H（所有材料都不得超过的硬检查）。<mark>触发到线 = 范围线 OR 整段线</mark>。</p>
+          <div class="callout warn">
+            <div class="ttl">当心 · 两个别写错</div>
+            <p>❌「90–95% 是统一压缩阈值」——该说法已被<b>九工具全部否证</b>（C-01/C-02）；各家口径从 50% 到「窗口减固定值」都有。<br>
+               ❌「模型字段 M 缺失 = 限额为 0」——<b>None 不是 0</b>：字段缺失时程序回退到 90% 基础线。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互 · 预算/触发演算器<span class="tag">改参数 · 切口径 · 先猜后看</span></h2>
+          <div class="interact" id="calcApp">
+            <div class="caption"><span class="tt">预算/触发演算器</span><span class="pill const">公式=源码常量</span><span class="pill demo">舞台参数=演示</span></div>
+            <div class="calc-grid">
+              <div class="field"><label>窗口 W（context window）</label><input id="calcW" type="number" value="200000" min="1000" step="1000"></div>
+              <div class="field"><label>有效窗口比例 p（缺省 95）</label><input id="calcP" type="number" value="95" min="1" max="100"></div>
+              <div class="field"><label>模型字段 M（auto compact token limit）</label><input id="calcM" type="number" value="150000" min="0" step="1000"></div>
+              <div class="field"><label>当前用量 A（active context tokens）</label><input id="calcA" type="number" value="152000" min="0" step="1000"></div>
+              <div class="field"><label>输出预留 O / maxOutput（⑤⑨用）</label><input id="calcO" type="number" value="16000" min="0" step="1000"></div>
+              <div class="field"><label>输入基线 P（口径=增长量时用）</label><input id="calcP0" type="number" value="150000" min="0" step="1000"></div>
+              <div class="field"><label>用量口径 scope</label><select id="calcScope"><option value="total">total（全部材料，默认）</option><option value="body">body_after_prefix（基线之后的增长量）</option></select></div>
+              <div class="field"><label>触发口径（八工具 + Gemini 存档）</label><select id="calcTool">
+                <option value="codex">① Codex（两条线 OR）</option>
+                <option value="claude">② Claude Code（占窗口百分比）</option>
+                <option value="pi">③ pi（W−16384）</option>
+                <option value="ohmy">④ oh-my-pi（W−max(15%W,16384)）</option>
+                <option value="ocv1">⑤ OpenCode v1（绝对预留）</option>
+                <option value="ocv2">⑥ OpenCode v2（W−max(10%W,16000)）</option>
+                <option value="gemini">⑦ Gemini（历史·存档，0.5×W）</option>
+                <option value="grok">⑧ Grok Build（85%×W）</option>
+                <option value="dsh">⑨ deepseek-harness（双上限）</option>
+              </select></div>
+            </div>
+            <p class="muted" style="font-size:12.5px;margin-top:8px">参数说明：W 是这张「桌子」总容量；p 是实际允许用的比例（字段缺省 95）；M 是模型元数据里的自动整理限额（<b>Codex 专有，dsh 无此字段</b>）；A 是桌上现在堆了多少（锚点 = 上次服务端 usage + 本地新增估算）；O 只在 ⑤⑨ 参与计算；P 只在 scope=增长量 时参与。</p>
+            <div class="preset-row" id="calcPresets">
+              <button class="preset" data-preset="ex1">例1 · Codex 两线 OR</button>
+              <button class="preset" data-preset="ex2">例2 · 预留式三兄弟（W=200k）</button>
+              <button class="preset" data-preset="ex3">例3 · dsh 双上限</button>
+              <button class="preset" data-preset="ex4">例4 · ocv1 绝对预留</button>
+              <button class="preset" data-preset="reset">重置为默认</button>
+            </div>
+            <div class="btnrow">
+              <button class="btn" id="calcPrev">上一步</button>
+              <button class="btn primary" id="calcNext">下一步</button>
+              <button class="btn" id="calcPlay">连续播放</button>
+              <button class="btn" id="calcPause" disabled>暂停</button>
+              <button class="btn ghost" id="calcReset">重置</button>
+              <span class="spacer"></span>
+              <button class="btn" id="calcRun">查看完整结论</button>
+            </div>
+            <div class="playing-strip" id="calcStatus">逐步演算：未开始（点「下一步」按 5 步演算）</div>
+            <div class="calc-out" id="calcOut"></div>
+            <div class="predict" id="calcPredict">
+              <div class="pq">预测题（先猜后看）：按当前参数与所选口径，这条线<b>到线了吗</b>？</div>
+              <div class="pbtns">
+                <button class="btn" data-guess="yes">我猜「到线」</button>
+                <button class="btn" data-guess="no">我猜「未到线」</button>
+              </div>
+              <div class="pfb hidden" id="calcFb"></div>
+            </div>
+          </div>
+          <div class="data-table" id="calcTable" style="margin-top:14px"></div>
+          <div class="reason-line info" id="calcNote"></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">五个数字算例（母稿 M03 原样）</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>例</th><th>用的线 / 口径</th><th>结论</th></tr></thead>
+            <tbody>
+              <tr><td data-th="例">1【演示】</td><td data-th="线/口径">范围线（min 钳制）+ 整段线，M=150,000、A=152,000</td><td data-th="结论">152,000 ≥ 150,000 → <b>范围线到线</b>（整段 152,000 &lt; 190,000 未到）→ <b>到线成立</b></td></tr>
+              <tr><td data-th="例">2【源码常量】</td><td data-th="线/口径">③ pi <code>W−16384</code>=<b>183,616</b>；④ oh-my-pi <code>W−max(15%W,16384)</code>=<b>170,000</b>；⑥ ocv2 <code>W−max(10%W,16000)</code>=<b>180,000</b></td><td data-th="结论">三种窗口同台，<b>线不同</b></td></tr>
+              <tr><td data-th="例">3【源码常量】</td><td data-th="线/口径">⑨ dsh 双上限 <code>floor(min(0.8W, W−O−65536))</code>，W=200,000、O=16,000</td><td data-th="结论"><code>floor(min(160,000, 118,464))</code>=<b>118,464</b>（比例上限与留余量上限取更小者）</td></tr>
+              <tr><td data-th="例">4【源码常量】</td><td data-th="线/口径">⑤ ocv1 绝对预留 <code>reserved=min(20000,maxOutput)</code></td><td data-th="结论">与窗口大小无关——<b>窗口再大也先扣掉这 2 万</b></td></tr>
+              <tr><td data-th="例">5【演示】</td><td data-th="线/口径">同一段 400 汉字（UTF-8 共 1,200 字节）三种估算口径</td><td data-th="结论">⑨dsh <code>ceil(400/4)</code>=<b>100</b>（实测 108，低估）；①Codex <code>ceil(1200/4)</code>=<b>300</b>（按字节）；⑦Gemini 400×1.5=<b>600</b>（对中文高估）</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout warn">
+            <div class="ttl">当心 · 数字相同 ≠ 机制相同</div>
+            <p>⑧ Grok 的 <code>85%×W</code> = 170,000，与 ④ oh-my-pi 的 <code>W−max(15%W,16384)</code> = 170,000 <b>数字一样、口径完全不同</b>（一个「预留 15%」，一个「85% 触发」）。引用时务必写清是哪一类。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">八工具触发口径全表<span class="tag">不排名次</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>工具</th><th>触发口径</th><th>类别</th><th>证据ID</th></tr></thead>
+            <tbody>
+              <tr><td data-th="工具">① Codex</td><td data-th="口径">两条线 OR：范围线 <code>min(M,90%W)</code> 或 整段线 <code>W×95%</code></td><td data-th="类别">两线式</td><td data-th="证据ID"><code>codex-trigger-01/02</code></td></tr>
+              <tr><td data-th="工具">② Claude Code</td><td data-th="口径">占窗口百分比（<code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code> 只能调低；<b>默认值未公布</b>）</td><td data-th="类别">比例式</td><td data-th="证据ID"><code>claude-trigger-02/03</code></td></tr>
+              <tr><td data-th="工具">③ pi</td><td data-th="口径"><code>W − 16384</code>（唯一阈值）</td><td data-th="类别">预留式</td><td data-th="证据ID"><code>pi-trigger-01</code></td></tr>
+              <tr><td data-th="工具">④ oh-my-pi</td><td data-th="口径"><code>W − max(15%W, 16384)</code> → 200K = 170,000</td><td data-th="类别">预留式</td><td data-th="证据ID"><code>ohmy-trigger-01</code></td></tr>
+              <tr><td data-th="工具">⑤ OpenCode v1</td><td data-th="口径">绝对预留 <code>reserved=min(20000,maxOutput)</code>，<code>usable=limit.input−reserved</code></td><td data-th="类别">预留式</td><td data-th="证据ID"><code>ocv1-trigger-01/02</code></td></tr>
+              <tr><td data-th="工具">⑥ OpenCode v2</td><td data-th="口径"><code>W − max(10%W, 16000)</code> → 200K = 180,000</td><td data-th="类别">预留式</td><td data-th="证据ID"><code>ocv2-trigger-01</code></td></tr>
+              <tr><td data-th="工具">⑦ Gemini（历史·存档）</td><td data-th="口径"><code>0.5 × W</code> → 1M = 524,288</td><td data-th="类别">比例式</td><td data-th="证据ID"><code>gemini-trigger-02</code></td></tr>
+              <tr><td data-th="工具">⑧ Grok Build</td><td data-th="口径"><code>85% × W</code></td><td data-th="类别">比例式</td><td data-th="证据ID"><code>grok-trigger-02</code></td></tr>
+              <tr><td data-th="工具">⑨ deepseek-harness（dsh）</td><td data-th="口径">双上限 <code>floor(min(0.8W, W−O−65536))</code></td><td data-th="类别">双上限</td><td data-th="证据ID"><code>dsh-trigger-01</code></td></tr>
+            </tbody>
+          </table></div>
+          <p class="muted">读表三件事：① <b>三大类</b>——比例式（②⑧⑦）/ 预留式（③④⑤⑥⑨）/ 两线式（①）；②「预留」都在给<b>输出和整理动作</b>留空间；③「默认值」是引用红线——②未公布、⑧有内部文档冲突（Q-01~Q-05 登记不裁决），凡未证一律不写数字。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测<span class="tag">先猜，再看答案</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">某模型元数据<b>没给</b>限额字段 M。有同学说「那就等于限额为 0，永远不压缩」。错在哪？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错在「把 None 当 0」。</b>字段缺失时程序<b>回退到 90% 基础线</b>（<code>map_or(context_limit, …)</code>）：没有专门值 = 用默认线，不是「限额为零」。把「缺失」和「零」混起来，是读 <code>Option</code> 类型最常见的错误。</p></div></details></div>
+            <div class="q"><div class="qt">轮前检查把「用户马上要发的这条巨大粘贴」也算进去了。（对/错）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>源码留了 TODO：轮前检查发生在<b>新输入与上下文更新写入之前</b>，尚未把即将到来的内容估算进去——一次巨大的粘贴<b>仍可能一步跨过安全线</b>。这是「有界但非万能」的真实工程取舍。<code>【T19 未专项覆盖（codex 轮前检查）；旁证：grok 实测「大步长可一步跨线」（70/85 双线同越）与工程判断一致（证据：T19/07-grok §1.10）】</code></p></div></details></div>
+            <div class="q"><div class="qt">把三个工具各归到「比例式 / 预留式 / 双上限」一类：⑧ Grok（<code>85%×W</code>）、④ oh-my-pi（<code>W−max(15%W,16384)</code>）、⑨ dsh（<code>min(0.8W, W−O−65536)</code>）。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>⑧ Grok = <b>比例式</b>；④ oh-my-pi = <b>预留式</b>；⑨ dsh = <b>双上限</b>（比例上限与「留输出余量」上限取更小者）。</p></div></details></div>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="intro">上一节 <small>开始之前</small></button>
+          <button class="btn primary" data-next="b2">下一节 <small>② 裁剪与损失点</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var OUT=$("#calcOut"),TBL=$("#calcTable"),NOTE=$("#calcNote"),FB=$("#calcFb");
+          var last={};
+          var step=0,timer=null;
+          function n(id){var v=parseFloat($(id).value);return isFinite(v)?v:0}
+          function fmt(x){return (Math.round(x)).toLocaleString("en-US")}
+          function classify(t){
+            if(t==="codex")return "两线式";
+            if(t==="claude"||t==="grok"||t==="gemini")return "比例式";
+            if(t==="dsh")return "双上限";
+            return "预留式";
+          }
+          function compute(){
+            var W=n("#calcW"),p=n("#calcP"),M=n("#calcM"),A=n("#calcA"),O=n("#calcO"),P0=n("#calcP0");
+            var scope=$("#calcScope").value,tool=$("#calcTool").value;
+            var H=Math.floor(W*p/100);
+            var base=Math.floor(W*9/10);
+            var scopeTokens=(scope==="total")?A:Math.max(0,A-P0);
+            var range=(M>0)?Math.min(M,base):base;
+            var line=null,lineTxt="",extra=[];
+            if(tool==="codex"){line=range;lineTxt="范围线 min(M, 90%W) = "+fmt(range);}
+            else if(tool==="claude"){lineTxt="占窗口百分比（默认值未公布【T19 实测：代理条件触发 ≈98%（98,014~98,015/100k 窗口）；默认百分比仍未公布（证据：T19/03-claude §3）】）";line=null;extra.push(["百分比覆盖","只能调低；本教材不臆造默认值"]);}
+            else if(tool==="pi"){line=W-16384;lineTxt="W − 16384 = "+fmt(line);}
+            else if(tool==="ohmy"){line=W-Math.max(Math.floor(0.15*W),16384);lineTxt="W − max(15%W,16384) = "+fmt(line);}
+            else if(tool==="ocv1"){var res=Math.min(20000,O);line=W-res;lineTxt="usable = limit.input − reserved = "+fmt(line)+"（reserved="+fmt(res)+"）";}
+            else if(tool==="ocv2"){line=W-Math.max(Math.floor(0.10*W),16000);lineTxt="W − max(10%W,16000) = "+fmt(line);}
+            else if(tool==="gemini"){line=Math.floor(0.5*W);lineTxt="0.5 × W = "+fmt(line);}
+            else if(tool==="grok"){line=Math.floor(0.85*W);lineTxt="85% × W = "+fmt(line);}
+            else if(tool==="dsh"){line=Math.floor(Math.min(0.8*W,W-O-65536));lineTxt="floor(min(0.8W, W−O−65536)) = "+fmt(line);}
+            var reached=false,reason="";
+            if(tool==="codex"){
+              var r1=scopeTokens>=range, r2=A>=H;
+              reached=r1||r2;
+              reason="范围线 "+(r1?"到线":"未到")+"（"+fmt(scopeTokens)+" vs "+fmt(range)+"）；整段线 "+(r2?"到线":"未到")+"（"+fmt(A)+" vs "+fmt(H)+"）→ OR："+(reached?"到线成立":"未到线");
+            }else if(line===null){
+              reached=null;reason="② 默认百分比未公布，无法判定——这是引用红线：凡未证一律不写数字。";
+            }else{
+              reached=scopeTokens>=line;
+              reason="用量 "+fmt(scopeTokens)+" vs 触发线 "+fmt(line)+" → "+(reached?"到线":"未到线");
+            }
+            return {W:W,p:p,M:M,A:A,O:O,P0:P0,scope:scope,tool:tool,H:H,base:base,scopeTokens:scopeTokens,range:range,line:line,lineTxt:lineTxt,extra:extra,reached:reached,reason:reason};
+          }
+          function bar(name,cap,used,total,cls){
+            var pct=total>0?Math.min(100,used/total*100):0;
+            return '<div class="bar-cap"><span>'+name+'</span><span>'+fmt(used)+' / '+fmt(total)+'（'+pct.toFixed(1)+'%）</span></div>'+
+              '<div class="bar"><div class="fill '+(cls||"")+'" style="width:'+pct.toFixed(2)+'%"></div><div class="lbl">'+cap+'</div></div>';
+          }
+          function render(){
+            var c=compute();last=c;
+            var cls=(c.reached===true)?"over":(c.reached===false?"":"");
+            var html='<div class="bar-cap"><span>用量位置（相对窗口）</span><span>A='+fmt(c.A)+' / W='+fmt(c.W)+'</span></div>'+
+              '<div class="bar"><div class="fill '+(c.reached===true?"over":(c.reached===false?"near":""))+'" style="width:'+Math.min(100,c.A/c.W*100).toFixed(2)+'%"></div><div class="lbl">当前用量 A</div></div>';
+            if(c.line!==null){html+=bar("触发线（本工具口径）",c.reached?"已到线":"未到线",c.scopeTokens,c.line,cls);}
+            html+=bar("整段线 H = W×p÷100（硬检查）",c.A>=c.H?"已越过":"未越过",c.A,c.H,c.A>=c.H?"over":"hard");
+            html+='<div class="data-table">'+
+              row("所选口径",c.tool+"（"+classify(c.tool)+"）")+
+              row("四本账 W / p / H",fmt(c.W)+" / "+c.p+" / "+fmt(c.H))+
+              row("基础线 (W×9)/10",fmt(c.base))+
+              row("范围线 min(M, 90%W)",fmt(c.range))+
+              row("本工具触发线",c.line===null?"（未公布）":fmt(c.line))+
+              row("用量（scope="+c.scope+"）",fmt(c.scopeTokens))+
+              row("判定",c.reached===null?"无法判定（默认值未公布）":(c.reached?"到线":"未到线"),c.reached===null?"warn":(c.reached?"bad":"ok"))+
+              c.extra.map(function(e){return row(e[0],e[1])}).join("")+
+            '</div>';
+            OUT.innerHTML=html;
+            TBL.innerHTML='<div class="data-row"><span class="k">判定理由</span><span class="v">'+c.reason+'</span></div>';
+            NOTE.textContent=c.lineTxt;
+            FB.className="pfb hidden";
+            applyStep();
+          }
+          function applyStep(){
+            var rows=OUT.querySelectorAll(".data-row");
+            var cnt=(step<=0)?0:([2,3,5,6,999][step-1]);
+            rows.forEach(function(r,i){r.style.display=(i<cnt)?"":"none"});
+            OUT.querySelectorAll(".bar,.bar-cap").forEach(function(b){b.style.display=(step>=3)?"":"none"});
+            TBL.style.display=(step>=5)?"":"none";
+            $("#calcStatus").textContent=(step<=0)?"逐步演算：未开始（点「下一步」按 5 步演算：四本账 → 基础线 → 范围线/触发线 → 用量 → 判定）"
+              :"逐步演算 · 第 "+step+" / 5 步"+(step===5?"（已完成，可回看任意步）":"");
+            $("#calcPrev").disabled=step<=0;$("#calcNext").disabled=step>=5;
+          }
+          function stopCalc(msg){if(timer){clearInterval(timer);timer=null}$("#calcPlay").disabled=false;$("#calcPause").disabled=true;if(msg)$("#calcStatus").textContent="模式："+msg}
+          function row(k,v,cls){return '<div class="data-row"><span class="k">'+k+'</span><span class="v '+(cls||"")+'">'+v+'</span></div>'}
+          ["#calcW","#calcP","#calcM","#calcA","#calcO","#calcP0"].forEach(function(id){$(id).addEventListener("input",render)});
+          $("#calcScope").addEventListener("change",render);
+          $("#calcTool").addEventListener("change",render);
+          $("#calcRun").addEventListener("click",function(){step=5;render()});
+          $("#calcNext").addEventListener("click",function(){stopCalc("逐步演算（连续播放已暂停）");if(step<5){step++;render()}});
+          $("#calcPrev").addEventListener("click",function(){stopCalc("逐步演算（连续播放已暂停）");if(step>0){step--;render()}});
+          $("#calcPlay").addEventListener("click",function(){
+            stopCalc();if(step>=5)step=0;
+            $("#calcPlay").disabled=true;$("#calcPause").disabled=false;
+            $("#calcStatus").textContent="模式：连续演算中（每步 1.5 秒，随时可暂停）";
+            render();
+            timer=setInterval(function(){if(step>=5){stopCalc("连续演算已结束（保留在最后一步）")}else{step++;render()}},1500);
+          });
+          $("#calcPause").addEventListener("click",function(){stopCalc("已暂停（连续演算）。点「下一步」进入逐步演算。")});
+          $("#calcReset").addEventListener("click",function(){
+            stopCalc("逐步演算（连续播放已暂停）");
+            $("#calcW").value=200000;$("#calcP").value=95;$("#calcM").value=150000;$("#calcA").value=152000;
+            $("#calcO").value=16000;$("#calcP0").value=150000;$("#calcScope").value="total";$("#calcTool").value="codex";
+            document.querySelectorAll(".preset").forEach(function(b){b.classList.remove("on")});
+            step=0;render();
+          });
+          var presets={
+            ex1:{W:200000,p:95,M:150000,A:152000,O:16000,P0:150000,scope:"total",tool:"codex"},
+            ex2:{W:200000,p:95,M:150000,A:152000,O:16000,P0:150000,scope:"total",tool:"ohmy"},
+            ex3:{W:200000,p:95,M:150000,A:152000,O:16000,P0:150000,scope:"total",tool:"dsh"},
+            ex4:{W:200000,p:95,M:150000,A:152000,O:32000,P0:150000,scope:"total",tool:"ocv1"}
+          };
+          document.querySelectorAll(".preset").forEach(function(b){
+            b.addEventListener("click",function(){
+              document.querySelectorAll(".preset").forEach(function(x){x.classList.remove("on")});
+              b.classList.add("on");
+              var k=b.getAttribute("data-preset");
+              if(k==="reset"){$("#calcReset").click();b.classList.remove("on");return}
+              var v=presets[k];
+              $("#calcW").value=v.W;$("#calcP").value=v.p;$("#calcM").value=v.M;$("#calcA").value=v.A;
+              $("#calcO").value=v.O;$("#calcP0").value=v.P0;$("#calcScope").value=v.scope;$("#calcTool").value=v.tool;
+              step=5;render();
+            });
+          });
+          document.querySelectorAll("#calcPredict [data-guess]").forEach(function(b){
+            b.addEventListener("click",function(){
+              var g=b.getAttribute("data-guess")==="yes";
+              var c=compute();
+              if(c.reached===null){
+                FB.className="pfb";
+                FB.innerHTML="该口径的默认值未公布，<b>无法判定</b>——这本身就是答案：不臆造数字。<code>【T19 实测：代理条件触发 ≈98%（98,014~98,015/100k 窗口），默认百分比仍未公布（证据：T19/03-claude §3）】</code>";
+                return;
+              }
+              var ok=(g===c.reached);
+              FB.className="pfb "+(ok?"good":"bad");
+              FB.innerHTML=(ok?"猜对了。":"猜错了。")+" 结论：<b>"+(c.reached?"到线":"未到线")+"</b>。理由："+c.reason+"（结论回 M03 §五 例1）。";
+            });
+          });
+          render();
+        })();
+        </script>
+</section>
+
+<section class="unit" id="b2">
+        <div class="unithead">
+          <span class="kicker">实验台 ② · 掌握机制（M05）</span>
+          <h1>一条 300 行的日志，怎么吃掉半个窗口</h1>
+          <p class="lead" style="margin-top:14px">工具输出是最大的隐形膨胀源。一条关键约束要活到下一次请求，必须连续通过「出口 → 历史 → 整理 → 恢复」四关——<b>任何一关都可以是丢失点</b>。这一台让你亲手滑动预算、移动关键行的位置，看它最坏情况下死在哪一关。</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>M04（列表里的材料怎么被改写）。</div>
+            <div class="meta-card"><b>读完你能</b>做一张损失点定位表，指出约束在三处限长的哪一处丢的。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">三处限长<span class="tag">不是三份，是三关</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>关卡</th><th>什么时候动刀</th><th>动刀的是谁</th><th>产物形态</th></tr></thead>
+            <tbody>
+              <tr><td data-th="关卡">① 出口限长</td><td data-th="时机">工具结果交给模型消费<b>之前</b></td><td data-th="谁">工具结果包装函数</td><td data-th="形态">带警告头的<b>预览</b>（保头尾裁剪、加说明头、超限落盘）</td></tr>
+              <tr><td data-th="关卡">② 活动历史</td><td data-th="时机">结果<b>登记进当前列表</b>时</td><td data-th="谁">历史管理函数</td><td data-th="形态">列表里的<b>裁剪副本</b>；<b>存档另存原载荷</b></td></tr>
+              <tr><td data-th="关卡">③ 摘要请求</td><td data-th="时机">到线<b>整理</b>时</td><td data-th="谁">压缩/摘要流程</td><td data-th="形态">给模型看的<b>历史副本</b>，超限再缩</td></tr>
+            </tbody>
+          </table></div>
+          <p><b>出口是「给模型的预览」，活动历史是「列表里的副本」，摘要是「整理用的副本」</b>——三者是三份不同的东西，不能画成一个全局滑块。①和②要「裁两次」是因为目标不同：①保证单条不撑爆一次工具往返；②保证整张列表配平窗口。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互 · 裁剪器<span class="tag">滑预算 · 移关键行 · 先猜后看</span></h2>
+          <div class="interact" id="trApp">
+            <div class="caption"><span class="tt">头尾裁剪器（Codex 近似 token 口径）</span><span class="pill const">算法=源码常量</span><span class="pill demo">300 行样本=演示</span></div>
+            <div class="calc-grid">
+              <div class="field"><label>预算 max_tokens（越大保留越多）</label><input id="trBudget" type="range" min="100" max="6000" step="100" value="1000"></div>
+              <div class="field"><label>关键行「14:30 集合点东门」位置</label><select id="trPos"><option value="head">头部（第 1 行附近）</option><option value="mid" selected>中部（第 150 行附近）</option><option value="tail">尾部（第 300 行附近）</option></select></div>
+              <div class="field"><label>原文总量（教学样本）</label><input id="trTotal" type="number" value="300" min="10" step="10"></div>
+            </div>
+            <p class="muted" style="font-size:12.5px;margin-top:8px">参数说明：预算是「近似 token」，实现按<b>字节</b>落刀——<code>max_bytes = max_tokens×4</code>；左预算 = <code>floor(max_bytes/2)</code>、右 = 其余（奇数差的那 1 字节给尾部）；标记 <code>…N tokens truncated…</code> <b>另加、不占预算</b>。样本 300 行 ≈ 22,003 字节 / 17,190 字符（T03 样本）。</p>
+            <div class="btnrow">
+              <button class="btn" id="trPrev">上一步</button>
+              <button class="btn primary" id="trNext">下一步</button>
+              <button class="btn" id="trPlay">连续播放</button>
+              <button class="btn" id="trPause" disabled>暂停</button>
+              <button class="btn ghost" id="trReset">重置</button>
+            </div>
+            <div class="playing-strip" id="trStatus">逐步裁剪：未开始（点「下一步」按 5 步演示）</div>
+            <div class="logbox" id="trLog" style="margin-top:12px"></div>
+            <div class="data-table" id="trTable" style="margin-top:12px"></div>
+            <div class="reason-line" id="trFate"></div>
+            <div class="predict" id="trPredict">
+              <div class="pq">预测题（先猜后看）：按当前设置，这条关键行最可能<b>死在哪一关</b>？</div>
+              <div class="pbtns">
+                <button class="btn" data-guess="1">① 出口限长</button>
+                <button class="btn" data-guess="2">② 活动历史</button>
+                <button class="btn" data-guess="3">③ 摘要请求</button>
+              </div>
+              <div class="pfb hidden" id="trFb"></div>
+            </div>
+          </div>
+          <div class="tblwrap" style="margin-top:14px"><table>
+            <thead><tr><th>约束放的位置</th><th>最坏情况下的命运</th></tr></thead>
+            <tbody>
+              <tr><td data-th="位置">中部</td><td data-th="命运">①出口裁剪阶段就消失，后面三步再努力也没机会看见它</td></tr>
+              <tr><td data-th="位置">头部 / 尾部</td><td data-th="命运">还能过①，但仍可能被②历史裁剪或③摘要带走</td></tr>
+              <tr><td data-th="位置">用户消息里</td><td data-th="命运">不进工具输出，走的是另一条路（M01/M02）</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout ok">
+            <div class="ttl">最实用的一条工程建议</div>
+            <p>关键约束要放在工具输出的<b>头尾</b>（或让工具显式置顶），不要指望它躺在中段侥幸过关。同理，人对模型的表达也一样：<b>最要紧的约束写在消息的开头或结尾</b>。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">单位口径必须逐工具看<span class="tag">不得互套</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>工具</th><th>限长口径</th><th>超限原文去哪</th><th>证据ID</th></tr></thead>
+            <tbody>
+              <tr><td data-th="工具">① Codex</td><td data-th="口径"><code>ceil(bytes/4)</code> 近似 token 头尾裁剪；左右非均分、标记另加</td><td data-th="去哪">rollout 存档（原载荷）；分片持久化 64 KiB 上限</td><td data-th="证据ID"><code>codex-trunc-01/03</code>、样章 C11</td></tr>
+              <tr><td data-th="工具">② Claude Code</td><td data-th="口径">Bash 成功内联约 <b>30,000 字符</b>，超限给路径 + ≤2,000 字符预览；失败约 10,000 字符头尾摘录、无路径</td><td data-th="去哪">落盘 <code>tool-results/</code>；<b>&gt;64 MiB 截断</b></td><td data-th="证据ID"><code>claude-toolout-01/02/03/04</code></td></tr>
+              <tr><td data-th="工具">③ pi</td><td data-th="口径"><b>2000 行 / 50KB 先到者</b>；read/grep 保头、bash 保尾</td><td data-th="去哪">临时文件；请求留 <code>[Showing lines X-Y of N … Full output: path]</code></td><td data-th="证据ID"><code>pi-trunc-01/02</code></td></tr>
+              <tr><td data-th="工具">④ oh-my-pi</td><td data-th="口径"><b>3000 行 / 50 KiB</b> 先到者；head/tail 分流；单行列 512 字节</td><td data-th="去哪"><code>artifact://&lt;id&gt;</code>（16 MiB 上限）</td><td data-th="证据ID"><code>ohmy-trunc-01/02</code></td></tr>
+              <tr><td data-th="工具">⑤ ocv1 / ⑥ ocv2</td><td data-th="口径"><b>2000 行 / 51200 字节</b> 先到者；<b>shell 纯 tail / read 保头</b>（T19 实测更正：原「⑥仅 head」不成立于 shell 路径）</td><td data-th="去哪">落盘截断目录，<b>保留 7 天</b></td><td data-th="证据ID"><code>ocv1-trunc-01</code>、<code>ocv2-trunc-01/02</code></td></tr>
+              <tr><td data-th="工具">⑦ Gemini（历史·存档）</td><td data-th="口径"><b>40,000 字符</b> + head 20% / tail 80%；硬上限 64 KB</td><td data-th="去哪">落盘 <code>tool-outputs/</code></td><td data-th="证据ID"><code>gemini-trunc-01/02</code></td></tr>
+              <tr><td data-th="工具">⑧ Grok Build</td><td data-th="口径">bash 输出<b>实测头/尾各 10,000 字符</b>（T19 实测更正：文档常量 65536 字节未成为约束）+ <code>[compaction.pruning]</code> 剪枝层</td><td data-th="去哪">全文落盘至会话 <code>terminal/call-&lt;id&gt;.log</code>（T19 实测）</td><td data-th="证据ID"><code>grok-toolout-01/03</code></td></tr>
+              <tr><td data-th="工具">⑨ dsh</td><td data-th="口径">三层：read 2000 行/2000 字符/51200 字节；bash <b>实测 64,000 B/流</b>（T19 实测更正：16,000 字符属另一包）；spill 12500 tokens；pruner 8192/4096/1024</td><td data-th="去哪"><code>spill-local</code>（省略 <code>maxInlineTokens</code> 即关闭落盘）</td><td data-th="证据ID"><code>dsh-trunc-01..04</code></td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout warn">
+            <div class="ttl">当心 · 三个别写错</div>
+            <p>❌「工具输出超限就永久丢了」——只在<b>模型可见层</b>成立（C-03/C-12）；磁盘原文在保留期内可查。<br>
+               ❌「30k 和 64KiB 谁更宽」——<b>单位不同</b>（字符 vs 字节），不得互套。<br>
+               ❌「所有工具都保头尾」——反例：⑤⑥ <b>纯 tail</b>（T19 实测更正）；⑧ Grok 实测头/尾各 10,000 字符。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测<span class="tag">先猜，再看答案</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">文本 30 个 ASCII 字符，预算 10 字节（Codex 头尾口径）。头尾各留多少？移除多少字节？标记数字是多少？最终字节数等于 10 吗？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>左 = 5、右 = 5（10÷2 恰好均分）；头 = 前 5 字符，尾 = 后 5 字符；移除 = 20 字节 → N = <code>ceil(20/4)</code> = <b>5</b>；结果 = 5 字符 + <code>…5 tokens truncated…</code> + 5 字符。<b>最终字节数不等于 10</b>（10 + 标记长度）——标记不占预算。</p></div></details></div>
+            <div class="q"><div class="qt">工具结果被活动历史裁剪了，说明存档里也少了。（对/错）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>活动历史裁剪<b>只作用于进入活动历史的副本</b>；存档（rollout）写入的是<b>未裁剪原载荷</b>。但要追问：「存档有」≠「以后一定读回到模型」，且存档自身还有独立预算（64 KiB 分片，<code>codex-trunc-03</code>）。</p></div></details></div>
+            <div class="q"><div class="qt">② Claude 的 30,000、⑧ Grok 的 65,536、③ pi 的 50KB——单位各是什么？为什么不能直接比大小？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>② 30,000 是<b>字符</b>；⑧ 65,536 是<b>字节</b>；③ 50KB 是<b>字节</b>且与 2000 行<b>取先到者</b>。不能比大小：单位不同，且 pi 是双上限取先到者——「数字大」不等于「实际留得多」。</p></div></details></div>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="b1">上一节 <small>① 预算与触发</small></button>
+          <button class="btn primary" data-next="b3">下一节 <small>③ 压缩四幕</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var LOG=$("#trLog"),TBL=$("#trTable"),FATE=$("#trFate"),FB=$("#trFb");
+          var BYTES_PER_LINE=22003/300;   // ≈73.34
+          var step=0,timer=null;
+          function fmt(x){return Math.round(x).toLocaleString("en-US")}
+          function compute(){
+            var budget=parseInt($("#trBudget").value,10);
+            var total=parseInt($("#trTotal").value,10)||300;
+            var pos=$("#trPos").value;
+            var maxBytes=budget*4;
+            var leftBytes=Math.floor(maxBytes/2);
+            var rightBytes=maxBytes-leftBytes;
+            var headLines=Math.floor(leftBytes/BYTES_PER_LINE);
+            var tailLines=Math.floor(rightBytes/BYTES_PER_LINE);
+            var critIndex=(pos==="head")?1:(pos==="tail"?total:Math.floor(total/2));
+            var fate;
+            if(critIndex<=headLines)fate="幸存（头部保留区）";
+            else if(critIndex>total-tailLines)fate="幸存（尾部保留区）";
+            else fate="已消失（位于被移除的中段）";
+            var removedBytes=Math.max(0,22003-maxBytes);
+            var markerN=Math.ceil(removedBytes/4);
+            return {budget:budget,total:total,pos:pos,maxBytes:maxBytes,leftBytes:leftBytes,rightBytes:rightBytes,headLines:headLines,tailLines:tailLines,critIndex:critIndex,fate:fate,removedBytes:removedBytes,markerN:markerN};
+          }
+          function render(){
+            var c=compute();
+            var lines=[];
+            var critInHead=(c.critIndex<=c.headLines),critInTail=(c.critIndex>c.total-c.tailLines);
+            var critLine='<div class="l '+(critInHead||critInTail?'crit':'gone')+'">第 '+c.critIndex+' 行 │ 测试提醒：集合点东门，14:30 前必须到达。</div>';
+            var show=Math.min(6,c.headLines),showTail=Math.min(6,c.tailLines);
+            // 第 1 步：读入原文与预算
+            if(step>=1)lines.push('<div class="l">原文共 '+c.total+' 行 ≈ 22,003 字节 / 17,190 字符（预算 max_tokens = '+fmt(c.budget)+'）</div>');
+            // 第 2 步：算左/右预算
+            if(step>=2)lines.push('<div class="l">max_bytes = '+fmt(c.budget)+' × 4 = '+fmt(c.maxBytes)+' → 左 '+fmt(c.leftBytes)+' 字节 / 右 '+fmt(c.rightBytes)+' 字节</div>');
+            // 第 3 步：裁头
+            if(step>=3){
+              for(var i=1;i<=show;i++){lines.push('<div class="l head">'+i+' │ 公交线路表头/站点行（保留）</div>')}
+              if(c.headLines>show)lines.push('<div class="l head">…（头部保留共 '+c.headLines+' 行）</div>');
+              if(c.headLines>=c.critIndex)lines.push(critLine);
+            }
+            // 第 4 步：裁尾
+            if(step>=4){
+              if(c.tailLines>showTail)lines.push('<div class="l tail">…（尾部保留共 '+c.tailLines+' 行）</div>');
+              for(var j=c.total-showTail+1;j<=c.total;j++){if(j<1)continue;lines.push('<div class="l tail">'+j+' │ 末尾汇总行/结论行（保留）</div>')}
+            }
+            // 第 5 步：加标记 + 判定
+            if(step>=5){
+              lines.push('<div class="marker">…'+fmt(c.markerN)+' tokens truncated…（中段 '+(c.total-c.headLines-c.tailLines)+' 行被删）</div>');
+              if(!critInHead&&!critInTail)lines.push(critLine);
+            }
+            if(step<=0)lines.push('<div class="l">（未开始）点「下一步」按 5 步演示：读入 → 算预算 → 裁头 → 裁尾 → 加标记/判定</div>');
+            LOG.innerHTML=lines.join("");
+            var rowsAll=[
+              ["原文总量",c.total+" 行 ≈ 22,003 字节 / 17,190 字符",1,""],
+              ["预算 max_tokens",fmt(c.budget)+" → max_bytes = "+fmt(c.maxBytes),1,""],
+              ["左/右预算（字节）",fmt(c.leftBytes)+" / "+fmt(c.rightBytes)+"（奇数差 1 字节给尾部）",2,""],
+              ["头部保留 / 尾部保留",c.headLines+" 行 / "+c.tailLines+" 行"+((c.headLines+c.tailLines>=c.total)?"（已覆盖全样本，头尾区间重叠）":""),3,""],
+              ["中段移除",Math.max(0,c.total-c.headLines-c.tailLines)+" 行",5,""],
+              ["标记数字 N",fmt(c.markerN)+"（ceil(移除字节/4)，标记不占预算）",5,""],
+              ["关键行位置",c.critIndex+" 行",1,""],
+              ["关键行命运",c.fate,5,(critInHead||critInTail)?"ok":"bad"]
+            ];
+            TBL.innerHTML=rowsAll.filter(function(r){return step>=r[2]}).map(function(r){return row(r[0],r[1],r[3])}).join("");
+            if(step>=5){
+              FATE.className="reason-line "+(critInHead||critInTail?"ok":"");
+              FATE.textContent="结论："+(critInHead||critInTail
+                ?"关键行落在「头/尾保留区」，通过了①出口限长——但它仍可能被②历史裁剪或③摘要带走，继续往后走。"
+                :"关键行落在被移除的中段：它在①出口限长（保头尾）阶段就丢了，根本轮不到摘要。对策：把它放到工具输出头部，或让工具显式置顶。");
+            }else{
+              FATE.className="reason-line info";
+              FATE.textContent=(step<=0)?"逐步裁剪：未开始。":("第 "+step+" 步："+["读入原文与预算","算左/右预算","裁头（保头部）","裁尾（保尾部）","加标记并判定关键行命运"][step-1]+"。");
+            }
+            $("#trStatus").textContent=(step<=0)?"逐步裁剪：未开始（点「下一步」按 5 步演示）":"逐步裁剪 · 第 "+step+" / 5 步"+(step===5?"（已完成，可回看任意步）":"");
+            $("#trPrev").disabled=step<=0;$("#trNext").disabled=step>=5;
+            FB.className="pfb hidden";
+          }
+          function row(k,v,cls){return '<div class="data-row"><span class="k">'+k+'</span><span class="v '+(cls||"")+'">'+v+'</span></div>'}
+          function stopTr(msg){if(timer){clearInterval(timer);timer=null}$("#trPlay").disabled=false;$("#trPause").disabled=true;if(msg)$("#trStatus").textContent="模式："+msg}
+          ["#trBudget","#trTotal"].forEach(function(id){$(id).addEventListener("input",function(){if(step===0)step=5;render()})});
+          $("#trPos").addEventListener("change",function(){if(step===0)step=5;render()});
+          $("#trNext").addEventListener("click",function(){stopTr("逐步裁剪（连续播放已暂停）");if(step<5){step++;render()}});
+          $("#trPrev").addEventListener("click",function(){stopTr("逐步裁剪（连续播放已暂停）");if(step>0){step--;render()}});
+          $("#trPlay").addEventListener("click",function(){
+            stopTr();if(step>=5)step=0;
+            $("#trPlay").disabled=true;$("#trPause").disabled=false;
+            $("#trStatus").textContent="模式：连续裁剪中（每步 1.5 秒，随时可暂停）";
+            render();
+            timer=setInterval(function(){if(step>=5){stopTr("连续裁剪已结束（保留在最后一步）")}else{step++;render()}},1500);
+          });
+          $("#trPause").addEventListener("click",function(){stopTr("已暂停（连续裁剪）。点「下一步」进入逐步裁剪。")});
+          $("#trReset").addEventListener("click",function(){stopTr("逐步裁剪（连续播放已暂停）");$("#trBudget").value=1000;$("#trPos").value="mid";$("#trTotal").value=300;step=0;render()});
+          document.querySelectorAll("#trPredict [data-guess]").forEach(function(b){
+            b.addEventListener("click",function(){
+              var c=compute();
+              var correct=(c.fate.indexOf("已消失")>=0)?"1":"2"; // 中部→①；头尾→②（仍可能被后续关带走）
+              var g=b.getAttribute("data-guess");
+              var ok=(g===correct);
+              FB.className="pfb "+(ok?"good":"bad");
+              FB.innerHTML=(ok?"猜对了。":"猜错了（本题按最可能/最靠前的一关作答）。")+" 当前设置："+c.fate+"。"+
+                (c.fate.indexOf("已消失")>=0
+                  ?"中部 → 第①关（出口限长，保头尾）就丢，后三步再努力也没机会看见它。"
+                  :"头/尾 → 过了第①关，但最可能仍被第②关（活动历史裁剪）带走——存档另存原载荷，可查回。");
+            });
+          });
+          render();
+        })();
+        </script>
+</section>
+
+<section class="unit" id="b3">
+        <div class="unithead">
+          <span class="kicker">实验台 ③ · 掌握机制（M04）</span>
+          <h1>整理之后，桌上留下了什么？</h1>
+          <p class="lead" style="margin-top:14px">整理 ≠ 把全部对话换成一页摘要。真实产物至少两种形态，且<b>大部分近期原话会被原样留下</b>。这一台把保留算法的五步骨架拆成一幕一幕，逐步演推「谁留下、谁变短、谁被扔、摘要排在哪」，并演示连续压缩。</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>M03（什么时候必须整理）。</div>
+            <div class="meta-card"><b>读完你能</b>对每条材料说出「它去哪了、为什么、代价是什么」。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">两条路径 + 五步骨架</h2>
+          <p>整理有<b>两条实现路径</b>，由 provider 能力决定：<b>本地摘要路径</b>（客户端编排，产物是可读文字摘要）与 <b>远端压缩 v2</b>（服务端完成，产物是含 <code>encrypted_content</code> 的加密压缩条目，客户端只见形状）。两条路径产物不同，但<b>保留</b>遵循同一副骨架：</p>
+          <div class="flowline">
+            <span class="node">① 筛候选</span><span class="arr">→</span>
+            <span class="node">② 用预算（从新到旧）</span><span class="arr">→</span>
+            <span class="node">③ 边界截短（保头尾、就停手）</span><span class="arr">→</span>
+            <span class="node">④ 产物另加（不占原话预算）</span><span class="arr">→</span>
+            <span class="node">⑤ 重组规则</span>
+          </div>
+          <div class="callout warn">
+            <div class="ttl">当心 · 三组数字互相独立</div>
+            <p><b>20,000</b>（本地保留预算）/ <b>64,000</b>（远端 v2 保留预算）/ <b>触发线</b>——三组数字<b>互相独立，不得混用</b>。20,000 不是触发线，也不是最终请求大小，它只是「给旧用户原话留的共享预算」。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互 · 压缩四幕<span class="tag">逐步 · 播放 · 回看 · 重置</span></h2>
+          <div class="interact theatre" id="cmpApp">
+            <div class="caption"><span class="tt">压缩四幕 · 保留骨架演推</span><span class="pill const">预算 20,000 = 源码常量</span><span class="pill demo">消息 token = 演示</span></div>
+            <div class="btnrow">
+              <button class="btn" id="cmpPrev">上一步</button>
+              <button class="btn primary" id="cmpNext">下一步</button>
+              <button class="btn" id="cmpPlay">连续播放</button>
+              <button class="btn" id="cmpPause" disabled>暂停</button>
+              <button class="btn ghost" id="cmpReset">重置</button>
+              <span class="spacer"></span>
+              <select id="cmpSpeed" class="switch" style="min-height:38px" aria-label="连续播放速度">
+                <option value="2000">每幕 2.0 秒</option>
+                <option value="4000" selected>每幕 4.0 秒（默认）</option>
+                <option value="6500">每幕 6.5 秒</option>
+              </select>
+            </div>
+            <div class="switchrow" style="margin-top:8px">
+              <button class="switch on" data-sample="a">样例 A（12,000 / 10,000 / 6,000）</button>
+              <button class="switch" data-sample="b">样例 B（9,000 / 16,000 / 7,000，母稿自测②）</button>
+            </div>
+            <div class="playing-strip" id="cmpStatus">当前：逐步阅读（连续播放未开始）</div>
+            <div class="stepdots" id="cmpDots" style="margin-top:10px"></div>
+            <div class="theatre cols" style="margin-top:12px">
+              <div>
+                <div class="phase-label" id="cmpPhase">第 0 幕 · 整理前</div>
+                <div class="stage-note" id="cmpNote"></div>
+                <div class="phase-label" style="margin-top:12px">整理前的旧历史</div>
+                <div class="mlist" id="cmpBefore"></div>
+              </div>
+              <div>
+                <div class="phase-label">当前的替代历史（replacement_history）</div>
+                <div class="mlist" id="cmpAfter"></div>
+              </div>
+            </div>
+            <div class="data-table" id="cmpTable"></div>
+            <div class="reason-line info" id="cmpWhy"></div>
+            <div class="predict" id="cmpPredict">
+              <div class="pq">预测题（先猜后看）：按样例 A，更旧的 M1（12,000）装不进剩余预算时，算法会回头挑更早的小消息「补缝」吗？</div>
+              <div class="pbtns">
+                <button class="btn" data-guess="yes">会补缝</button>
+                <button class="btn" data-guess="no">不补缝，就此停手</button>
+              </div>
+              <div class="pfb hidden" id="cmpFb"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">两层事实：被压缩的内容去哪了<span class="tag">C-03 / C-12</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>层</th><th>被压缩的内容在哪</th><th>能不能自动恢复</th></tr></thead>
+            <tbody>
+              <tr><td data-th="层">模型可见层（这次请求带上的那份）</td><td data-th="在哪">已被替代历史（摘要 + 保留项）替换，原文不在</td><td data-th="恢复"><b>不可自动恢复</b>（不是程序删了，是它不在这一份里）</td></tr>
+              <tr><td data-th="层">磁盘原文层（会话存档 / 落盘文件）</td><td data-th="在哪">九工具均有落盘/存档入口，原文保留期内可查</td><td data-th="恢复"><b>可查回</b>（人工/工具从磁盘读，而非模型自动想起）</td></tr>
+            </tbody>
+          </table></div>
+          <p class="muted">保留期差异：② Claude 约 30 天；⑤ocv1 / ⑥ocv2 截断目录约 7 天。保留期是「可查窗口」，不是「永久档案」。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测<span class="tag">先猜，再看答案</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">判断题：「整理就是把所有对话换成一页摘要。」</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>整理大部分旧材料确实不再逐条带上，但产物至少两种形态（文字摘要 / 远端加密压缩块），且<b>近期用户原话会被原样保留</b>、<b>当前规则与环境会被重组摆回</b>。「全部换成一页摘要」漏掉了「保留」和「重组」。</p></div></details></div>
+            <div class="q"><div class="qt">小林用 OpenAI 官方账号。压缩完成后，他在<b>模型可见历史</b>里看到的交接材料最可能是什么形态？<br>A. 一段可读的中文摘要　B. 一个含 <code>encrypted_content</code> 的压缩条目　C. 旧消息原样全在　D. 什么都没有</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>B。</b>官方 OpenAI provider 默认 <code>RemoteCompactionSupport::V2</code>，产物是服务端压缩条目（客户端侧含加密内容）。A 是本地摘要路径（提供方不支持远端压缩时）的形态。</p></div></details></div>
+            <div class="q"><div class="qt">为什么两条路径都「从新到旧」，而不是「按重要程度排」？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>「重要程度」无法在客户端<b>廉价又可靠</b>地评估：读懂语义再挑等于又跑一次模型（成本、延迟都不可接受，且可能挑错）。<b>时间新近性是可用、稳定、便宜的代理信号</b>；深层语义保全交给摘要产物的生成环节。这也是「整理会不会保住你关心的细节」最终无法被客户端代码单方面保证的原因。</p></div></details></div>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="b2">上一节 <small>② 裁剪与损失点</small></button>
+          <button class="btn primary" data-next="b4">下一节 <small>④ 保存与恢复</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var SAMPLES={
+            a:{budget:20000,msgs:[{id:"M1",tok:12000},{id:"M2",tok:10000},{id:"M3",tok:6000}]},
+            b:{budget:20000,msgs:[{id:"M1",tok:9000},{id:"M2",tok:16000},{id:"M3",tok:7000}]}
+          };
+          var sample="a",i=0,timer=null;
+          function fmt(x){return Math.round(x).toLocaleString("en-US")}
+          // 通用保留算法：从新到旧逐条试装；装得下的原样装入；第一条装不下的作为边界条目
+          // 截短到剩余预算（保头尾 + 标记），其后停止（不补缝）。全部装得下则无边界、不截短。
+          function plan(){
+            var s=SAMPLES[sample],B=s.budget,msgs=s.msgs;
+            var order=msgs.slice().reverse(); // 从新到旧
+            var rem=B,installed=[],boundary=null,boundaryIdx=-1;
+            for(var k=0;k<order.length;k++){
+              var m=order[k];
+              if(m.tok<=rem){installed.push(m);rem-=m.tok}
+              else{boundary=m;boundaryIdx=k;break}
+            }
+            var older=(boundaryIdx>=0)?order.slice(boundaryIdx+1):[];
+            return {B:B,msgs:msgs,installed:installed,installedOldToNew:installed.slice().reverse(),rem:rem,boundary:boundary,older:older};
+          }
+          function acts(){
+            var s=SAMPLES[sample],B=s.budget,msgs=s.msgs,p=plan();
+            var newest=msgs[msgs.length-1],mid=msgs[msgs.length-2],old=msgs[0];
+            var installedIds=p.installed.map(function(m){return m.id});
+            var installedSum=p.installed.reduce(function(a,m){return a+m.tok},0);
+            var steps=[];
+            steps.push({phase:"第 0 幕 · 整理前",note:"桌上有三条用户过往原话（从旧到新："+old.id+"="+fmt(old.tok)+"、"+(msgs.length>2?mid.id+"="+fmt(mid.tok)+"、":"")+newest.id+"="+fmt(newest.tok)+"）和一条旧摘要。共享保留预算 "+fmt(B)+" tokens。",
+              before:msgs.map(function(m){return {ic:"历史",txt:m.id+" 用户原话",tok:m.tok,cls:""}}).concat([{ic:"摘要",txt:"旧摘要（将被前缀识别并排除）",tok:0,cls:"dim"}]),
+              after:[{ic:"",txt:"（尚未整理）",tok:0,cls:"dim"}],
+              data:[["阶段","整理前"],["共享预算",fmt(B)],["已装","—"],["剩余",fmt(B)]],why:"先猜：整理后 M1/M2/M3 各去哪？"});
+            steps.push({phase:"第 1 幕 · ① 筛候选",note:"算法只收「真正的用户消息」，并靠固定前缀排除旧摘要——不按语义评重要性。旧摘要被剔除，M1/M2/M3 进入候选池。",
+              before:msgs.map(function(m){return {ic:"历史",txt:m.id+" 用户原话",tok:m.tok,cls:""}}).concat([{ic:"摘要",txt:"旧摘要（前缀识别 → 排除）",tok:0,cls:"cut"}]),
+              after:[{ic:"候选",txt:"M1 / M2 / M3（按时间序）",tok:0,cls:""}],
+              data:[["阶段","① 筛候选"],["候选条数","3 条（旧摘要已排除）"],["筛选依据","类型 + 前缀，不看语义"]],why:"同一个变量可能是「你真说过的话」，也可能是「上一轮摘要伪装成的用户消息」。"});
+            // 第 2 幕：逐条试装，文字由计算结果生成
+            var segs=[],r=B;
+            p.installed.forEach(function(m){segs.push("装 "+m.id+"（"+fmt(m.tok)+" ≤ "+fmt(r)+"）→ 剩 "+fmt(r-m.tok));r-=m.tok});
+            var note2="倒着装（从新到旧逐条试装）："+(segs.length?segs.join("；")+"。":"");
+            note2+=p.boundary?("再试 "+p.boundary.id+"（"+fmt(p.boundary.tok)+" > "+fmt(p.rem)+"）→ 装不下，转第 3 幕截短。"):"全部候选都装得下——无边界条目、无需截短。";
+            var after2=p.installed.map(function(m){return {ic:"已装",txt:m.id+" 原样",tok:m.tok,cls:"keep"}})
+              .concat(p.boundary?[{ic:"待装",txt:p.boundary.id+"（"+fmt(p.boundary.tok)+"）",tok:p.boundary.tok,cls:""}]:[])
+              .concat(p.older.map(function(m){return {ic:"待装",txt:m.id+"（"+fmt(m.tok)+"）",tok:m.tok,cls:""}}));
+            steps.push({phase:"第 2 幕 · ② 用预算（从新到旧）",note:note2,
+              before:msgs.map(function(m){return {ic:"历史",txt:m.id+" 用户原话",tok:m.tok,cls:""}}).concat([{ic:"摘要",txt:"旧摘要（排除）",tok:0,cls:"cut"}]),
+              after:after2,
+              data:[["阶段","② 用预算"],["装入顺序","从新到旧"],["已装",installedIds.length?(installedIds.join(" + ")+" = "+fmt(installedSum)):"—"],["剩余",fmt(p.rem)]],why:"最近的用户原话优先装箱——时间新近性是便宜可靠的代理信号。"});
+            // 第 3 幕：边界条目由计算得出（可能不存在）
+            var b=p.boundary,rem=p.rem;
+            var truncItem=b?[{ic:"截短",txt:b.id+" 头尾片段（约 "+fmt(rem)+" tokens）+ 截断标记",tok:rem,cls:"cut"}]:[];
+            var note3,data3,why3;
+            if(b){
+              note3=b.id+"（"+fmt(b.tok)+"）装不下（> 剩余 "+fmt(rem)+"）。算法把边界这一条砍成「头一段 + 尾一段」，合计约 "+fmt(rem)+" tokens + 截断标记，然后<b>收手</b>——不回头挑更早的小条目补缝。";
+              data3=[["阶段","③ 边界截短"],["边界条目",b.id+"（"+fmt(b.tok)+" > "+fmt(rem)+"）"],["处理","保头尾 + 标记，然后停止"],["是否补缝","不补（硬规则）"]];
+              why3="「重要」不参与筛选："+b.id+" 中间若有「必须 14:30 集合」，要么在头尾片段里侥幸留下，要么只靠摘要传递——摘要能否保住它，客户端代码无法保证。";
+            }else{
+              note3="全部候选都装得下（无边界条目）：预算还剩 "+fmt(rem)+" tokens，本轮<b>不产生截短片段</b>，直接进入 ④ 产物另加。";
+              data3=[["阶段","③ 边界截短"],["边界条目","无（全部装得下）"],["处理","无截短（预算有余）"],["是否补缝","不适用（无边界）"]];
+              why3="没有「装不下」的条目，就不需要截短——保留算法只在遇到第一条装不下的消息时才动刀，且只动这一条。";
+            }
+            steps.push({phase:"第 3 幕 · ③ 边界截短（保头尾、就停手）",note:note3,
+              before:msgs.map(function(m){return {ic:"历史",txt:m.id+" 用户原话",tok:m.tok,cls:""}}).concat([{ic:"摘要",txt:"旧摘要（排除）",tok:0,cls:"cut"}]),
+              after:truncItem.concat(p.installedOldToNew.map(function(m){return {ic:"已装",txt:m.id+" 原样",tok:m.tok,cls:"keep"}}))
+                .concat(p.older.map(function(m){return {ic:"未装",txt:m.id+"（更旧，不补缝）",tok:m.tok,cls:"dim"}})),
+              data:data3,why:why3});
+            var tailItems=truncItem.concat(p.installedOldToNew.map(function(m){return {ic:"已装",txt:m.id+" 原样",tok:m.tok,cls:"keep"}}));
+            steps.push({phase:"第 4 幕 · ④ 产物另加（不占原话预算）",note:"摘要单独追加在箱尾——它<b>不占</b>那 "+fmt(B)+" 的「原样保留」预算。远端 v2 路径这一步换成「服务端压缩条目」。",
+              before:msgs.map(function(m){return {ic:"历史",txt:m.id+" 用户原话",tok:m.tok,cls:""}}).concat([{ic:"摘要",txt:"旧摘要（排除）",tok:0,cls:"cut"}]),
+              after:tailItems.concat([{ic:"另加",txt:"新摘要（不占原话预算）",tok:0,cls:"new"}]),
+              data:[["阶段","④ 产物另加"],["产物形态","本地=文字摘要 / 远端 v2=加密压缩条目"],["占预算吗","不占（另加）"]],why:"摘要是「资料」不是「指令」——它是一份模型写的二手材料，可能漏、可能错，别当用户指令照做。"});
+            var orderParts=["[规则]"];
+            if(b)orderParts.push("["+b.id+"截短]");
+            p.installedOldToNew.forEach(function(m){orderParts.push("["+m.id+"]")});
+            orderParts.push("[新摘要]");
+            steps.push({phase:"第 5 幕 · ⑤ 重组规则与环境",note:"最后把「当前规则与环境」重新渲染并摆回列表<b>靠前</b>位置——它们一直有效，必须每次带。",
+              before:msgs.map(function(m){return {ic:"历史",txt:m.id+" 用户原话",tok:m.tok,cls:""}}).concat([{ic:"摘要",txt:"旧摘要（排除）",tok:0,cls:"cut"}]),
+              after:[{ic:"规则",txt:"当前规则与环境（UTC / 权限…）摆回靠前",tok:0,cls:"new"}].concat(tailItems).concat([{ic:"另加",txt:"新摘要",tok:0,cls:"new"}]),
+              data:[["阶段","⑤ 重组规则"],["最终顺序",orderParts.join(" → ")],["存档","磁盘原文另存，不删（保留期内可查）"]],why:"磁盘上的原文保留期内可查——但模型不会自动想起，要人工/工具去磁盘读（C-03/C-12）。"});
+            steps.push({phase:"第 6 幕 · 连续压缩（再压一次）",note:"之后又聊了几轮，再次到线。新的整理会把「上一轮摘要」当作旧摘要排除，再基于更近的原话重新生成摘要——<b>摘要套摘要</b>。",
+              before:[{ic:"摘要",txt:"上一轮摘要（前缀识别 → 排除）",tok:0,cls:"cut"},{ic:"历史",txt:"压缩后又聊的几轮原话",tok:8000,cls:""}],
+              after:[{ic:"规则",txt:"当前规则与环境（摆回靠前）",tok:0,cls:"new"},{ic:"已装",txt:"更近的原话（预算内原样）",tok:8000,cls:"keep"},{ic:"另加",txt:"新摘要（基于上一轮摘要 + 新原话）",tok:0,cls:"new"}],
+              data:[["阶段","连续压缩"],["机制","排除旧摘要 + 基于更新材料重生成"],["风险","连续压缩失真（摘要漂移）→ 【T19 实测：grok 3 次压缩后硬约束丢失（首例直证）；单次压缩各工具 E1 全 PASS（证据：T19/07-grok §3）】"]],why:"增量合并（PRESERVE+ADD）判为有损；单次压缩未见约束丢失，grok 3 次连续压缩后硬约束丢失（首例直证，非复活非幻觉）；程度未量化（证据：T19/07-grok §3）。本教材按「演示」对待。"});
+            return steps;
+          }
+          function render(){
+            var steps=acts(),st=steps[i];
+            $("#cmpPhase").textContent=st.phase;
+            $("#cmpNote").innerHTML=st.note;
+            $("#cmpBefore").innerHTML=st.before.map(function(m){
+              return '<div class="mitem '+(m.cls||"")+'"><span class="ic">'+m.ic+'</span><div class="body">'+m.txt+'</div>'+(m.tok?'<span class="tok">'+fmt(m.tok)+'</span>':'')+'</div>';
+            }).join("");
+            $("#cmpAfter").innerHTML=st.after.map(function(m){
+              return '<div class="mitem '+(m.cls||"")+'"><span class="ic">'+(m.ic||"—")+'</span><div class="body">'+m.txt+'</div>'+(m.tok?'<span class="tok">'+fmt(m.tok)+'</span>':'')+'</div>';
+            }).join("");
+            $("#cmpTable").innerHTML=st.data.map(function(d){return row(d[0],d[1])}).join("");
+            $("#cmpWhy").textContent="说明："+st.why;
+            $("#cmpDots").innerHTML=steps.map(function(_,k){return '<button class="stepdot '+(k===i?"on":(k<i?"done":""))+'" data-jump="'+k+'">'+(k+1)+'</button>'}).join("");
+            $("#cmpPrev").disabled=i===0;$("#cmpNext").disabled=i===steps.length-1;
+            $("#cmpFb").className="pfb hidden";
+          }
+          function row(k,v){return '<div class="data-row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'}
+          function stop(msg){if(timer){clearInterval(timer);timer=null}$("#cmpPlay").disabled=false;$("#cmpPause").disabled=true;if(msg)$("#cmpStatus").textContent="模式："+msg}
+          $("#cmpNext").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");if(i<acts().length-1){i++;render()}});
+          $("#cmpPrev").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");if(i>0){i--;render()}});
+          $("#cmpReset").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");i=0;render()});
+          $("#cmpDots").addEventListener("click",function(e){var t=e.target.closest("[data-jump]");if(!t)return;stop("逐步阅读（连续播放已暂停）");i=parseInt(t.getAttribute("data-jump"),10);render()});
+          $("#cmpPlay").addEventListener("click",function(){
+            var sp=parseInt($("#cmpSpeed").value,10);
+            if(!sp){$("#cmpStatus").textContent="请先在选择框里选速度（每幕 2.0 / 4.0 / 6.5 秒），再开始连续播放。";return}
+            stop();if(i>=acts().length-1)i=0;
+            $("#cmpPlay").disabled=true;$("#cmpPause").disabled=false;
+            $("#cmpStatus").textContent="模式：连续播放中 · 每幕 "+(sp/1000)+" 秒（随时可暂停或点任意步）";
+            render();
+            timer=setInterval(function(){if(i>=acts().length-1){stop("连续播放已结束（保留在最后一幕）")}else{i++;render()}},sp);
+          });
+          $("#cmpSpeed").addEventListener("change",function(){
+            if(timer){clearInterval(timer);var sp=parseInt($("#cmpSpeed").value,10);
+              if(sp){$("#cmpStatus").textContent="模式：连续播放中 · 每幕 "+(sp/1000)+" 秒（已按新速度继续）";
+                timer=setInterval(function(){if(i>=acts().length-1){stop("连续播放已结束（保留在最后一幕）")}else{i++;render()}},sp);}}
+          });
+          $("#cmpPause").addEventListener("click",function(){stop("已暂停（连续播放）。点「下一步」进入逐步阅读。")});
+          document.querySelectorAll("#cmpApp [data-sample]").forEach(function(b){
+            b.addEventListener("click",function(){
+              document.querySelectorAll("#cmpApp [data-sample]").forEach(function(x){x.classList.remove("on")});
+              b.classList.add("on");sample=b.getAttribute("data-sample");stop("逐步阅读（已切换样例）");i=0;render();
+            });
+          });
+          document.querySelectorAll("#cmpPredict [data-guess]").forEach(function(b){
+            b.addEventListener("click",function(){
+              var g=b.getAttribute("data-guess")==="yes",ok=(!g);
+              var s=SAMPLES[sample],rem=s.budget-s.msgs[s.msgs.length-1].tok-s.msgs[s.msgs.length-2].tok;
+              $("#cmpFb").className="pfb "+(ok?"good":"bad");
+              $("#cmpFb").innerHTML=(ok?"猜对了。":"猜错了。")+" <b>不补缝，就此停手</b>——算法在边界消息后停止（骨架第③步的硬规则）。"+
+                "当前样例："+s.msgs[0].id+"（"+fmt(s.msgs[0].tok)+"）> 剩余 "+fmt(rem)+" → 头尾截短约 "+fmt(rem)+"，不再回头挑更早的小消息。";
+            });
+          });
+          render();
+        })();
+        </script>
+</section>
+
+<section class="unit" id="b4">
+        <div class="unithead">
+          <span class="kicker">实验台 ④ · 掌握机制（M06）</span>
+          <h1>关掉再打开，恢复的是哪一份材料？</h1>
+          <p class="lead" style="margin-top:14px">同一个会话，程序里有<b>三份不同的东西</b>：存档（磁盘）、活动历史（内存）、下次请求。这一台让你在「压缩前 / 压缩后 / 关闭程序 / 重开 resume」四个状态之间切换，看三层各自怎么变——并回答「被压掉的原话还在不在」。</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>M04/M05（材料怎么被改写、落盘）。</div>
+            <div class="meta-card"><b>读完你能</b>画出四态对照表，并分两层回答「能不能找回」。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">主结论四句<span class="tag">必须背下</span></h2>
+          <div class="callout">
+            <p><b>磁盘上有</b> ≠ <b>活动历史里有</b>；<b>活动历史里有</b> ≠ <b>下次请求带上</b>（还要过组装与裁剪）；<b>下次请求带上</b> ≠ <b>模型一定照做</b>（行为是另一层问题）；再补一句：<b>磁盘上有原文</b> ≠ <b>模型此刻看得见原文</b>（这是 C-03/C-12 的关键）。</p>
+          </div>
+          <p>整理（压缩）完成时，程序做<b>两件事</b>：① <b>替换当前活动历史</b>（用替代历史 = 重组后的规则 + 保留的旧消息 + 新摘要/压缩条目）；② <b>向磁盘追加一条「压缩检查点」</b>（含替代历史整份副本、窗口编号、用量摘要、恢复元数据）。检查点保存的<b>不是「删掉了什么」，而是「替代后是什么」</b>；旧记录仍留在之前已写入的存档行里——<b>追加式写入，不覆盖</b>。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互 · 状态机（四态 × 三层）<span class="tag">点击切换状态</span></h2>
+          <div class="interact" id="smApp">
+            <div class="caption"><span class="tt">保存/恢复状态机</span><span class="pill demo">演示数据</span></div>
+            <div class="btnrow" id="smBtns">
+              <button class="switch on" data-state="pre">压缩前</button>
+              <button class="switch" data-state="post">压缩后</button>
+              <button class="switch" data-state="closed">关闭程序</button>
+              <button class="switch" data-state="resume">重开 resume</button>
+            </div>
+            <div class="btnrow" style="margin-top:8px">
+              <button class="btn" id="smPrev">上一步</button>
+              <button class="btn primary" id="smNext">下一步</button>
+              <button class="btn" id="smPlay">连续播放</button>
+              <button class="btn" id="smPause" disabled>暂停</button>
+              <button class="btn ghost" id="smReset">重置</button>
+            </div>
+            <div class="playing-strip" id="smStatus"></div>
+            <div class="threecol" style="margin-top:12px">
+              <div class="colcard"><h4>① 存档（磁盘）</h4><div id="smDisk"></div></div>
+              <div class="colcard"><h4>② 活动历史（内存）</h4><div id="smMem"></div></div>
+              <div class="colcard"><h4>③ 下次请求</h4><div id="smReq"></div></div>
+            </div>
+            <div class="data-table" id="smTable"></div>
+            <div class="reason-line info" id="smNote"></div>
+            <div class="predict" id="smPredict">
+              <div class="pq">预测题（先猜后看）：重开 <code>resume</code> 后，恢复出来的初始历史里，会包含「被替代掉的原始旧消息」吗？</div>
+              <div class="pbtns">
+                <button class="btn" data-guess="yes">会包含</button>
+                <button class="btn" data-guess="no">不包含</button>
+              </div>
+              <div class="pfb hidden" id="smFb"></div>
+            </div>
+          </div>
+          <div class="callout ok">
+            <div class="ttl">读表一句话</div>
+            <p><b>磁盘不动、内存被换、请求跟着内存走。</b>「移除」≠「删除」——被移除的材料仍在①存档里（磁盘原文层可查，C-03/C-12），只是不再出现在模型可见层。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">三种恢复路线形态<span class="tag">不排名次</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>形态</th><th>一句话</th><th>恢复时做什么</th><th>代表</th></tr></thead>
+            <tbody>
+              <tr><td data-th="形态"><b>A · 替代历史 + 后缀回放</b></td><td data-th="一句话">先采用选中的检查点里的替代历史，再逐条回放「检查点之后」的记录</td><td data-th="做什么">不从头重放全部旧消息；把压缩之后发生的事按序补上</td><td data-th="代表">① Codex</td></tr>
+              <tr><td data-th="形态"><b>B · 持久化断点</b></td><td data-th="一句话">恢复时不重算，直接用存档里的「摘要 + 保留段起点」重建</td><td data-th="做什么">追加式日志里存着断点（摘要条目 + 起点 ID），投影重建</td><td data-th="代表">③ pi、④ oh-my-pi、⑤ ocv1、⑥ ocv2、⑨ dsh</td></tr>
+              <tr><td data-th="形态"><b>C · 重放 / 重建</b></td><td data-th="一句话">从落盘记录重新走一遍，重建出历史</td><td data-th="做什么">从 JSONL / 权威日志重放出对话历史</td><td data-th="代表">⑦ Gemini（存档）、⑧ Grok</td></tr>
+            </tbody>
+          </table></div>
+          <p><b>A 与 B 的差别</b>：A 是「用检查点当底、把后面的补上」；B 是「直接用断点、不重算」。两者都<b>不</b>把被替代掉的原始旧消息重新发给模型——这正是「恢复 ≠ 重发全历史」的实现含义。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测<span class="tag">先猜，再看答案</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">以下三句话分别说的是哪一层？（a）「文件里还存着」（b）「这段不在当前列表里」（c）「这次请求带着它」</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>（a）第①层<b>存档</b>（磁盘）；（b）第②层<b>活动历史</b>（内存）；（c）第③层<b>请求</b>。注意（c）才是影响模型行为的层面。</p></div></details></div>
+            <div class="q"><div class="qt">昨天压缩后你又聊了三轮，今天 <code>resume</code>。走「替代历史 + 后缀回放」路线时，恢复后的初始历史由哪两部分组成？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>最新可用<b>检查点的替代历史</b>（含重组规则、保留的消息、摘要/压缩条目）+ <b>该检查点之后的记录后缀</b>（那三轮的条目按序回放）。<b>不包括</b>更早的、已被替代历史覆盖的原始旧消息。</p></div></details></div>
+            <div class="q"><div class="qt">同学说「压缩过的内容绝不可能找回」。这句话哪一部分成立、哪一部分被否证？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>成立的部分</b>：对<b>模型可见层</b>成立——被压缩内容不可自动恢复。<b>被否证的部分</b>：外推成「磁盘也没有、任何方式都取不回」——<b>磁盘原文在保留期内可查</b>（各工具落盘/存档入口）。裁决 <b>C-03/C-12</b>：两事实并存、层不同。</p></div></details></div>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="b3">上一节 <small>③ 压缩四幕</small></button>
+          <button class="btn primary" data-next="b5">下一节 <small>⑤ 检索·记忆·交接</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var states={
+            pre:{disk:["全部原始记录（M1/M2/M3 + 工具结果）"],mem:["原始列表：M1(12,000)","M2(10,000)","M3(6,000)","工具结果 / 图片…"],req:["原列表组装（未整理）"],
+              table:[["阶段","压缩前"],["① 存档（磁盘）","已有全部记录"],["② 活动历史（内存）","原始列表"],["③ 下次请求","原列表组装"]],
+              note:"三份东西此刻基本一致——还没发生整理。"},
+            post:{disk:["全部原始记录（旧记录仍在）","+ 追加：压缩检查点（含替代历史整份副本）"],mem:["替代历史：[规则]","[M1 截短片段 ~4,000]","[M2] 原样","[M3] 原样","[新摘要]"],
+              req:["带上替代历史（不含被替代的原始旧消息）"],
+              table:[["阶段","压缩后"],["① 存档（磁盘）","追加检查点（旧记录仍在，不覆盖）"],["② 活动历史（内存）","被替换为替代历史"],["③ 下次请求","带上替代历史"]],
+              note:"磁盘不动、内存被换、请求跟着内存走——被替换掉的原始旧消息不会自动回到请求里。"},
+            closed:{disk:["全部原始记录 + 压缩检查点（不动）"],mem:["（内存态消失——程序已关闭）"],req:["—（无请求）"],
+              table:[["阶段","关闭程序"],["① 存档（磁盘）","不动"],["② 活动历史（内存）","内存态消失"],["③ 下次请求","—"]],
+              note:"磁盘是唯一活下来的那一层。这也是「关掉再打开还能接上话」的物理基础。"},
+            resume:{disk:["全部原始记录 + 压缩检查点（不动）"],mem:["由「检查点替代历史 + 后缀回放」重建（或断点重建）：","[规则] / [M1 截短] / [M2] / [M3] / [新摘要]","+ 检查点之后你又聊的三轮（按序回放）"],
+              req:["与压缩后一致（除非后缀里又有变化）"],
+              table:[["阶段","重开 resume"],["① 存档（磁盘）","不动"],["② 活动历史（内存）","检查点替代历史 + 后缀回放重建"],["③ 下次请求","与压缩后一致（除非后缀又有变化）"]],
+              note:"恢复 ≠ 精确还原昨天那一刻：压缩前被替换掉的部分不会回来；后缀里新发生的变化会补上——双向差异都会出现。"}
+          };
+          var ORDER=["pre","post","closed","resume"],LABEL={pre:"压缩前",post:"压缩后",closed:"关闭程序",resume:"重开 resume"};
+          var step=0,timer=null;
+          function render(k){
+            if(typeof k==="number"){step=Math.max(0,Math.min(ORDER.length-1,k));k=ORDER[step]}
+            else if(typeof k==="string"){step=ORDER.indexOf(k);if(step<0)step=0}
+            var s=states[k];
+            $("#smDisk").innerHTML=s.disk.map(function(t){return '<div class="entry '+(t.indexOf("检查点")>=0?"hl":(t.indexOf("内存态")>=0?"gone":"frozen"))+'">'+t+'</div>'}).join("");
+            $("#smMem").innerHTML=s.mem.map(function(t){return '<div class="entry '+(t.indexOf("摘要")>=0?"sum":(t.indexOf("消失")>=0?"gone":"frozen"))+'">'+t+'</div>'}).join("");
+            $("#smReq").innerHTML=s.req.map(function(t){return '<div class="entry hl">'+t+'</div>'}).join("");
+            $("#smTable").innerHTML=s.table.map(function(d){return '<div class="data-row"><span class="k">'+d[0]+'</span><span class="v">'+d[1]+'</span></div>'}).join("");
+            $("#smNote").textContent="说明："+s.note;
+            document.querySelectorAll("#smBtns [data-state]").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-state")===k)});
+            $("#smStatus").textContent="当前状态：第 "+(step+1)+" / 4 态 · "+LABEL[k]+"（点「上一步/下一步」逐步、或直接点上方四态回看）";
+            $("#smPrev").disabled=step<=0;$("#smNext").disabled=step>=ORDER.length-1;
+            $("#smFb").className="pfb hidden";
+          }
+          function stopSm(msg){if(timer){clearInterval(timer);timer=null}$("#smPlay").disabled=false;$("#smPause").disabled=true;if(msg)$("#smStatus").textContent="模式："+msg}
+          document.querySelectorAll("#smBtns [data-state]").forEach(function(b){
+            b.addEventListener("click",function(){stopSm("逐步阅读（连续播放已暂停）");render(b.getAttribute("data-state"))});
+          });
+          $("#smNext").addEventListener("click",function(){stopSm("逐步阅读（连续播放已暂停）");if(step<ORDER.length-1)render(step+1)});
+          $("#smPrev").addEventListener("click",function(){stopSm("逐步阅读（连续播放已暂停）");if(step>0)render(step-1)});
+          $("#smReset").addEventListener("click",function(){stopSm("逐步阅读（连续播放已暂停）");render(0)});
+          $("#smPlay").addEventListener("click",function(){
+            stopSm();if(step>=ORDER.length-1)render(0);
+            $("#smPlay").disabled=true;$("#smPause").disabled=false;
+            $("#smStatus").textContent="模式：连续播放中（每态 2.0 秒，随时可暂停）";
+            render(step);
+            timer=setInterval(function(){if(step>=ORDER.length-1){stopSm("连续播放已结束（保留在最后一态）")}else{render(step+1)}},2000);
+          });
+          $("#smPause").addEventListener("click",function(){stopSm("已暂停（连续播放）。点「下一步」进入逐步阅读。")});
+          document.querySelectorAll("#smPredict [data-guess]").forEach(function(b){
+            b.addEventListener("click",function(){
+              var ok=(b.getAttribute("data-guess")==="no");
+              $("#smFb").className="pfb "+(ok?"good":"bad");
+              $("#smFb").innerHTML=(ok?"猜对了。":"猜错了。")+" <b>不包含</b>。恢复走「替代历史 + 后缀回放」：先采用检查点的替代历史，再回放检查点之后的记录——<b>不包括</b>更早的、已被替代历史覆盖的原始旧消息。恢复重建的是<b>材料</b>，不是「重发全历史」。";
+            });
+          });
+          render(0);
+        })();
+        </script>
+</section>
+
+<section class="unit" id="b5">
+        <div class="unithead">
+          <span class="kicker">实验台 ⑤ · 掌握机制（M09 / M08）</span>
+          <h1>10 万字的代码库，怎么不整本塞进去？</h1>
+          <p class="lead" style="margin-top:14px">「读什么进来」是上下文管理的<b>第一道闸门</b>，它比压缩更靠前——东西没搬上桌，就不必压缩它。这一台演示「按需读入」的三件套，并配一张「三问判断卡」，让你拿到任一工具就能判断它的记忆是什么货色。</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>M06（磁盘原文层可查）、M07（先给什么影响缓存）。</div>
+            <div class="meta-card"><b>读完你能</b>判「按需还是装填、上限在哪」，并当场填出三问判断卡。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">第一道选择：全量装填 vs 按需读入</h2>
+          <div class="grid2">
+            <div class="callout bad"><div class="ttl">全量装填（stuff-all）</div><p>一次把资料全搬上桌。桌子立刻满、贵、噪声大——大仓库直接装不下，且 99% 内容与本次改动无关。</p></div>
+            <div class="callout ok"><div class="ttl">按需读入（retrieve / JIT）</div><p>先给「目录/名字」，用时再搬；每次只搬这一小段，内容高相关、可续读、可定位。</p></div>
+          </div>
+          <p>八工具的检索侧，主流选择都是「按需读入」——证据形态是各家都内建了检索工具。但口径要写清：证据能证明的是「官方文档/源码里<b>没有</b>全量装填路径」，<b>不能证明「一定不存在」</b>——未知保留未知。而「有 <code>read</code> 工具」只说明<b>能力</b>在，模型实际会不会一把梭全读属<b>模型行为</b> → <code>【T19 实测：pi 同条件 3 轮行为分化（1 轮只读头部 / 2 轮自主分页 offset 717→1428→2151 读完）；codex 中段丢失后二次检索取回（证据：T19/02-pi §1.4、01-codex §A-3）】</code>。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互 A · 按需读入示意<span class="tag">glob → grep → read</span></h2>
+          <div class="interact" id="retApp">
+            <div class="caption"><span class="tt">检索三件套（按需读入）</span><span class="pill demo">演示数据</span></div>
+            <div class="btnrow">
+              <button class="btn" id="retPrev">上一步</button>
+              <button class="btn primary" id="retNext">下一步</button>
+              <button class="btn" id="retPlay">连续播放</button>
+              <button class="btn" id="retPause" disabled>暂停</button>
+              <button class="btn ghost" id="retReset">重置</button>
+              <span class="spacer"></span>
+              <button class="btn" id="retMode">切换：全量装填（错的做法）</button>
+            </div>
+            <div class="playing-strip" id="retStatus"></div>
+            <div class="grid2" style="margin-top:12px">
+              <div>
+                <div class="phase-label" id="retPhase">第 1 步 · glob（列文件）</div>
+                <div class="stage-note" id="retNote"></div>
+              </div>
+              <div>
+                <div class="phase-label">这一步进请求的内容</div>
+                <div class="mlist" id="retList"></div>
+              </div>
+            </div>
+            <div class="data-table" id="retTable"></div>
+            <div class="reason-line info" id="retWhy"></div>
+            <div class="predict" id="retPredict">
+              <div class="pq">预测题（先猜后看）：你在输入里敲了 <code>@src/api.ts</code>，模型此刻是否已经把该文件的<b>正文</b>拿到手了？</div>
+              <div class="pbtns">
+                <button class="btn" data-guess="yes">已经拿到正文</button>
+                <button class="btn" data-guess="no">只拿到路径候选</button>
+              </div>
+              <div class="pfb hidden" id="retFb"></div>
+            </div>
+          </div>
+          <div class="callout warn">
+            <div class="ttl">当心 · @文件 提及 ≠ 附带内容</div>
+            <p>你在输入里 <code>@某个文件</code>，直觉上「我把文件给它了」。但多数实现里，<code>@</code> 只是<b>路径补全/候选</b>——内容并没有附进来。⑨dsh 写得最直白：<code>file-reference</code> 只做路径补全，<b>「Selecting a candidate never reads or attaches file contents」</b>；模型<b>必须再调 fs 工具</b>才能看内容。<mark>提及只是给了个「该读它」的信号。</mark></p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互 B · 三问判断卡<span class="tag">拿到任一工具当场判断</span></h2>
+          <div class="interact" id="memApp">
+            <div class="caption"><span class="tt">记忆三问判断卡</span><span class="pill demo">口径来自 T14 C 表 / M08</span></div>
+            <div class="switchrow" id="memBtns">
+              <button class="switch on" data-tool="codex">① Codex</button>
+              <button class="switch" data-tool="claude">② Claude Code</button>
+              <button class="switch" data-tool="pi">③ pi</button>
+              <button class="switch" data-tool="ohmy">④ oh-my-pi</button>
+              <button class="switch" data-tool="ocv">⑤/⑥ OpenCode</button>
+              <button class="switch" data-tool="gemini">⑦ Gemini（存档）</button>
+              <button class="switch" data-tool="grok">⑧ Grok</button>
+              <button class="switch" data-tool="dsh">⑨ dsh</button>
+            </div>
+            <div class="threecol" style="margin-top:12px">
+              <div class="colcard"><h4>① 默认开还是关</h4><div class="entry hl" id="memQ1"></div></div>
+              <div class="colcard"><h4>② 后台跑还是会话内跑</h4><div class="entry" id="memQ2"></div></div>
+              <div class="colcard"><h4>③ 人工审批还是自动写入</h4><div class="entry" id="memQ3"></div></div>
+            </div>
+            <div class="reason-line info" id="memNote"></div>
+          </div>
+          <p class="muted">读卡一句话：② 是「默认开但会话内」；⑦⑧ 是「后台但默认关」；④ 是「会话内、默认关」；③⑤⑥⑨ 是「未发现默认」——<b>四类各不相同，「有记忆」这句话本身不携带任何判断</b>。「未发现」≠「没有」：照抄「未发现默认实现（推断）」，不写「没有」。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">四个边界：记忆 ≠ 会话 ≠ 磁盘原文 ≠ 缓存</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>对象</th><th>存在哪</th><th>谁写</th><th>什么时候进请求</th></tr></thead>
+            <tbody>
+              <tr><td data-th="对象"><b>记忆</b>（长期/会话记忆）</td><td data-th="存在哪">独立记忆目录 / 记忆文件</td><td data-th="谁写">模型自己写、或后台提取、或人工审批</td><td data-th="何时进">下次会话启动时注入（部分；也要过注入预算）</td></tr>
+              <tr><td data-th="对象"><b>会话</b>（transcript / 存档）</td><td data-th="存在哪">磁盘会话文件（JSONL / DB）</td><td data-th="谁写">程序逐条追加</td><td data-th="何时进">恢复时读回（M06）</td></tr>
+              <tr><td data-th="对象"><b>磁盘原文</b></td><td data-th="存在哪">落盘的工具输出 / artifact</td><td data-th="谁写">程序落盘</td><td data-th="何时进"><b>不自动进请求</b>，要用时才读（M05/M09）</td></tr>
+              <tr><td data-th="对象"><b>缓存</b></td><td data-th="存在哪">服务端 KV（+ CLI 侧键）</td><td data-th="谁写">服务端复用</td><td data-th="何时进">前缀相同才复用，<b>不改变内容</b></td></tr>
+            </tbody>
+          </table></div>
+          <p>子代理（CM-09）两条路线：<b>全新独立窗口</b>（默认，看不到主对话历史，由父写一条委派消息起步）vs <b>fork 继承</b>（继承主对话全部消息历史）。<b>回传只回摘要</b>——中间几十次工具调用留在子窗口，不进主上下文。③ pi 对 CM-09 的正确表述是「<b>刻意不含</b>」（设计选择），<b>不是</b>「未找到」。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测<span class="tag">先猜，再看答案</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">某工具有 <code>read</code> 工具，说明它一定是「按需读入」、不会全量装填。（对/错）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>有 <code>read</code> 工具只说明<b>能力</b>在；「是否按需、而不是一把梭全读」属<b>模型行为</b>，各家证据卡都把它列为「不能证明」→ <code>【T19 实测：pi 同条件 3 轮行为分化（1 轮只读头部 / 2 轮自主分页读完）——「能力 ≠ 行为」已被实测支持（证据：T19/02-pi §1.4）】</code>。<b>能力 ≠ 行为。</b></p></div></details></div>
+            <div class="q"><div class="qt">用户在输入里 <code>@src/api.ts</code>。按 dsh 的实现，模型「看到」了什么？要看到正文还得做什么？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>模型<b>只看到路径候选</b>（「src/api.ts」这个路径），没看到正文。依据：<code>file-reference</code>「Selecting a candidate never reads or attaches file contents」。要看到正文，模型<b>必须再调 fs 工具</b>（<code>read</code>）。<b>提及 ≠ 附带内容。</b></p></div></details></div>
+            <div class="q"><div class="qt">④ oh-my-pi「有记忆」，为什么不能写成「它默认会记住你」？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>因为<b>「有实现」≠「默认开」</b>：<code>memory.backend</code> <b>默认 off</b>，只是有 4 个后端可选（local/hindsight/mnemopi/sharpshooter）。正确写法：「<b>有、默认 off</b>（需选后端才生效）」。</p></div></details></div>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="b4">上一节 <small>④ 保存与恢复</small></button>
+          <button class="btn primary" data-next="b6">下一节 <small>⑥ 账单器</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var steps=[
+            {phase:"第 1 步 · glob（列文件）",note:"先按路径列出候选文件清单——注意：这一步只拿到「名字」，没有正文。",
+             items:[["glob","候选：api.ts / api.test.ts / user.ts / config.ts / …（5 个）"]],
+             data:[["动作","glob / find / ls"],["产物","候选文件清单（按路径）"],["进请求","文件名，不含正文"]],
+             why:"检索三件套第一件：按路径列文件。先缩小范围，再决定读哪个。"},
+            {phase:"第 2 步 · grep（定位行）",note:"按内容搜「这个函数名」，定位到「api.ts 第 40 行」。仍然只有位置，没有正文。",
+             items:[["glob","候选 5 个文件"],["grep","命中：api.ts:40 → buildPrompt(…）"]],
+             data:[["动作","grep（按内容定位）"],["产物","「函数名在 api.ts:40」"],["进请求","命中行号 + 片段"]],
+             why:"第二件：按内容定位。grep 告诉你「在哪」，不把整文件搬进来。"},
+            {phase:"第 3 步 · read（取正文，可分页）",note:"只读那一段：read(offset=40, limit=50) → 第 40–90 行进请求。一次读不完？给你「下一段起点」，可续读——不是丢。",
+             items:[["glob","候选 5 个文件"],["grep","命中：api.ts:40"],["read","api.ts 第 40–90 行正文（50 行）"]],
+             data:[["动作","read(offset,limit)"],["产物","该段正文"],["读不完","给下一段起点（offset/limit 续读）"]],
+             why:"第三件：取正文。这正是「按需读入」——需要哪段、取哪段；读不完可续读，不整块装填。"}
+          ];
+          var i=0,over=false;
+          function render(){
+            var st=steps[i];
+            $("#retPhase").textContent=st.phase;
+            $("#retNote").textContent=over?"（错误做法）如果全量装填：把整个仓库几十万字一次搬上桌——桌子当场撑爆（窗口装不下），且 99% 内容与本次改动无关，纯属浪费。正确做法是按需读入。":st.note;
+            $("#retList").innerHTML=(over?[["stuff-all","整仓库正文（3,000 文件 / 几十万字）——桌子装不下"]].map(function(it){return '<div class="mitem cut"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div></div>'}).join("")
+              :st.items.map(function(it){return '<div class="mitem"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div></div>'}).join(""));
+            $("#retTable").innerHTML=st.data.map(function(d){return '<div class="data-row"><span class="k">'+d[0]+'</span><span class="v">'+d[1]+'</span></div>'}).join("");
+            $("#retWhy").textContent="说明："+(over?"全量装填是「错误对照」：它违反第一道闸门——先决定搬不搬，再谈压缩。":st.why);
+            $("#retPrev").disabled=i===0||over;$("#retNext").disabled=i===steps.length-1||over;
+            $("#retStatus").textContent=over?"当前：全量装填（错误对照）":"当前：按需读入 · 第 "+(i+1)+" / 3 步";
+          }
+          var timer=null;
+          function stopRet(msg){if(timer){clearInterval(timer);timer=null}$("#retPlay").disabled=false;$("#retPause").disabled=true;if(msg)$("#retStatus").textContent="模式："+msg}
+          $("#retNext").addEventListener("click",function(){stopRet("逐步阅读（连续播放已暂停）");if(i<steps.length-1){i++;render()}});
+          $("#retPrev").addEventListener("click",function(){stopRet("逐步阅读（连续播放已暂停）");if(i>0){i--;render()}});
+          $("#retReset").addEventListener("click",function(){stopRet("逐步阅读（连续播放已暂停）");i=0;over=false;render()});
+          $("#retMode").addEventListener("click",function(){stopRet("逐步阅读（连续播放已暂停）");over=!over;render()});
+          $("#retPlay").addEventListener("click",function(){
+            stopRet();if(over)over=false;if(i>=steps.length-1)i=0;
+            $("#retPlay").disabled=true;$("#retPause").disabled=false;
+            $("#retStatus").textContent="模式：连续播放中（每步 1.8 秒，随时可暂停）";
+            render();
+            timer=setInterval(function(){if(i>=steps.length-1){stopRet("连续播放已结束（保留在最后一步）")}else{i++;render()}},1800);
+          });
+          $("#retPause").addEventListener("click",function(){stopRet("已暂停（连续播放）。点「下一步」进入逐步阅读。")});
+          document.querySelectorAll("#retPredict [data-guess]").forEach(function(b){
+            b.addEventListener("click",function(){
+              var ok=(b.getAttribute("data-guess")==="no");
+              $("#retFb").className="pfb "+(ok?"good":"bad");
+              $("#retFb").innerHTML=(ok?"猜对了。":"猜错了。")+" <b>只拿到路径候选</b>——<code>@file</code> 只做路径补全，<b>不读、不附内容</b>（「Selecting a candidate never reads or attaches file contents」）。模型必须<b>再调 read 工具</b>，正文才进请求。<b>提及 ≠ 附带内容。</b>";
+            });
+          });
+          render();
+        })();
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var cards={
+            codex:{q1:"未核（有 memories crate）",q2:"未核",q3:"未核",note:"提取/注入时机未逐行核验（未决 U4）→ 【T19 未覆盖：批次未做记忆/子代理专项，保留未决】。有实现但深层待核。"},
+            claude:{q1:"开（auto memory）",q2:"会话内（模型自己读写；后台机制文档未描述）",q3:"自动（Claude 写；用户可整体关闭）",note:"文档级 + 分发件观察（闭源）。MEMORY.md 启动注入前 200 行或前 25 KB（先到者为准），超出部分下次加载被丢弃。"},
+            pi:{q1:"无（未发现默认，推断）",q2:"—",q3:"—",note:"出货路径内无独立记忆；跨会话靠 AGENTS.md / 扩展。「未发现」≠「没有」。"},
+            ohmy:{q1:"关（默认 off）",q2:"会话内（选定后端后注入）",q3:"自动（无审批环节）",note:"源码级：memory.backend 默认 off，4 后端可选（local/hindsight/mnemopi/sharpshooter）+ off 共 5 取值；注入上限 5000 token。"},
+            ocv:{q1:"无（未发现默认，推断）",q2:"—",q3:"—",note:"出货路径 + 命名空间内无 memory 模块（v2 的 environment/memory.ts 是内存 FS，非长期记忆）。推断，未裁决。"},
+            gemini:{q1:"关（后台提取默认关）",q2:"后台（空闲≥3h 且 ≥10 条 user 消息）",q3:"人工审批（/memory inbox）",note:"已弃后续，仅历史存档。两条路径并存：模型主动写文件（默认开）+ 后台提取（默认关，experimental.autoMemory 默认 false）。"},
+            grok:{q1:"关（实验特性）",q2:"后台（每轮复盘 + Dream）",q3:"自动（写入 inbox 后自动折叠）",note:"文档级 + 分发件观察（闭源）。memory.enabled / memory_v2.enabled 默认 false；索引每 scope ≤ 8 KiB。"},
+            dsh:{q1:"无（未发现默认，推断）",q2:"—",q3:"—",note:"全仓无记忆包；跨会话靠 session-reference（显式提及，opt-in）/ session-search（实验，默认关）。连实验实现都未发现。"}
+          };
+          function render(t){
+            var c=cards[t];
+            $("#memQ1").textContent=c.q1;$("#memQ2").textContent=c.q2;$("#memQ3").textContent=c.q3;
+            $("#memNote").textContent="说明："+c.note;
+            document.querySelectorAll("#memBtns [data-tool]").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-tool")===t)});
+          }
+          document.querySelectorAll("#memBtns [data-tool]").forEach(function(b){
+            b.addEventListener("click",function(){render(b.getAttribute("data-tool"))});
+          });
+          render("codex");
+        })();
+        </script>
+</section>
+
+<section class="unit" id="b6">
+        <div class="unithead">
+          <span class="kicker">实验台 ⑥ · 掌握机制（M07 / M11）</span>
+          <h1>同样的开头，第二次为什么更便宜？</h1>
+          <p class="lead" style="margin-top:14px">缓存省的是<b>重新计算</b>，不是「少发材料」——这个直觉是错的，正是本台要拆的坑。三组账单让你亲手拆读一段 <code>usage</code>；场景决策表让你学会「按场景查，而不是比高低」。</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>M04/M06（压缩替换历史）、M02（稳定材料排前面）。</div>
+            <div class="meta-card"><b>读完你能</b>读出缓存读取/写入明细，并解释一次「更慢更贵」的周转来自哪里。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">省了什么、没省什么</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>缓存<b>省</b>的</th><th>缓存<b>不省</b>的</th></tr></thead>
+            <tbody>
+              <tr><td data-th="省">重新计算（算力、钱、首字延迟方向）</td><td data-th="不省">本次上下文的总长度——命中的 token 依然是本次输入的一部分</td></tr>
+              <tr><td data-th="省">稳定前缀那一段的重算成本</td><td data-th="不省">速率限制（TPM）——cached 输入依然计入</td></tr>
+              <tr><td data-th="省">（在服务端命中时）首字更快</td><td data-th="不省">上下文窗口占用——缓存不缩窗口</td></tr>
+            </tbody>
+          </table></div>
+          <p>匹配单位 = <b>完整渲染后的前缀（token 级）</b>：没有「按文件缓存」，也没有「按消息段缓存」——若把某个文件插到前缀中间，<b>它之后的内容全部失配</b>。压缩改变前缀 → 缓存<b>按前缀退化，但不会整体归零</b>：变化点之前的稳定段（基础指令、工具说明）若未变，仍可能命中。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互 · 账单器（三组账单）<span class="tag">拆账三关系</span></h2>
+          <div class="interact" id="billApp">
+            <div class="caption"><span class="tt">缓存账单器</span><span class="pill demo">费率 0.1×/1.25× = 服务端文档示例</span><span class="pill test">非实测</span></div>
+            <div class="switchrow" id="billBtns">
+              <button class="switch on" data-scen="a">账① 一次命中（前缀未变）</button>
+              <button class="switch" data-scen="b">账② 一次失效（前缀被改）</button>
+              <button class="switch" data-scen="c">账③ 一次压缩周转</button>
+              <button class="switch" data-scen="d">自算（母稿自测①）</button>
+            </div>
+            <div class="btnrow" style="margin-top:8px">
+              <button class="btn" id="billPrev">上一账</button>
+              <button class="btn primary" id="billNext">下一账</button>
+              <button class="btn" id="billPlay">连续播放</button>
+              <button class="btn" id="billPause" disabled>暂停</button>
+              <button class="btn ghost" id="billReset">重置</button>
+            </div>
+            <div class="playing-strip" id="billStatus">当前：账① 一次命中（可逐账回看或连续播放）</div>
+            <div class="calc-grid" style="margin-top:10px">
+              <div class="field"><label>input_tokens（本次输入）</label><input id="billIn" type="number" value="100000" step="1000"></div>
+              <div class="field"><label>cached_tokens（读取明细）</label><input id="billRead" type="number" value="96000" step="1000"></div>
+              <div class="field"><label>cache_write_tokens（写入明细）</label><input id="billWrite" type="number" value="0" step="1000"></div>
+            </div>
+            <p class="muted" style="font-size:12.5px;margin-top:8px">拆账三关系：① <code>cached</code> 与 <code>cache_write</code> 都是 <code>input_tokens</code> 的<b>明细拆分</b>，<b>不能再加到 input 上</b>；② 普通输入 = input − 读 − 写；③ 计费当量 = 普通×1 + 读×0.1 + 写×1.25（写入 1.25 是<b>完整单价</b>，不是「普通价再加 1.25 倍」）。</p>
+            <div class="cachebar" id="billBar"></div>
+            <div class="legend">
+              <span><span class="sw" style="background:#64748b"></span>普通输入（1×）</span>
+              <span><span class="sw" style="background:#0d9488"></span>缓存读取（0.1×）</span>
+              <span><span class="sw" style="background:#c2410c"></span>缓存写入（1.25×）</span>
+            </div>
+            <div class="data-table" id="billTable"></div>
+            <div class="reason-line" id="billNote"></div>
+            <div class="predict" id="billPredict">
+              <div class="pq">预测题（先猜后看）：命中缓存后，这次的<b>上下文窗口占用</b>会变小、速率限制也会更宽松吗？</div>
+              <div class="pbtns">
+                <button class="btn" data-guess="yes">会变小 / 更宽松</button>
+                <button class="btn" data-guess="no">都不变</button>
+              </div>
+              <div class="pfb hidden" id="billFb"></div>
+            </div>
+          </div>
+          <div class="tblwrap" style="margin-top:14px"><table>
+            <thead><tr><th>账</th><th>场景</th><th>当量（演示）</th><th>相对全额</th><th>一句话</th></tr></thead>
+            <tbody>
+              <tr><td data-th="账">①</td><td data-th="场景">一次命中（前缀未变）</td><td data-th="当量"><b>13,600</b></td><td data-th="相对">≈0.14×</td><td data-th="一句话">缓存应有的样子</td></tr>
+              <tr><td data-th="账">②</td><td data-th="场景">一次失效（前缀被改）</td><td data-th="当量"><b>125,000</b></td><td data-th="相对">1.25×</td><td data-th="一句话">比不缓存还贵（写入溢价），是在为后续命中铺路</td></tr>
+              <tr><td data-th="账">③</td><td data-th="场景">一次压缩周转</td><td data-th="当量"><b>92,000</b></td><td data-th="相对">≈0.92×</td><td data-th="一句话">压缩后首请求更慢更贵，随后回升</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout warn">
+            <div class="ttl">当心 · 账③ 读法</div>
+            <p><b>92,000 不是「压缩的成本」</b>——它是「前缀变了导致这一次复用少」的账。压缩的<b>模型调用成本</b>是另一笔（M04 的摘要调用），<b>两笔账不要混</b>。所有数字均为<b>【演示】</b>，不得当作真实费率或真实命中。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">边界四问（R14 强制）<span class="tag">必须背下</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>边界</th><th>一句话</th></tr></thead>
+            <tbody>
+              <tr><td data-th="边界"><b>缓存 ≠ 摘要（压缩）</b></td><td data-th="一句话">缓存<b>不改变材料</b>（前缀原样复用）；摘要<b>改变材料</b>（替换历史）——目的相反：一个省重算，一个减体积</td></tr>
+              <tr><td data-th="边界"><b>缓存 ≠ 外部记忆</b></td><td data-th="一句话">外部记忆是「不在消息列表里、可再取用」的记忆；缓存在服务端存 KV 状态，<b>不改变本次请求带哪些材料</b></td></tr>
+              <tr><td data-th="边界"><b>缓存 ≠ 容量扩展</b></td><td data-th="一句话">缓存<b>不缩窗口占用</b>（cached 输入仍占本次上下文、仍计 TPM）</td></tr>
+              <tr><td data-th="边界"><b>缓存 ≠ 少发材料</b></td><td data-th="一句话">「少发」是压缩/检索的产物；缓存<b>一个 token 都不少发</b></td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout bad">
+            <div class="ttl">红线 · 不承诺命中率</div>
+            <p>服务端命中 / TTL <b>九工具全部 UNOBSERVABLE</b>——本地只能看到 <b>CLI 侧可观测字段</b>（① 读写明细、②⑧ 计数/桶），看不到服务端是否真的命中、命中多少。任何命中率承诺都越过了证据边界，须待 T19 以 usage 为准。<code>【T19 实测：CLI 侧 cacheRead 可观测且 >0（claude 19,840~27,136、dsh 最大 84,608、ocv1 9/12 命中）；服务端命中率/TTL 仍 UNOBSERVABLE——「不承诺命中率」边界不变（证据：T19/03-claude §5、05-dsh §缓存、06-ocv1 §4）】</code></p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">官方原版入口 + 离线回退<span class="tag">中文复现明确标注</span></h2>
+          <details class="src">
+            <summary>原版入口（需联网）：OpenAI Prompt caching 官方文档</summary>
+            <div class="inner">
+              <p class="src-line">官方原文（英文，需联网）：<a href="https://platform.openai.com/docs/guides/prompt-caching" target="_blank" rel="noopener">platform.openai.com/docs/guides/prompt-caching</a>（含「How prefix matching works」小节与官方模拟器）。</p>
+              <p class="src-line muted">本教材<b>不嵌入</b> iframe（离线优先）；如需看原版交互模拟器，请点上方链接在联网环境打开。</p>
+            </div>
+          </details>
+          <details class="src" open>
+            <summary>离线回退段（本教材中文复现 · 明确标注）</summary>
+            <div class="inner">
+              <div class="callout">
+                <div class="ttl">以下为中文复现（非官方原文，离线可读）</div>
+                <p><b>前缀匹配怎么工作（要点复现）</b>：① 缓存以<b>完整渲染后的前缀</b>为单位匹配，前缀越长、越稳定，可复用部分越多；② 官方对「更早模型」有<b>按 128 倍数取整</b>的断点规则，对「新模型」按更细粒度；③ 官方模拟器展示「Reported cached tokens」随分段控件变化（例：GPT-5.6+ 下 15,000−3,000=12,000；切到 Earlier models 后按 128 倍数取整得 11,264）。</p>
+                <p class="muted">以上数字与规则为<b>样章 U08 核查时的官方页面口径复现</b>，页面可能更新；本教材不承诺与未来版本一致，且<b>不承诺任何命中率</b>。以官方原页与运行时 usage 为准。</p>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">场景决策表（引 T14 §G，8 场景 + 反例）<span class="tag">按场景查，不排名次</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>场景</th><th>建议</th><th>反例 / 陷阱</th></tr></thead>
+            <tbody>
+              <tr><td data-th="场景">需要找回「被压缩掉的原文」</td><td data-th="建议">任何工具：走<b>磁盘/存档入口</b></td><td data-th="反例">❌ 别信「绝不可能找回」（C-12：仅模型可见层成立）</td></tr>
+              <tr><td data-th="场景">估算中文内容的成本</td><td data-th="建议">用<b>真实 tokenizer</b>（T19 可核）</td><td data-th="反例">❌ <code>chars/4</code> 系列会<b>低估</b>（dsh 实测 400 汉字=108；ocv1/ocv2 4 字=1）；Gemini 非 ASCII ≈1.5/字符则<b>高估</b>（C-06）</td></tr>
+              <tr><td data-th="场景">依赖子代理工作流</td><td data-th="建议">选默认含子代理的工具（④/⑨ 等）</td><td data-th="反例">❌ pi <b>刻意不含</b>（<code>pi-cm09-01</code>）——「没找到」≠「忘了做」</td></tr>
+              <tr><td data-th="场景">想要开箱即用的长期记忆</td><td data-th="建议">注意：<b>大多默认关</b>（④off / ⑦false / ⑧关）</td><td data-th="反例">❌ 别写「有记忆=默认开」（② auto memory 默认开、但后台抽取线文档未描述）</td></tr>
+              <tr><td data-th="场景">引用「统一压缩阈值」</td><td data-th="建议">逐工具列口径</td><td data-th="反例">❌「90–95% 总括句」被九工具<b>全部否证</b>（C-01/C-02）</td></tr>
+              <tr><td data-th="场景">大窗口模型「不会压缩」</td><td data-th="建议">反例：Gemini 1M 窗口仍 <code>0.5×W</code> 触发</td><td data-th="反例">❌ C-08 旧标签<b>已撤回</b>（且 Gemini 已弃用转存档）</td></tr>
+              <tr><td data-th="场景">缓存省钱承诺</td><td data-th="建议">只说 <b>CLI 侧可观测字段</b></td><td data-th="反例">❌ 服务端命中/TTL 全部 <b>UNOBSERVABLE</b>——不得承诺命中率</td></tr>
+              <tr><td data-th="场景">版本引用</td><td data-th="建议"><b>快照 SHA + 分发件双口径</b>（三行写法）</td><td data-th="反例">❌ Grok 版本漂移（1.0.50→1.0.52）；OpenCode <b>同源≠零耦合</b></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测<span class="tag">先猜，再看答案</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">某请求 <code>input_tokens=50,000</code>、<code>cached_tokens=40,000</code>、<code>cache_write_tokens=2,000</code>。求普通输入与计费当量（用本台演示费率），并回答「<code>cached_tokens</code> 要不要从 50,000 里再减一次」。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>普通输入 = 50,000 − 40,000 − 2,000 = <b>8,000</b>；当量 = 8,000×1 + 40,000×0.1 + 2,000×1.25 = 8,000 + 4,000 + 2,500 = <b>14,500</b>。<b>不能再减一次</b>：<code>cached_tokens</code> 是 <code>input_tokens</code> 的<b>明细拆分</b>，已经在 50,000 里了——把缓存 token 重复相加是常见错误。</p></div></details></div>
+            <div class="q"><div class="qt">压缩之后，缓存复用会怎样？请用「前缀」这个词解释，并说明「整体归零」对不对。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>压缩<b>替换了历史</b>，所以<b>从「第一个变化的 token」起</b>旧前缀不再匹配——压缩后首次请求复用较少。但「变化点之前」的稳定段仍可能命中，且新前缀随后续追加相处稳定、命中<b>回升</b>。所以「整体归零」<b>不对</b>：压缩改变前缀 → 缓存按前缀退化，不会整体归零。</p></div></details></div>
+            <div class="q"><div class="qt">① Codex 与 ⑨ dsh 在「CLI 缓存键」上有什么差别？能说「dsh 没做缓存」吗？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>① Codex <b>请求带 <code>prompt_cache_key</code>（默认=会话ID）</b>；⑨ dsh <b>未发现 CLI 缓存键</b>。<b>不能</b>说「dsh 没做缓存」——只能说「未发现 CLI 缓存键」（「没找到」≠「没有做」）；且服务端命中/TTL 九工具全部 UNOBSERVABLE。</p></div></details></div>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="b5">上一节 <small>⑤ 检索·记忆·交接</small></button>
+          <button class="btn primary" data-next="b7">下一节 <small>⑦ 时间线与演化器</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var scen={
+            a:{in:100000,read:96000,write:0,note:"账①：前缀未变，完整命中。省下了重算那 96,000 的大头——这是「同样开头」应有的样子。"},
+            b:{in:100000,read:0,write:100000,note:"账②：前缀被改（改了旧消息 / 工具集变了），首次见新前缀 → 全部写入。这一次比「完全不缓存」还贵 25%（写入溢价），是在为后续命中铺路。"},
+            c:{in:100000,read:20000,write:40000,note:"账③：压缩后，变化点之前的稳定段 20,000 仍匹配（读）；新前缀 40,000 需写入；本次新增 4,000。比账①贵得多——这就是「压缩后首个请求通常更慢更贵」的账。之后新前缀稳定，请求回到账①形态。"},
+            d:{in:50000,read:40000,write:2000,note:"自算（母稿自测①）：input=50,000、读=40,000、写=2,000 → 普通 8,000、当量 14,500。注意 cached 是 input 的明细拆分，不能再减一次。"}
+          };
+          function fmt(x){return Math.round(x).toLocaleString("en-US")}
+          var ORDER=["a","b","c","d"],LABEL={a:"账① 一次命中",b:"账② 一次失效",c:"账③ 一次压缩周转",d:"自算（母稿自测①）"};
+          var step=0,timer=null;
+          function render(){
+            var I=parseFloat($("#billIn").value)||0,R=parseFloat($("#billRead").value)||0,Wr=parseFloat($("#billWrite").value)||0;
+            var norm=Math.max(0,I-R-Wr);
+            var eq=norm*1+R*0.1+Wr*1.25;
+            var total=norm+R+Wr||1;
+            $("#billBar").innerHTML='<div class="seg">'+
+              '<span class="s-sys" style="width:'+(norm/total*100).toFixed(2)+'%">普通 '+fmt(norm)+'（1×）</span>'+
+              '<span class="reuse" style="background:#0d9488;width:'+(R/total*100).toFixed(2)+'%">读 '+fmt(R)+'（0.1×）</span>'+
+              '<span class="s-new" style="width:'+(Wr/total*100).toFixed(2)+'%">写 '+fmt(Wr)+'（1.25×）</span>'+
+              '</div>';
+            $("#billTable").innerHTML=
+              row("input_tokens",fmt(I))+
+              row("cached_tokens（读）",fmt(R))+
+              row("cache_write_tokens（写）",fmt(Wr))+
+              row("普通输入 = input − 读 − 写",fmt(norm),norm<0?"bad":"")+
+              row("计费当量 = 普通×1 + 读×0.1 + 写×1.25",fmt(eq))+
+              row("相对全额（input×1）",I>0?(eq/I).toFixed(3)+"×":"—")+
+              row("提示","读/写是 input 的明细拆分，不要再加到 input 上");
+          }
+          function row(k,v,cls){return '<div class="data-row"><span class="k">'+k+'</span><span class="v '+(cls||"")+'">'+v+'</span></div>'}
+          ["#billIn","#billRead","#billWrite"].forEach(function(id){$(id).addEventListener("input",render)});
+          function applyScen(k,msg){
+            var s=scen[k];
+            $("#billIn").value=s.in;$("#billRead").value=s.read;$("#billWrite").value=s.write;
+            $("#billNote").className="reason-line info";$("#billNote").textContent=s.note;
+            document.querySelectorAll("#billBtns [data-scen]").forEach(function(x){x.classList.toggle("on",x.getAttribute("data-scen")===k)});
+            step=ORDER.indexOf(k);if(step<0)step=0;
+            $("#billStatus").textContent="当前：第 "+(step+1)+" / 4 账 · "+LABEL[k]+(msg?"（"+msg+"）":"");
+            $("#billPrev").disabled=step<=0;$("#billNext").disabled=step>=ORDER.length-1;
+            render();
+          }
+          function stopBill(msg){if(timer){clearInterval(timer);timer=null}$("#billPlay").disabled=false;$("#billPause").disabled=true;if(msg)$("#billStatus").textContent="模式："+msg}
+          document.querySelectorAll("#billBtns [data-scen]").forEach(function(b){
+            b.addEventListener("click",function(){stopBill("逐账阅读（连续播放已暂停）");applyScen(b.getAttribute("data-scen"))});
+          });
+          $("#billNext").addEventListener("click",function(){stopBill("逐账阅读（连续播放已暂停）");if(step<ORDER.length-1)applyScen(ORDER[step+1])});
+          $("#billPrev").addEventListener("click",function(){stopBill("逐账阅读（连续播放已暂停）");if(step>0)applyScen(ORDER[step-1])});
+          $("#billReset").addEventListener("click",function(){stopBill("逐账阅读（连续播放已暂停）");applyScen("a")});
+          $("#billPlay").addEventListener("click",function(){
+            stopBill();if(step>=ORDER.length-1)applyScen("a");
+            $("#billPlay").disabled=true;$("#billPause").disabled=false;
+            $("#billStatus").textContent="模式：连续播放中（每账 2.2 秒，随时可暂停）";
+            timer=setInterval(function(){if(step>=ORDER.length-1){stopBill("连续播放已结束（保留在最后一账）")}else{applyScen(ORDER[step+1])}},2200);
+          });
+          $("#billPause").addEventListener("click",function(){stopBill("已暂停（连续播放）。点「下一账」进入逐账阅读。")});
+          document.querySelectorAll("#billPredict [data-guess]").forEach(function(b){
+            b.addEventListener("click",function(){
+              var ok=(b.getAttribute("data-guess")==="no");
+              $("#billFb").className="pfb "+(ok?"good":"bad");
+              $("#billFb").innerHTML=(ok?"猜对了。":"猜错了。")+" <b>都不变</b>：缓存省的是<b>重新计算</b>；命中的 token 依然是本次输入的一部分（<b>不缩窗口占用</b>），且 cached 输入依然计入 <b>TPM</b>。把缓存当成「窗口扩容 / 上下文缩短」都是错的（术语表 §6 边界）。";
+            });
+          });
+          applyScen("a");
+        })();
+        </script>
+</section>
+
+<section class="unit" id="b7">
+        <div class="unithead">
+          <span class="kicker">实验台 ⑦ · 理解流程（M02）</span>
+          <h1>一次请求是怎样「长出来」的？</h1>
+          <p class="lead" style="margin-top:14px">请求是「拼」出来的，不是「聊」出来的——<b>你只控制五块料里的最后一块</b>。这一台把一次任务里的多次请求与工具循环逐步演推，你可以连续播放、暂停、回看任意一步。</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>M01（任务 / 请求 / 工具 / 消息列表）。</div>
+            <div class="meta-card"><b>读完你能</b>手写一次请求的组成清单，逐块标出「程序给的 / 我给的」。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">五块料与四拍循环</h2>
+          <div class="flowline">
+            <span class="node">① 基础指令</span><span class="arr">+</span>
+            <span class="node">② developer 材料</span><span class="arr">+</span>
+            <span class="node">③ 对话历史</span><span class="arr">+</span>
+            <span class="node">④ 工具说明</span><span class="arr">+</span>
+            <span class="node">⑤ 本次用户输入</span>
+          </div>
+          <p>逐块标来源：①基础指令=<b>程序</b>；②developer 材料=<b>程序</b>；③对话历史=<b>一半程序、一半你</b>；④工具说明=<b>程序</b>；⑤本次输入=<b>你</b>。<mark>你只控制了五块里的最后一块。</mark>稳定材料排前面、易变内容排后面——这是刻意排布，对前缀缓存有利（M07）。</p>
+          <p>工具循环四拍：<b>问模型 → 模型要求调工具 → 工具执行写回 → 再问模型</b>。工具执行本身<b>不调用模型</b>，但它两侧各要一次模型请求。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互 · 时间线 / 演化器<span class="tag">播放 · 暂停 · 回看 · 重置</span></h2>
+          <div class="interact" id="tlApp">
+            <div class="caption"><span class="tt">请求组装演化器</span><span class="pill demo">演示数据</span></div>
+            <div class="btnrow">
+              <button class="btn" id="tlPrev">上一步</button>
+              <button class="btn primary" id="tlNext">下一步</button>
+              <button class="btn" id="tlPlay">连续播放</button>
+              <button class="btn" id="tlPause" disabled>暂停</button>
+              <button class="btn ghost" id="tlReset">重置</button>
+              <span class="spacer"></span>
+              <select id="tlSpeed" class="switch" style="min-height:38px" aria-label="连续播放速度">
+                <option value="1600">每步 1.6 秒</option>
+                <option value="3200" selected>每步 3.2 秒（默认）</option>
+                <option value="6400">每步 6.4 秒</option>
+              </select>
+            </div>
+            <div class="playing-strip" id="tlStatus">当前：逐步阅读（连续播放未开始）</div>
+            <div class="stepdots" id="tlDots" style="margin-top:10px"></div>
+            <div class="grid2" style="margin-top:12px">
+              <div>
+                <div class="phase-label" id="tlPhase">第 0 步 · 起点</div>
+                <div class="stage-note" id="tlNote"></div>
+                <div class="reason-line info" id="tlWhy" style="margin-top:8px"></div>
+              </div>
+              <div>
+                <div class="phase-label">当前材料列表（下一次请求几乎原样带上）</div>
+                <div class="mlist" id="tlList"></div>
+              </div>
+            </div>
+            <div class="data-table" id="tlData"></div>
+            <div class="predict" id="tlPredict">
+              <div class="pq">预测题（先猜后看）：从「模型要求调用工具」到「工具结果写回」这段工具执行时间里，模型被调用了<b>几次</b>？</div>
+              <div class="pbtns">
+                <button class="btn" data-guess="0">0 次</button>
+                <button class="btn" data-guess="1">1 次</button>
+                <button class="btn" data-guess="2">2 次</button>
+              </div>
+              <div class="pfb hidden" id="tlFb"></div>
+            </div>
+          </div>
+          <div class="callout">
+            <div class="ttl">看时间线时留意两件事</div>
+            <p>① <b>材料只增不减</b>：每出现一步，列表就变得更长——下一次请求几乎原样带上这里的一切（直到触发整理，见实验台①③）。② <b>模型调用夹在工具两侧</b>：工具执行本身不调模型，但「要求调用」和「拿到结果后继续」各要一次请求。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">配对不变量：调用与结果必须成对</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>坏结构</th><th>长什么样</th><th>后果</th></tr></thead>
+            <tbody>
+              <tr><td data-th="坏结构">A 调用缺结果（悬空调用）</td><td data-th="样子"><code>[assistant: 调用工具 call_001]</code> 后直接是 user 或新的 assistant</td><td data-th="后果">上文悬空；服务端按「调用—结果」配对读取，会判结构非法</td></tr>
+              <tr><td data-th="坏结构">B 野结果（孤儿结果）</td><td data-th="样子"><code>[tool: 结果 call_999]</code> 找不到 <code>call_999</code> 这个调用</td><td data-th="后果">结果无法归属，程序在进入历史时移除孤立条目</td></tr>
+              <tr><td data-th="坏结构">C 内容类型不匹配</td><td data-th="样子">历史里有图片，但本次换用了不支持图片的模型</td><td data-th="后果">图片在进入请求前被剥离——「材料在你没察觉时被改写」</td></tr>
+            </tbody>
+          </table></div>
+          <p>程序宁可<b>在本地补齐占位或移除孤立条目</b>，也不发送结构非法的请求。这不是礼貌问题，是<b>不变量</b>。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测<span class="tag">先猜，再看答案</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">AI 停下来等工具结果的那段时间，模型被调用了几次？<br>A. 0 次，工具是本地跑的　B. 1 次（发出调用那次）　C. 2 次（发出调用 + 拿到结果后继续）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>C。</b>模型先被问「现在做什么」→要求调用工具；工具执行完、结果写入列表后再被问一次「接下来做什么」。工具执行本身不调模型，但两侧各要一次请求。</p></div></details></div>
+            <div class="q"><div class="qt">工具结果出现在消息列表里，说明它一定会出现在下一次请求里。（对/错）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>「进入列表」与「出现在下一次请求」之间还有处理步骤：配对与内容检查、限长（M05）、窗口紧张时的整理与摘要替代（M04）。</p></div></details></div>
+            <div class="q"><div class="qt">程序为什么要死守「每个调用都有结果」？如果历史里冒出一条「孤儿结果」，程序怎么处理？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>因为请求是结构化数据，服务端按「调用—结果」对应关系配对读取。缺结果会让上文悬空，缺调用的「野结果」无法归属。程序宁可在本地补齐占位或在进入历史时<b>移除孤立条目</b>，也不发送结构非法的请求。</p></div></details></div>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="b6">上一节 <small>⑥ 账单器</small></button>
+          <button class="btn primary" data-next="appendix">下一节 <small>附录</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var steps=[
+            {phase:"第 0 步 · 起点",note:"你按下回车。此刻材料列表里只有你这一条消息。",why:"",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1]],
+             data:[["材料条数","1 条"],["模型调用（累计）","0 次"],["下一步","程序要组装一次请求"]]},
+            {phase:"第 1 步 · 模型请求 ①",note:"程序把材料打包问模型：接下来做什么？注意——除了你的消息，还带上了基础指令、developer 材料与工具说明。",why:"",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","①基础指令（岗位说明书）",1],["dev","②developer 材料（工作状态 + 规则）",1],["dev","④工具说明（查公交、读文件…）",1]],
+             data:[["材料条数","4 条"],["模型调用（累计）","1 次"],["模型返回","要求调用工具：查公交"]]},
+            {phase:"第 2 步 · 工具执行",note:"工具真的去查了公交，返回 300 行结果。调用记录与结果被写入列表——注意它们带同一个 call_id。",why:"工具执行本身不调用模型。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","①基础指令 + ②developer 材料 + ④工具说明",3],["调用","要求调用：查公交（call_001）",1],["结果","300 行公交查询结果",1]],
+             data:[["材料条数","6 条"],["模型调用（累计）","1 次"],["本步新增","调用记录 + 工具结果"]]},
+            {phase:"第 3 步 · 模型请求 ②",note:"带着全部材料再问模型。它看到 300 行结果后，决定再读一份文件。",why:"",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","①基础指令 + ②developer 材料 + ④工具说明",3],["调用","查公交（call_001）",1],["结果","300 行结果",1]],
+             data:[["材料条数","6 条"],["模型调用（累计）","2 次"],["模型返回","要求调用工具：读文件"]]},
+            {phase:"第 4 步 · 工具执行（读文件）",note:"《研学地点说明》共 40 行，写入列表。",why:"",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","①基础指令 + ②developer 材料 + ④工具说明",3],["调用·结果","查公交（call_001）",2],["调用","读文件（call_002）",1],["结果","40 行说明",1]],
+             data:[["材料条数","8 条"],["模型调用（累计）","2 次"],["本步新增","读文件调用 + 结果"]]},
+            {phase:"第 5 步 · 模型请求 ③（⑤本次输入=你）",note:"这次请求几乎原样带上前面的一切。模型终于给出最终行程——它引用「下午 4 点前返校」来安排返程时间。",why:"同一个「4 点返校」约束，此刻躺在材料列表的最前部——它没被重发，却也从未离开。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","①基础指令 + ②developer 材料 + ④工具说明",3],["调用·结果","查公交（call_001）",2],["调用·结果","读文件（call_002）",2]],
+             data:[["材料条数","8 条"],["模型调用（累计）","3 次"],["输出","最终行程建议"]]},
+            {phase:"第 6 步 · 任务完成",note:"AI 停下。任务结束 = 这一串请求 + 工具循环的总和。",why:"如果任务继续（比如你说「再改一下」），材料会在此基础上继续增长——直到触发整理（见实验台①③）。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","①基础指令 + ②developer 材料 + ④工具说明",3],["调用·结果","查公交（call_001）",2],["调用·结果","读文件（call_002）",2]],
+             data:[["材料条数","8 条（不会再涨——任务结束了）"],["模型调用","共 3 次"],["工具执行","2 次"]]}
+          ];
+          var i=0,timer=null;
+          function render(){
+            var st=steps[i];
+            $("#tlPhase").textContent=st.phase;$("#tlNote").textContent=st.note;
+            $("#tlList").innerHTML=st.items.map(function(it){
+              return '<div class="mitem"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div><span class="tok">×'+it[2]+'</span></div>';
+            }).join("");
+            $("#tlData").innerHTML=st.data.map(function(d){return '<div class="data-row"><span class="k">'+d[0]+'</span><span class="v">'+d[1]+'</span></div>'}).join("");
+            if(st.why){$("#tlWhy").textContent="说明："+st.why;$("#tlWhy").classList.remove("hidden")}else{$("#tlWhy").classList.add("hidden")}
+            $("#tlDots").innerHTML=steps.map(function(_,k){return '<button class="stepdot '+(k===i?"on":(k<i?"done":""))+'" data-jump="'+k+'">'+k+'</button>'}).join("");
+            $("#tlPrev").disabled=i===0;$("#tlNext").disabled=i===steps.length-1;
+          }
+          function stop(msg){if(timer){clearInterval(timer);timer=null}$("#tlPlay").disabled=false;$("#tlPause").disabled=true;if(msg)$("#tlStatus").textContent="模式："+msg}
+          $("#tlNext").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");if(i<steps.length-1){i++;render()}});
+          $("#tlPrev").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");if(i>0){i--;render()}});
+          $("#tlReset").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");i=0;render()});
+          $("#tlDots").addEventListener("click",function(e){var t=e.target.closest("[data-jump]");if(!t)return;stop("逐步阅读（连续播放已暂停）");i=parseInt(t.getAttribute("data-jump"),10);render()});
+          $("#tlPlay").addEventListener("click",function(){
+            var sp=parseInt($("#tlSpeed").value,10);
+            if(!sp){$("#tlStatus").textContent="请先在选择框里选速度（每步 1.6 / 3.2 / 6.4 秒），再开始连续播放。";return}
+            stop();if(i>=steps.length-1)i=0;
+            $("#tlPlay").disabled=true;$("#tlPause").disabled=false;
+            $("#tlStatus").textContent="模式：连续播放中 · 每步 "+(sp/1000)+" 秒（随时可暂停或点任意步）";
+            render();
+            timer=setInterval(function(){if(i>=steps.length-1){stop("连续播放已结束（保留在最后一步）")}else{i++;render()}},sp);
+          });
+          $("#tlSpeed").addEventListener("change",function(){
+            if(timer){clearInterval(timer);var sp=parseInt($("#tlSpeed").value,10);
+              if(sp){$("#tlStatus").textContent="模式：连续播放中 · 每步 "+(sp/1000)+" 秒（已按新速度继续）";
+                timer=setInterval(function(){if(i>=steps.length-1){stop("连续播放已结束（保留在最后一步）")}else{i++;render()}},sp);}}
+          });
+          $("#tlPause").addEventListener("click",function(){stop("已暂停（连续播放）。点「下一步」进入逐步阅读。")});
+          document.querySelectorAll("#tlPredict [data-guess]").forEach(function(b){
+            b.addEventListener("click",function(){
+              var ok=(b.getAttribute("data-guess")==="0");
+              $("#tlFb").className="pfb "+(ok?"good":"bad");
+              $("#tlFb").innerHTML=(ok?"猜对了。":"猜错了。")+" <b>0 次</b>。工具执行本身<b>不调用模型</b>——但「模型要求调用工具」与「拿到结果后继续」<b>两侧各要一次请求</b>。所以那一下「AI 停住等工具」的时间里，模型一次都没被调用。";
+            });
+          });
+          render();
+        })();
+        </script>
+</section>
+
+<section class="unit" id="appendix">
+        <div class="unithead">
+          <span class="kicker">附录 · 随身工具页</span>
+          <h1>术语 · 数值总表 · 边界</h1>
+          <p class="lead" style="margin-top:14px">把七个实验台用到的关键数字、口径与未决项集中在此，方便核对与引用。引用纪律：数字带三类角标；<b>不排名次</b>；<b>未知保留未知</b>。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">附录 A · 关键数值总表<span class="tag">逐项回 T15 核对</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>数值 / 口径</th><th>内容</th><th>角标</th><th>母稿落点</th></tr></thead>
+            <tbody>
+              <tr><td data-th="数值">基础线</td><td data-th="内容"><code>(W×9)/10</code>（90% 向下取整）</td><td data-th="角标">源码常量</td><td data-th="母稿">M03（<code>codex-trigger-02</code>）</td></tr>
+              <tr><td data-th="数值">范围线</td><td data-th="内容"><code>min(M, 基础线)</code>（M = 模型字段，Codex 专有）</td><td data-th="角标">源码常量</td><td data-th="母稿">M03（<code>codex-trigger-01</code>）</td></tr>
+              <tr><td data-th="数值">整段线 / 有效窗口</td><td data-th="内容"><code>H = W×p÷100</code>（p 缺省 95）</td><td data-th="角标">源码常量</td><td data-th="母稿">M03</td></tr>
+              <tr><td data-th="数值">触发判定</td><td data-th="内容">触发到线 = 范围线 OR 整段线</td><td data-th="角标">源码常量</td><td data-th="母稿">M03</td></tr>
+              <tr><td data-th="数值">保留预算（本地 / 远端 v2）</td><td data-th="内容"><b>20,000</b> / <b>64,000</b></td><td data-th="角标">源码常量</td><td data-th="母稿">M04（<code>codex-retain-01/02</code>）</td></tr>
+              <tr><td data-th="数值">pi 保留预算</td><td data-th="内容"><code>keepRecentTokens</code> 20,000（另有 reserveTokens 16384 触发用）</td><td data-th="角标">源码常量</td><td data-th="母稿">M04（<code>pi-summary-02</code>）</td></tr>
+              <tr><td data-th="数值">ocv1 / ocv2 保留预算</td><td data-th="内容"><code>min(15000,max(2000,floor(usable×0.25)))</code> / 固定 15,000</td><td data-th="角标">源码常量</td><td data-th="母稿">M04（<code>ocv1-summary-02</code> / <code>ocv2-summary-02</code>）</td></tr>
+              <tr><td data-th="数值">dsh 保留比例</td><td data-th="内容"><code>retainRatio</code> 0.16</td><td data-th="角标">源码常量</td><td data-th="母稿">M04（<code>dsh-trigger-01</code>）</td></tr>
+              <tr><td data-th="数值">裁剪口径（Codex）</td><td data-th="内容"><code>ceil(bytes/4)</code>；左 <code>floor(max_bytes/2)</code>、右 = 其余；标记另加不占预算</td><td data-th="角标">源码常量</td><td data-th="母稿">M05（<code>codex-trunc-01</code>）</td></tr>
+              <tr><td data-th="数值">pi 限长</td><td data-th="内容"><code>DEFAULT_MAX_LINES=2000</code>、<code>DEFAULT_MAX_BYTES=51,200</code>（先到者）</td><td data-th="角标">源码常量</td><td data-th="母稿">M05（<code>pi-trunc-01</code>）</td></tr>
+              <tr><td data-th="数值">缓存拆账</td><td data-th="内容">普通 = input − 读 − 写；当量 = 普通×1 + 读×0.1 + 写×1.25</td><td data-th="角标">公式=文档示例；数字=演示</td><td data-th="母稿">M07</td></tr>
+              <tr><td data-th="数值">三组账单</td><td data-th="内容">13,600（≈0.14×）/ 125,000（1.25×）/ 92,000（≈0.92×）</td><td data-th="角标">演示</td><td data-th="母稿">M07 §usage 拆账</td></tr>
+              <tr><td data-th="数值">dsh 跨会话引用</td><td data-th="内容"><code>maxReferences</code> 默认 3、<code>referenceContextFraction</code> 默认 0.2</td><td data-th="角标">README 文本·未运行</td><td data-th="母稿">M09（<code>dsh-retrieval-02</code>）</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">附录 B · 未决与 T19 回填清单<span class="tag">一律按「演示」对待</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>未决项</th><th>状态</th></tr></thead>
+            <tbody>
+              <tr><td data-th="未决项">产品端到端默认行为（九工具全部）</td><td data-th="状态">已实测（v2 161KB）→ <code>【T19 实测：形态各异——codex 保头尾+标记 / pi 50KB 字节阈值 / claude persisted-output+2KB 预览 / omp middle / dsh 51200B / ocv1·ocv2 shell 纯 tail / grok 头尾各 10,000 字符（证据：T19/01-codex §A-3 等八记录）】</code></td></tr>
+              <tr><td data-th="未决项">连续压缩失真（C-04 / LQ-09）</td><td data-th="状态">已部分实测 → <code>【T19 实测：单次压缩各工具 E1 全 PASS；grok 3 次连续压缩后硬约束丢失（首例直证）；程度未量化（证据：T19/07-grok §3）】</code>（实验台③按演示对待）</td></tr>
+              <tr><td data-th="未决项">服务端缓存命中 / TTL</td><td data-th="状态">九工具全部 UNOBSERVABLE——不承诺命中率</td></tr>
+              <tr><td data-th="未决项">恢复后幂等 / 重复执行</td><td data-th="状态">部分证据 → <code>【T19 部分实测：E4 恢复条件下未见工具重复执行（codex 恢复轮 0 命令、pi 溢出恢复 0 工具动作）；专门副作用注入未做 → 仍保留未决（证据：T19/01-codex §A-6、02-pi §5）】</code></td></tr>
+              <tr><td data-th="未决项">② Claude 默认触发百分比 / 硬上限常量</td><td data-th="状态">未公布 / 无一级出处 → 登记不裁决</td></tr>
+              <tr><td data-th="未决项">⑧ Grok 内部文档冲突（Q-01~Q-05）</td><td data-th="状态">登记不裁决</td></tr>
+              <tr><td data-th="未决项">Codex 检索算法（U3）/ memories 深层（U4）/ 子代理交接（U5）</td><td data-th="状态">未逐行核验 → <code>【T19 未覆盖：批次未做记忆/子代理专项，保留未决】</code></td></tr>
+              <tr><td data-th="未决项">性能与成本对比</td><td data-th="状态"><b>唯一允许排名次的时机</b>，待 T19</td></tr>
+            </tbody>
+          </table></div>
+          <p class="muted">「在此之前，未知就保留未知。」</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">附录 C · 冲突裁决摘要</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>#</th><th>一句话裁决</th></tr></thead>
+            <tbody>
+              <tr><td data-th="#">C-01/C-02</td><td data-th="裁决">「90–95% 总括句」<b>否证</b>——九工具口径互不相同</td></tr>
+              <tr><td data-th="#">C-03/C-12</td><td data-th="裁决">压缩不可逆 vs 物理保留<b>两事实并存</b>；「绝不可能找回」仅模型可见层</td></tr>
+              <tr><td data-th="#">C-04/LQ-09</td><td data-th="裁决">连续压缩失真<b>方向已证</b> → <code>【T19 实测：grok 3 次压缩后硬约束丢失（首例直证）；程度未量化（证据：T19/07-grok §3）】</code></td></tr>
+              <tr><td data-th="#">C-06</td><td data-th="裁决">中文估算各工具口径不同（有低估有高估），「保守」不成立</td></tr>
+              <tr><td data-th="#">C-08</td><td data-th="裁决">Gemini「大窗口不压缩」<b>撤回</b>（且已弃用，转存档）</td></tr>
+              <tr><td data-th="#">C-10</td><td data-th="裁决">「六层压缩」<b>否证</b>（层数非维度）</td></tr>
+              <tr><td data-th="#">C-13</td><td data-th="裁决">v2 文档与实现分叉：<b>以代码为准</b></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">附录 D · 离线可用性与官方入口</h2>
+          <div class="callout ok">
+            <div class="ttl">离线可用性说明</div>
+            <p>本教材为<b>单文件 HTML</b>：全部 CSS/JS 内联，<b>无任何外部依赖</b>（无 CDN、无字体、无图片外链），<code>file://</code> 直开完整可用。深色/浅色跟随系统 <code>prefers-color-scheme</code> 自动切换，两种模式均可读。</p>
+          </div>
+          <p>官方原版入口（需联网，仅缓存一节有官方交互页）：</p>
+          <p class="src-line"><a href="https://platform.openai.com/docs/guides/prompt-caching" target="_blank" rel="noopener">OpenAI Prompt caching 官方文档（含 prefix matching 与模拟器）</a></p>
+          <p class="muted">本教材未嵌入 iframe（离线优先）；离线场景请阅读实验台⑥ 内的「离线回退段」（中文复现，已明确标注非官方原文）。其余各节的源码引用均为固定快照链接，需联网查看；讲解与交互部分离线可读。</p>
+          <p class="src-line muted">源码基线：Codex 快照 <code>a07c8eb</code>（样章基线）/ <code>76ed3b4</code>（T14 新快照），双快照纪律；其余八工具见 T14 §「版本基线」。证据ID 与 T15 正文同口径。</p>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="b7">上一节 <small>⑦ 时间线与演化器</small></button>
+          <span></span>
+        </div>
+</section>
+
+      </div>
+      <footer class="foot wrap">
+        <p>T17 交互教材 · 单文件离线版 · 课程母稿 T15（M01–M12）+ 比较矩阵 T14。所有源码事实基于固定快照（Codex <code>a07c8eb</code> / <code>76ed3b4</code> 双快照纪律），教学数值标「演示」，未实测处标 <code>【T19 待回填】</code>。不排名次、未知保留未知。</p>
+        <p>若浏览器禁用 JavaScript，请阅读同目录的 <code>T17-静态替代.md</code>；官方缓存原版页面需联网，本教材已备离线回退段。</p>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+  var order=["intro","b1","b2","b3","b4","b5","b6","b7","appendix"];
+  var titles={intro:"开始之前",b1:"① 预算与触发",b2:"② 裁剪与损失点",b3:"③ 压缩四幕",b4:"④ 保存与恢复",b5:"⑤ 检索·记忆·交接",b6:"⑥ 账单器",b7:"⑦ 时间线与演化器",appendix:"附录"};
+  var $=function(s){return document.querySelector(s)};
+  function show(id){
+    if(order.indexOf(id)<0)return;
+    order.forEach(function(k){
+      var el=document.getElementById(k);
+      if(el)el.classList.toggle("active",k===id);
+    });
+    document.querySelectorAll(".navlink").forEach(function(b){
+      if(b.getAttribute("data-go")===id)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");
+    });
+    $("#where").textContent=titles[id];
+    var idx=order.indexOf(id);
+    $("#prevBtn").disabled=idx===0;$("#nextBtn").disabled=idx===order.length-1;
+    window.scrollTo(0,0);
+    if(window.innerWidth<1000){$("#sidebar").classList.remove("open");$("#scrim").classList.remove("open")}
+  }
+  document.querySelectorAll(".navlink").forEach(function(b){
+    b.addEventListener("click",function(){show(b.getAttribute("data-go"))});
+  });
+  document.querySelectorAll("[data-next]").forEach(function(b){
+    b.addEventListener("click",function(){show(b.getAttribute("data-next"))});
+  });
+  document.querySelectorAll("[data-prev]").forEach(function(b){
+    b.addEventListener("click",function(){show(b.getAttribute("data-prev"))});
+  });
+  $("#prevBtn").addEventListener("click",function(){var i=order.indexOf(current());if(i>0)show(order[i-1])});
+  $("#nextBtn").addEventListener("click",function(){var i=order.indexOf(current());if(i<order.length-1)show(order[i+1])});
+  function current(){var id="intro";order.forEach(function(k){var el=document.getElementById(k);if(el&&el.classList.contains("active"))id=k});return id}
+  $("#menuBtn").addEventListener("click",function(){$("#sidebar").classList.add("open");$("#scrim").classList.add("open")});
+  $("#scrim").addEventListener("click",function(){$("#sidebar").classList.remove("open");$("#scrim").classList.remove("open")});
+  document.addEventListener("keydown",function(e){
+    if(e.target&&/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+    if(e.key==="ArrowRight")$("#nextBtn").click();
+    if(e.key==="ArrowLeft")$("#prevBtn").click();
+  });
+  show("intro");
+})();
+</script>
+</body>
+</html>

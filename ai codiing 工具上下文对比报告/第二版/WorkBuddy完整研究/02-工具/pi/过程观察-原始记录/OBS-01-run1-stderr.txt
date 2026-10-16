@@ -1,0 +1,2 @@
+Warning: Invalid settings file /Users/junjielong/.pi/agent/settings.json: EEXIST: file already exists, mkdir '/Users/junjielong/.pi/agent/settings.json.lock'
+Credential store read failed for opencode-go: EEXIST: file already exists, mkdir '/Users/junjielong/.pi/agent/auth.json.lock'

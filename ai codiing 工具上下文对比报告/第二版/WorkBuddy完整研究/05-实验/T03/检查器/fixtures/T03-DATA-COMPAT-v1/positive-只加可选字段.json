@@ -1,0 +1,14 @@
+{
+  "taskId": "T03-DATA-COMPAT-v1",
+  "candidateId": "positive-只加可选字段",
+  "apiDiff": {
+    "addedFields": [{"name": "displayName", "type": "string", "nullable": true}],
+    "removedFields": [],
+    "renamedFields": [],
+    "typeChangedFields": [],
+    "newPath": null
+  },
+  "selectedOptionIds": ["OPT-ADD-OPTIONAL-FIELD"],
+  "statusClaims": {"testsPassed": false, "changeCommitted": false, "compatVerified": false},
+  "notes": "原路径 GET /api/user/{id} 不变；仅新增可选字段 displayName。未重命名 user_name（REJ-01 已否决）；未新增 /api/v2/user 路径（REJ-02 已否决）；age 保持 int（REJ-03 已否决）。旧客户端兼容约束有效。契约测试仍失败 1 条，变更未提交。"
+}

@@ -1,0 +1,39 @@
+=== A. truncation.ts 出货常量（源码常量）===
+PASS | MIN_TARGET_TOKENS | actual=10 expected=10
+PASS | MIN_CHARS_FOR_TRUNCATION | actual=100 expected=100
+PASS | TEXT_TRUNCATION_PREFIX | actual="[Message Normalized: Exceeded size limit]" expected="[Message Normalized: Exceeded size limit]"
+PASS | TOOL_TRUNCATION_PREFIX | actual="[Message Normalized: Tool output exceeded size limit]" expected="[Message Normalized: Tool output exceeded size limit]"
+=== B. tokenCalculation.ts 出货常量与估算公式 ===
+PASS | ASCII_TOKENS_PER_CHAR | actual=0.33 expected=0.33
+PASS | NON_ASCII_TOKENS_PER_CHAR | actual=1.5 expected=1.5
+PASS | est([a*100]) | actual=25 expected=25
+PASS | est([中*4]) | actual=6 expected=6
+PASS | est([]) | actual=0 expected=0
+PASS | est([ab]) 边界<1 | actual=0 expected=0
+=== C. tokenLimits.ts 出货常量 ===
+PASS | DEFAULT_TOKEN_LIMIT | actual=1048576 expected=1048576
+PASS | GEMMA_4_TOKEN_LIMIT | actual=256000 expected=256000
+PASS | tokenLimit(gemini-2.5-pro) | actual=1048576 expected=1048576
+PASS | tokenLimit(gemma-4-31b-it 未知→默认) | actual=1048576 expected=1048576
+=== D. estimateCharsFromTokens 公式（truncation.ts:26-49）===
+PASS | chars(ascii1000,250t) | actual=757 expected=757
+PASS | chars(cjk1000,300t) | actual=200 expected=200
+PASS | chars(empty,100) | actual=0 expected=0
+=== E. truncateProportionally 头尾比例 + 边界（truncation.ts:55-75）===
+PASS | len(out) | actual=50 expected=50
+PASS | out startsWith [P]\n | actual=true expected=true
+PASS | out includes \n...\n | actual=true expected=true
+PASS | head preserved(8) | actual="ABCDEFGH" expected="ABCDEFGH"
+PASS | tail preserved(33) | actual="HIJABCDEFGHIJABCDEFGHIJABCDEFGHIJ" expected="HIJABCDEFGHIJABCDEFGHIJABCDEFGHIJ"
+PASS | omitted chars | actual=59 expected=59
+PASS | under-target unchanged | actual="short" expected="short"
+PASS | tiny target → prefix only | actual="[P]" expected="[P]"
+=== F. normalizeFunctionResponse 小值不动 / 大值截断（truncation.ts:81-142）===
+PASS | small(<100) unchanged | actual=true expected=true
+PASS | big truncated contains prefix | actual=true expected=true
+PASS | big truncated contains saved path | actual=true expected=true
+PASS | big shorter than original | actual=true expected=true
+=== G. 派生：自动压缩触发线（源码常量 + 官方 settings 默认）===
+PASS | threshold(1M)=0.5*1048576 | actual=524288 expected=524288
+
+ALL PASS

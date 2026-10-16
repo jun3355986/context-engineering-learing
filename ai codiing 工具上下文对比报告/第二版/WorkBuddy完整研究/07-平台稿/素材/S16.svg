@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-label="按需读入 vs 全量装填">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:13.5px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="780"/>
+<text class="tag" x="40" y="42">上下文管理 · S16</text>
+<text class="h1" x="40" y="82">按需读入 vs 全量装填</text>
+<text class="sub" x="40" y="114">「读什么进来」是上下文管理的第一道闸门 —— 它比压缩更靠前；东西没搬上桌，就不必压缩它</text>
+
+<!-- 分岔 -->
+<rect x="40" y="140" width="200" height="112" rx="12" fill="#eef2f9" stroke="#dfe5ef" stroke-width="1.5"/>
+<text class="bb" x="140" y="186" text-anchor="middle" font-weight="700">一份大资料</text>
+<text class="mini" x="140" y="212" text-anchor="middle">3000 文件 / 几十万字</text>
+<path d="M 242 180 L 292 168" stroke="#b91c1c" stroke-width="2.5" marker-end="url(#a16)"/>
+<path d="M 242 212 L 292 232" stroke="#0d9488" stroke-width="2.5" marker-end="url(#a16b)"/>
+<defs>
+<marker id="a16" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker>
+<marker id="a16b" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/></marker>
+</defs>
+
+<rect x="300" y="140" width="400" height="112" rx="12" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.5"/>
+<text class="bb" x="324" y="172" font-weight="700" fill="#b91c1c">全量装填（stuff-all）</text>
+<text class="mini" x="324" y="200">一次把资料全搬上桌：桌子立刻满、贵、噪声大</text>
+<text class="mini" x="324" y="222">内容 99% 无关；大仓库直接装不下</text>
+<text class="mini" x="324" y="244" fill="#5b6779">官方文档 / 源码里未见该路径（⑦复跑 stuffAll…=0）</text>
+
+<rect x="720" y="140" width="440" height="112" rx="12" fill="#e2f5f2" stroke="#0d9488" stroke-width="1.5"/>
+<text class="bb" x="744" y="172" font-weight="700" fill="#0d9488">按需读入（retrieve / JIT）</text>
+<text class="mini" x="744" y="200">先给「目录 / 名字」，需要哪段再取哪段</text>
+<text class="mini" x="744" y="222">每次只搬「这一小段」：高相关、可续读、可定位</text>
+<text class="mini" x="744" y="244" fill="#5b6779">八工具主流选择：都内建了检索工具</text>
+
+<!-- 三件套 -->
+<text class="st" x="40" y="304">检索族三件套（按需读入的执行链）</text>
+<rect class="card" x="40" y="320" width="1120" height="128" rx="12"/>
+<rect x="64" y="346" width="300" height="76" rx="10" fill="#e7edfb"/>
+<text class="bb" x="84" y="378" font-weight="700" fill="#1e3f9e">glob / find / ls（列）</text>
+<text class="mini" x="84" y="404">按路径列出「候选文件清单」</text>
+<path d="M 372 384 L 404 384" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a16)"/>
+<rect x="412" y="346" width="300" height="76" rx="10" fill="#e7edfb"/>
+<text class="bb" x="432" y="378" font-weight="700" fill="#1e3f9e">grep（搜）</text>
+<text class="mini" x="432" y="404">按内容定位「函数名在 api.ts:40」</text>
+<path d="M 720 384 L 752 384" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a16)"/>
+<rect x="760" y="346" width="376" height="76" rx="10" fill="#e2f5f2"/>
+<text class="bb" x="780" y="378" font-weight="700" fill="#0d9488">read（读正文，可分页续读）</text>
+<text class="mini" x="780" y="404">offset / limit 取那一段；读不完 → 给「下一段起点」</text>
+
+<!-- @文件 -->
+<rect class="card" x="40" y="468" width="550" height="150" rx="12"/>
+<text class="st" x="64" y="500" fill="#c2410c">@文件 引用语义：提及 ≠ 附带内容</text>
+<text class="mini" x="64" y="530">你输入 <tspan class="mono">@src/api.ts</tspan> 这个函数怎么改？</text>
+<text class="mini" x="64" y="554">dsh 实际：把 <tspan class="mono">"src/api.ts"</tspan> 作为候选路径给模型，<tspan font-weight="700">不附正文</tspan>。</text>
+<text class="mini" x="64" y="578">模型下一步：调 <tspan class="mono">read</tspan> 工具，才真正把正文读进来。</text>
+<rect x="64" y="590" width="502" height="18" rx="6" fill="#fdeede"/>
+<text class="mini" x="72" y="604" fill="#c2410c">原文：Selecting a candidate never reads or attaches file contents</text>
+
+<rect class="card" x="610" y="468" width="550" height="150" rx="12"/>
+<text class="st" x="634" y="500" fill="#b91c1c">能力 ≠ 行为</text>
+<text class="mini" x="634" y="530">有 <tspan class="mono">read</tspan> 工具只说明「能力」在；会不会「一把梭全读」属<tspan font-weight="700">模型行为</tspan>。</text>
+<text class="mini" x="634" y="554">T19 实测：pi 同条件 3 轮<tspan font-weight="700">行为分化</tspan>——</text>
+<text class="mini" x="634" y="576">1 轮只读头部 vs 2 轮自主分页读完（offset 717→1428→2151）。</text>
+<text class="mini" x="634" y="600" fill="#5b6779">codex 中段丢失后二次检索取回；omp 精确取回 artifact://0:1300-1360。</text>
+
+<!-- 上限 -->
+<rect x="40" y="636" width="1120" height="98" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="666" font-weight="700" fill="#c2410c">一次读入上限（单位不同，不得互套）</text>
+<text class="mini" x="64" y="692">② Claude <tspan font-weight="700">25,000 tokens</tspan>（整文件 &gt;256 KB 拒绝）｜ ③ pi <tspan font-weight="700">2000 行 / 50KB</tspan> 取先到者 ｜ ④ omp <tspan font-weight="700">≤3000 行</tspan></text>
+<text class="mini" x="64" y="714">⑤⑥ ocv1/ocv2 <tspan font-weight="700">2000 行 / 单行 2000 字符 / 50 KiB</tspan>｜ ⑨ dsh <tspan font-weight="700">2000 行 / 2000 字符每行 / 51200 字节</tspan>　→「数字大」≠「读得多」</text>
+
+<text class="mini" x="40" y="762" fill="#5b6779">出处：T15 M09 §一/§二/§三；回填主题 4（能力≠行为）；「未见全量装填路径」只对官方文档/源码成立，不能证明「一定不存在」。</text>
+</svg>

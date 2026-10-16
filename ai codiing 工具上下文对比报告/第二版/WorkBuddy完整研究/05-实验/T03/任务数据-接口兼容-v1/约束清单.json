@@ -1,0 +1,78 @@
+{
+  "packageId": "T03-DATA-COMPAT-v1",
+  "packageVersion": "v1",
+  "semantics": {
+    "status": "active = 当前有效约束；rejected = 已被用户否决，必须保留『已否决』状态而不是删除",
+    "whyKeepRejected": "『否决』是状态；检查器据此判定候选方案是否复活了过期决定",
+    "aliases": "每个被否项给多个同义写法，供检查器做语义命中（含否定语境判断），不做裸关键词匹配",
+    "rejectedAt口径": "填**用户确认否决**的那条消息 ID；若否决由助手先提出、用户随后确认，另用 proposedRejectionAt 记录助手侧消息（本包 REJ-02 即此情形）",
+    "aliasEnumerationLimit": "aliases 为**枚举式**，天然有召回上限：词表外的同义表达会使文本层漏报。复活判据以结构化字段为主，文本层不得单独作为复活证据（见 预期结果.json#knownLimitations L1）"
+  },
+  "activeConstraints": [
+    {
+      "id": "HC-01",
+      "kind": "hard",
+      "checkKind": "empty_list",
+      "field": "apiDiff.removedFields",
+      "text": "旧客户端必须继续可用：不得删除或重命名既有字段（user_name / age / email）",
+      "origin": "MSG-C001",
+      "status": "active",
+      "extraChecks": ["apiDiff.renamedFields", "apiDiff.newPath"]
+    },
+    {
+      "id": "HC-02",
+      "kind": "hard",
+      "checkKind": "all_nullable_true",
+      "field": "apiDiff.addedFields",
+      "text": "新增字段必须可选（nullable=true），不得标为 required",
+      "origin": "MSG-C001",
+      "status": "active"
+    },
+    {
+      "id": "HC-03",
+      "kind": "hard",
+      "checkKind": "equals",
+      "field": "apiDiff.typeChangedFields",
+      "value": [],
+      "text": "不得更改既有字段类型（如 age 从 int 改为 string）",
+      "origin": "MSG-C005",
+      "status": "active"
+    },
+    {
+      "id": "HC-04",
+      "kind": "process",
+      "checkKind": "none",
+      "text": "任务跨天：恢复会话后必须先验证兼容约束仍在场，再继续动手",
+      "origin": "MSG-C012",
+      "status": "active"
+    }
+  ],
+  "rejected": [
+    {
+      "id": "REJ-01",
+      "text": "把 user_name 重命名为 displayName",
+      "aliases": ["重命名为 displayName", "user_name 改成 displayName", "重命名 user_name", "把 user_name 改名"],
+      "rejectedAt": "MSG-C004",
+      "reason": "重命名会破坏旧客户端解析",
+      "status": "rejected"
+    },
+    {
+      "id": "REJ-02",
+      "text": "新增 v2 路径 /api/v2/user/{id} 并下线 v1",
+      "aliases": ["/api/v2/user", "新增 v2 路径", "下线 v1", "升级到 v2 路径"],
+      "rejectedAt": "MSG-C007",
+      "proposedRejectionAt": "MSG-C006",
+      "rejectedAtNote": "MSG-C006 为助手临时提议（『干脆加个 v2』）、MSG-C007 为用户否决（『v2 路径也不行』）；本字段口径=用户确认消息，与同包 坏摘要样例.md 的 D2 一致",
+      "reason": "旧客户端不会迁移，不能下线 v1",
+      "status": "rejected"
+    },
+    {
+      "id": "REJ-03",
+      "text": "把 age 从 int 改成 string",
+      "aliases": ["age 改成 string", "age 改为字符串", "age 类型改为 string"],
+      "rejectedAt": "MSG-C005",
+      "reason": "改类型破坏旧客户端反序列化",
+      "status": "rejected"
+    }
+  ]
+}

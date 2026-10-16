@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 840" width="1200" height="840" role="img" aria-label="Codex 代表调用链">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.st{font-size:16.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:13.5px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="840"/>
+<text class="tag" x="40" y="42">上下文管理 · S17</text>
+<text class="h1" x="40" y="82">Codex 代表调用链（固定 SHA）</text>
+<text class="sub" x="40" y="114">从「到线」到「整理」到「写回」到「下次 / 恢复」—— 一条能照着走的链</text>
+
+<defs><marker id="a17" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto"><path d="M0,0 L11,5.5 L0,11 z" fill="#2952cc"/></marker></defs>
+
+<!-- ① -->
+<rect class="card" x="40" y="140" width="1120" height="92" rx="12"/>
+<rect x="40" y="140" width="6" height="92" rx="3" fill="#2952cc"/>
+<text class="bb" x="68" y="172" font-weight="700"><tspan font-weight="400">①</tspan> 调用者　<tspan class="mini" font-weight="400">session/turn.rs</tspan></text>
+<text class="mini" x="68" y="196">回合循环 run_turn，每次采样前调 build_prompt —— 请求组装：input + tools + base_instructions + output_schema</text>
+<text class="mini" x="68" y="218" fill="#5b6779"><tspan class="mono">core/src/session/turn.rs</tspan>　L1563–1591</text>
+
+<path d="M 600 236 L 600 258" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a17)"/>
+
+<!-- ② -->
+<rect class="card" x="40" y="264" width="1120" height="92" rx="12"/>
+<rect x="40" y="264" width="6" height="92" rx="3" fill="#0d9488"/>
+<text class="bb" x="68" y="296" font-weight="700"><tspan font-weight="400">②</tspan> 条件判断　<tspan class="mini" font-weight="400">轮前 run_pre_sampling_compact</tspan></text>
+<text class="mini" x="68" y="320">取 context_window_token_status；到线 =（A ≥ 范围线 + 缓冲）或（A ≥ 整段线）</text>
+<text class="mini" x="68" y="342" fill="#5b6779"><tspan class="mono">core/src/session/context_window.rs</tspan>　L60–117；轮前 L180–222 / 轮中 L548–654 / 轮后 L718–757</text>
+
+<path d="M 600 360 L 600 382" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a17)"/>
+
+<!-- ③ -->
+<rect class="card" x="40" y="388" width="1120" height="112" rx="12"/>
+<rect x="40" y="388" width="6" height="112" rx="3" fill="#c2410c"/>
+<text class="bb" x="68" y="420" font-weight="700"><tspan font-weight="400">③</tspan> 处理函数　<tspan class="mini" font-weight="400">core/src/compact.rs　保留算法</tspan></text>
+<text class="mini" x="68" y="444">筛候选 → 从新到旧装 <tspan font-weight="700">20,000</tspan> 预算 → 边界截短（保头尾）→ 产物另加（摘要 / 压缩条目）→ 重组规则</text>
+<text class="mini" x="68" y="466" fill="#5b6779"><tspan class="mono">compact.rs</tspan> L63（20,000 常量）、L574–603（排除旧摘要）、L690–770（装预算）</text>
+<text class="mini" x="68" y="488" fill="#c2410c">★ 关键步：哪一步决定「保留」；哪一步决定「裁剪」</text>
+
+<path d="M 600 504 L 600 526" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a17)"/>
+
+<!-- ④ -->
+<rect class="card" x="40" y="532" width="1120" height="92" rx="12"/>
+<rect x="40" y="532" width="6" height="92" rx="3" fill="#2952cc"/>
+<text class="bb" x="68" y="564" font-weight="700"><tspan font-weight="400">④</tspan> 状态写回　<tspan class="mini" font-weight="400">core/src/session/mod.rs</tspan></text>
+<text class="mini" x="68" y="588">① 替换内存历史（替代历史）　② 追加 CompactedItem 检查点　③ persist_rollout_items（追加、不删旧记录）</text>
+<text class="mini" x="68" y="610" fill="#5b6779"><tspan class="mono">session/mod.rs</tspan> L4130–4222　　★ 关键步：哪一步「写回状态」</text>
+
+<path d="M 600 628 L 600 650" stroke="#2952cc" stroke-width="2.5" marker-end="url(#a17)"/>
+
+<!-- ⑤ -->
+<rect class="card" x="40" y="656" width="1120" height="92" rx="12"/>
+<rect x="40" y="656" width="6" height="92" rx="3" fill="#0d9488"/>
+<text class="bb" x="68" y="688" font-weight="700"><tspan font-weight="400">⑤</tspan> 下次 / 恢复　<tspan class="mini" font-weight="400">session/rollout_reconstruction.rs</tspan></text>
+<text class="mini" x="68" y="712">下一次请求用「替代历史」；重启用「替代历史 + 后缀回放」（不从头重放全部旧消息）</text>
+<text class="mini" x="68" y="734" fill="#5b6779"><tspan class="mono">rollout_reconstruction.rs</tspan> L480–520</text>
+
+<!-- 关键步表 -->
+<rect x="40" y="764" width="1120" height="0" />
+<text class="mini" x="40" y="782" fill="#5b6779">★ 三个关键步：<tspan font-weight="700" fill="#1b2330">保留</tspan>＝compact.rs 装 20,000 预算（只收真用户消息）｜<tspan font-weight="700" fill="#1b2330">裁剪</tspan>＝compact.rs 边界截短 + history.rs 配对不变量｜<tspan font-weight="700" fill="#1b2330">写回</tspan>＝session/mod.rs 替换内存 + 追加检查点。</text>
+<text class="mini" x="40" y="804" fill="#5b6779">快照：<tspan class="mono">a07c8eb</tspan>（样章基线，只读）；链接基址 <tspan class="mono">https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/</tspan></text>
+<text class="mini" x="40" y="826" fill="#5b6779">⚠ 代表链＝固定快照静态阅读结论，非运行时实测；同一段落不混用两份快照（新快照 76ed3b4 行号不同）。</text>
+</svg>

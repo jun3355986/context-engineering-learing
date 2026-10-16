@@ -1,0 +1,12 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "regression-对抗E-词表外否定词",
+  "regressionOf": "T03R 对抗测试例 E（P-04）：'拒绝' 原不在否定词表，正当否决叙述被误报为复活",
+  "returnTime": "15:45",
+  "costBreakdown": {"vehicle": 1400, "tickets": 0, "guide": 200},
+  "headcount": 64,
+  "assemblyPointId": "LOC-PLAYGROUND",
+  "selectedOptionIds": ["OPT-BOTANIC", "OPT-BUS-1450"],
+  "statusClaims": {"车辆预订": "未开始", "校方报备": "未开始", "行程已确认": false},
+  "notes": "我们拒绝科技馆首选，最终去植物园，返程 14:50 班次 15:45 返校，集合点操场。"
+}

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" width="1200" height="740" role="img" aria-label="落盘完整性边界示意">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.ct{font-size:17px;font-weight:700;fill:#1b2330}
+.bb{font-size:14px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="740"/>
+<text class="tag" x="40" y="42">上下文管理 · S10</text>
+<text class="h1" x="40" y="82">落盘完整性边界：落盘 = 原文完整？不一定</text>
+<text class="sub" x="40" y="114">同一份大输出落盘后，「能不能一字不差找回来」——要看路径、要看版本</text>
+
+<!-- ocv1 -->
+<rect class="card" x="40" y="140" width="550" height="356" rx="12"/>
+<rect x="40" y="140" width="550" height="50" rx="12" fill="#fdeaea"/>
+<rect x="40" y="178" width="550" height="12" fill="#fdeaea"/>
+<text class="ct" x="64" y="172" fill="#b91c1c">⑤ OpenCode v1 —— 缺头竞态</text>
+
+<text class="bb" x="64" y="216" font-weight="700">cat 路径</text>
+<rect x="64" y="226" width="502" height="38" rx="8" fill="#e6f6ea"/>
+<text class="mini" x="80" y="250" fill="#15803d">3/3 逐字节一致（161,144B，sha256 一致）</text>
+
+<text class="bb" x="64" y="292" font-weight="700">bash-grep 路径</text>
+<rect x="64" y="302" width="502" height="86" rx="8" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.2"/>
+<text class="mini" x="80" y="326" fill="#b91c1c" font-weight="700">n = 6 中 3 次缺首部</text>
+<text class="mini" x="80" y="348">缺量 0–2,094B；仅两个离散值（2,094 / 1,309）</text>
+<text class="mini" x="80" y="370">恒为<tspan font-weight="700">后缀</tspan>（不丢中尾）；根因<tspan font-weight="700">未证</tspan></text>
+
+<text class="mini" x="64" y="416">落盘文件形态：spill <tspan font-weight="700">恒为后缀</tspan>——缺的是「头部」，不是中间或尾部。</text>
+<text class="mini" x="64" y="442">与「整块丢失」一致（缺量仅两个离散值，非连续分布）。</text>
+<rect x="64" y="458" width="502" height="30" rx="8" fill="#eef2f9"/>
+<text class="mini" x="80" y="478">根因未证 → <tspan font-weight="700" fill="#b91c1c">不作「已修」断言</tspan>（spawner 属依赖包，不在快照内）</text>
+
+<!-- ocv2 -->
+<rect class="card" x="610" y="140" width="550" height="356" rx="12"/>
+<rect x="610" y="140" width="550" height="50" rx="12" fill="#e6f6ea"/>
+<rect x="610" y="178" width="550" height="12" fill="#e6f6ea"/>
+<text class="ct" x="634" y="172" fill="#15803d">⑥ OpenCode v2 —— 未复现</text>
+
+<text class="bb" x="634" y="216" font-weight="700">同命令复跑</text>
+<rect x="634" y="226" width="502" height="38" rx="8" fill="#e6f6ea"/>
+<text class="mini" x="650" y="250" fill="#15803d">13/13 逐字节一致、零缺头（含 v1 竞态同命令 grep -n "" 3/3 + cat 10/10）</text>
+
+<text class="bb" x="634" y="292" font-weight="700">出货代码结构差异</text>
+<rect x="634" y="302" width="502" height="86" rx="8" fill="#eef2f9"/>
+<text class="mini" x="650" y="326">· 无 append 交接</text>
+<text class="mini" x="650" y="348">· 无 <tspan class="mono">sink</tspan> 可选链</text>
+<text class="mini" x="650" y="370">· 新增 <tspan class="mono">await open</tspan></text>
+
+<text class="mini" x="634" y="416">全二进制检索 0/0/0 命中 + <tspan class="mono">once("open")</tspan> 唯一。</text>
+<text class="mini" x="634" y="442">→ 支持「<tspan font-weight="700">v2 未共有该竞态</tspan>（结构上已消除候选窗口）」。</text>
+<rect x="634" y="458" width="502" height="30" rx="8" fill="#e6f6ea"/>
+<text class="mini" x="650" y="478" fill="#15803d">同率假设下概率 ≈1.2×10⁻⁴；小样本，<tspan font-weight="700">不强断言</tspan></text>
+
+<!-- 边界注 -->
+<rect x="40" y="518" width="1120" height="150" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="550" font-weight="700" fill="#c2410c">边界注（引用必须带）</text>
+<text class="mini" x="64" y="578">· <tspan font-weight="700" fill="#b91c1c">不得写「落盘 = 原文必然完整」</tspan>：v1 bash-grep 路径已观测到缺首部；引用「落盘可找回」必须带此边界（T19 总表 §7-10）。</text>
+<text class="mini" x="64" y="602">· v2 未复现该竞态 → <tspan font-weight="700">支持「未共有」</tspan>，但<tspan font-weight="700">不作「已修」断言</tspan>；两版保留段同向（自第 1535 完整行起），<tspan font-weight="700">不跨版本套行号</tspan>。</text>
+<text class="mini" x="64" y="626">· 与「压缩/裁剪两层事实」同源（C-03/C-12）：模型可见层不可自动恢复；磁盘原文层保留期内可查 —— 但「可查」≠「必然逐字节完整」。</text>
+<text class="mini" x="64" y="650">· 正确写法示例：「v1 cat 路径 3/3 逐字节一致；bash-grep 路径 n=6 中 3 次缺首部（根因未证）」——<tspan font-weight="700">带边界引用</tspan>。</text>
+
+<text class="mini" x="40" y="700" fill="#5b6779">出处：T19 总表 §7-10、`06-ocv1.md` §2、`08-ocv2.md` §五；回填主题 5。</text>
+<text class="mini" x="40" y="722" fill="#5b6779">⚠ 小样本探索性（v1 n=6 / v2 13 次），不声称统计显著；各工具条件不同，不排名次。</text>
+</svg>

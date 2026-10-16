@@ -1,0 +1,11 @@
+{
+  "taskId": "T03-DATA-TRIP-v1",
+  "candidateId": "positive-动物园方案",
+  "returnTime": "15:30",
+  "costBreakdown": {"vehicle": 1400, "tickets": 2720},
+  "headcount": 64,
+  "assemblyPointId": "LOC-PLAYGROUND",
+  "selectedOptionIds": ["OPT-ZOO", "OPT-BUS-1435"],
+  "statusClaims": {"车辆预订": "未开始", "校方报备": "未开始", "行程已确认": false},
+  "notes": "返程用 14:35 班次，15:30 返校。门票按学生 40 / 老师 80 计 2720 元（含讲解），车费 1400 元，合计 4120 元。17:30 返程与校门口集合此前均已否决，不再采用；集合点操场，64 人两车同批。"
+}

@@ -1,0 +1,445 @@
+{
+  "data_status": "completed",
+  "conditions": {
+    "date": "2026-10-14（macOS，UTC+8）",
+    "cli_version": "codex-cli 0.152.0",
+    "model": "gpt-5.6-sol",
+    "authentication": "ChatGPT 登录；未使用 API Key",
+    "project": "独立目录中的合成资料；无业务代码、无真实个人信息",
+    "entrypoint": "真实 codex 二进制：A/C/D 用 app-server；B 在真实 CLI 聊天界面输入 /compact",
+    "transport": "A/C/D：stdio JSON-RPC；B：PTY 终端驱动，实际键入命令和回车",
+    "source_snapshot": "a07c8ebd57feedc4cf5dfe854c8e9101de54186b",
+    "runtime_source_relation": "正文固定提交解释算法；运行对象是发布包 0.152.0，未证明逐函数完全一致。",
+    "config": {
+      "common": {
+        "model_reasoning_effort": "low",
+        "sandbox": "read-only",
+        "approval_policy": "never",
+        "model_context_window": 100000,
+        "model_auto_compact_token_limit_scope": "total",
+        "modelContextWindow_reported": 95000
+      },
+      "automatic": {
+        "model_auto_compact_token_limit": 22000,
+        "tool_output_token_limit": 10000,
+        "actual_nested_max_output_tokens": 6500
+      },
+      "cache_and_manual": {
+        "model_auto_compact_token_limit": 90000,
+        "tool_output_token_limit": 10000,
+        "manual_tui_check_for_update_on_startup": false
+      },
+      "truncation_call": {
+        "model_auto_compact_token_limit": 90000,
+        "tool_output_token_limit": 10000,
+        "actual_nested_max_output_tokens": 128
+      },
+      "truncation_config_supplement": {
+        "model_auto_compact_token_limit": 90000,
+        "tool_output_token_limit": 256,
+        "actual_nested_max_output_tokens": 60000
+      }
+    },
+    "limits": [
+      "100,000 窗口、22,000 自动线都是这次进程的实验配置，便于用少量资料触发现象；不是模型原生容量或生产默认值。",
+      "最初候选 gpt-6.1-sol 与 gpt-5.4 均被这个 ChatGPT 账号入口拒绝；改用完成了真实请求的 gpt-5.6-sol。列表里出现模型名仍不等于账号可用。",
+      "发布包 strict-config 拒绝了 model_post_turn_compact_threshold_percent；本次未启用它。自动范围字段实际名称为 model_auto_compact_token_limit_scope。",
+      "工具运行采用 Code Mode（exec 内调用 exec_command）；结果类型是 custom_tool_call_output，不能套用普通 function_call_output 的所有字节结论。"
+    ]
+  },
+  "experiments": {
+    "automatic": {
+      "status": "passed",
+      "summary": "没有输入 /compact，也没有调用主动整理接口；三次文件读取后出现自动整理，随后在同一轮完成最终 JSON。三个文件独有的 TAIL 标记全部正确。",
+      "entrypoint": "一个 turn/start，随后等待 turn/completed；无第二条用户消息。",
+      "native_steps": [
+        "运行 python3 run_lab.py automatic；脚本只启动一项任务，阈值设为 22,000。",
+        "它依次 cat 三份资料；每次实际 max_output_tokens=6500，三次读取都发生在整理之前。",
+        "查看 artifacts/automatic/events.jsonl 中 contextCompaction 的开始、完成，再查看 rollout 的 compacted 检查点和后续 agentMessage。",
+        "核对最终三个 TAIL 与文件末行；它们没有写在任务提示词里。整理后本次只继续回答，没有新的工具调用。"
+      ],
+      "acceptance": "同时有非手动发起的整理开始/完成、替换检查点、同一轮继续回答与文件独有标记正确。精确触发时估计值另列为未直接观测。",
+      "commands": [
+        {
+          "label": "实际配置与入口",
+          "command": "python3 run_lab.py automatic\n# W=100000；scope=total；reasoning=low；sandbox=read-only；approval=never；C=22000；tool_output_token_limit=10000"
+        }
+      ],
+      "prompt": "这是自动压缩复现实验。硬约束RETURN_BY=16:00、BUDGET_CNY=1280、MEETING_POINT=东门。严格依次使用shell读取context-A.txt、context-B.txt、context-C.txt，每次只读取一个文件并等待结果，不能合并命令、不能使用并行工具。每次用cat完整输出，若工具支持max_output_tokens，设为6500。不得写文件、不得读取其它资料。读完三份后给出简短JSON：read_files、三项硬约束、三个TAIL标记。只根据结果判断；如果程序整理上下文，请继续尚未完成的步骤，不重做已完成读取。",
+      "observations": [
+        "三次实际读取 A → B → C；未发送 /compact 或 thread/compact/start。",
+        "contextCompaction 开始、完成均在同一 turn 内。",
+        "rollout 第 24 行写入 compacted，replacement_history 有 6 项：5 条消息和 1 个服务端压缩块。",
+        "后续普通请求 input=12,460；完成最终答复。三个 TAIL nonce 均与来源文件相符。"
+      ],
+      "logs": [
+        {
+          "label": "按实际顺序摘录（删去文本增量和长工具正文）",
+          "source": "automatic/events.jsonl:59,62,169；automatic/rollout.jsonl:24",
+          "text": "读取 A → 读取 B → 读取 C\nitem/started   type=contextCompaction\nrollout type=compacted; replacement_history: 5 message + 1 compaction\nitem/completed type=contextCompaction\nthread/tokenUsage/updated last.inputTokens=12460, cachedInputTokens=11904\nturn/completed status=completed"
+        },
+        {
+          "label": "最终 JSON，原始内容",
+          "source": "automatic/results.json → runs[0].items 最终 agentMessage",
+          "text": "{\n  \"read_files\": [\"context-A.txt\", \"context-B.txt\", \"context-C.txt\"],\n  \"RETURN_BY\": \"16:00\",\n  \"BUDGET_CNY\": 1280,\n  \"MEETING_POINT\": \"东门\",\n  \"TAIL_A\": \"NONCE_3B94A2585BC1\",\n  \"TAIL_B\": \"NONCE_F18624E3CD52\",\n  \"TAIL_C\": \"NONCE_575B2680BF92\"\n}"
+        }
+      ],
+      "before_after": [
+        {
+          "label": "比较请求用量与活动历史结构",
+          "before": "已经完成 A、B、C 三次读取。\n最后一个整理前普通请求：输入 20,151 token。\n注意：这个请求生成读 C 的调用，当时还没有 C 的返回结果。\n旧工具记录仍保存在磁盘 rollout 中。",
+          "after": "新活动历史：5 条消息 + 1 个服务端压缩块。\n客户端重算的历史估计：9,304（不是一次模型请求用量）。\n下一普通请求：输入 12,460，缓存读取 11,904 token。\n同一轮完成回答，3 个文件独有 TAIL 标记全部正确。\n没有新增工具调用，也没有新用户消息。",
+          "note": "这不是同一批材料的压缩率对照：整理前最后一个普通请求尚不含 C 的工具结果；整理后又重建了指令与当前材料。磁盘里的旧读取记录仍在。"
+        }
+      ],
+      "usage": [
+        {
+          "label": "普通请求1：生成读取A",
+          "input_tokens": 12034,
+          "cached_input_tokens": 0,
+          "output_tokens": 103,
+          "note": ""
+        },
+        {
+          "label": "普通请求2：生成读取B",
+          "input_tokens": 16104,
+          "cached_input_tokens": 11904,
+          "output_tokens": 80,
+          "note": ""
+        },
+        {
+          "label": "普通请求3：生成读取C",
+          "input_tokens": 20151,
+          "cached_input_tokens": 15872,
+          "output_tokens": 80,
+          "note": "此请求完成后才加入 C 的结果"
+        },
+        {
+          "label": "普通请求4：整理后回答",
+          "input_tokens": 12460,
+          "cached_input_tokens": 11904,
+          "output_tokens": 108,
+          "note": "没有新用户输入"
+        }
+      ],
+      "interpretation": [
+        "为什么 20,231 总量没到 22,000 也能整理？最后一个普通请求总量对应“准备读 C”的时刻。C 返回后又加入约 19,930 字节文本，源码的近似计量会计入新材料；最后一个请求用量不是此刻活动历史的完整估计。",
+        "示意演算：20,231 + ceil(19,930 / 4) ≈ 25,214。它解释越线的可能路径，但不是日志直接报告的精确 A；元信息、历史结构和推理调整也参与真实估算。",
+        "整理后的一条用量通知 last.totalTokens=9,304、input/output=0，是客户端重算历史估计；不能当作一次输入 9,304 的 API 请求。",
+        "三条独有 TAIL 均正确，支持整理后仍能使用本次文件信息；没有证明全部文件信息都无损保存。"
+      ],
+      "limitations": [
+        "没有直接记录触发瞬间的精确活动历史估计 A，因此不宣称测出了精确阈值等式。",
+        "服务端压缩块不可读；只展示结构和后续行为，不编造内部摘要。",
+        "未验证压缩后继续执行剩余工具步骤；未测试多次连续压缩的保留率。"
+      ]
+    },
+    "manual": {
+      "status": "passed",
+      "summary": "真实 CLI 输入框键入 /compact 后，检查点从 0 变为 1。整理完成后静候 6 秒，记录没有增长；发新消息后完成下一次回答。",
+      "entrypoint": "codex resume 进入终端聊天界面；PTY 实际键入 /compact 和 Enter。",
+      "native_steps": [
+        "先运行 python3 run_lab.py cache，建立一段新会话并等待三个短任务结束。",
+        "运行 python3 manual_tui.py；它只恢复刚刚创建的会话，在真实 CLI 输入框键入 /compact。也可按 README 用人工方式操作。",
+        "看到新 compacted 检查点后等待 6 秒，再发送新的约束核对请求。比较四份 rollout 快照和 inputs 时间线。"
+      ],
+      "acceptance": "实际命令输入、检查点安装、静候无新增任务、新用户输入后完成回答四段证据齐全。",
+      "commands": [
+        {
+          "label": "实际入口",
+          "command": "python3 run_lab.py cache\npython3 manual_tui.py\n# 底层：codex resume <这次 cache 创建的会话ID> --no-alt-screen\n# W=100000；scope=total；reasoning=low；sandbox=read-only；approval=never；C=90000；check_for_update_on_startup=false"
+        }
+      ],
+      "prompt": "整理前：三个短请求要求核对 RETURN_BY=16:00、BUDGET_CNY=1280、MEETING_POINT=东门。\n整理：在 CLI 中输入 /compact，回车。\n新请求：不要使用工具。请从刚才整理后的上下文核对 RETURN_BY、BUDGET_CNY、MEETING_POINT，输出这三项的JSON。",
+      "observations": [
+        "操作前旧任务已经完成，检查点数量为 0。",
+        "8.001 秒键入 /compact，9.009 秒回车；随后写入第 1 个 compacted 检查点。",
+        "检查点出现后等待 6 秒；quiet_record_growth=0，quiet_user_message_count=0。",
+        "20.164 秒键入新请求，21.174 秒回车；25.509 秒已完成下一次回答。"
+      ],
+      "logs": [
+        {
+          "label": "真实终端输入与静候记录",
+          "source": "manual-tui/results.json；对应 rollout 快照",
+          "text": "{\n  \"status\": \"completed\",\n  \"before_checkpoints\": 0,\n  \"after_checkpoints\": 1,\n  \"inputs\": [\n    {\n      \"elapsed_seconds\": 8.001,\n      \"label\": \"type literal /compact\",\n      \"text\": \"/compact\"\n    },\n    {\n      \"elapsed_seconds\": 9.009,\n      \"label\": \"submit literal /compact\",\n      \"text\": \"\\r\"\n    },\n    {\n      \"elapsed_seconds\": 20.164,\n      \"label\": \"type explicit new user continuation\",\n      \"text\": \"不要使用工具。请从刚才整理后的上下文核对 RETURN_BY、BUDGET_CNY、MEETING_POINT，输出这三项的JSON。\"\n    },\n    {\n      \"elapsed_seconds\": 21.174,\n      \"label\": \"submit explicit new user continuation\",\n      \"text\": \"\\r\"\n    }\n  ],\n  \"quiet_seconds\": 6,\n  \"quiet_record_growth\": 0,\n  \"quiet_user_message_count\": 0,\n  \"continuation_completed\": true,\n  \"checkpoint\": {\n    \"source\": \"manual-tui/after-compact-rollout.jsonl\",\n    \"source_line\": 36,\n    \"timestamp\": \"2026-10-14T15:28:54.998Z\",\n    \"type\": \"compacted\",\n    \"message_is_empty\": true,\n    \"replacement_item_count\": 4,\n    \"replacement_types\": {\n      \"message\": 3,\n      \"compaction\": 1\n    },\n    \"message_roles\": {\n      \"user\": 3\n    },\n    \"encrypted_block_present\": true,\n    \"note\": \"只公布结构；不公布不可读的 encrypted_content，也不编造摘要正文。\"\n  },\n  \"final\": \"{\\\"RETURN_BY\\\":\\\"16:00\\\",\\\"BUDGET_CNY\\\":1280,\\\"MEETING_POINT\\\":\\\"东门\\\"}\",\n  \"last_usage\": {\n    \"input_tokens\": 12446,\n    \"cached_input_tokens\": 8448,\n    \"cache_write_input_tokens\": 0,\n    \"output_tokens\": 28,\n    \"reasoning_output_tokens\": 0,\n    \"total_tokens\": 12474\n  },\n  \"evidence_sources\": [\n    \"manual-tui/results.json\",\n    \"manual-tui/after-compact-rollout.jsonl:36\",\n    \"manual-tui/after-continuation-rollout.jsonl:46,49,52\"\n  ],\n  \"interpretation_limit\": \"第46行重新注入的 AGENTS 已含三项约束；最终答案不能单独证明这些约束来自压缩块。\"\n}"
+        }
+      ],
+      "before_after": [
+        {
+          "label": "整理、等待与继续是三个时刻",
+          "before": "旧任务已完成，CLI 等待输入。\n整理检查点：0 个。\n最近一个普通请求：输入 14,127 token。",
+          "after": "输入 /compact 后检查点变成 1 个。\n完成后的 6 秒内：记录新增 0 条，没有新任务。\n发出新指令后：完成回答，输入 12,446 token。\n三项约束回答正确；新请求也重新注入了含约束的 AGENTS。",
+          "note": "这里没有正在执行的旧工具。实验验证空闲时手动整理完成后等待新输入。"
+        }
+      ],
+      "usage": [
+        {
+          "label": "整理前最后一次普通请求",
+          "input_tokens": 14127,
+          "cached_input_tokens": 13952,
+          "output_tokens": 28,
+          "note": ""
+        },
+        {
+          "label": "新消息后的普通请求",
+          "input_tokens": 12446,
+          "cached_input_tokens": 8448,
+          "output_tokens": 28,
+          "note": "没有把整理调用本身混为继续工作"
+        }
+      ],
+      "interpretation": [
+        "/compact 是 Codex 输入框里的命令，不是 shell 命令，也不是 codex exec 正文里的普通字符串。",
+        "本次静候窗口没有自动开工；发送明确的新指令后才产生下一项任务。",
+        "新的请求之前重新注入了 AGENTS，里面已有这三条约束。最终答对约束说明整理后任务可继续，不能单独归因于压缩块记住了约束。"
+      ],
+      "limitations": [
+        "只观察了 6 秒的静候窗口，旧任务已完成；没有实测中断正在运行的工具或文件写入。",
+        "没有从加密压缩块中读到一份可公开的文字摘要。"
+      ]
+    },
+    "truncation": {
+      "status": "passed",
+      "summary": "同一原文件含首、中、尾三个标记。显式 max_output_tokens=128 时，实际返回与保存结果保留首尾、丢掉中间，并出现截断标记。配置 256 的补充对照未测清所有层的精确钳制。",
+      "entrypoint": "真实 Code Mode：exec → tools.exec_command → text(JSON.stringify(r))。",
+      "native_steps": [
+        "先检查 workspace/long-output.txt：136,009 字节、1,602 行，首中尾三个标记都存在。",
+        "运行 python3 run_lab.py truncation-call；核对 rollout 中真实工具参数确实是 max_output_tokens=128。",
+        "比较 commandExecution.aggregatedOutput、嵌套 exec 返回和保存的 custom_tool_call_output；核对首尾存在、中间缺失。",
+        "可选运行 python3 run_lab.py truncation-config；它用于观察多层限长，尚不能直接验收配置 256 在最终请求中的逐层精确钳制。",
+        "可选练习：另开任务按第 802 行重读中间标记。本次没有执行这一步，不把它计入已验证结果。"
+      ],
+      "acceptance": "裁剪必须由实际工具参数、原始完整输出、返回文本的首中尾差异和截断标记共同证明；只看最终 UNKNOWN 不够。",
+      "commands": [
+        {
+          "label": "首尾裁剪主实验",
+          "command": "python3 run_lab.py truncation-call\n# tool_output_token_limit=10000；实际调用 max_output_tokens=128"
+        },
+        {
+          "label": "多层限长补充对照",
+          "command": "python3 run_lab.py truncation-config\n# tool_output_token_limit=256；实际调用 max_output_tokens=60000"
+        }
+      ],
+      "prompt": "只用一次 shell 执行 cat long-output.txt，并指定本项 max_output_tokens。不得 grep、重读或猜测。只输出 head_marker、middle_marker、tail_marker、saw_truncation_marker；看不到的标记写 UNKNOWN。",
+      "observations": [
+        "原始执行事件 aggregatedOutput 完整保留 136,009 字节。",
+        "128 主实验：嵌套 exec.output=622 字节；保存结果列表的 JSON 序列化=886 字节。首尾标记有，中间标记无。",
+        "出现 original_token_count=34003 和 …33875 tokens truncated…；它们是字节近似的提示。",
+        "最终回答 middle_marker=UNKNOWN，与实际工具结果相符。",
+        "256 补充对照：保存 JSON=40,712 字节，外层约按 10,000 预算裁剪；下一普通请求 input=12,431。最终请求里的工具项未直接捕获。"
+      ],
+      "logs": [
+        {
+          "label": "128 的真实调用、返回与标记对照",
+          "source": "truncation-call/rollout.jsonl:12–13；events commandExecution",
+          "text": "{\n  \"source_call\": \"truncation-call/rollout.jsonl:12\",\n  \"source_output\": \"truncation-call/rollout.jsonl:13\",\n  \"call_id\": \"call_e47661c7e2414f2f8edda5f4483342f5\",\n  \"tool_name\": \"exec\",\n  \"actual_call_input\": \"const r = await tools.exec_command({cmd:\\\"cat long-output.txt\\\",workdir:\\\"<LAB>/workspace\\\",yield_time_ms:10000,max_output_tokens:128});\\ntext(JSON.stringify(r));\\n\",\n  \"raw_execution_utf8_bytes\": 136009,\n  \"saved_output_json_utf8_bytes\": 886,\n  \"saved_text_block_utf8_bytes\": [\n    47,\n    740\n  ],\n  \"markers\": {\n    \"head\": true,\n    \"middle\": false,\n    \"tail\": true\n  },\n  \"saw_truncation\": true,\n  \"final\": \"{\\\"head_marker\\\":\\\"ALPHA_20261014\\\",\\\"middle_marker\\\":\\\"UNKNOWN\\\",\\\"tail_marker\\\":\\\"OMEGA_20261014\\\",\\\"saw_truncation_marker\\\":true}\",\n  \"nested_exec_output_utf8_bytes\": 622,\n  \"nested_exec_result\": {\n    \"chunk_id\": \"836411\",\n    \"wall_time_seconds\": 2.334e-06,\n    \"exit_code\": 0,\n    \"original_token_count\": 34003,\n    \"output\": \"Warning: truncated output (original token count: 34003)\\nTotal output lines: 1602\\n\\nHEAD_MARKER=ALPHA_20261014\\nrow-0001 | meaningless synthetic padding to expose length limits | checksum 000003e5\\nrow-0002 | meaningless synthetic padding to expose length limits | checksum 000007ca\\nrow-0003 | meaningless synthetic padding to expose length l…33875 tokens truncated…thetic padding to expose length limits | checksum 00184f76\\nrow-1599 | meaningless synthetic padding to expose length limits | checksum 0018535b\\nrow-1600 | meaningless synthetic padding to expose length limits | checksum 00185740\\nTAIL_MARKER=OMEGA_20261014\\n\"\n  }\n}"
+        },
+        {
+          "label": "256 配置补充对照：证据局限",
+          "source": "truncation-config/rollout.jsonl:12–13",
+          "text": "{\n  \"source_call\": \"truncation-config/rollout.jsonl:12\",\n  \"source_output\": \"truncation-config/rollout.jsonl:13\",\n  \"call_id\": \"call_3e18b03ee6794254b9e167c2b787dd5d\",\n  \"tool_name\": \"exec\",\n  \"actual_call_input\": \"const r = await tools.exec_command({\\n  cmd: \\\"cat long-output.txt\\\",\\n  workdir: \\\"<LAB>/workspace\\\",\\n  yield_time_ms: 10000,\\n  max_output_tokens: 60000\\n});\\ntext(JSON.stringify(r));\\n\",\n  \"raw_execution_utf8_bytes\": 136009,\n  \"saved_output_json_utf8_bytes\": 40712,\n  \"saved_text_block_utf8_bytes\": [\n    47,\n    40107\n  ],\n  \"markers\": {\n    \"head\": true,\n    \"middle\": false,\n    \"tail\": true\n  },\n  \"saw_truncation\": true,\n  \"final\": \"{\\\"head_marker\\\":\\\"ALPHA_20261014\\\",\\\"middle_marker\\\":\\\"UNKNOWN\\\",\\\"tail_marker\\\":\\\"OMEGA_20261014\\\",\\\"saw_truncation_marker\\\":true}\",\n  \"saved_output_excerpt\": \"Warning: truncated output (original token count: 34430)\\nTotal output lines: 1\\n\\n{\\\"chunk_id\\\":\\\"560665\\\",\\\"wall_time_seconds\\\":0.000001583,\\\"exit_code\\\":0,\\\"original_token_count\\\":34003,\\\"output\\\":\\\"HEAD_MARKER=ALPHA_20261014\\\\nrow-0001 | meaningless synthetic padding to expose length limits | checksum 000003e5\\\\nrow-0002 | meaningless synthetic padding to expose length limits | checksum 000007ca\\\\nrow-0003 | meaningless synthetic padding to expose length limits | checksum 00000baf\\\\nrow-0004 \\n[这里省略已保存的头尾正文，只摘录外层警告]\\netic padding to expose length limits | checksum 00184f76\\\\nrow-1599 | meaningless synthetic padding to expose length limits | checksum 0018535b\\\\nrow-1600 | meaningless synthetic padding to expose length limits | checksum 00185740\\\\nTAIL_MARKER=OMEGA_20261014\\\\n\\\"}\",\n  \"configuration_clamp_status\": \"证据不充分：未捕获最终请求中工具项的逐层大小。\"\n}"
+        }
+      ],
+      "before_after": [
+        {
+          "label": "同一个文件，原始执行输出与保存结果",
+          "before": "原文件：136,009 字节，1,602 行。\n开头：ALPHA_20261014。\n中间第 802 行：RETURN_BY_16_00_SECRET_P7。\n末尾：OMEGA_20261014。\n完整执行日志也含全部 136,009 字节。",
+          "after": "实际调用 max_output_tokens=128。\n嵌套工具返回：622 字节（含提示）。\n保存结果的 JSON：886 字节（含包装）。\n开头与末尾标记仍在，中间标记缺失。\n出现截断提示；最终回答中间为 UNKNOWN。",
+          "note": "622 包括警告和截断标记；886 又包含包装与序列化。不能把其中任一个称为 tokenizer 精确数。"
+        }
+      ],
+      "usage": [
+        {
+          "label": "128：工具前请求",
+          "input_tokens": 11984,
+          "cached_input_tokens": 0,
+          "output_tokens": 111,
+          "note": ""
+        },
+        {
+          "label": "128：工具后回答",
+          "input_tokens": 12305,
+          "cached_input_tokens": 11776,
+          "output_tokens": 68,
+          "note": ""
+        },
+        {
+          "label": "256 补充：工具后回答",
+          "input_tokens": 12431,
+          "cached_input_tokens": 11776,
+          "output_tokens": 101,
+          "note": "没有捕获最终工具项，不能由输入差值测出精确256"
+        }
+      ],
+      "interpretation": [
+        "终端日志可以保留完整输出，模型工具返回却只保留首尾。存档里“原文件存在”和下一次模型“能直接看见中间”是两件事。",
+        "裁剪机械地去掉中间，无法知道那里是不是唯一的错误原因。开发 Agent 时应让工具返回与任务相关的小片段，并保留可重读的来源。",
+        "显式 128 主实验通过；256 配置对照要继续区分嵌套工具出口、Code Mode 外层返回与活动历史预算。本次不把外层 40,712 字节强行解释成配置失效。"
+      ],
+      "limitations": [
+        "未捕获最终序列化模型请求体，不能给所有层的精确长度。",
+        "没有验证所有工具类型的裁剪策略，也没有验证中文/emoji 边界。",
+        "原文件中的 SECRET_P7 只是合成标记，不是凭据。"
+      ]
+    },
+    "cache": {
+      "status": "passed",
+      "summary": "同一新会话连续三次短请求。第二、三次完成请求的 last 明细都报告 cachedInputTokens > 0，缓存输入复用有直接用量证据。",
+      "entrypoint": "同一 threadId，三个依次完成的 turn/start；不使用工具，不触发整理。",
+      "native_steps": [
+        "运行 python3 run_lab.py cache，保持模型、配置和会话连续。",
+        "三次请求只在会话末尾追加一个短的约束核对问题。",
+        "查看 artifacts/cache/events.jsonl 的三个 thread/tokenUsage/updated，读取各次 last，不拿累计 total 当当前请求。",
+        "核对 cachedInputTokens 是否大于 0；如果本次为 0，就报告未观察到命中并保留条件。"
+      ],
+      "acceptance": "某个完成请求的 last.cachedInputTokens > 0；响应较快或答案一样不能单独证明缓存命中。",
+      "commands": [
+        {
+          "label": "三轮控制请求",
+          "command": "python3 run_lab.py cache\n# W=100000；scope=total；reasoning=low；sandbox=read-only；approval=never；C=90000；同一会话，不使用工具"
+        }
+      ],
+      "prompt": "第1轮：记住三项硬约束，只输出 JSON。\n第2轮：重述三项硬约束，只输出 JSON。\n第3轮：再核对一次三项硬约束，只输出 JSON。",
+      "observations": [
+        "第1次 input=11,934，cached=0；第2次 input=14,076，cached=11,776；第3次 input=14,127，cached=13,952。",
+        "第二次缓存读取比率 11,776 / 14,076 = 83.66%；第三次 13,952 / 14,127 = 98.76%。",
+        "三个请求均输出 28 token，模型与会话保持一致。",
+        "cacheWriteInputTokens 字段均为 0；字段可能缺省，不据此认定没有写入或写入免费。"
+      ],
+      "logs": [
+        {
+          "label": "三次服务端用量转成的 CLI last 明细",
+          "source": "cache/events.jsonl:42,78,114",
+          "text": "[\n  {\n    \"totalTokens\": 11962,\n    \"inputTokens\": 11934,\n    \"cachedInputTokens\": 0,\n    \"cacheWriteInputTokens\": 0,\n    \"outputTokens\": 28,\n    \"reasoningOutputTokens\": 0\n  },\n  {\n    \"totalTokens\": 14104,\n    \"inputTokens\": 14076,\n    \"cachedInputTokens\": 11776,\n    \"cacheWriteInputTokens\": 0,\n    \"outputTokens\": 28,\n    \"reasoningOutputTokens\": 0\n  },\n  {\n    \"totalTokens\": 14155,\n    \"inputTokens\": 14127,\n    \"cachedInputTokens\": 13952,\n    \"cacheWriteInputTokens\": 0,\n    \"outputTokens\": 28,\n    \"reasoningOutputTokens\": 0\n  }\n]"
+        }
+      ],
+      "before_after": [
+        {
+          "label": "同一会话，末尾追加短问题",
+          "before": "第 1 次完成请求：\n输入 11,934 token；缓存读取 0；输出 28。\n本次没有报告缓存读取。",
+          "after": "第 2 次：输入 14,076；缓存读取 11,776（83.66%）。\n第 3 次：输入 14,127；缓存读取 13,952（98.76%）。\n两次输出均为 28 token。\n这些是逐请求读比率，不是节费比例或长期命中率。",
+          "note": "记录中的输入包含 CLI 的系统/工具/项目指令，不仅是可见的三行聊天。第一次报告 0 不保证所有服务端缓存都处于绝对冷态。"
+        }
+      ],
+      "usage": [
+        {
+          "label": "第1次完成请求",
+          "input_tokens": 11934,
+          "cached_input_tokens": 0,
+          "output_tokens": 28,
+          "note": ""
+        },
+        {
+          "label": "第2次完成请求",
+          "input_tokens": 14076,
+          "cached_input_tokens": 11776,
+          "output_tokens": 28,
+          "note": ""
+        },
+        {
+          "label": "第3次完成请求",
+          "input_tokens": 14127,
+          "cached_input_tokens": 13952,
+          "output_tokens": 28,
+          "note": ""
+        }
+      ],
+      "interpretation": [
+        "cached 属于 input 的一部分，表示服务端报告复用了部分输入计算；不是把这些 token 从上下文窗口中删除。",
+        "第三次 98.76% 是这一次请求的读取比率，不是长期命中率，也不是节费比例。",
+        "自动整理后也报告 cached=11,904，但本次没有做严格的压缩/不压缩配对，不能把命中变化归因于整理本身。"
+      ],
+      "limitations": [
+        "使用 ChatGPT 登录，没有测 API 账单、缓存写入付费、延迟的因果变化或长期有效期。",
+        "相同前缀不保证每次命中，复现者只需据实际 usage 判断本次结果。"
+      ]
+    }
+  },
+  "reproduction": {
+    "commands": [
+      {
+        "label": "先进入已下载或复制的公开实验包目录，再准备独立运行目录",
+        "command": "export CODEX_LAB_HOME=\"$(mktemp -d /tmp/codex-context-lab.XXXXXX)\"\nexport CODEX_LAB_MODEL=gpt-5.6-sol\npython3 setup_runtime.py\ncodex --version\nCODEX_HOME=\"$CODEX_LAB_HOME\" codex login status"
+      },
+      {
+        "label": "按依赖顺序运行（实际会调用模型）",
+        "command": "python3 run_lab.py cache\npython3 manual_tui.py\npython3 run_lab.py automatic\npython3 run_lab.py truncation-call\n# 可选补充：python3 run_lab.py truncation-config"
+      },
+      {
+        "label": "结束后移除实验软链接",
+        "command": "python3 setup_runtime.py --cleanup"
+      }
+    ],
+    "steps": [
+      "把公开包解压或复制到项目与笔记库之外的新目录，避免继承其它 AGENTS；首次阅读 README，使用 Python 3.10+、已登录且可用的 Codex CLI。",
+      "setup_runtime.py 为实验创建独立配置，复用认证软链接；不修改个人全局配置。运行目录放在临时目录，避免认证链接和会话进入公开笔记。",
+      "先做 README 的真实请求预检，再跑 cache；manual_tui.py 只恢复这次 cache 新建的会话。",
+      "人工操作也可使用 codex resume，再在 CLI 输入框输入 /compact。不要在 shell 里执行它。",
+      "每项按事件与标记验收，不要求 token 数、时点或命中率与本次完全相同。",
+      "读者新日志写入 artifacts；公开前先裁去认证、账号信息和不可读压缩块。已公开的 observed 是本次整理后的证据摘录。"
+    ],
+    "notes": [
+      "只使用合成文件；脚本不更新 CLI、不写业务文件。config 只作用于独立 CODEX_HOME 和本次会话。",
+      "本次 strict-config 验证不支持的字段没有被继续使用。复现时若版本不同，请记录报错和版本，不悄悄忽略字段。",
+      "macOS/Linux 的 PTY 脚本仅演示空闲会话手动整理；Windows 可按 README 人工操作。"
+    ]
+  },
+  "artifact_base": "证据/Codex CLI真实实验-20261014",
+  "artifacts": [
+    {
+      "path": "codex-cli-context-lab-20261014.zip",
+      "label": "下载完整复现包 ZIP",
+      "description": "解压到独立目录后按 README 操作"
+    },
+    {
+      "path": "README.md",
+      "label": "完整复现步骤与排查说明",
+      "description": "从准备环境到四项验收，适合照着操作"
+    },
+    {
+      "path": "实验报告.md",
+      "label": "这次真实实验报告",
+      "description": "条件、结论、证据和未测清的边界"
+    },
+    {
+      "path": "public-results.json",
+      "label": "公开结构化结果",
+      "description": "网页第10章展示的数据来源"
+    },
+    {
+      "path": "observed/automatic-events.jsonl",
+      "label": "自动整理事件摘录",
+      "description": "保留原始来源行号与时间"
+    },
+    {
+      "path": "observed/manual-tui-timeline.json",
+      "label": "真实 /compact 输入与静候时间线",
+      "description": "命令、检查点和新请求分开记录"
+    },
+    {
+      "path": "observed/truncation-call-comparison.json",
+      "label": "工具裁剪文本与字节对照",
+      "description": "完整执行输出、返回结果和标记检查"
+    },
+    {
+      "path": "observed/cache-events.jsonl",
+      "label": "三次缓存用量事件",
+      "description": "逐请求 last 用量"
+    },
+    {
+      "path": "run_lab.py",
+      "label": "真实 CLI 事件采集脚本",
+      "description": "Python 标准库，支持四种运行模式"
+    },
+    {
+      "path": "manual_tui.py",
+      "label": "真实终端 /compact 驱动",
+      "description": "实际输入命令，遇更新提示停止"
+    },
+    {
+      "path": "SHA256SUMS.txt",
+      "label": "实验包文件校验值",
+      "description": "校验合成资料、脚本与证据"
+    }
+  ]
+}

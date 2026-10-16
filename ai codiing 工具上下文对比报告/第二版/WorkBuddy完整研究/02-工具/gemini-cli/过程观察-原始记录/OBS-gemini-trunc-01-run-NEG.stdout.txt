@@ -1,0 +1,5 @@
+FAIL | 负例① est([ab]) 故意断言=1 | actual=0 expected=1
+FAIL | 负例② MIN_TARGET_TOKENS 故意断言=11 | actual=10 expected=11
+
+负例合计 FAIL 数=2（期望 2）
+NEGATIVE-CONTROL OK: 判据能报错

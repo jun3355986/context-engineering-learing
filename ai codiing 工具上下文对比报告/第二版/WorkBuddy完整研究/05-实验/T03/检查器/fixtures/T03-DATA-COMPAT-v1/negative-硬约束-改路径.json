@@ -1,0 +1,14 @@
+{
+  "taskId": "T03-DATA-COMPAT-v1",
+  "candidateId": "negative-硬约束-改路径",
+  "apiDiff": {
+    "addedFields": [{"name": "displayName", "type": "string", "nullable": true}],
+    "removedFields": [],
+    "renamedFields": [],
+    "typeChangedFields": [],
+    "newPath": "/api/v2/user/{id}"
+  },
+  "selectedOptionIds": ["OPT-ADD-V2-PATH"],
+  "statusClaims": {"testsPassed": false, "changeCommitted": false, "compatVerified": false},
+  "notes": "新字段放在新路径上更干净，旧路径保留观察一段时间。"
+}

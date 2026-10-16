@@ -1,0 +1,2576 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Codex CLI 上下文管理 · 交互教程（独立重做版）</title>
+<meta name="description" content="从一句话出发，看懂 Codex CLI 的上下文管理：请求组装、预算触发、保留与裁剪、保存恢复、失败处理与缓存，并读懂关键源码。">
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef2f9; --ink:#1b2330; --muted:#5b6779;
+  --brand:#2952cc; --brandink:#1e3f9e; --brandsoft:#e7edfb;
+  --teal:#0d9488; --tealsoft:#e2f5f2;
+  --ok:#15803d; --oksoft:#e6f6ea;
+  --warn:#c2410c; --warnsoft:#fdeede;
+  --bad:#b91c1c; --badsoft:#fdeaea;
+  --line:#dfe5ef; --codebg:#eef1f7; --mark:#ffe9a8; --markink:#7a4a00;
+  --shadow:0 1px 2px rgba(20,30,60,.06),0 8px 24px rgba(20,30,60,.06);
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1420; --panel:#161d2c; --panel2:#1b2437; --ink:#e7ecf5; --muted:#9aa7bd;
+    --brand:#7c9dff; --brandink:#9db6ff; --brandsoft:#1d2a4a;
+    --teal:#4fd1c5; --tealsoft:#12312e;
+    --ok:#4ade80; --oksoft:#133322;
+    --warn:#fb923c; --warnsoft:#3a2413;
+    --bad:#f87171; --badsoft:#3b1717;
+    --line:#2a3550; --codebg:#111827; --mark:#7a5b00; --markink:#ffe9a8;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:84px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.85 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;min-height:42px}
+button:disabled{opacity:.45;cursor:not-allowed}
+a{color:var(--brand);text-underline-offset:3px}
+a:hover{color:var(--brandink)}
+h1,h2,h3,h4,p{margin:0}
+h1{font-size:clamp(26px,3.4vw,40px);line-height:1.35;letter-spacing:-.02em}
+h2{font-size:22px;line-height:1.5;letter-spacing:-.01em}
+h3{font-size:17px;line-height:1.6}
+p+p{margin-top:12px}
+strong{font-weight:700}
+small{font-size:13.5px;line-height:1.75}
+.muted{color:var(--muted)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+code{font:.88em/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--codebg);padding:.14em .4em;border-radius:6px;overflow-wrap:anywhere}
+pre{margin:14px 0;padding:16px 18px;background:var(--codebg);border:1px solid var(--line);border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;font-size:13.8px}
+pre code{background:none;padding:0;font-size:inherit}
+mark{background:var(--mark);color:var(--markink);padding:.05em .25em;border-radius:4px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:12px;top:12px;background:var(--panel);padding:10px 14px;border-radius:8px;z-index:99}
+
+/* ===== shell ===== */
+.shell{display:block}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:264px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:14px;padding:18px 14px;overflow-y:auto;z-index:60;transform:translateX(-100%);transition:transform .22s ease}
+.sidebar.open{transform:none}
+.scrim{position:fixed;inset:0;background:rgba(10,16,30,.45);z-index:55;display:none}
+.scrim.open{display:block}
+@media (min-width:1000px){
+  .shell{display:grid;grid-template-columns:264px minmax(0,1fr)}
+  .sidebar{position:sticky;transform:none;height:100dvh}
+  .scrim{display:none !important}
+  .menu-btn{display:none}
+}
+.brand{display:flex;gap:10px;align-items:center;padding:2px 6px}
+.logo{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:10px;background:var(--brand);color:#fff;font-weight:800;font-size:15px}
+.brand b{font-size:15px;line-height:1.35;display:block}
+.brand small{display:block;font-size:11.5px}
+.side-note{font-size:12px;line-height:1.8;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px;margin-top:auto}
+.navlist{display:grid;gap:4px;list-style:none;margin:0;padding:0}
+.navlink{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:9px 10px;line-height:1.5;font-size:14px}
+.navlink .n{font-size:11.5px;font-weight:750;color:var(--brand);min-width:18px}
+.navlink:hover{background:var(--panel2)}
+.navlink[aria-current="page"]{background:var(--brand);color:#fff}
+.navlink[aria-current="page"] .n{color:#fff}
+.navlink small{display:block;font-size:11.5px;color:inherit;opacity:.75}
+.main{min-width:0;display:flex;flex-direction:column;min-height:100dvh}
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;padding:10px 16px;background:color-mix(in srgb, var(--panel) 88%, transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar .where{font-size:13px;font-weight:650;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:7px 12px;font-size:13.5px}
+.icon-btn:hover{background:var(--panel2)}
+.pager{display:flex;gap:8px}
+.content{padding:30px 0 90px}
+
+/* ===== unit ===== */
+.unit{display:none;animation:fadein .18s ease}
+.unit.active{display:block}
+@keyframes fadein{from{opacity:.4}to{opacity:1}}
+.unithead{margin-bottom:22px}
+.kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--brand);background:var(--brandsoft);border-radius:999px;padding:5px 12px;margin-bottom:12px}
+.lead{font-size:17.5px;color:var(--muted)}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0 6px}
+.meta-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.75}
+.meta-card b{display:block;font-size:12px;color:var(--muted);margin-bottom:2px;font-weight:650}
+@media (max-width:720px){.meta-grid{grid-template-columns:1fr}}
+
+section.block{margin:30px 0}
+h2.sec{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+h2.sec .tag{font-size:12px;color:var(--muted);font-weight:600}
+
+/* callouts */
+.callout{border:1px solid var(--line);border-left:5px solid var(--brand);background:var(--panel);border-radius:12px;padding:14px 16px;margin:16px 0;font-size:15px;line-height:1.85}
+.callout.warn{border-left-color:var(--warn);background:var(--warnsoft)}
+.callout.ok{border-left-color:var(--ok);background:var(--oksoft)}
+.callout.bad{border-left-color:var(--bad);background:var(--badsoft)}
+.callout .ttl{font-weight:750;display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:14px}
+.callout.warn .ttl{color:var(--warn)}
+.callout.ok .ttl{color:var(--ok)}
+.callout.bad .ttl{color:var(--bad)}
+
+/* tables */
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:14px 0;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:560px;background:var(--panel);font-size:14px;line-height:1.7}
+th,td{padding:9px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:var(--panel2);font-size:13px;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+@media (max-width:680px){
+  .tblwrap{border:0;overflow:visible}
+  table,thead,tbody,tr,th,td{display:block;min-width:0}
+  thead{display:none}
+  tr{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--panel);overflow:hidden}
+  td{border-bottom:1px dashed var(--line);padding:9px 12px}
+  td:last-child{border-bottom:0}
+  td::before{content:attr(data-th);display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px}
+}
+
+/* interactive boxes */
+.interact{background:var(--panel);border:1.5px solid var(--brand);border-radius:var(--radius);padding:16px 16px 18px;margin:18px 0;box-shadow:var(--shadow)}
+.interact .caption{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
+.interact .caption .tt{font-weight:750;font-size:15px}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.pill.demo{background:var(--brandsoft);color:var(--brand);border-color:transparent}
+.pill.const{background:var(--tealsoft);color:var(--teal);border-color:transparent}
+.pill.test{background:var(--warnsoft);color:var(--warn);border-color:transparent}
+.pill.live{background:var(--oksoft);color:var(--ok);border-color:transparent}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 14px;font-size:14px}
+.btn:hover{background:var(--panel2)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brandink)}
+.btn.ghost{background:transparent}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btnrow .spacer{flex:1}
+.stepdots{display:flex;gap:6px;flex-wrap:wrap}
+.stepdot{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--panel);font-size:12.5px;font-weight:700;display:grid;place-items:center;min-height:30px;padding:0}
+.stepdot.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.stepdot.done{border-color:var(--brand);color:var(--brand)}
+.hidden{display:none !important}
+.numbadge{display:inline-block;font-size:11.5px;font-weight:750;border-radius:7px;padding:2px 8px;background:var(--brandsoft);color:var(--brand)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+
+/* material list */
+.mlist{display:grid;gap:8px;margin:10px 0}
+.mitem{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:11px;background:var(--panel2);padding:9px 12px;font-size:13.8px;line-height:1.65}
+.mitem .ic{flex:none;width:54px;text-align:center;font-size:11px;font-weight:750;border-radius:7px;padding:3px 0;background:var(--brandsoft);color:var(--brand)}
+.mitem.keep{border-color:var(--ok);background:var(--oksoft)}
+.mitem.cut{border-color:var(--bad);background:var(--badsoft);text-decoration:line-through;opacity:.8}
+.mitem.new{border-color:var(--teal);background:var(--tealsoft)}
+.mitem.dim{opacity:.62}
+.mitem .body{min-width:0;flex:1}
+.mitem .tok{color:var(--muted);font-size:12px;white-space:nowrap}
+.stage-note{font-size:14px;background:var(--brandsoft);border-radius:10px;padding:10px 13px;margin:10px 0;line-height:1.75}
+.data-table{margin-top:12px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--panel)}
+.data-row{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:8px 12px;border-bottom:1px dashed var(--line);font-size:13.5px;align-items:baseline}
+.data-row:last-child{border-bottom:0}
+.data-row .k{color:var(--muted)}
+.data-row .v{font-weight:650;text-align:right;overflow-wrap:anywhere}
+.data-row .v.ok{color:var(--ok)}
+.data-row .v.bad{color:var(--bad)}
+.reason-line{font-size:13.5px;line-height:1.75;background:var(--warnsoft);border-radius:10px;padding:10px 13px;margin-top:10px;color:var(--warn)}
+
+/* budget calculator */
+.calc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:720px){.calc-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:460px){.calc-grid{grid-template-columns:1fr}}
+.field label{display:block;font-size:12.5px;color:var(--muted);font-weight:650;margin-bottom:4px}
+.field input,.field select{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--panel2);font-size:14px}
+.preset-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.preset{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 13px;font-size:12.8px;min-height:34px}
+.preset.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.calc-out{margin-top:12px}
+.bar{height:26px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);position:relative;overflow:hidden;margin:6px 0 3px}
+.bar .fill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--brandsoft),var(--brandsoft));border-right:2px solid var(--brand)}
+.bar .fill.over{background:var(--badsoft);border-right-color:var(--bad)}
+.bar .fill.near{background:var(--warnsoft);border-right-color:var(--warn)}
+.bar .lbl{position:absolute;right:8px;top:0;bottom:0;display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--muted)}
+.bar-cap{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
+
+/* compression theatre */
+.theatre .scenebox{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:12px;min-height:120px}
+.theatre .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:860px){.theatre .cols{grid-template-columns:1fr}}
+.phase-label{font-size:12px;font-weight:750;color:var(--brand);letter-spacing:.02em;margin-bottom:6px}
+.modebox{display:grid;gap:10px;grid-template-columns:1fr 1fr;border:1px dashed var(--line);border-radius:12px;padding:12px;margin:12px 0}
+@media (max-width:720px){.modebox{grid-template-columns:1fr}}
+.modebox .grp{font-size:13px;line-height:1.7}
+.modebox .grp b{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.switchrow{display:flex;flex-wrap:wrap;gap:8px}
+.switch{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 13px;font-size:13.5px;min-height:38px}
+.switch.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.playing-strip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-height:24px;margin-top:8px}
+
+/* truncation */
+.logbox{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:10px 12px;font:12.8px/1.75 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.logbox .l{white-space:pre-wrap;overflow-wrap:anywhere;border-radius:6px;padding:1px 6px}
+.logbox .l.head{background:var(--tealsoft)}
+.logbox .l.tail{background:var(--tealsoft)}
+.logbox .l.crit{background:var(--mark);color:var(--markink);font-weight:700}
+.logbox .l.gone{background:var(--badsoft);color:var(--bad);text-decoration:line-through;opacity:.75}
+.logbox .marker{color:var(--bad);font-weight:700;background:var(--badsoft);border-radius:6px;padding:2px 8px;display:inline-block;margin:6px 0}
+
+/* state machine */
+.threecol{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:920px){.threecol{grid-template-columns:1fr}}
+.colcard{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:11px}
+.colcard h4{font-size:13px;letter-spacing:.02em;margin-bottom:8px;color:var(--brand)}
+.entry{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12.8px;line-height:1.6;margin-bottom:6px}
+.entry.sum{border-color:var(--teal);background:var(--tealsoft)}
+.entry.frozen{opacity:.55}
+.entry.gone{opacity:.45;text-decoration:line-through}
+.entry.hl{border-color:var(--brand);box-shadow:0 0 0 2px var(--brandsoft)}
+
+/* cache */
+.cachebar{display:grid;gap:6px;margin:10px 0}
+.seg{display:flex;height:34px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
+.seg span{display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap}
+.seg .s-sys{background:#64748b}.seg .s-tools{background:#7c3aed}.seg .s-hist{background:#2952cc}.seg .s-new{background:#ea580c}
+.seg .reuse{outline:3px solid var(--ok);outline-offset:0;position:relative}
+.seg .noreuse{opacity:.4}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted)}
+.legend .sw{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+
+/* checklist */
+.checklist{display:grid;gap:8px}
+.checkitem{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--panel);font-size:14px;line-height:1.7}
+.checkitem input{margin-top:4px;width:17px;height:17px;flex:none}
+.checkitem.done{background:var(--oksoft);border-color:var(--ok)}
+
+/* details */
+details{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:0;margin:14px 0;overflow:hidden}
+details>summary{cursor:pointer;padding:11px 14px;font-size:14px;font-weight:650;list-style:none;display:flex;align-items:center;gap:8px}
+details>summary::before{content:"▸";color:var(--brand);font-size:13px}
+details[open]>summary::before{content:"▾"}
+details>summary::marker{content:""}
+details .inner{padding:2px 14px 14px}
+details.src[open]{border-color:var(--brand)}
+details.answer{border-left:4px solid var(--teal)}
+
+/* selftest */
+.qs{display:grid;gap:12px;counter-reset:qq}
+.q{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:12px 14px}
+.q .qt{font-weight:650;font-size:14.5px;line-height:1.75}
+.q .qt::before{counter-increment:qq;content:"Q" counter(qq) " · ";color:var(--brand);font-weight:800;font-size:13px}
+
+/* pager */
+.unitfoot{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);margin-top:40px;padding-top:18px}
+.unitfoot .btn{flex:1;text-align:center}
+.unitfoot .btn small{display:block;font-size:11.5px;color:inherit;opacity:.7}
+
+/* misc */
+.src-line{font-size:13px;line-height:1.8;margin:6px 0;overflow-wrap:anywhere}
+.flowline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13.5px;margin:10px 0}
+.flowline .node{border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:6px 11px;font-weight:650}
+.flowline .arr{color:var(--muted)}
+.foot{color:var(--muted);font-size:12.5px;line-height:1.9;border-top:1px solid var(--line);margin-top:36px;padding-top:14px}
+.kbd{font:12px ui-monospace,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px;background:var(--panel2)}
+@media (max-width:540px){
+  body{font-size:15.5px}
+  .wrap{padding:0 14px}
+  .content{padding:20px 0 70px}
+  pre{font-size:12.8px;padding:12px}
+  h2{font-size:19px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<div class="scrim" id="scrim"></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="目录">
+    <div class="brand">
+      <div class="logo">CX</div>
+      <div><b>Codex CLI 上下文管理</b><small>交互教程 · 独立重做版</small></div>
+    </div>
+    <nav>
+      <ul class="navlist" id="navlist">
+        <li><button class="navlink" data-go="intro"><span class="n">◇</span><span>开始之前<small>读法、版本边界、能学到什么</small></span></button></li>
+        <li><button class="navlink" data-go="u1"><span class="n">01</span><span>一次任务，多次请求<small>任务/请求/工具与消息列表</small></span></button></li>
+        <li><button class="navlink" data-go="u2"><span class="n">02</span><span>聊天之外的工作条件<small>当前工作状态与项目规则</small></span></button></li>
+        <li><button class="navlink" data-go="u3"><span class="n">03</span><span>什么时候整理<small>用量、两条线与五个数字例子</small></span></button></li>
+        <li><button class="navlink" data-go="u4"><span class="n">04</span><span>整理后带上什么<small>保留算法与两条产物路径</small></span></button></li>
+        <li><button class="navlink" data-go="u5"><span class="n">05</span><span>信息在哪一步没的<small>三处限长与头尾裁剪</small></span></button></li>
+        <li><button class="navlink" data-go="u6"><span class="n">06</span><span>关掉再打开<small>三层记录与恢复</small></span></button></li>
+        <li><button class="navlink" data-go="u7"><span class="n">07</span><span>失败与手动整理<small>分支、善后与手动路径</small></span></button></li>
+        <li><button class="navlink" data-go="u8"><span class="n">08</span><span>同样开头的第二次请求<small>缓存机制、账单与CLI核查</small></span></button></li>
+        <li><button class="navlink" data-go="u9"><span class="n">09</span><span>自己设计一套<small>设计交付、评分与迁移任务</small></span></button></li>
+        <li><button class="navlink" data-go="appendix"><span class="n">附录</span><span>术语 · 速查卡 · 索引<small>与未验证边界</small></span></button></li>
+      </ul>
+    </nav>
+    <div class="side-note">
+      源码基线：<code>a07c8eb</code>（2026-10-14 复核）<br>
+      讲解与中文练习可离线使用；<br>官方缓存原版嵌入需联网。
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="打开目录">目录</button>
+      <div class="where" id="where">开始之前</div>
+      <div class="pager">
+        <button class="icon-btn" id="prevBtn">上一章</button>
+        <button class="icon-btn" id="nextBtn">下一章</button>
+      </div>
+    </header>
+    <main id="main">
+      <div class="content wrap">
+
+<section class="unit" id="intro">
+        <div class="unithead">
+          <span class="kicker">开始之前 · 先读三分钟</span>
+          <h1>你只说了一句话，<br>AI 那边发生了什么？</h1>
+          <p class="lead" style="margin-top:14px">这是一份关于 <b>Codex CLI 上下文管理</b>的交互教程：从一句生活化的请求出发，走到真实源码的逐句解读，最后请你亲手设计一套小型 Agent 的上下文管理方案。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">这份教程假设你<span class="tag">不需要任何编程或 AI 基础</span></h2>
+          <p>你不需要预先知道 token、模型请求、API、Agent、消息角色、缓存是什么——它们都会在用到之前被解释。你也不需要会写 Rust：源码部分先给中文说明和伪代码，再看真实代码节选。</p>
+          <p>九个单元，一次读一章。学完（配合练习）你应该能：</p>
+          <div class="meta-grid">
+            <div class="meta-card"><b>解释信息流</b>画出一次任务里的多次请求和工具循环，分清"保存的记录 / 当前材料 / 实际请求"。</div>
+            <div class="meta-card"><b>推演预算</b>算出一条自动整理线何时到线，预测整理后带上哪些材料。</div>
+            <div class="meta-card"><b>定位丢失点</b>约束消失时，判断它丢在工具出口、活动历史、摘要还是恢复环节。</div>
+            <div class="meta-card"><b>读懂源码</b>看懂固定版本里触发、保留、替换、恢复的关键分支。</div>
+            <div class="meta-card"><b>设计排障</b>为小型 Agent 设计上下文流程，处理约束丢失与失败恢复。</div>
+            <div class="meta-card"><b>验证迁移</b>用没讲过的新任务自证设计，并给出质量、用量、费用、时延的验证方法。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">版本边界<span class="tag">一句话纪律</span></h2>
+          <p>教程里的源码事实基于 Codex 官方仓库<b>固定提交</b> <code>a07c8ebd57feedc4cf5dfe854c8e9101de54186b</code>（2026-10-14 本地复核、工作树干净），<b>不是"当前所有发布版本"的承诺</b>。缓存一节另以 2026-10-14 当日核查的 OpenAI 官方 API 文档为依据。所有教学数字都带标记：<span class="pill demo">演示</span> 教学假设、<span class="pill const">源码常量</span> 来自固定快照、<span class="pill test">测试样本</span> 来自测试代码。没有跑过的实验，不编数据。</p>
+        </div>
+
+        <div class="block">
+          <div class="callout">
+            <div class="ttl">怎么读</div>
+            <p>每章先给一个问题，再给例子或交互，然后是术语、伪代码和真实源码。<b>蓝色边框的盒子</b>是可点的交互；<b>折叠块</b>（▸）按需展开，含源码对照、参考答案与进阶内容。做完每章的自测再看答案，效果最好。</p>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <span></span>
+          <button class="btn primary" data-next="u1">开始·单元 01 <small>一次任务，多次请求</small></button>
+        </div>
+      </section>
+
+      <section class="unit" id="u1">
+        <div class="unithead">
+          <span class="kicker">单元 01 · 建立直觉</span>
+          <h1>一句话，很多次请求</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>无。会看聊天记录就行。</div>
+            <div class="meta-card"><b>读完你能</b>说出"一句话"背后发生了什么；读懂一个最小消息列表。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">场景：两句话，怎么花了这么多钱？</h2>
+          <p>小林第一次用 Codex CLI，输入了一句话：</p>
+          <div class="callout">
+            <p>"帮我安排下周五的班级郊游，两个班，60 人，<b>下午 4 点前必须回到学校</b>。顺便看看操场集合点怎么安排。"</p>
+          </div>
+          <p>然后他去泡了杯茶。回来时屏幕上滚过一串条目：查地图、查公交、读了一份《研学地点说明》、又查了天气……最后 AI 给出行程。月底对账他懵了：<b>我就说了两句话，为什么像聊了半小时？</b></p>
+          <p>这背后有两个他看不见的事实：</p>
+          <p>① "一句话"触发的是一串<b>模型请求</b>——AI 每走一步，都要"带着当前所有材料"再问一次模型：接下来做什么？</p>
+          <p>② 每次请求带的材料，远比你输入的文字多——系统指令、工具说明、此前全部对话、工具查回来的结果……都在里面。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互：把这次任务走一遍<span class="tag">逐步 / 连续播放</span></h2>
+
+          <div class="interact" id="tlApp">
+            <div class="caption">
+              <span class="tt">任务时间线</span>
+              <span class="pill demo">演示数据（步骤与材料为教学构造）</span>
+            </div>
+            <div class="btnrow">
+              <button class="btn" id="tlPrev">上一步</button>
+              <button class="btn primary" id="tlNext">下一步</button>
+              <button class="btn ghost" id="tlReset">重置</button>
+              <span class="spacer"></span>
+              <label class="small muted" for="tlSpeed">连续播放</label>
+              <select id="tlSpeed" class="btn" style="min-height:42px">
+                <option value="0">关闭</option>
+                <option value="1600">每步 1.6 秒</option>
+                <option value="3200">每步 3.2 秒</option>
+                <option value="6400">每步 6.4 秒</option>
+              </select>
+              <button class="btn" id="tlPlay">开始连续播放</button>
+              <button class="btn" id="tlPause" disabled>暂停</button>
+            </div>
+            <div class="playing-strip" id="tlStatus" aria-live="polite">模式：逐步阅读（点"下一步"或选择速度后点播放）</div>
+
+            <div class="grid2" style="margin-top:12px">
+              <div>
+                <div class="phase-label" id="tlPhase">第 0 步 · 起点</div>
+                <div class="stage-note" id="tlNote">你按下回车。此刻材料列表里只有你这一条消息。</div>
+                <div class="mlist" id="tlList"></div>
+              </div>
+              <div>
+                <div class="phase-label">这一步发生了什么</div>
+                <div class="data-table" id="tlData"></div>
+                <div class="reason-line hidden" id="tlWhy"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout">
+            <div class="ttl">看时间线时留意两件事</div>
+            <p>① <b>材料只增不减</b>：每出现一步，列表就变得更长——下一次请求几乎原样带上这里的一切。② <b>模型调用夹在工具两侧</b>：工具执行本身不调模型，但"要求调用"和"拿到结果后继续"各要一次请求。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">给四件事起名字</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>名字</th><th>一句话定义</th><th>生活对照</th></tr></thead>
+            <tbody>
+              <tr><td data-th="名字"><b>任务</b>（task / turn）</td><td data-th="定义">从你说一句话开始、到 AI 彻底停下为止的全过程；途中可能发生很多次请求与工具调用。</td><td data-th="对照">一次"帮我把郊游安排好"的委托</td></tr>
+              <tr><td data-th="名字"><b>模型请求</b>（model request）</td><td data-th="定义">把当前所有材料打包，发给模型问一次"接下来做什么"。</td><td data-th="对照">把桌上材料推给专家看一眼</td></tr>
+              <tr><td data-th="名字"><b>工具</b>（tool）</td><td data-th="定义">程序提供给模型使用的功能（读文件、跑命令、查资料）。模型不能自己动手，只能"要求"调用。</td><td data-th="对照">专家说"我看看那本书"，助理去拿</td></tr>
+              <tr><td data-th="名字"><b>工具结果</b>（tool output）</td><td data-th="定义">工具执行后的返回值，写进消息列表，出现在下一次请求里。</td><td data-th="对照">助理把翻到的那一页递回来</td></tr>
+            </tbody>
+          </table></div>
+          <p>再认识两个结构名词：<b>消息角色</b>（role）——列表里每条消息的身份：<code>user</code> 是你的话、<code>assistant</code> 是模型回复、<code>developer</code> 是程序维护的"工作说明"；<b>工具调用与结果配对</b>——模型说"调用工具 X"时带一个编号 <code>call_id</code>，之后必须有对应结果。程序把它当<b>不变量</b>强制检查：<b>每个调用都有结果、每个结果都能对上调用</b>（或明确标记为外部工具事件）。</p>
+
+          <details>
+            <summary>一个最小的消息列表（教学简化的 JSON，数字是编的）</summary>
+            <div class="inner">
+<pre><code>[
+  {"role": "developer", "类型": "基础指令",     "内容": "你是 Codex……"},
+  {"role": "developer", "类型": "当前工作状态", "内容": "工作目录 /project；网络否；已加载 AGENTS.md……"},
+  {"role": "user",      "内容": "安排郊游……下午 4 点前必须返校"},
+  {"role": "assistant", "类型": "工具调用", "工具": "查公交", "call_id": "call_001"},
+  {"role": "tool",      "类型": "工具结果", "call_id": "call_001", "内容": "（300 行结果）"},
+  {"role": "assistant", "内容": "我再读一下说明"},
+  "…"
+]</code></pre>
+            </div>
+          </details>
+
+          <div class="callout warn">
+            <div class="ttl">当心 · 两个初学最易立的错误认知</div>
+            <p>① "AI 记得我们所有的聊天"——不。它每次能"记得"的，只是这次请求<b>实际带上</b>的材料；材料会被裁剪、替换（单元 04、05）。② "工具结果完整保存、随时完整"——不一定：工具输出进入列表前就可能被限长；磁盘保存与当前列表也不是同一份东西（单元 06）。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">源码对照：请求是拼出来的</h2>
+          <p>先看中文伪代码（教学归纳）：</p>
+<pre><code>函数 组装请求(当前材料列表, 步骤上下文, 基础指令):
+    返回 {
+        input:            当前材料列表,   // 消息、工具调用与结果的数组
+        tools:            工具说明清单,   // 工具名、参数格式
+        base_instructions: 基础指令,      // 模型的"岗位说明书"
+        output_schema:    期望输出格式（可选）,
+    }</code></pre>
+          <details class="src">
+            <summary>真实代码：build_prompt（固定快照 L1563–1591，节选）与解读</summary>
+            <div class="inner">
+<pre><code>// codex-rs/core/src/session/turn.rs  L1563–1591（节选）
+pub(crate) fn build_prompt(
+    input: Vec&lt;ResponseItem&gt;,
+    step_context: &amp;StepContext,
+    base_instructions: BaseInstructions,
+    incremental_tools: bool,
+) -&gt; Prompt {
+    Prompt {
+        input,
+        tools: if incremental_tools { …省略… } else {
+            step_context.tool_router.model_visible_specs()
+        },
+        parallel_tool_calls: true,
+        base_instructions: …,
+        output_schema: turn_context.final_output_json_schema.clone(),
+        …
+    }
+}</code></pre>
+              <p class="src-line">① <code>input: Vec&lt;ResponseItem&gt;</code>——"材料列表"，最小单位叫 <b>ResponseItem</b>：一条用户消息、一条模型回复、一次工具调用、一条工具结果，各算一个条目。② <code>tools: …model_visible_specs()</code>——把当前允许给模型看的工具说明装进请求；<b>它和聊天无关，但每次都带着</b>。③ <code>parallel_tool_calls: true</code>——允许模型一次要求多个工具调用。</p>
+              <p class="src-line"><a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/turn.rs#L1563-L1591" target="_blank" rel="noopener">固定链接 · turn.rs L1563–1591</a></p>
+            </div>
+          </details>
+          <details class="src">
+            <summary>真实代码：配对的强制检查（固定快照 L962–980）</summary>
+            <div class="inner">
+<pre><code>// codex-rs/core/src/context_manager/history.rs  L962–980（节选）
+/// 1. every call (function/custom) has a corresponding output entry
+/// 2. every output has a corresponding call entry or names an external tool event
+/// 3. unsupported image and audio content is stripped from messages and tool outputs
+fn normalize_history(&amp;mut self, input_modalities: &amp;[InputModality]) {
+    normalize::ensure_call_outputs_present(items);       // 每个调用都有结果
+    normalize::remove_orphan_outputs(items);             // 孤立结果被移除
+    normalize::strip_images_when_unsupported(input_modalities, items);
+    normalize::strip_audio_when_unsupported(input_modalities, items);
+}</code></pre>
+              <p class="src-line"><b>逐句解读</b>：前两行保证"调用↔结果"配对；后两行揭示一个不在预期内的行为——<b>改用不支持图片/音频的模型时，历史里的这类内容会在进入请求前被剥离</b>。这也是"材料可能在你没察觉时被改写"的来源之一。</p>
+              <p class="src-line"><a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/context_manager/history.rs#L962-L980" target="_blank" rel="noopener">固定链接 · history.rs L962–980</a></p>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测<span class="tag">先猜，再看答案</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">AI 停下来等工具结果的那段时间，模型被调用了几次？<br>A. 0 次，工具是本地跑的　B. 1 次（发出调用那次）　C. 2 次（发出调用 + 拿到结果后继续）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>C。</b>模型先被问"现在做什么"→要求调用工具；工具执行完、结果写入列表后再被问一次"接下来做什么"。工具执行本身不调模型，但两侧各要一次请求。</p></div></details></div>
+            <div class="q"><div class="qt">判断题：工具结果出现在消息列表里，说明它一定会出现在下一次请求里。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>"进入列表"与"出现在下次请求"之间还有处理步骤：配对与内容检查、限长、窗口紧张时的整理。现有材料可能被裁剪或摘要替代（单元 04、05）。</p></div></details></div>
+            <div class="q"><div class="qt">为什么程序要死守"每个调用都有结果"的配对？缺一条会怎样？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>请求是结构化数据，服务端按"调用—结果"对应关系配对读取。缺结果，上文悬空（模型不知道工具做了什么）；缺调用的"野结果"无法归属。程序宁可在本地补齐占位或移出孤立条目，也不发送结构非法的请求——这就是那几条不变量存在的原因。</p></div></details></div>
+          </div>
+        </div>
+
+        <details class="src">
+          <summary>章末 · 本章源码依据（全部固定链接）</summary>
+          <div class="inner">
+            <p class="src-line">请求组装 build_prompt：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/turn.rs#L1563-L1591" target="_blank" rel="noopener">turn.rs L1563–1591</a></p>
+            <p class="src-line">历史不变量 normalize_history：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/context_manager/history.rs#L962-L980" target="_blank" rel="noopener">history.rs L962–980</a></p>
+          </div>
+        </details>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="intro">上一章 <small>开始之前</small></button>
+          <button class="btn primary" data-next="u2">下一章 <small>聊天之外的工作条件</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var steps=[
+            {phase:"第 0 步 · 起点",note:"你按下回车。此刻材料列表里只有你这一条消息。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1]],data:[["材料条数","1 条"],["模型调用（累计）","0 次"]],why:""},
+            {phase:"第 1 步 · 模型请求 ①",note:"程序把材料打包问模型：接下来做什么？注意——除了你的消息，还带上了基础指令和工具说明。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","基础指令（岗位说明书）",1],["dev","工具说明（查公交、读文件…）",1]],
+             data:[["材料条数","3 条"],["模型调用（累计）","1 次"],["模型返回","要求调用工具：查公交"]],why:""},
+            {phase:"第 2 步 · 工具执行",note:"工具真的去查了公交，返回 300 行结果。调用记录与结果被写入列表——注意它们带同一个 call_id。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","基础指令 + 工具说明",2],["调用","要求调用：查公交（call_001）",1],["结果","300 行公交查询结果",1]],
+             data:[["材料条数","5 条"],["模型调用（累计）","1 次"],["本步新增","调用记录 + 工具结果"]],why:"工具执行本身不调用模型。"},
+            {phase:"第 3 步 · 模型请求 ②",note:"带着 5 条材料再问模型。它看到 300 行结果后，决定再读一份文件。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","基础指令 + 工具说明",2],["调用","查公交（call_001）",1],["结果","300 行结果",1]],
+             data:[["材料条数","5 条"],["模型调用（累计）","2 次"],["模型返回","要求调用工具：读文件"]],why:""},
+            {phase:"第 4 步 · 工具执行（读文件）",note:"《研学地点说明》共 40 行，写入列表。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","基础指令 + 工具说明",2],["调用","查公交（call_001）",1],["结果","300 行结果",1],["调用","读文件（call_002）",1],["结果","40 行说明",1]],
+             data:[["材料条数","7 条"],["模型调用（累计）","2 次"],["本步新增","读文件调用 + 结果"]],why:""},
+            {phase:"第 5 步 · 模型请求 ③",note:"这次请求几乎原样带上前面的一切。模型终于给出最终行程——它引用“下午 4 点前返校”来安排返程时间。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","基础指令 + 工具说明",2],["调用 · 结果","查公交（call_001）",2],["调用 · 结果","读文件（call_002）",2]],
+             data:[["材料条数","7 条"],["模型调用（累计）","3 次"],["输出","最终行程建议"]],why:"同一个'4 点返校'约束，此刻躺在材料列表的最前部——它没被重发，却也从未离开。"},
+            {phase:"第 6 步 · 任务完成",note:"AI 停下。任务结束=这一串请求+工具循环的总和。小林看到的一切，都发生在这 7 条材料之间。",
+             items:[["用户","安排郊游……下午 4 点前必须返校",1],["dev","基础指令 + 工具说明",2],["调用 · 结果","查公交（call_001）",2],["调用 · 结果","读文件（call_002）",2]],
+             data:[["材料条数","7 条（不会再涨——任务结束了）"],["模型调用","共 3 次"],["工具执行","2 次"]],why:"如果任务继续（比如你说'再改一下'），材料会在此基础上继续增长——下一章讲它是怎么被程序维护的。"}
+          ];
+          var i=0,timer=null;
+          var $=function(s){return document.querySelector(s)};
+          var list=$("#tlList"),note=$("#tlNote"),phase=$("#tlPhase"),data=$("#tlData"),why=$("#tlWhy"),status=$("#tlStatus");
+          function render(){
+            var st=steps[i];
+            phase.textContent=st.phase;note.textContent=st.note;
+            list.innerHTML=st.items.map(function(it){
+              return '<div class="mitem"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div><span class="tok">×'+it[2]+'</span></div>';
+            }).join("");
+            data.innerHTML=st.data.map(function(d){
+              return '<div class="data-row"><span class="k">'+d[0]+'</span><span class="v">'+d[1]+'</span></div>';
+            }).join("");
+            if(st.why){why.textContent="说明："+st.why;why.classList.remove("hidden")}else{why.classList.add("hidden")}
+            $("#tlPrev").disabled=i===0;$("#tlNext").disabled=i===steps.length-1;
+          }
+          function stop(msg){if(timer){clearInterval(timer);timer=null}
+            $("#tlPlay").disabled=false;$("#tlPause").disabled=true;
+            if(msg)status.textContent="模式："+msg;}
+          $("#tlNext").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");if(i<steps.length-1){i++;render()}});
+          $("#tlPrev").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");if(i>0){i--;render()}});
+          $("#tlReset").addEventListener("click",function(){stop("逐步阅读（连续播放已暂停）");i=0;render()});
+          $("#tlPlay").addEventListener("click",function(){
+            var sp=parseInt($("#tlSpeed").value,10);
+            if(!sp){status.textContent="请先在右侧选择速度（每步 1.6 / 3.2 / 6.4 秒），再开始连续播放。";return;}
+            stop();
+            if(i>=steps.length-1)i=0;
+            $("#tlPlay").disabled=true;$("#tlPause").disabled=false;
+            status.textContent="模式：连续播放中 · 每步 "+sp/1000+" 秒（随时可暂停或点任意步，速度设置保持不变）";
+            render();
+            timer=setInterval(function(){
+              if(i>=steps.length-1){stop("连续播放已结束（保留在最后一步）")}
+              else{i++;render()}
+            },sp);
+          });
+          $("#tlSpeed").addEventListener("change",function(){
+            if(timer){ /* 播放中改速度：重启计时，模式不变 */
+              clearInterval(timer);var sp=parseInt($("#tlSpeed").value,10);
+              if(sp){status.textContent="模式：连续播放中 · 每步 "+sp/1000+" 秒（已按新速度继续）";
+                timer=setInterval(function(){if(i>=steps.length-1){stop("连续播放已结束（保留在最后一步）")}else{i++;render()}},sp);}
+            }
+          });
+          $("#tlPause").addEventListener("click",function(){stop("已暂停（连续播放）。点'下一步'进入逐步阅读。")});
+          render();
+        })();
+        </script>
+      </section>
+
+
+<section class="unit" id="u2">
+        <div class="unithead">
+          <span class="kicker">单元 02 · 理解流程</span>
+          <h1>聊天之外，还有一份"当前工作条件"</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>单元 01（任务与请求的概念）。</div>
+            <div class="meta-card"><b>读完你能</b>说出工作目录/规则/工具怎么会出现在请求里，以及"变了才说"的差分逻辑。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">场景：她没重发任何东西，AI 却知道项目规矩</h2>
+          <p>婷婷换了台电脑，打开昨天的工作会话继续问："接着改登录页。"奇怪的事：AI 依然知道<b>项目规则</b>（"本项目时间一律用 UTC"）、知道<b>新换的工作目录</b>。她输入的文字里，没有任何一条提到这些。</p>
+          <p>先猜一下：如果只把"聊天记录"发给模型，够不够？</p>
+          <p>设想你接手别人转来的工作，只拿到聊天记录：不知道<b>工作在哪个文件夹</b>（没法动手）、不知道<b>团队规矩</b>（改得对不对没法判断）、不知道<b>手头有什么工具</b>。聊天里可能都提过——但可能是一周前说的、可能已经改了。靠翻聊天还原现状，既不可靠又浪费空间。</p>
+          <p>程序的选择与你不谋而合：<b>不靠聊天推断现状，而是单独维护一份"当前情况单"，每次请求按当前实际状态准备。</b></p>
+        </div>
+
+        <div class="block">
+          <div class="callout">
+            <div class="ttl">人话直给</div>
+            <p>程序里有一张<b>当前工作条件表</b>：工作目录、网络开关、权限、项目规则、可用工具。它按栏目维护、只记<b>当前有效</b>的内容，每次请求前把最新状态渲染给模型。它在源码里的正式名字叫 <b>WorldState</b>——第一次见面，我们叫它"<b>当前工作状态</b>"，以后不再用直译。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互：一次请求是怎样"长出来"的</h2>
+          <div class="interact" id="rsApp">
+            <div class="caption"><span class="tt">请求组成演化器</span><span class="pill demo">演示数据</span></div>
+            <div class="btnrow">
+              <button class="btn" id="rsPrev">上一步</button>
+              <button class="btn primary" id="rsNext">下一步</button>
+              <button class="btn ghost" id="rsReset">重置</button>
+              <span class="spacer"></span>
+              <button class="btn" id="rsVar">切换：下次请求时规则"没变 / 变了"</button>
+            </div>
+            <div class="playing-strip" id="rsStatus">当前：只带"聊天文本"的朴素做法（这是错的——看它缺了什么）</div>
+            <div class="grid2" style="margin-top:12px">
+              <div>
+                <div class="phase-label" id="rsPhase">设想 ①</div>
+                <div class="stage-note" id="rsNote"></div>
+              </div>
+              <div>
+                <div class="phase-label">请求里实际装了什么</div>
+                <div class="mlist" id="rsList"></div>
+              </div>
+            </div>
+          </div>
+          <div class="callout">
+            <div class="ttl">关键机制：变了才说，没变不啰嗦</div>
+            <p>这套情况单<b>并非每次都完整重发</b>。程序记着上一版快照，请求前做比较：<b>没变</b>→不追加任何说明；<b>变了</b>→生成一条"替换说明"（某栏目换成新内容）；<b>删了</b>→生成"不再适用说明"。点上面的"切换"按钮看两种情形。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">项目规则从哪里来，能装多少</h2>
+          <p>项目规则文件（<code>AGENTS.md</code>）的发现规则是固定的：从<b>项目根目录到当前工作目录</b>沿路找（不遍历整个项目子树）；同一目录下特定覆盖文件名优先；项目<b>未被标记为可信时不读取</b>；所有项目规则文件<b>共享一个字节预算</b>（默认 <span class="pill const">32 KiB</span> ≈ 3.2 万字节，可配置）——超预算时<b>从文件尾部截掉</b>。（"字节"是电脑计量文字体积的单位，直觉先记"约 3 万字的量级"，细节单元 05 再展开。）</p>
+          <div class="callout warn">
+            <div class="ttl">当心 · 三条最容易错的说法</div>
+            <p>① "文件名是 AGENTS 就自动完整进模型"——要位置对、项目可信、没超预算。② "规则写进文件，模型就一定遵守"——规则进请求（材料问题）与模型照做（行为问题）是两件事，后者要靠结果检查。③ "规则重新注入能补回最初没读进来的部分"——不能：预算内被截掉的尾巴从未进过模型视野，后来的重组也不会把它变出来。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">一次请求的完整账本</h2>
+          <p>把单元 01 和本单元接上，"一次请求到底装了什么"可以给出完整账（<span class="pill demo">教学示意</span>，顺序与形态因场景而异）：</p>
+          <div class="flowline">
+            <span class="node">基础指令</span><span class="arr">+</span>
+            <span class="node">developer 材料（工作状态渲染 + 已加载规则）</span><span class="arr">+</span>
+            <span class="node">对话历史</span><span class="arr">+</span>
+            <span class="node">工具说明</span><span class="arr">+</span>
+            <span class="node">本次用户输入</span>
+          </div>
+          <p>注意最后一项在<b>底部</b>：稳定材料在前、易变内容在后，对一类重要机制（缓存，单元 08）极其有利——这是刻意排布，不是巧合。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">源码对照</h2>
+          <details class="src">
+            <summary>当前工作状态的容器与差分（固定快照，两个片段）</summary>
+            <div class="inner">
+<pre><code>// codex-rs/core/src/context/world_state/mod.rs  L384–395（节选，注释为原文）
+/// Live model-visible state.
+pub struct WorldState {
+    sections: …,   // 按稳定栏目 ID 保存
+    …
+}</code></pre>
+              <p class="src-line">注释原文 <b>Live model-visible state</b>（模型可见的实时状态）——不是"全世界的事实"，只是这份会话当下需要让模型知道的环境与设置；哪些栏目与顺序由配置与场景决定。</p>
+<pre><code>// codex-rs/core/src/context/world_state/agents_md.rs  L28–79（行为归纳）
+// 无变化 → 不重发任何说明
+// 有变化 → 发"替换说明"（某栏目 NEW ← OLD）
+// 被移除 → 发"不再适用说明"</code></pre>
+              <p class="src-line">这正是"变了才说"的实现。完整代码见章末链接。</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测</h2>
+          <div class="qs">
+            <div class="q"><div class="qt">你什么都没改，直接在原会话里再问一句。本次请求里会出现"当前工作状态"的材料吗？<br>A. 会且更长（又追加一份）　B. 取决于差分：无变化时不重复追加完整副本，变化时补替换说明　C. 完全不出现</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>B。</b>差分逻辑的目标是"状态正确、又不重复堆叠"。选 A 会随每轮无限膨胀；选 C 忽略了变化时补发替换说明的情形。</p></div></details></div>
+            <div class="q"><div class="qt">把规则文件改短（删了几行），下次请求模型一定"忘掉"被删内容吗？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>不能保证一定忘。</b>历史里可能残留旧文本，也可能已被替换说明覆盖——要看处理情形。反过来也不能保证一定记得：规则是否生效要靠结果检查。</p></div></details></div>
+            <div class="q"><div class="qt">AI 没有遵守"时间必须用 UTC"，你怀疑规则没进模型。列出两条要检查的位置。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>例：① 规则文件是否在发现范围内、项目是否可信；② 是否超 32 KiB 预算且关键行在<b>文件尾部</b>被截掉；③ 内容是否变化而差分没发出替换；④ 历史里是否存在与当前规则冲突的过期版本（材料进了不等于被遵守，"遵守"要单独验证）。</p></div></details></div>
+          </div>
+        </div>
+
+        <details class="src">
+          <summary>章末 · 本章源码依据</summary>
+          <div class="inner">
+            <p class="src-line">WorldState 容器：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/context/world_state/mod.rs#L384-L395" target="_blank" rel="noopener">world_state/mod.rs L384–395</a>；渲染装配：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/world_state.rs#L142-L202" target="_blank" rel="noopener">session/world_state.rs L142–202</a></p>
+            <p class="src-line">规则差分：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/context/world_state/agents_md.rs#L28-L79" target="_blank" rel="noopener">agents_md.rs L28–79</a>；发现范围与预算：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/agents_md.rs#L232-L278" target="_blank" rel="noopener">agents_md.rs L232–278</a>；32 KiB：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/config/mod.rs#L253" target="_blank" rel="noopener">config/mod.rs L253</a></p>
+          </div>
+        </details>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u1">上一章 <small>一次任务，多次请求</small></button>
+          <button class="btn primary" data-next="u3">下一章 <small>什么时候整理</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var steps=[
+            {phase:"设想 ① 只带聊天文本（错）",note:"如果只发聊天记录：模型不知道工作目录、不知道项目规则、不知道有哪些工具——她看到的'AI 知道规矩'根本不是靠聊天推断出来的。",
+             items:[["user","（历史消息若干）"],["user","接着改登录页"]]},
+            {phase:"设想 ② 加上'岗位说明书'与工具",note:"基础指令告诉模型'你是怎样的助手'；工具说明告诉它'能要求哪些工具'。没有工具说明，它连'读文件'都无从要求。",
+             items:[["dev","基础指令"],["dev","工具说明（tools schema）"],["user","（历史消息若干）"],["user","接着改登录页"]]},
+            {phase:"设想 ③ 再加上'当前工作状态'",note:"工作目录、权限、已加载规则被渲染进来。规则文件里的'时间用 UTC'就是从这里进入请求的——它没在聊天里提过，但程序按当前状态准备。",
+             items:[["dev","基础指令"],["dev","工具说明"],["dev","当前工作状态：目录 /srv/app；权限…；已加载 AGENTS.md（含 UTC 规则）"],["user","（历史消息若干）"],["user","接着改登录页"]]},
+            {phase:"④ 差分：下一次请求时情形的两种分支",note:"点右上'切换'按钮：没变 → 不追加重复说明；变了（比如目录换了）→ 追加一条替换说明。程序不做'每轮重发全部'这种浪费。",
+             items:[["dev","基础指令"],["dev","工具说明"],["dev","当前工作状态（差分更新）"],["user","（历史消息）"],["user","接着改登录页"]],
+             note2:"规则'没变'：不追加任何说明。|规则'变了'（目录从 /srv/app 改为 /srv/app2）：追加一条'替换说明：工作目录 NEW ← OLD'。|规则'被删'：追加'不再适用说明'。"}
+          ];
+          var i=0,variant=false;
+          var $=function(s){return document.querySelector(s)};
+          function render(){
+            var st=steps[i];
+            $("#rsPhase").textContent=st.phase;
+            $("#rsNote").textContent=(variant&&st.note2)?st.note2.split("|").join(" "):st.note;
+            var items=st.items.slice();
+            if(variant&&st.note2&&i===3){
+              items=[["dev","基础指令"],["dev","工具说明"],["dev","替换说明：工作目录 NEW ← OLD（差分）"],["user","（历史消息）"],["user","接着改登录页"]];
+            }
+            $("#rsList").innerHTML=items.map(function(it){
+              var mark=(variant&&i===3&&it[0]==="dev"&&/替换|当前工作状态/.test(it[1]))?' new':'';
+              return '<div class="mitem'+mark+'"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div></div>';
+            }).join("");
+            $("#rsStatus").textContent=variant?"当前：规则'变了'的分支——本次会追加替换说明":"当前：只带'聊天文本'的朴素做法（这是错的——看它缺了什么）";
+            $("#rsPrev").disabled=i===0;$("#rsNext").disabled=i===steps.length-1;
+          }
+          $("#rsNext").addEventListener("click",function(){if(i<steps.length-1){i++;render()}});
+          $("#rsPrev").addEventListener("click",function(){if(i>0){i--;render()}});
+          $("#rsReset").addEventListener("click",function(){i=0;variant=false;$("#rsVar").classList.remove("on");render()});
+          $("#rsVar").addEventListener("click",function(){variant=!variant;this.classList.toggle("on",variant);if(i<3)i=3;render()});
+          render();
+        })();
+        </script>
+      </section>
+
+      <section class="unit" id="u3">
+        <div class="unithead">
+          <span class="kicker">单元 03 · 掌握机制（核心章）</span>
+          <h1>空间快不够了：用量怎么算，什么时候整理</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>单元 01–02。本单元开始出现数字计算，会先补最小单位。</div>
+            <div class="meta-card"><b>读完你能</b>独立完成 7 类触发演算：基础线、范围限额、有效窗口、两条线的判定、模型限额与用户覆盖。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">先补最小单位：token</h2>
+          <p>模型不是按"字"处理文字的，而是按 <b>token（令牌）</b>——把文字切碎后的小块。一次请求能装多少 token 有硬上限，叫<b>上下文窗口</b>（context window）；请求里的全部材料（指令、历史、工具结果、你的输入）<b>和模型的输出共用这一个池子</b>。</p>
+          <div class="tblwrap"><table>
+            <thead><tr><th>口径</th><th>说明</th><th>用途</th></tr></thead>
+            <tbody>
+              <tr><td data-th="口径">模型真实 tokenizer</td><td data-th="说明">服务端把文本切块后的准确数量</td><td data-th="用途">计费与上限的最终裁判</td></tr>
+              <tr><td data-th="口径">服务端返回的 usage</td><td data-th="说明">每次响应附带"这次输入/输出各多少 token"</td><td data-th="用途">程序校准本地估算的依据</td></tr>
+              <tr><td data-th="口径">本地近似估算</td><td data-th="说明">Codex 固定快照：<b>UTF-8 字节数 ÷ 4，向上取整</b></td><td data-th="用途">服务端返回之前的快速估计</td></tr>
+            </tbody>
+          </table></div>
+          <p>第三行的几个字节课（<span class="pill demo">演示</span>）：<code>"hello"</code> 5 字节 → 2 tokens；<code>"Plan the trip."</code> 14 字节 → 4 tokens；汉字"回" 3 字节 → 1 token；"下午4点前返校" ≈ 14 字节 → 4 tokens。</p>
+          <p class="small muted">先建个直觉——"字节"是电脑计量文字体积的单位（UTF-8 编码下：英文 1 个字符约 1 字节、汉字 1 个约 3 字节；细节单元 05 展开）。表中的"字节数 ÷ 4"就是把体积粗换成 token。</p>
+          <div class="callout warn"><div class="ttl">当心</div><p>"÷4"是 Codex 内部近似口径，<b>不是任何模型的真实计费标准</b>，对中文是粗估；真实数字以服务端 usage 为准。后面凡本地估算都会标注。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">四本账与两条线</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>变量</th><th>含义</th><th>通俗理解</th></tr></thead>
+            <tbody>
+              <tr><td data-th="变量"><b>W</b></td><td data-th="含义">解析后的上下文窗口</td><td data-th="通俗">桌子总共多大</td></tr>
+              <tr><td data-th="变量"><b>p</b></td><td data-th="含义">有效窗口比例，字段缺省 <span class="pill const">95</span></td><td data-th="通俗">允许用多大比例</td></tr>
+              <tr><td data-th="变量"><b>H = W × p ÷ 100</b></td><td data-th="含义">有效窗口上限</td><td data-th="通俗">真正的可用上限</td></tr>
+              <tr><td data-th="变量"><b>M / C</b></td><td data-th="含义">模型元数据限额 M（可被用户配置 C 覆盖）</td><td data-th="通俗">提前整理的下限原料</td></tr>
+              <tr><td data-th="变量"><b>A</b></td><td data-th="含义">当前活动用量＝上次服务端用量＋本地新增估算</td><td data-th="通俗">桌上现在堆了多少</td></tr>
+              <tr><td data-th="变量"><b>P</b></td><td data-th="含义">本窗口开始时的输入基线（prefill）</td><td data-th="通俗">上次收拾后的起点</td></tr>
+            </tbody>
+          </table></div>
+          <p><b>两条线</b>：<b>范围线</b>（默认口径下 = min(模型字段, 90%×W)，即"基础线"与更低字段值取小）<b>或</b><b>整段线</b>（所有材料不超过 H）。任一满足 = "到线"。</p>
+          <div class="callout"><div class="ttl">为什么是 90% 和 95%，不是 100%？</div><p>① 模型回复也吃同一个池子，顶满就没空间写回复；② <b>整理本身也要调用模型</b>（写摘要需要输出空间）。90% 是这一实现的<b>整理基础线</b>（不是模型原理规定），95% 是有效窗口比例的<b>字段缺省</b>——两者都可能被模型元数据或用户配置改写。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">动手算：预算演算器<span class="tag">改任何参数，结论同步更新</span></h2>
+          <div class="interact" id="calcApp">
+            <div class="caption"><span class="ttl" style="font-weight:750;font-size:15px">预算演算器</span><span class="pill demo">演示数字可自由修改</span><span class="pill const">公式与常量来自固定快照</span></div>
+            <div class="preset-row" id="presets"></div>
+            <div class="calc-grid">
+              <div class="field"><label for="cW">窗口 W（token）</label><input id="cW" type="number" value="100000" min="0" step="1000"></div>
+              <div class="field"><label for="cp">有效比例 p（%）</label><input id="cp" type="number" value="95" min="1" max="100"></div>
+              <div class="field"><label for="cM">模型元数据限额 M（留空=无）</label><input id="cM" type="number" placeholder="无" min="0" step="1000"></div>
+              <div class="field"><label for="cC">用户配置 C（留空=无）</label><input id="cC" type="number" placeholder="无" min="0" step="1000"></div>
+              <div class="field"><label for="cScope">范围口径</label><select id="cScope"><option value="total">total（默认：全部材料）</option><option value="after">body_after_prefix（只看增长）</option></select></div>
+              <div class="field"><label for="cP">输入基线 P（仅增长口径参与）</label><input id="cP" type="number" value="0" min="0" step="1000"></div>
+              <div class="field"><label for="cA">当前用量 A（token）</label><input id="cA" type="number" value="89999" min="0" step="1"></div>
+            </div>
+
+            <div class="calc-out">
+              <div class="data-table" id="calcData"></div>
+              <div style="margin-top:12px">
+                <div class="bar-cap"><span>范围用量 vs 范围限额</span><span id="barCap1"></span></div>
+                <div class="bar"><div class="fill" id="bar1"></div><span class="lbl" id="bar1lbl"></span></div>
+                <div class="bar-cap"><span>整段用量 A vs 有效窗口 H</span><span id="barCap2"></span></div>
+                <div class="bar"><div class="fill" id="bar2"></div><span class="lbl" id="bar2lbl"></span></div>
+              </div>
+              <div class="reason-line hidden" id="calcWhy"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">"到线"之后：谁在什么时候执行<span class="tag">第二层判断</span></h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>入口</th><th>条件</th><th>初学者读法</th></tr></thead>
+            <tbody>
+              <tr><td data-th="入口"><b>轮前</b>（新任务开始前）</td><td data-th="条件">检查当前用量是否到线</td><td data-th="读法">开始下一步前先看桌子满没满</td></tr>
+              <tr><td data-th="入口"><b>轮中</b>（任务还要继续）</td><td data-th="条件">模型还要继续（<code>needs_follow_up</code>）且（有新窗口请求 或 到线）</td><td data-th="读法">活还没干完，但桌上堆不下了</td></tr>
+              <tr><td data-th="入口"><b>轮后</b>（可选）</td><td data-th="条件">配置比例 q&gt;0 且达到 q 对应条件；无待处理输入；未取消；未启用实验预算模式</td><td data-th="读法">干完一段提前收拾；<b>缺省关闭</b>（q 缺省 0）</td></tr>
+              <tr><td data-th="入口"><b>切换模型</b></td><td data-th="条件">双方都有"整理兼容性哈希"且不同；或换到窗口更小的模型且用量触及新条件</td><td data-th="读法">换小桌子，或旧交接材料不兼容</td></tr>
+              <tr><td data-th="入口"><b>手动 /compact</b></td><td data-th="条件">不要求到线，随时可用</td><td data-th="读法">你主动说"帮我收拾一下"</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout warn"><div class="ttl">当心 · 轮前检查的一个真实细节</div><p>轮前检查发生在<b>新用户输入写入之前</b>；源码在这一处留了 TODO，明说还没把"即将写入的新输入"估算进去。<b>一次巨大的粘贴（比如五万字日志）仍可能一步跨过安全线</b>——这是"有界但非万能"的工程取舍。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">源码对照：两段关键实现</h2>
+          <details class="src">
+            <summary>90% 基础线与 min 钳制（openai_models.rs L529–540）</summary>
+            <div class="inner">
+<pre><code>// codex-rs/protocol/src/openai_models.rs  L529–540（节选）
+pub fn auto_compact_token_limit(&amp;self) -&gt; Option&lt;i64&gt; {
+    let context_limit = self
+        .resolved_context_window()
+        .map(|context_window| (context_window * 9) / 10);   // ① 90% 基础线
+    let config_limit = self.auto_compact_token_limit;        // ② 模型字段（可被用户配置覆盖）
+    if let Some(context_limit) = context_limit {
+        return Some(
+            config_limit.map_or(context_limit, |limit| std::cmp::min(limit, context_limit)),
+        );                                                   // ③ 取更小者
+    }
+    config_limit                                             // ④ 窗口未知则直接用字段
+}</code></pre>
+              <p class="src-line">① 整数除法就是"取 90% 向下取整"。② 注意它是 <code>Option</code>——<b>可能没有值，"缺失"不是"零"</b>：没有专门值 = 用基础线。③ 有字段值时取 <b>min(字段值, 基础线)</b>——用户配置不是无限上调的后门。④ 窗口未知时字段兜底。</p>
+            </div>
+          </details>
+          <details class="src">
+            <summary>两条线的最终判断（context_window.rs L60–110，含 saturating_sub）</summary>
+            <div class="inner">
+<pre><code>// codex-rs/core/src/session/context_window.rs  L60–110（节选）
+match config.model_auto_compact_token_limit_scope {
+    AutoCompactTokenLimitScope::Total =&gt; (
+        active_context_tokens,                      // 范围用量 = 全部
+        model_info.auto_compact_token_limit(),      // 范围限额
+        None,
+    ),
+    AutoCompactTokenLimitScope::BodyAfterPrefix =&gt; {
+        let baseline = window.prefill_input_tokens.unwrap_or(active_context_tokens);
+        let scope_limit = config.model_auto_compact_token_limit
+            .or_else(|| model_info.auto_compact_token_limit());
+        (
+            active_context_tokens.saturating_sub(baseline),   // 用量 = 增长量（防下溢）
+            scope_limit,
+            window.prefill_input_tokens,
+        )
+    }
+}
+…
+let full_context_window_limit_reached =
+    full_context_window_limit.is_some_and(|limit| active_context_tokens &gt;= limit);
+let token_limit_reached = buffered_limit
+        .is_some_and(|limit| auto_compact_scope_tokens &gt;= limit)
+    || full_context_window_limit_reached;               // 两条线，OR</code></pre>
+              <p class="src-line"><b>语法速读</b>：<code>match</code> 两分支就是两种口径（默认 <code>Total</code>）。<code>saturating_sub</code> 饱和减法：差为负时夹到 0，<b>不会回绕成天文数字</b>——增长口径下不会出现负增长。<code>unwrap_or(active_context_tokens)</code>：基线还没有时把当前用量当基线（增长=0，安全默认）——<b>None 不当 0</b>。<code>is_some_and(...) || ...</code>：两条线各自"有且到线"，然后 OR。带 <code>buffered</code> 的缓冲区只在实验配置下可能非零，本教程主线排除。</p>
+              <p class="src-line">固定链接：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/context_window.rs#L60-L110" target="_blank" rel="noopener">context_window.rs L60–110</a> · <a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/protocol/src/openai_models.rs#L529-L540" target="_blank" rel="noopener">openai_models.rs L529–540</a></p>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测</h2>
+          <div class="qs">
+            <div class="q"><div class="qt">演算：W = 200,000，p = 95，模型字段 M = 150,000。求基础线、范围限额、H；A = 152,000 到线吗？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>基础线 = 200,000×9÷10 = 180,000；范围限额 = min(150,000, 180,000) = 150,000；H = 190,000。A = 152,000 ≥ 150,000 → <b>范围线到线</b>（整段未到）。</p></div></details></div>
+            <div class="q"><div class="qt">演算（增长口径）：C = 40,000，P = 100,000，A = 135,000，H = 190,000。结论？只写"增长 35,000 &lt; 40,000 所以不触发"漏了什么？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>增长 35,000 < 40,000 未到；整段 135,000 < 190,000 未到 → <b>不触发</b>。推理链必须包含<b>整段线</b>这个独立检查——只写增长线会在"整段顶到桌子边"的场景漏判。</p></div></details></div>
+            <div class="q"><div class="qt">陷阱题：模型元数据没给限额字段。有同学说"那就是限额为 0，永远不压缩"。错在哪？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>错在"把 None 当 0"。字段缺失时回退到 90% 基础线：<b>没有专门值 = 用默认线</b>，不是限额为零。这是读 <code>Option</code> 类型最常见的错误。</p></div></details></div>
+            <div class="q"><div class="qt">判断题：轮前检查把"用户马上要发的巨大粘贴"也算进去了。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>源码 TODO 明说：检查发生在新输入与上下文更新<b>写入之前</b>，尚未估算即将到来的内容。巨大输入仍可能一步超限。</p></div></details></div>
+          </div>
+        </div>
+
+        <details class="src">
+          <summary>章末 · 本章源码依据</summary>
+          <div class="inner">
+            <p class="src-line">90% / 95% / 窗口解析：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/protocol/src/openai_models.rs#L393-L395" target="_blank" rel="noopener">openai_models.rs L393–395</a>、<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/protocol/src/openai_models.rs#L518-L540" target="_blank" rel="noopener">L518–540</a></p>
+            <p class="src-line">两口径与 OR 判定：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/context_window.rs#L60-L110" target="_blank" rel="noopener">context_window.rs L60–110</a></p>
+            <p class="src-line">轮前/轮中/轮后/切模型：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/turn.rs#L180-L184" target="_blank" rel="noopener">turn.rs L180–184</a>、<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/turn.rs#L1379-L1426" target="_blank" rel="noopener">L1379–1426</a></p>
+          </div>
+        </details>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u2">上一章 <small>聊天之外的工作条件</small></button>
+          <button class="btn primary" data-next="u4">下一章 <small>整理后带上什么</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var presets=[
+            {n:"例1 · 差一点不到线",W:100000,p:95,M:null,C:null,scope:"total",P:0,A:89999},
+            {n:"例2 · 恰好到线",W:100000,p:95,M:null,C:null,scope:"total",P:0,A:90000},
+            {n:"例3 · 增长未到·整段未到",W:100000,p:95,M:null,C:30000,scope:"after",P:60000,A:85000},
+            {n:"例4 · 增长未到·整段到线",W:100000,p:95,M:null,C:30000,scope:"after",P:80000,A:95000},
+            {n:"例5 · 模型限额更低(M=85,000)",W:100000,p:95,M:85000,C:null,scope:"total",P:0,A:87000},
+            {n:"例6 · 用户覆盖(C=50,000)",W:100000,p:95,M:null,C:50000,scope:"total",P:0,A:52000}
+          ];
+          var activePreset=-1;
+          function val(id){var v=$(id).value.trim();return v===""?null:Math.max(0,Math.floor(Number(v))||0)}
+          function fmt(n){return n==null?"—":n.toLocaleString("en-US")}
+          function compute(){
+            var W=val("#cW"),p=val("#cp"),M=val("#cM"),C=val("#cC"),P=val("#cP"),A=val("#cA");
+            var scope=$("#cScope").value;
+            if(p==null)p=95;
+            var base=W==null?null:Math.floor(W*9/10);
+            var field=(C!=null)?C:M;   // 用户配置覆盖模型字段
+            var L,Ldesc;
+            if(scope==="total"){
+              if(base!=null&&field!=null){L=Math.min(field,base);Ldesc="min("+fmt(field)+", 90%W)（字段与基础线取小）"}
+              else if(base!=null){L=base;Ldesc="90%W（无字段值）"}
+              else{L=field;Ldesc="字段值（窗口未知）"}
+            }else{
+              if(C!=null){L=C;Ldesc="用户配置直接使用（此口径不再套 90% 钳制）"}
+              else if(base!=null&&M!=null){L=Math.min(M,base);Ldesc="min(M, 90%W)"}
+              else if(base!=null){L=base;Ldesc="90%W（无字段值）"}
+              else{L=M;Ldesc="字段值（窗口未知）"}
+            }
+            var H=(W!=null)?Math.floor(W*p/100):null;
+            var S=(scope==="total")?(A||0):Math.max((A||0)-(P||0),0);
+            var scopeReached=(L!=null)&&(S>=L);
+            var fullReached=(H!=null)&&((A||0)>=H);
+            return {W:W,p:p,M:M,C:C,scope:scope,P:P||0,A:A||0,base:base,field:field,L:L,Ldesc:Ldesc,H:H,S:S,scopeReached:scopeReached,fullReached:fullReached,reached:scopeReached||fullReached};
+          }
+          function setBar(el,fillEl,lblEl,S,Limit,reached){
+            var ratio=(Limit&&Limit>0)?Math.min(S/Limit,1.4):0;
+            fillEl.style.width=Math.min(ratio,1)*100+"%";
+            fillEl.className="fill"+(reached?" over":"");
+            lblEl.textContent=fmt(S)+" / "+fmt(Limit)+(reached?"（到线）":"（未到）");
+          }
+          function render(){
+            var c=compute();
+            var rows=[
+              ["基础线 90%×W",fmt(c.base)],
+              ["范围限额 L",fmt(c.L)+"　("+(c.Ldesc||"")+")"],
+              ["有效窗口 H = W×p÷100",fmt(c.H)],
+              ["范围用量 S（口径="+c.scope+"）",fmt(c.S)],
+              ["当前用量 A",fmt(c.A)],
+              ["范围线判定",c.scopeReached?"到线":"未到",c.scopeReached?"ok":"bad"],
+              ["整段线判定",c.fullReached?"到线":"未到",c.fullReached?"ok":"bad"],
+              ["结论",c.reached?"到线：进入整理流程":"未到线：不整理",c.reached?"ok":"bad"]
+            ];
+            $("#calcData").innerHTML=rows.map(function(r){
+              return '<div class="data-row"><span class="k">'+r[0]+'</span><span class="v '+(r[2]||"")+'">'+r[1]+'</span></div>';
+            }).join("");
+            setBar(null,$("#bar1"),$("#bar1lbl"),c.S,c.L,c.scopeReached);
+            setBar(null,$("#bar2"),$("#bar2lbl"),c.A,c.H,c.fullReached);
+            $("#barCap1").textContent="范围线（口径："+c.scope+"）";
+            $("#barCap2").textContent="整段线";
+            var why=$("#calcWhy");
+            if(c.W==null){why.textContent="窗口 W 为空：无法计算 90% 基础线与有效窗口。";why.classList.remove("hidden")}
+            else if(!c.reached){why.textContent="两条线都未到。注意：结论取决于 min 钳制后的范围限额——"+(c.Ldesc||"")+"。";why.classList.remove("hidden")}
+            else{why.classList.add("hidden")}
+          }
+          function clearPreset(){activePreset=-1;
+            Array.prototype.forEach.call(document.querySelectorAll(".preset"),function(b){b.classList.remove("on")})}
+          ["#cW","#cp","#cM","#cC","#cP","#cA"].forEach(function(id){
+            $(id).addEventListener("input",function(){clearPreset();render()});
+          });
+          $("#cScope").addEventListener("change",function(){clearPreset();render()});
+          var pr=$("#presets");
+          presets.forEach(function(ps,idx){
+            var b=document.createElement("button");b.className="preset";b.textContent=ps.n;
+            b.addEventListener("click",function(){
+              activePreset=idx;
+              Array.prototype.forEach.call(document.querySelectorAll(".preset"),function(x,i){x.classList.toggle("on",i===idx)});
+              $("#cW").value=ps.W;$("#cp").value=ps.p;
+              $("#cM").value=ps.M==null?"":ps.M;
+              $("#cC").value=ps.C==null?"":ps.C;
+              $("#cScope").value=ps.scope;$("#cP").value=ps.P;$("#cA").value=ps.A;
+              render();
+            });
+            pr.appendChild(b);
+          });
+          render();
+        })();
+        </script>
+      </section>
+
+
+<section class="unit" id="u4">
+        <div class="unithead">
+          <span class="kicker">单元 04 · 掌握机制（核心章）</span>
+          <h1>整理之后带上什么</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>单元 03（到线判断）。</div>
+            <div class="meta-card"><b>读完你能</b>推演"整理后保留清单"；分清两条产物路径与两种方式（自动/手动）。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">场景：整理=全部换一段摘要吗？</h2>
+          <p>小林担心："它整理的时候，是不是把我们聊的东西都扔了，只留一小段总结？"</p>
+          <p>答案分两半：旧材料的<b>大部分确实不再逐条带上</b>——这是整理的意义；但有两种东西会被<b>尽力留下</b>：① 你的<b>近期原话</b>（预算内原样保留）；② <b>当前有效的规则与环境</b>（整理后重新摆回来）。而且"整理"的产物有两种形态——先认识它们。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">两条产物路径：先看你的服务商是谁</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>路径</th><th>谁写"交接材料"</th><th>产物形态</th><th>何时走这条</th></tr></thead>
+            <tbody>
+              <tr><td data-th="路径"><b>本地摘要路径</b></td><td data-th="谁写">客户端编排：先挑材料，再让模型写<b>文字交接摘要</b></td><td data-th="形态">你能读懂的一段文字</td><td data-th="何时">提供方不支持远端压缩时</td></tr>
+              <tr><td data-th="路径"><b>远端压缩 v2</b></td><td data-th="谁写">服务端完成压缩</td><td data-th="形态">一个<b>压缩条目</b>（<code>encrypted_content</code> 加密内容，客户端读不到明文）</td><td data-th="何时"><b>OpenAI / Azure 系 provider 默认走这条</b>（本次独立核查确认）</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout"><div class="ttl">新事实 · 默认走哪条由 provider 能力决定</div><p>固定快照中，<code>ProviderCapabilities::from_config</code> 对 OpenAI 与 Azure responses 系提供方默认给出 <code>RemoteCompactionSupport::V2</code>，其他提供方默认不支持（走本地摘要）。换言之：<b>用官方 OpenAI 账号，默认看到的是远端 v2 路径的产物</b>——那段"交接材料"不是你能读的文字摘要，而是服务端生成的加密压缩块。<b>判定点是 provider 能力，不是名字里带 V2 的功能开关</b>（该开关在快照里已是 <code>Stage::Removed</code>，只用于向服务端声明"本客户端支持远端压缩"）。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互：压缩四幕演示<span class="tag">方式与观看模式分开</span></h2>
+          <div class="interact theatre" id="cpApp">
+            <div class="caption"><span class="tt">压缩四幕演示</span><span class="pill demo">演示数据（材料与数字为教学构造，步骤顺序与条件来自固定快照）</span></div>
+
+            <div class="modebox">
+              <div class="grp"><b>压缩方式（决定能不能开始）</b>
+                <div class="switchrow">
+                  <button class="switch on" id="cpModeAuto">自动压缩</button>
+                  <button class="switch" id="cpModeManual">手动 /compact</button>
+                </div>
+                <div id="cpCond" class="small" style="margin-top:6px"></div>
+              </div>
+              <div class="grp"><b>观看方式（不影响方式选择）</b>
+                <div class="btnrow">
+                  <button class="btn" id="cpPrev">上一步</button>
+                  <button class="btn primary" id="cpNext">下一步</button>
+                  <button class="btn ghost" id="cpReset">重置</button>
+                  <select id="cpSpeed" class="btn" style="min-height:42px">
+                    <option value="0">速度关闭</option>
+                    <option value="1600">每步 1.6 秒</option>
+                    <option value="3200">每步 3.2 秒</option>
+                    <option value="6400">每步 6.4 秒</option>
+                  </select>
+                  <button class="btn" id="cpPlay">播放</button>
+                  <button class="btn" id="cpPause" disabled>暂停</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="field" style="max-width:520px">
+              <label for="cpA">演示参数：当前用量 A（触发线按演示值 90,000）</label>
+              <input id="cpA" type="range" min="70000" max="100000" step="500" value="92000" style="width:100%">
+              <div class="small muted" id="cpAVal">A = 92,000</div>
+            </div>
+
+            <div class="playing-strip" id="cpStatus" aria-live="polite"></div>
+            <div class="reason-line hidden" id="cpWhy"></div>
+
+            <div class="grid2" style="margin-top:12px">
+              <div>
+                <div class="phase-label" id="cpPhase">第 0 幕</div>
+                <div class="stage-note" id="cpNote"></div>
+              </div>
+              <div>
+                <div class="phase-label" id="cpRightTitle">材料清单</div>
+                <div class="mlist" id="cpList"></div>
+                <div class="data-table" id="cpData"></div>
+              </div>
+            </div>
+            <div class="btnrow" style="margin-top:10px">
+              <span class="stepdots" id="cpDots"></span>
+            </div>
+          </div>
+          <div class="callout ok"><div class="ttl">这个演示的纪律</div><p>① <b>自动与手动分开</b>：自动模式下若 A 未到线，演示会停在第一步并说明原因——<b>不演示假的自动成功</b>；点"手动 /compact"是主动换方式，不是演示偷偷替你换。② 播放、回看、重置、拖参数都<b>不会改变你选的方式</b>。③ 官方 OpenAI 默认产物是加密压缩条目；为了让结构可见，演示用"可读摘要"形态展示——页面已明确标注这只是<b>教学形态</b>。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">两条路径的保留算法：共同骨架</h2>
+<pre><code>中文伪代码：整理时的保留骨架（教学归纳）
+  ① 筛候选：谁有资格"原样留下"？      # 类型过滤，不按语义评重要性
+  ② 用预算：从新到旧把候选装进共享预算  # 最近的先装
+  ③ 边界处理：装不下的边界条目截短（保头尾）
+  ④ 另加产物：摘要 / 压缩条目单独追加   # 不占"原样保留"的预算
+  ⑤ 重组规则：重新渲染当前工作状态与规则</code></pre>
+          <div class="tblwrap"><table>
+            <thead><tr><th>步骤</th><th>本地摘要路径</th><th>远端 v2</th></tr></thead>
+            <tbody>
+              <tr><td data-th="步骤">① 候选</td><td data-th="本地"><b>只收真正的用户消息</b>（靠固定前缀排除旧摘要消息）</td><td data-th="远端">用户消息 + 钩子提示；AgentMessage 有条件（排除子代理进度/完成通知，单条 ≤ <span class="pill const">10,000</span>）；特殊工具结果要开关（快照默认关闭）</td></tr>
+              <tr><td data-th="步骤">② 预算</td><td data-th="本地"><span class="pill const">20,000 tokens</span>（源码常量）</td><td data-th="远端"><span class="pill const">64,000 tokens</span>（源码常量）</td></tr>
+              <tr><td data-th="步骤">③ 边界</td><td data-th="本地">纯文字且放得下→原样；否则文字回退（保头尾）；然后<b>停止</b></td><td data-th="远端">按"组"处理；特殊工具结果<b>整条保留否则停止</b>；图片另有预算（<code>compaction_image_budget</code>，快照默认开启）</td></tr>
+              <tr><td data-th="步骤">④ 产物</td><td data-th="本地">追加文字摘要（可读）</td><td data-th="远端">追加服务端压缩条目（含加密内容）</td></tr>
+              <tr><td data-th="步骤">⑤ 重组</td><td data-th="本地" colspan="2">两者相同：重新构建初始上下文 + 渲染当前工作状态——规则与环境"重新摆回桌上"</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">一个完整的数字演算（本地摘要路径）</h2>
+          <p>预算 20,000（<span class="pill const">源码常量</span>）；三位用户的过往原话（<span class="pill demo">教学数据</span>）：</p>
+<pre><code>从旧到新：M1 = 12,000 tokens、M2 = 10,000、M3 = 6,000
+
+倒着装（从新到旧）：
+  装 M3（6,000 ≤ 20,000）    → 剩 14,000
+  装 M2（10,000 ≤ 14,000）   → 剩 4,000
+  看 M1（12,000 > 4,000）    → 边界截短：M1 的头尾各留一部分，
+                               合计约 4,000 tokens 的片段 + 截断标记
+  按规则停止（不回头挑更早的小消息补缝）
+
+最终顺序： [M1 截短片段] → [M2] → [M3] → [新摘要]
+           （规则与环境在 ⑤ 重新摆回列表靠前位置）</code></pre>
+          <div class="callout warn"><div class="ttl">当心 · 两条要害边界</div><p>① <b>"重要"不参与筛选</b>：算法只看类型、预算与顺序。M1 中间若有"必须 14:30 集合"，要么在头尾片段里侥幸留下、要么只能靠摘要传递——<b>摘要能否保住它，客户端代码无法保证</b>（属模型生成质量；未运行实验，不编造结论）。② <b>20,000 不是触发线，也不是最终请求大小</b>——它只是"给旧用户原话的共享预算"；同一请求里还有重组规则、摘要、工具说明。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">源码对照：三个关键片段</h2>
+          <details class="src">
+            <summary>片段一 · 20K 常量与"从新到旧"骨架（compact.rs L690–770 节选）</summary>
+            <div class="inner">
+<pre><code>const COMPACT_USER_MESSAGE_MAX_TOKENS: usize = 20_000;      // L63
+…
+for message in user_messages.iter().rev() {                 // ① 从新到旧
+    if remaining == 0 { break; }
+    let tokens = approx_token_count(&amp;message.message);      // ② 近似估算
+    let content = if tokens &lt;= remaining
+        &amp;&amp; content.iter().all(|part| matches!(part, ContentItem::InputText { .. })) {
+        content.clone()                                     // ③ 纯文字且装得下 → 原样
+    } else { … truncate_text(&amp;message.message, …) … };      // ④ 否则文字回退（保头尾）
+    selected_messages.push(…);
+    if tokens &gt; remaining { break; }                        // ⑤ 边界收进来后停止
+    remaining = remaining.saturating_sub(tokens);
+}
+selected_messages.reverse();                                // ⑥ 还原时间顺序
+history.push(CompactionSummary::new(summary_text));         // ⑦ 产物另加</code></pre>
+              <p class="src-line">逐句：① <code>rev()</code> 从最新到最旧——"最近的用户话优先获得预算"；② 用近似估算而非精确 tokenizer；③ 全文字才可能原样；④ 超预算或带媒体→文字回退，<b>图片换成文字</b>；⑤ 边界消息推入后立即停止，不补缝；⑥ 最终按时间正序；⑦ 摘要<b>另加</b>，不占 20,000。</p>
+            </div>
+          </details>
+          <details class="src">
+            <summary>片段二 · 候选过滤与"旧摘要"识别（compact.rs L587–603）</summary>
+            <div class="inner">
+<pre><code>fn compacted_user_message&lt;'a&gt;(…) -&gt; Option&lt;CompactedUserMessage&lt;'a&gt;&gt; {
+    let Some(TurnItem::UserMessage(user)) = crate::event_mapping::parse_turn_item(item)
+    else { return None; };                                   // ① 不是真用户消息 → 跳过
+    if is_summary_message(&amp;user.message()) { return None; }  // ② 是旧摘要 → 跳过
+    Some(CompactedUserMessage { … })
+}
+fn is_summary_message(message: &amp;str) -&gt; bool {
+    message.starts_with(format!("{SUMMARY_PREFIX}\n").as_str())  // ③ 靠前缀识别
+}</code></pre>
+              <p class="src-line"><code>let … else</code> 是 Rust 的"守卫"写法：不满足条件直接返回 None。<b>摘要消息被编码成"用户消息"形态</b>（历史里没有单独的"摘要"角色），所以靠固定前缀识别排除——<b>同一个字段在不同位置可以装不同的东西</b>，读代码要看上下文。</p>
+            </div>
+          </details>
+          <details class="src">
+            <summary>片段三 · 远端 v2 的成组与边界（compact_remote_v2.rs L625–722 摘述）</summary>
+            <div class="inner">
+<pre><code>for group in groups_from_newest_to_oldest {
+    if remaining == 0 { continue; }                       // ① 已清零：跳过，不再纳入
+    let token_count = source_tokens + notice_tokens;      // ② 条目 + 附带通知成组计量
+    if token_count &lt;= remaining {
+        push(group); remaining -= token_count;            // ③ 整组装下
+    } else if is_retained_tool_output(&amp;group.source) {
+        break;                                            // ④ 特殊工具结果：整条或停止
+    } else if remaining &gt; notice_tokens {
+        let truncated = truncate_message_text_to_token_budget(…);
+        push(truncated); remaining = 0;                   // ⑤ 普通边界消息：截短收尾
+    }
+}
+truncated_reversed.reverse();                             // ⑥ 还原时间顺序</code></pre>
+              <p class="src-line">注意 ① 与 ④ 的区别：<b>清零后是 continue（继续扫描但不再纳入），特殊工具结果放不下是 break（停止）</b>——"从新到旧、装不下就定格"的主线对普通文字成立；实现里还有跳过当前候选的分支，不要把任何一层简化成"必然在第一次超预算时停"。</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测</h2>
+          <div class="qs">
+            <div class="q"><div class="qt">小林使用 OpenAI 官方账号。压缩完成后，他在历史里看到的交接材料最可能是什么形态？<br>A. 一段可读中文摘要　B. 含 encrypted_content 的压缩条目　C. 旧消息原样全在</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>B。</b>OpenAI provider 默认 <code>RemoteCompactionSupport::V2</code>，产物是服务端压缩条目（客户端侧含加密内容）。A 是本地摘要路径（提供方不支持远端压缩时）的形态。</p></div></details></div>
+            <div class="q"><div class="qt">演算：本地摘要预算 20,000；用户消息从旧到新 9,000 / 15,000 / 8,000。写出选取过程与最终顺序。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>倒着装：8,000（剩 12,000）→ 15,000 &gt; 12,000 → 边界截短（保头尾约 12,000 的片段），收尾停止。旧的 9,000 <b>不再尝试</b>。最终：[15,000 截短片段] → [8,000] → [摘要]。</p></div></details></div>
+            <div class="q"><div class="qt">判断题："20,000 是压缩触发阈值，一超过就开始压缩。"</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>20,000 是整理后给旧用户原话的<b>直接保留预算</b>；触发判断看的是单元 03 的 90% 范围线与 95% 整段线。这两组数字对象完全不同。</p></div></details></div>
+            <div class="q"><div class="qt">设计意图：为什么两条路径都"从新到旧"，而不是"按重要程度排"？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>"重要程度"无法在客户端廉价又可靠地评估——读懂语义再挑等于再跑一次模型（成本、延迟、可能挑错）。<b>时间新近性</b>是便宜稳定的代理信号；深层语义保全交给摘要/压缩生成的环节（模型做）。这也是"客户端无法单方面保证保住细节"的原因。</p></div></details></div>
+          </div>
+        </div>
+
+        <details class="src">
+          <summary>章末 · 本章源码依据</summary>
+          <div class="inner">
+            <p class="src-line">20K 与选取：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact.rs#L690-L770" target="_blank" rel="noopener">compact.rs L690–770</a>；候选过滤：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact.rs#L574-L603" target="_blank" rel="noopener">L574–603</a></p>
+            <p class="src-line">远端 v2：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact_remote_v2.rs#L548-L597" target="_blank" rel="noopener">L548–597</a>、<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact_remote_v2.rs#L625-L722" target="_blank" rel="noopener">L625–722</a></p>
+            <p class="src-line">provider 能力：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/model-provider/src/capabilities.rs#L31-L51" target="_blank" rel="noopener">capabilities.rs L31–51</a>；规则重组：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact.rs#L80-L110" target="_blank" rel="noopener">compact.rs L80–110</a></p>
+          </div>
+        </details>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u3">上一章 <small>什么时候整理</small></button>
+          <button class="btn primary" data-next="u5">下一章 <small>信息在哪一步没的</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var TRIG=90000, A=92000;
+          var mode="auto", step=0, timer=null;
+          /* 四幕数据：教学构造 */
+          var oldList=[
+            ["规则","当前工作状态（含规则：4 点前返校）","3,000","keep"],
+            ["用户","M1：安排郊游……下午 4 点前必须返校（1.2 万）","12,000",""],
+            ["助手","我先查公交与资料","2,000",""],
+            ["结果","查公交 300 行（已过出口裁剪）","8,000",""],
+            ["助手","再读研学地点说明","1,500",""],
+            ["结果","说明文件 40 行","3,000",""],
+            ["用户","M2：路线换成 B 方案（1 万）","10,000",""],
+            ["助手","好的，已更新路线","1,500",""],
+            ["用户","M3：午饭安排在食堂（6 千）","6,000",""],
+            ["结果","天气查询（小）","1,000",""],
+            ["助手","综合建议草稿……","70,000",""]
+          ];
+          var newList=[
+            ["规则","重组后的当前工作状态 + 已加载规则（重新渲染）","3,000","new"],
+            ["保留","M1 的截短片段（头尾，含'4 点前'附近文字）","4,000","keep"],
+            ["保留","M2：路线换成 B 方案","10,000","keep"],
+            ["保留","M3：午饭安排在食堂","6,000","keep"],
+            ["产物","交接摘要（教学形态：文字版；官方默认=加密压缩条目）","35,000","new"]
+          ];
+          function fmt(n){return n.toLocaleString("en-US")}
+          function condOK(){return A>=TRIG}
+          function modeName(){return mode==="auto"?"自动压缩":"手动 /compact"}
+          function status(t){$("#cpStatus").textContent=t}
+          function renderCond(){
+            var el=$("#cpCond");
+            if(mode==="auto"){
+              el.innerHTML=condOK()
+                ? '<b style="color:var(--ok)">自动条件检查：A='+fmt(A)+' ≥ 触发线 '+fmt(TRIG)+' → 成立</b><br>可以开始：演示将从"检测到线"开始。'
+                : '<b style="color:var(--warn)">自动条件不成立：A='+fmt(A)+' &lt; 触发线 '+fmt(TRIG)+'</b><br>自动压缩只在到线后发生——播放与"下一步"都会停在第一步并说明原因（<u>不演示假的自动成功</u>）。想先看整理过程本身，可主动切到"手动 /compact"。';
+            }else{
+              el.innerHTML='<b style="color:var(--ok)">手动方式不要求到线</b><br>用户随时可发起；演示将从"你按下 /compact"开始，整理是独立任务，完成后 <u>不会自动续跑原任务</u>。';
+            }
+          }
+          function render(){
+            var ph=$("#cpPhase"),note=$("#cpNote"),listEl=$("#cpList"),dataEl=$("#cpData");
+            $("#cpRightTitle").textContent=(step===3?"后续请求带上的材料":"材料清单");
+            if(step===0){
+              ph.textContent="第 1 幕 · 旧材料（整理前的活动历史）";
+              if(mode==="auto"){
+                note.textContent=condOK()
+                  ? "检测到已到线（A="+fmt(A)+" ≥ "+fmt(TRIG)+"），程序准备整理。这是此刻桌面上的全部材料——注意 70,000 那条很长的助手草稿也在。"
+                  : "当前 A="+fmt(A)+"，未到触发线 "+fmt(TRIG)+"——自动压缩此刻不会发生。如果点「下一步」或「播放」，演示会停在第一步并说明原因；也可以主动切到「手动 /compact」观看整理过程本身。";
+              }else{
+                note.textContent="你按下 /compact。不检查到线，直接开始。这是此刻桌面上的全部材料。";
+              }
+              listEl.innerHTML=oldList.map(function(it){
+                return '<div class="mitem'+(it[3]?" "+it[3]:"")+'"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div><span class="tok">≈'+it[2]+'</span></div>';
+              }).join("");
+              dataEl.innerHTML=[["整理前总量（演示）","≈118,000 tokens"],["方式",modeName()],["下一步","生成交接产物"]].map(row).join("");
+            }else if(step===1){
+              ph.textContent="第 2 幕 · 生成产物";
+              note.textContent=mode==="auto"
+                ? "程序把选好的材料交给模型（或服务端），生成交接产物。产物与'原样保留'是两条线：产物不占保留预算。"
+                : "整理任务向模型（或服务端）请求交接产物。此刻活动历史还没有被替换——原桌子原样。";
+              listEl.innerHTML=oldList.slice(0,8).map(function(it){
+                return '<div class="mitem'+(it[3]?" "+it[3]:"")+'"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div><span class="tok">≈'+it[2]+'</span></div>';
+              }).join("")+'<div class="mitem new"><span class="ic">产物</span><div class="body">交接摘要生成中……（教学形态为文字版；<b>官方 OpenAI 默认走远端 v2，产物是加密压缩条目</b>，客户端读不到明文）</div><span class="tok">≈35,000</span></div>';
+              dataEl.innerHTML=[["产物形态","教学：文字摘要 ｜ 官方默认：加密压缩条目"],["保留预算","本地 20,000 / 远端 64,000（源码常量）"],["此刻旧材料","尚未替换（还在桌上）"]].map(row).join("");
+            }else if(step===2){
+              ph.textContent="第 3 幕 · 成功替换";
+              note.textContent="替代历史安装：规则重新渲染、近期原话保留、产物另加。'被移除'的旧条目从这里开始不再进入请求——但磁盘存档里的旧记录并没有被删（单元 06）。";
+              listEl.innerHTML=newList.map(function(it){
+                return '<div class="mitem'+(it[3]==="new"?" new":" keep")+'"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div><span class="tok">≈'+it[2]+'</span></div>';
+              }).join("");
+              dataEl.innerHTML=[["替换前总量（演示）","≈118,000 tokens"],["替换后总量（演示）","≈58,000 tokens"],["直接保留的是","M1 截短片段 / M2 / M3"],["产物","摘要另加（不占保留预算）"]].map(row).join("");
+            }else{
+              ph.textContent="第 4 幕 · 后续请求";
+              note.textContent=mode==="auto"
+                ? "下一次模型请求带的就是这 5 条（外加工具说明等）。自动压缩发生在轮中时，工作循环接着跑——工具循环不断粮。"
+                : "下一次请求同样带这 5 条。但手动整理的独立任务到此结束：原任务不会自动续跑，你发下一句才继续。";
+              listEl.innerHTML=newList.map(function(it){
+                return '<div class="mitem'+(it[3]==="new"?" new":" keep")+'"><span class="ic">'+it[0]+'</span><div class="body">'+it[1]+'</div><span class="tok">≈'+it[2]+'</span></div>';
+              }).join("");
+              dataEl.innerHTML=[["下一次请求材料（演示）","≈58,000 + 工具说明等"],["方式差异",mode==="auto"?"轮中成功 → 继续原工作循环":"独立任务结束 → 不自动续跑"],["别忘了","磁盘存档仍保留旧记录；恢复语义见单元 06"]].map(row).join("");
+            }
+            $("#cpPrev").disabled=step===0;$("#cpNext").disabled=step===3;
+            renderCond();
+          }
+          function row(r){return '<div class="data-row"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>'}
+          function stopAll(msg){if(timer){clearInterval(timer);timer=null}
+            $("#cpPlay").disabled=false;$("#cpPause").disabled=true;
+            if(msg)status(msg);}
+          function tryAdvance(){
+            if(mode==="auto" && step===0 && !condOK()){
+              var why=$("#cpWhy");
+              why.innerHTML="演示停在第一步：<b>自动压缩条件不成立</b>。当前 A="+fmt(A)+"，触发线是 "+fmt(TRIG)+"（演示值），A 未到线，<b>自动压缩不会发生</b>。这不是失败，而是「条件不成立」——把滑块拖到 90,000 以上，或主动切到「手动 /compact」观看整理过程本身。";
+              why.classList.remove("hidden");
+              return false;
+            }
+            $("#cpWhy").classList.add("hidden");
+            return true;
+          }
+          $("#cpNext").addEventListener("click",function(){stopAll("模式：逐步阅读（连续播放已停止；压缩方式不变）");if(tryAdvance()&&step<3){step++;render()}});
+          $("#cpPrev").addEventListener("click",function(){stopAll("模式：逐步阅读（连续播放已停止；压缩方式不变）");$("#cpWhy").classList.add("hidden");if(step>0){step--;render()}});
+          $("#cpReset").addEventListener("click",function(){stopAll("模式：逐步阅读（压缩方式保持为："+modeName()+"，未被重置改变）");$("#cpWhy").classList.add("hidden");step=0;render()});
+          $("#cpPlay").addEventListener("click",function(){
+            var sp=parseInt($("#cpSpeed").value,10);
+            if(!sp){status("请先选择速度再播放。");return;}
+            if(!tryAdvance())return;
+            stopAll();
+            if(step>=3)step=0;
+            $("#cpPlay").disabled=true;$("#cpPause").disabled=false;
+            status("模式：连续播放中 · 每步 "+sp/1000+" 秒（压缩方式："+modeName()+"）");
+            render();
+            timer=setInterval(function(){
+              if(step>=3){stopAll("连续播放结束（保留在最后一幕；压缩方式："+modeName()+"）")}
+              else if(!tryAdvance()){stopAll("连续播放停在第一步：自动条件不成立（压缩方式未被切换）")}
+              else{step++;render()}
+            },sp);
+          });
+          $("#cpPause").addEventListener("click",function(){stopAll("已暂停（压缩方式："+modeName()+" 保持不变）")});
+          $("#cpModeAuto").addEventListener("click",function(){
+            mode="auto";$("#cpModeAuto").classList.add("on");$("#cpModeManual").classList.remove("on");
+            $("#cpWhy").classList.add("hidden");
+            stopAll("方式已切换为：自动压缩（观看方式不受影响）");render();
+          });
+          $("#cpModeManual").addEventListener("click",function(){
+            mode="manual";$("#cpModeManual").classList.add("on");$("#cpModeAuto").classList.remove("on");
+            $("#cpWhy").classList.add("hidden");
+            stopAll("方式已切换为：手动 /compact（观看方式不受影响）");render();
+          });
+          $("#cpA").addEventListener("input",function(){
+            A=parseInt(this.value,10);
+            $("#cpAVal").textContent="A = "+fmt(A)+(condOK()?"（已到线）":"（未到线）");
+            if(step===0&&$("#cpWhy")&&!$("#cpWhy").classList.contains("hidden")&&condOK()){$("#cpWhy").classList.add("hidden")}
+            if(step===0){render()}else{renderCond()}
+          });
+          /* 步点 */
+          var dots=$("#cpDots");
+          for(var k=0;k<4;k++){
+            (function(kk){
+              var b=document.createElement("button");b.className="stepdot";b.textContent=String(kk+1);
+              b.addEventListener("click",function(){
+                stopAll("模式：逐步阅读（点步点回看；压缩方式不变）");
+                if(mode==="auto"&&!condOK()){var why=$("#cpWhy");
+                  why.innerHTML="你想跳到第 "+(kk+1)+" 幕，但<b>自动条件不成立</b>（A="+fmt(A)+" &lt; "+fmt(TRIG)+"）：自动压缩不会发生，不能跳到后续幕。先把 A 拖到线上，或主动切换到手动方式。";
+                  why.classList.remove("hidden");return;}
+                step=kk;render();
+              });
+              dots.appendChild(b);
+            })(k);
+          }
+          render();
+        })();
+        </script>
+      </section>
+
+
+<section class="unit" id="u5">
+        <div class="unithead">
+          <span class="kicker">单元 05 · 掌握机制</span>
+          <h1>信息在哪一步没的</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>单元 04（整理会带走什么）。</div>
+            <div class="meta-card"><b>读完你能</b>沿"三处限长"定位丢失点；解释头尾裁剪的字节级行为。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">场景：AI 忘了 14:30，但它记得 16:00</h2>
+          <p>小林的工具查回一段 300 行的公交时刻表，表格中间有一行补充约束：<b>"集合点东门，14:30 前必须到达"</b>。后来 AI 安排行程时，16:00 返校记得牢牢的，14:30 却像从没出现过。</p>
+          <p>去哪里找责任？只盯"是不是压缩惹的祸"，会错过前面还有<b>两道关卡</b>。完整链路是<b>三处限长</b>：</p>
+          <div class="flowline">
+            <span class="node">第①处 工具出口（发给模型前的预览）</span><span class="arr">→</span>
+            <span class="node">第②处 活动历史（写进列表时的副本）</span><span class="arr">→</span>
+            <span class="node">第③处 摘要请求（整理时用的副本）</span>
+          </div>
+          <p>① 工具出口：命令产生 100,000 行，不等于模型收到 100,000 行——先按预算"保头尾"裁剪，再包一层说明头（含<b>原始 token 数</b>与<b>总行数</b>，让模型知道"我拿到的是残缺的"）。② 活动历史：写进列表时还有一次独立裁剪，<b>但磁盘存档写入的是未裁剪的原载荷</b>（注释原文：<i>Tool output truncation applies only to live history, preserving full rollout payloads.</i>）。③ 摘要请求：整理时给模型的也是一份副本，它自己超限时还会移除最早项再试（单元 07）。</p>
+          <div class="callout warn"><div class="ttl">当心</div><p>"磁盘上有原文"永远要追问一句：<b>哪一层、哪个文件、上限多少</b>——存档链路自身也有预算（分片模式下命令输出与 MCP 结果各 64 KiB = 65,536 字节，超出加持久化截断标记）。同时，"存档有"≠"以后自动回到模型"，那是单元 06 的话题。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互：看着一条约束消失（或幸存）</h2>
+          <div class="interact" id="ctApp">
+            <div class="caption"><span class="tt">裁剪对照器</span><span class="pill demo">演示数据：300 行日志、每行≈80 tokens 近似</span></div>
+            <div class="btnrow" style="margin-bottom:6px">
+              <span class="small muted">关键约束所在位置：</span>
+              <button class="switch" data-pos="8">头部（行 8）</button>
+              <button class="switch on" data-pos="150">中部（行 150）</button>
+              <button class="switch" data-pos="292">尾部（行 292）</button>
+            </div>
+            <div class="btnrow" style="margin-bottom:10px">
+              <span class="small muted">裁剪预算：</span>
+              <button class="switch on" data-cut="100">完整</button>
+              <button class="switch" data-cut="75">裁到 75%</button>
+              <button class="switch" data-cut="50">裁到 50%</button>
+              <button class="switch" data-cut="25">裁到 25%</button>
+              <button class="switch" data-cut="12.5">裁到 12.5%</button>
+            </div>
+
+            <div class="logbox" id="ctBlocks" style="display:grid;gap:4px"></div>
+
+            <div class="data-table" id="ctData" style="margin-top:12px"></div>
+            <div class="reason-line hidden" id="ctWhy"></div>
+          </div>
+          <p class="small muted">注：块是行区间示意（15 块 × 20 行）；"边界块"可能只保留一部分——真实算法按字节找 UTF-8 字符边界，并插入"…N tokens truncated…"标记（标记<b>额外添加，不占预算</b>）。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">裁剪算法：头、尾与标记</h2>
+<pre><code>中文伪代码：头尾裁剪（近似 token 口径）
+  输入：文本 s、预算 max_tokens
+  若 字节数(s) ≤ max_tokens×4 → 原样返回        # 装得下就不裁
+  max_bytes = max_tokens × 4
+  左预算 = max_bytes ÷ 2        # 整数除法：奇数时少 1 字节
+  右预算 = max_bytes − 左预算    # 奇数时多 1 字节（左右并非严格均分！）
+  头部 = 从 0 到左预算的最近 UTF-8 边界
+  尾部 = 从（总长−右预算）的最近 UTF-8 边界到结尾
+  标记 = "…N tokens truncated…"（N 按被移除字节数 ÷ 4 估算）
+  返回 头部 + 标记 + 尾部</code></pre>
+          <details class="src">
+            <summary>两个亲手算的例子（15 字节英文 / 68 字节中文）</summary>
+            <div class="inner">
+<pre><code>例 A：20 个字母、预算 15 字节
+  左 = 15÷2 = 7        → 头部 "abcdefg"
+  右 = 15−7 = 8        → 尾部 s[12..] = "stuvwxyz"
+  移除 5 字节 → N = ceil(5/4) = 2 → 标记 "…2 tokens truncated…"
+  结果：abcdefg…2 tokens truncated…stuvwxyz
+  （保留 7+8=15 字节 + 标记；标记是额外添加的）
+
+例 B：68 字节中文、预算 20 字节
+  左 10 字节 → 停在最近字符边界：3 个汉字（9 字节）
+  右 10 字节 → 从 58 字节向上对齐边界 → 60（尾部 8 字节）
+  移除 48 字节 → N = 12 → 标记 "…12 tokens truncated…"</code></pre>
+              <p class="src-line"><b>两个不能想当然的点</b>：① 左右不是严格均分（奇数预算差 1 字节给尾部）；② <b>标记不占预算</b>，所以"输出含标记后一定严格等于预算"是错的——真实输出比预算略长。裁剪按字节算、落刀看字符边界（<code>floor_char_boundary</code> / <code>ceil_char_boundary</code>）：汉字 3 字节，切在中间会产生无效半截字节。</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">排查四问：丢失点定位表</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>问题</th><th>去哪查</th><th>判断线索</th></tr></thead>
+            <tbody>
+              <tr><td data-th="问题"><b>① 从未读进来？</b></td><td data-th="去哪查">规则文件位置、项目可信状态、32 KiB 规则预算</td><td data-th="线索">文件在搜索范围里吗？关键行是否在<b>文件尾部</b>被截掉？</td></tr>
+              <tr><td data-th="问题"><b>② 进过历史，被裁了？</b></td><td data-th="去哪查">工具输出的实际形态</td><td data-th="线索">有 <code>Warning: truncated</code> 头吗？关键行原位置在中段吗？有 <code>…N tokens truncated…</code> 标记吗？</td></tr>
+              <tr><td data-th="问题"><b>③ 进过历史，摘要漏了？</b></td><td data-th="去哪查">摘要/压缩产物（本地路径可读；远端路径读不到明文）</td><td data-th="线索">直接问模型"复述这条约束"只能间接验证；最终以任务结果为准</td></tr>
+              <tr><td data-th="问题"><b>④ 都在，但旧决定没作废？</b></td><td data-th="去哪查">历史中同一决定的新旧版本</td><td data-th="线索">搜同一决定名：是否新旧并存？人工修复最稳：显式说一句「之前那条 XX 作废，改用 YY」</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout ok"><div class="ttl">一条实用工程建议</div><p><b>关键约束要放在工具输出的头尾（或让工具显式置顶），不要指望它躺在中段侥幸过关。</b>人对模型的表达同理：最要紧的约束写在消息的开头或结尾。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测</h2>
+          <div class="qs">
+            <div class="q"><div class="qt">演算：文本 30 个 ASCII 字符，预算 10 字节。给出头尾内容、移除字节数与标记数字；最终字节数等于 10 吗？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>左 5、右 5（恰均分）；头 = 前 5 字符，尾 = 后 5 字符；移除 20 字节 → N = 5；结果 = 5 字符 + <code>…5 tokens truncated…</code> + 5 字符。<b>最终字节数 ≠ 10</b>（10 + 标记长度），因为标记不占预算。</p></div></details></div>
+            <div class="q"><div class="qt">判断题：工具结果被活动历史裁剪了，说明存档里也少了。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>活动历史裁剪只作用于"进入活动历史的副本"；存档写入未裁剪原载荷（除非该层级另有预算，如 64 KiB 分片上限）。"存档有"≠"以后一定回到模型"。</p></div></details></div>
+            <div class="q"><div class="qt">用户报告"AI 忘了 4 点前返校"。给出四问排查顺序与各自动作。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>①查它有没有进过记录（范围/预算）；②查工具输出形态（truncated 头、标记、位置）；③查摘要（本地可读/远端不可见，以任务结果验证）；④搜新旧说法并存，必要时显式声明作废。四问都过还要看模型是否照做——材料在 ≠ 行为对。</p></div></details></div>
+          </div>
+        </div>
+
+        <details class="src">
+          <summary>章末 · 本章源码依据</summary>
+          <div class="inner">
+            <p class="src-line">工具出口包装：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/utils/output-truncation/src/lib.rs#L17-L41" target="_blank" rel="noopener">output-truncation L17–41</a>；多块预算：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/utils/output-truncation/src/lib.rs#L164-L251" target="_blank" rel="noopener">L164–251</a></p>
+            <p class="src-line">活动历史与存档分离：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/context_manager/history.rs#L517-L576" target="_blank" rel="noopener">history.rs L517–576</a></p>
+            <p class="src-line">头尾裁剪：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/utils/string/src/truncate.rs#L62-L183" target="_blank" rel="noopener">truncate.rs L62–183</a>；持久化预算：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/rollout/src/policy.rs#L16-L19" target="_blank" rel="noopener">policy.rs L16–19</a></p>
+          </div>
+        </details>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u4">上一章 <small>整理后带上什么</small></button>
+          <button class="btn primary" data-next="u6">下一章 <small>关掉再打开</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var TOTAL=300, TOK=80;                 /* 300 行，每行≈80 近似 tokens */
+          var pos=150, cut=100;
+          var BLOCKS=15, PER=20;
+          function headKeep(){return Math.floor(TOTAL*(cut/100)/2)}
+          function tailKeep(){return Math.floor(TOTAL*(cut/100)/2)}
+          function fmt(n){return n.toLocaleString("en-US")}
+          function inKeep(line, h, t){
+            if(line<=h) return "keep";
+            if(line>TOTAL-t) return "keep";
+            return "gone";
+          }
+          function render(){
+            var h=headKeep(), t=tailKeep(), tailStart=TOTAL-t+1;
+            var blocks=[]; var critBlock=-1;
+            for(var b=0;b<BLOCKS;b++){
+              var l1=b*PER+1, l2=(b+1)*PER;
+              var states=[inKeep(l1,h,t),inKeep(l2,h,t)];
+              var cls = (states[0]==="keep"&&states[1]==="keep")?"keep":(states[0]==="gone"&&states[1]==="gone")?"gone":"part";
+              var crit=(pos>=l1&&pos<=l2);
+              if(crit)critBlock=b;
+              var label = cls==="keep"?"行 "+l1+"–"+l2+"（保留）":cls==="gone"?"行 "+l1+"–"+l2:"行 "+l1+"–"+l2+"（边界，部分）";
+              var bg = cls==="keep"?"var(--oksoft)":cls==="gone"?"var(--badsoft)":"var(--warnsoft)";
+              var bd = cls==="keep"?"var(--ok)":cls==="gone"?"var(--bad)":"var(--warn)";
+              var extra = crit?' <b style="color:var(--brand)">◆ 关键约束（行 '+pos+'）在这里</b>':'';
+              var deco = cls==="gone"?'text-decoration:line-through;opacity:.7;':'';
+              blocks.push('<div class="l" style="background:'+bg+';border-left:4px solid '+bd+';border-radius:8px;'+deco+'">'+label+extra+'</div>');
+            }
+            $("#ctBlocks").innerHTML=blocks.join("");
+            var critState=inKeep(pos,h,t);
+            var kept=(cut===100)?0:h+t;
+            var removed=TOTAL-kept;
+            var rows=[
+              ["裁剪预算",""+(cut===100?"完整（不裁剪）":cut+"%（目标 ≈"+fmt(Math.round(24000*cut/100))+" tokens）")],
+              ["保留区间",cut===100?"全部 300 行":"头部 1–"+h+" 行 ｜ 尾部 "+tailStart+"–300 行（合计 "+kept+" 行）"],
+              ["被移除","—（完整）"+(cut===100?"":"或 "+removed+" 行")],
+              ["截断标记","无"+(cut===100?"":'　<br>…'+fmt(removed*TOK)+' tokens truncated…（额外长度）')],
+              ["关键约束（行 "+pos+"）",critState==="keep"?"幸存：在保留区间内":"已消失：位于被移除的中段"]
+            ];
+            $("#ctData").innerHTML=rows.map(function(r){
+              var vcls="";
+              if(r[0].indexOf("关键约束")===0){vcls=critState==="keep"?"ok":"bad"}
+              return '<div class="data-row"><span class="k">'+r[0]+'</span><span class="v '+vcls+'">'+r[1]+'</span></div>';
+            }).join("");
+            var why=$("#ctWhy");
+            if(cut===100){why.classList.add("hidden")}
+            else if(critState==="gone"){
+              why.innerHTML="这条约束<b>在裁剪这一步就消失了</b>——它所在的行进入了被移除的中段。后面的摘要、压缩、恢复再努力，也没机会看到它（除非原始记录被重新读取）。";
+              why.classList.remove("hidden");
+            }else{
+              why.innerHTML='这次它<b>幸存</b>了——但注意"幸存"是位置决定的，不是内容决定的：同样的约束换到中段就会消失（点上面的"中部"试试）。';
+              why.classList.remove("hidden");
+            }
+          }
+          document.querySelectorAll("[data-pos]").forEach(function(b){
+            b.addEventListener("click",function(){
+              document.querySelectorAll("[data-pos]").forEach(function(x){x.classList.remove("on")});
+              b.classList.add("on");pos=parseInt(b.getAttribute("data-pos"),10);render();
+            });
+          });
+          document.querySelectorAll("[data-cut]").forEach(function(b){
+            b.addEventListener("click",function(){
+              document.querySelectorAll("[data-cut]").forEach(function(x){x.classList.remove("on")});
+              b.classList.add("on");cut=parseFloat(b.getAttribute("data-cut"));render();
+            });
+          });
+          render();
+        })();
+        </script>
+      </section>
+
+
+<section class="unit" id="u6">
+        <div class="unithead">
+          <span class="kicker">单元 06 · 掌握机制</span>
+          <h1>关掉再打开：三层记录与恢复</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>单元 04–05。</div>
+            <div class="meta-card"><b>读完你能</b>解释"磁盘上有 / 活动历史里有 / 下次请求带上"的三层差异与恢复顺序。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">场景：昨天的会话，今天续上</h2>
+          <p>小林合上电脑。第二天 `codex resume` 选中昨天的会话，继续问："把行程再压缩一版。"AI 接得上话。他好奇：<b>昨天压缩过一次，今天恢复的到底是什么？</b></p>
+          <p>答案要用<b>三层</b>来讲——过去很多误解，都来自把这三层当成一层：</p>
+          <div class="flowline">
+            <span class="node">① 会话存档（磁盘，逐个追加）</span><span class="arr">→</span>
+            <span class="node">② 当前活动历史（内存，可能被替换）</span><span class="arr">→</span>
+            <span class="node">③ 下一次模型请求（真正影响模型行为）</span>
+          </div>
+          <div class="callout"><div class="ttl">主结论</div><p><b>磁盘上有 ≠ 活动历史里有；活动历史里有 ≠ 下次请求带上；下次请求带上 ≠ 模型一定照做。</b>三层各自变化，不能互相替代。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互：三层状态机<span class="tag">四态 × 三层</span></h2>
+          <div class="interact" id="smApp">
+            <div class="caption"><span class="tt">三层记录与恢复</span><span class="pill demo">演示数据</span></div>
+            <div class="btnrow">
+              <button class="switch on" data-st="0">① 压缩前</button>
+              <button class="switch" data-st="1">② 压缩后</button>
+              <button class="switch" data-st="2">③ 关闭程序</button>
+              <button class="switch" data-st="3">④ 重开 resume</button>
+            </div>
+            <label class="small" style="display:flex;gap:8px;align-items:center;margin:10px 0">
+              <input type="checkbox" id="smNew" checked style="width:17px;height:17px"> 整理进行中又收到一条新目标更新（"行程按新版本算"）——观察它去了哪
+            </label>
+            <div class="stage-note" id="smNote"></div>
+            <div class="threecol" style="margin-top:10px">
+              <div class="colcard"><h4>① 会话存档（磁盘）</h4><div id="smDisk"></div></div>
+              <div class="colcard"><h4>② 活动历史（内存）</h4><div id="smMem"></div></div>
+              <div class="colcard"><h4>③ 下一次请求</h4><div id="smReq"></div></div>
+            </div>
+            <div class="data-table" id="smData" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">压缩时到底写了什么</h2>
+          <p>整理完成时程序做两件事：① <b>替换当前活动历史</b>——用替代历史（重组规则 + 直接保留的旧消息 + 新摘要/压缩条目）替换内存；② <b>向磁盘追加一条"压缩检查点"</b>——装着替代历史的<b>完整副本</b>（<code>replacement_history</code>）、窗口编号与 ID、用量摘要、恢复元数据等。<b>检查点保存的不是"删掉了什么"，而是"替代后是什么"</b>；旧记录仍在之前写入的存档行里（追加式，不覆盖）。</p>
+          <details class="src">
+            <summary>真实代码：替换内存 + 追加检查点（session/mod.rs L4181–4213 节选）</summary>
+            <div class="inner">
+<pre><code>let replacement_history = items.clone();                 // ① 复制替代历史
+state.replace_annotated_history(                          // ② 替换内存历史
+    items, …, HistoryReplacement::Compaction { … },
+);
+…
+CompactedItem {
+    message: metadata.message,                            // ③ 摘要文本（本地路径可读）
+    replacement_history: Some(replacement_history),       // ④ 替代历史整份存入检查点
+    window_number: Some(metadata.window_number),          // ⑤ 窗口身份
+    …window_id / previous_window_id / resume_metadata…
+}</code></pre>
+              <p class="src-line">逐点：③④⑤ 就是"压缩检查点"的形状；<b>没有任何"删除旧 JSONL"的操作</b>——但也要再强调：存档保的是文件内容，不是"以后自动回模型"的承诺。</p>
+            </div>
+          </details>
+          <details class="src">
+            <summary>并发细节：整理期间新接受的更新怎么办（源码注释归纳）</summary>
+            <div class="inner">
+              <p class="src-line">整理在后台进行时，用户可能又提了新的目标更新。直接拿"整理开始前的快照"覆盖一切，新更新会丢。固定快照的处理：<b>安装替代历史前，先等待已接受更新的持久化完成（写锁防乱序），再把"输入快照之后新接受的更新"按原顺序追加到替代历史之后</b>。源码原注释大意：<i>Keep edits accepted after the compaction input snapshot, in their original order, after its replacement.</i>——勾选演示里的复选框，可以看到它出现在替代列表末尾。</p>
+              <p class="src-line"><a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/mod.rs#L4156-L4180" target="_blank" rel="noopener">固定链接 · session/mod.rs L4156–4180</a></p>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">恢复时到底采用什么</h2>
+<pre><code>// rollout_reconstruction.rs L492–515（节选）
+if let Some(checkpoint) = history_checkpoint
+    &amp;&amp; let Some(items) = &amp;checkpoint.compacted.replacement_history
+{
+    history.replace_annotated(items.clone());          // ① 用检查点的替代历史重建
+    history.restore_review_context(…);
+}
+let rollout_suffix = history_checkpoint.map_or(rollout_items, |checkpoint| checkpoint.suffix);
+for item in rollout_suffix {
+    match item {                                        // ② 逐条回放"检查点之后"的记录
+        RolloutItem::ResponseItem(response_item) =&gt; {
+            history.replay_annotated_item(response_item, truncation_policy);
+        }
+        …其他类型分别处理…
+    }
+}</code></pre>
+          <p>① <b>先采用选中的检查点里的替代历史</b>——不是从头重放全部旧消息；② <b>后缀回放</b>：检查点之后新产生的记录逐条重新施加到历史上，保证"压缩之后发生的事"不丢。前置条件：倒序扫描，找到"同时含替代历史与窗口编号"的最新可用检查点才提前停止；<b>读了更完整的文件仍不等于把旧消息全部发给模型</b>。</p>
+          <div class="callout warn"><div class="ttl">当心 · 两个最常见的误读</div><p>① "磁盘上全都有，随时能全恢复"——恢复只采用<b>替代历史 + 后缀</b>；旧原话不会自动回来。想补某条老记录，要靠重新读文件/检索这类显式动作，且它此刻还得在、还得读得到。② "恢复=精确还原昨天那一刻"——也不是：恢复是<b>重建当前工作材料</b>，双向差异都会出现（被替换的不回来；后缀里新发生的会补上）。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测</h2>
+          <div class="qs">
+            <div class="q"><div class="qt">三句话分别说的是哪一层？（a）"文件里还存着"（b）"这段不在当前列表里"（c）"这次请求带着它"</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>（a）①存档；（b）②活动历史；（c）③请求——只有（c）直接影响模型行为。</p></div></details></div>
+            <div class="q"><div class="qt">昨天压缩后你又聊了三轮，今天 resume。恢复后的初始历史由哪两部分组成？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>最新可用<b>检查点的替代历史</b>（重组规则、保留消息、摘要/压缩条目）+ 该检查点之后的<b>记录后缀</b>（那三轮按序回放）。不包括更早的、已被替代历史覆盖的原始旧消息。</p></div></details></div>
+            <div class="q"><div class="qt">整理进行中用户改了口径。如果不做保护，风险是什么？程序怎么防的？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>风险：用整理开始前的快照覆盖一切，丢掉"新接受的更新"。防护：安装前等已接受更新的持久化完成（写锁防乱序），并把"输入快照后新接受的更新"按原顺序追加到替代列表之后。</p></div></details></div>
+          </div>
+        </div>
+
+        <details class="src">
+          <summary>章末 · 本章源码依据</summary>
+          <div class="inner">
+            <p class="src-line">替换与检查点：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/mod.rs#L4130-L4222" target="_blank" rel="noopener">session/mod.rs L4130–4222</a></p>
+            <p class="src-line">恢复重建：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/rollout_reconstruction.rs#L480-L520" target="_blank" rel="noopener">rollout_reconstruction.rs L480–520</a>；压缩条目类型：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/protocol/src/models.rs#L1269-L1278" target="_blank" rel="noopener">models.rs L1269–1278</a></p>
+          </div>
+        </details>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u5">上一章 <small>信息在哪一步没的</small></button>
+          <button class="btn primary" data-next="u7">下一章 <small>失败与手动整理</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var st=0;
+          var hasNew=true;
+          $("#smNew").addEventListener("change",function(){hasNew=this.checked;render()});
+          function entry(txt,cls){return '<div class="entry '+(cls||"")+'">'+txt+'</div>'}
+          function render(){
+            var disk=[],mem=[],req=[],note="",data=[];
+            var baseDisk=[
+              entry("用户 M1：安排郊游……下午 4 点前必须返校"),
+              entry("工具结果：查公交 300 行（原始完整载荷）"),
+              entry("用户 M2：路线换成 B 方案"),
+              entry("用户 M3：午饭安排在食堂")
+            ];
+            var afterMem=[
+              entry("规则：重组后的当前工作状态 + 已加载规则","sum"),
+              entry("M1 截短片段（含「4 点前」附近文字）"),
+              entry("M2：路线换成 B 方案"),
+              entry("M3：午饭安排在食堂")
+            ];
+            var summ=entry("交接摘要 / 压缩条目（产物另加）","sum");
+            if(hasNew)afterMem.push(entry("★ 整理期间新接受的更新：「行程按新版本算」（按原顺序补入）","hl"));
+            if(st===0){
+              disk=baseDisk.map(function(e){return e}).join("");
+              mem=[entry("用户 M1：安排郊游……下午 4 点前必须返校"),entry("工具结果：查公交 300 行"),entry("用户 M2：路线换成 B 方案"),entry("用户 M3：午饭安排在食堂"),entry("助手：综合建议草稿……（长）")].join("");
+              req=entry("由当前活动历史组装：M1、工具结果、M2、M3、草稿……")+entry("（此刻还未整理）");
+              note="会话正常进行。压缩尚未发生：磁盘与内存保持一致（各自视角）。";
+              data=[["活动历史","原始列表（5 条）"],["磁盘存档","4 条普通记录 + 后续会继续追加"],["下次请求","≡ 活动历史组装"]];
+            }else if(st===1){
+              disk=baseDisk.concat([entry("✦ 压缩检查点：替代历史整份副本 + 窗口号（追加，不删旧记录）","hl")]).map(function(e){return e}).join("");
+              mem=afterMem.concat([summ]).map(function(e){return e}).join("");
+              req=entry("替代清单组装：规则 + M1片段 + M2 + M3 + 摘要"+(hasNew?" + 新更新":""))+entry("（活动历史已替换；磁盘旧记录仍在）");
+              note="标记压缩完成：① 内存被替换为替代清单；② 磁盘追加一条检查点。旧记录没有删除——检查点保存的是“替代后是什么”。";
+              data=[["活动历史","已替换为替代清单（"+(hasNew?"5":"4")+" 项）"],["磁盘存档","旧记录全在 + 新增 1 条检查点"],["下次请求","≡ 替代清单组装"]];
+            }else if(st===2){
+              disk=baseDisk.concat([entry("✦ 压缩检查点：替代历史副本（保存着）","hl"),entry("用户 M4：把行程再压缩一版（压缩后聊的，也在）")]).map(function(e){return e}).join("");
+              mem=entry("—（内存态消失：程序关闭）","frozen");
+              req=entry("—（没有程序在运行，没有请求）","frozen");
+              note="程序关闭：② 活动历史（内存）消失；① 磁盘不受影响——检查点与后缀都还在；③ 请求层自然不存在。";
+              data=[["活动历史","消失（内存态）"],["磁盘存档","检查点 + 后缀（M4）都在"],["下次请求","不存在"]];
+            }else{
+              disk=baseDisk.concat([entry("✦ 压缩检查点：替代历史副本","hl"),entry("用户 M4：把行程再压缩一版")]).map(function(e){return e}).join("");
+              mem=entry("重建：采用检查点替代历史","hl")+afterMem.join("")+summ+entry("后缀回放：M4 及之后","hl");
+              req=entry("替代清单 + 后缀组装：规则 + M1片段 + M2 + M3 + 摘要 + M4"+(hasNew?" + 新更新":""))+entry("（与“昨天关闭前”不同：M4 是新发生的）");
+              note="resume：先用检查点的替代历史重建，再回放检查点之后的记录（后缀）。注意三点：更早的原始旧消息不会回来；压缩后的新对话（M4）被补上；整理期间的新更新若已接受，也在替代清单里。";
+              data=[["活动历史","替代历史 + 后缀回放（M4）"],["磁盘存档","不动（只读用）"],["下次请求","≡ 重建后的活动历史组装"]];
+            }
+            $("#smDisk").innerHTML=disk;$("#smMem").innerHTML=mem;$("#smReq").innerHTML=req;$("#smNote").textContent=note;
+            $("#smData").innerHTML=data.map(function(r){
+              return '<div class="data-row"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';
+            }).join("");
+          }
+          document.querySelectorAll("[data-st]").forEach(function(b){
+            b.addEventListener("click",function(){
+              document.querySelectorAll("[data-st]").forEach(function(x){x.classList.remove("on")});
+              b.classList.add("on");st=parseInt(b.getAttribute("data-st"),10);render();
+            });
+          });
+          render();
+        })();
+        </script>
+      </section>
+
+
+<section class="unit" id="u7">
+        <div class="unithead">
+          <span class="kicker">单元 07 · 掌握机制</span>
+          <h1>失败与手动整理</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>单元 04、06（整理与安装的正常路径）。</div>
+            <div class="meta-card"><b>读完你能</b>分清"③验收失败"与"④安装失败"的后果；说出三种执行时机的善后差异。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">场景："正在压缩"卡住了</h2>
+          <p>小林的会话到了极限，屏幕显示"正在压缩上下文……"，几秒后报了一行错。他慌了：<b>是不是把桌子搞乱了？</b></p>
+          <p>先给结论：<b>"整理失败"≠"什么都没发生"，也通常不等于灾难</b>。把"整理"拆成有先后的四步，大多数恐慌就会消失：</p>
+          <div class="flowline">
+            <span class="node">① 准备（复制副本、组装材料）</span><span class="arr">→</span>
+            <span class="node">② 请求（发给模型/服务端）</span><span class="arr">→</span>
+            <span class="node">③ 验收（产物合格吗）</span><span class="arr">→</span>
+            <span class="node">④ 安装（替换 + 追加检查点）</span>
+          </div>
+          <p><b>③ 失败 → ④ 不会执行 → 活动历史保持原样</b>（没被换坏）；④ 一旦执行，就是成功路径了。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互：选一种失败，看"哪些变了、哪些没变"</h2>
+          <div class="interact" id="fbApp">
+            <div class="caption"><span class="tt">失败分支选择器</span><span class="pill const">分支与条件来自固定快照</span><span class="pill demo">状态表为教学归纳</span></div>
+            <div class="btnrow" id="fbBtns"></div>
+            <div class="flowline" id="fbChain" style="margin-top:14px"></div>
+            <div class="stage-note" id="fbAction"></div>
+            <div class="grid2" style="margin-top:8px">
+              <div>
+                <div class="phase-label" style="color:var(--warn)">已经发生的变化</div>
+                <div class="mlist" id="fbChanged"></div>
+              </div>
+              <div>
+                <div class="phase-label" style="color:var(--ok)">保持原样的部分</div>
+                <div class="mlist" id="fbUnchanged"></div>
+              </div>
+            </div>
+            <div class="data-table" id="fbData"></div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">关键源码：两种重试语义</h2>
+          <details class="src">
+            <summary>本地路径：缩副本重试（retries = 0 不是笔误）</summary>
+            <div class="inner">
+<pre><code>// codex-rs/core/src/compact.rs  L338–349（节选）
+Err(e) if matches!(e.details(), CodexErrorDetails::ContextWindowExceeded) =&gt; {
+    if turn_input_len &gt; 1 {
+        // Trim from the beginning to preserve cache (prefix-based) and keep recent messages intact.
+        history.remove_first_item();
+        retries = 0;                       // ① 重置计数（另一类循环的语义）
+        continue;
+    }
+    sess.set_total_tokens_full(turn_context.as_ref()).await;   // ② 只剩一条：宣布局满
+    return Err(e);
+}</code></pre>
+              <p class="src-line">① <b>缩副本</b>针对"材料本身就太大"：每缩一次问题规模真的变小（有进展），重置计数是"给这条收敛路径重新计时"；它与"普通错误退避"是<b>两个不同语义的计数器</b>——看到 <code>= 0</code> 先问"这是哪个计数器"。② <code>set_total_tokens_full</code> 是<b>显式状态写入</b>："错误返回"与"状态标记"是两件事，都要看。③ <code>if turn_input_len &gt; 1</code> 保证<b>有界性</b>：不会缩到空数组，也不会无限循环。</p>
+            </div>
+          </details>
+          <details class="src">
+            <summary>远端 v2：验收要求"恰好一个"（为什么不是"拿到就行"）</summary>
+            <div class="inner">
+<pre><code>// codex-rs/core/src/compact_remote_v2.rs  L477–487（节选）
+let Some(response_id) = completed_response_id else {
+    return Err(CodexErr::Stream(
+        "remote compaction v2 stream closed before response.completed".to_string(),
+    ));                                                // ① 没等到"完成"：失败
+};
+if compaction_count != 1 {
+    return Err(CodexErr::Fatal(format!(
+        "remote compaction v2 expected exactly one compaction output item, got {compaction_count} …"
+    )));                                               // ② 不是恰好一个：失败
+}</code></pre>
+              <p class="src-line">替代历史里"那一段压缩材料"必须与"一个条目"一一对应：多一个或少一个，后续恢复、预算与替换语义都会失去对齐点。<b>验收（validation）</b>的含义：不是"拿到东西就算成功"，而是"拿到的东西符合契约才算成功"。<b>只看 Ok 就判整个业务成功</b>在这里是典型误读——外层还有安装与持久化。</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">手动整理：与自动的区别</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th></th><th>自动</th><th>手动 /compact</th></tr></thead>
+            <tbody>
+              <tr><td data-th="维度">触发</td><td data-th="自动">到线且正处在某个检查点（轮前/轮中/轮后）</td><td data-th="手动">随时发起，<b>不要求到线</b></td></tr>
+              <tr><td data-th="维度">对当前任务</td><td data-th="自动">轮中成功 → 继续工作循环</td><td data-th="手动"><b>停止当前旧任务</b>，整理作为独立任务</td></tr>
+              <tr><td data-th="维度">完成后</td><td data-th="自动">回到原来的流程</td><td data-th="手动"><b>不等同原任务自动续跑</b>：整理完了，要再发输入才继续干活</td></tr>
+              <tr><td data-th="维度">失败影响面</td><td data-th="自动">可能中断当前答复（轮前/轮中）或只记警告（轮后）</td><td data-th="手动">只影响这次独立任务</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout ok"><div class="ttl">把机制变成行动</div><p>① 会话"正在压缩"且失败：<b>先别再狂发消息</b>（每条新输入都增压）；看错误、必要时把关键要求重发一遍或开新会话。② 长任务到达极限前，主动 <code>/compact</code> 比被动等自动更可控。③ <b>开新会话是最便宜的兜底</b>——源码成功后自己也会发出警告：长会话与多次压缩可能降低模型准确性，尽量保持会话简短聚焦。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测</h2>
+          <div class="qs">
+            <div class="q"><div class="qt">判断题：压缩失败了，说明这次会话"什么都没发生"。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>至少：① 已执行工具动作不撤销；② 轮前失败时新用户输入已先被记录；③ 失败诊断、部分事件已追加进存档（只增不减）；④ 本地路径还可能写入"用量已满"标记。</p></div></details></div>
+            <div class="q"><div class="qt">一个失败如果发生在"安装"步骤（④），活动历史会怎样？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>替换与追加是成功路径的一体动作：能看到"安装失败"的窗口极小；一旦替换完成，后续即使持久化出问题，也走"记录错误但不回滚内存"的方向——<b>系统不提供"把历史回滚到替换前"的机制</b>。关键结论：替换后不回滚、替换前不半装。</p></div></details></div>
+            <div class="q"><div class="qt">为什么"缩副本重试"要重置自己的计数，而"普通错误退避"不重置？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>两种计数服务不同循环：退避重试针对"一闪而过的外部错误"，总次数要有上限；缩副本针对"材料太大"，每缩一次有真实进展，重计时给收敛路径新额度。若共用一个计数器，缩副本的成功率会被无关错误耗尽额度。</p></div></details></div>
+          </div>
+        </div>
+
+        <details class="src">
+          <summary>章末 · 本章源码依据</summary>
+          <div class="inner">
+            <p class="src-line">本地重试与缩副本：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact.rs#L272-L368" target="_blank" rel="noopener">compact.rs L272–368</a>；三种时机善后：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/turn.rs#L190-L222" target="_blank" rel="noopener">turn.rs L190–222</a>、<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/session/turn.rs#L718-L757" target="_blank" rel="noopener">L718–757</a></p>
+            <p class="src-line">远端 v2：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact_remote_v2.rs#L477-L487" target="_blank" rel="noopener">L477–487</a>；换模型后备：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact_model_fallback.rs#L10-L32" target="_blank" rel="noopener">compact_model_fallback.rs L10–32</a>；手动路径：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/tasks/compact.rs#L29-L110" target="_blank" rel="noopener">tasks/compact.rs L29–110</a>；自我警告：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/compact.rs#L421-L424" target="_blank" rel="noopener">compact.rs L421–424</a></p>
+          </div>
+        </details>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u6">上一章 <small>关掉再打开</small></button>
+          <button class="btn primary" data-next="u8">下一章 <small>同样开头的第二次请求</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var cases=[
+            {id:"a",name:"本地 · 副本超限",
+             failAt:2,
+             action:"整理副本自己超限：移除副本里最早的条目、重置计数、再试；只剩 1 条仍超限 → 标记用量已满并返回错误。",
+             changed:["试用副本变短（仅用于这次尝试）","可能写入「用量已满」显式标记"],
+             unchanged:["活动历史（替代历史未安装）","磁盘旧记录"],
+             next:"上层据此提示：手动整理 / 缩短输入 / 开新会话"},
+            {id:"b",name:"本地 · 普通错误",
+             failAt:2,
+             action:"按 provider 的重试上限退避重试；耗尽后返回错误。",
+             changed:["重试次数计数增加","诊断事件追加进记录"],
+             unchanged:["活动历史","磁盘旧记录"],
+             next:"本轮结束；等下次检查点再试"},
+            {id:"c",name:"本地 · 中断/取消",
+             failAt:2,
+             action:"中断、取消、会话预算耗尽：不重试，直接退出。",
+             changed:["本轮以错误结束"],
+             unchanged:["活动历史","磁盘旧记录"],
+             next:"由用户决定：重发 / 新建会话"},
+            {id:"d",name:"远端 v2 · 流错误",
+             failAt:2,
+             action:"每种传输重试预算 min(provider 设置, 2)——比普通请求更保守（整理请求耗时更长）。",
+             changed:["重试计数（≤min(provider,2)）"],
+             unchanged:["活动历史","替代材料未生成/未安装"],
+             next:"重试后仍失败才报错；可降级到本地路径条件之外不自动降级"},
+            {id:"e",name:"远端 v2 · 验收失败",
+             failAt:3,
+             action:"两种立即判失败：① 没等到 response.completed；② 压缩条目数量 ≠ 1（要求「恰好一个」）。判为 Fatal。",
+             changed:["已收到的事件不撤销","诊断记录追加"],
+             unchanged:["活动历史（替代历史未安装）","磁盘旧记录"],
+             next:"报错；等下一轮再试或换路"},
+            {id:"f",name:"后备 · 换模型再试",
+             failAt:2,
+             action:"条件：错误类型不在（中断/取消/预算耗尽）→ 且模型或访问方案有差异 → 且当前是 OpenAI 提供者且授权匹配（codex backend / API key）。满足则用当前模型再试一次。",
+             changed:["发起一次新的整理尝试（新模型）"],
+             unchanged:["在成功前：活动历史不变"],
+             next:"后备也失败 → 最终报错"},
+          ];
+          var cur=0;
+          var chain=["① 准备","② 请求","③ 验收","④ 安装"];
+          function render(){
+            var c=cases[cur];
+            $("#fbAction").textContent=c.action;
+            $("#fbChain").innerHTML=chain.map(function(s,i){
+              var cls="node";var st=(i+1);
+              var style=(st===c.failAt)?"border-color:var(--bad);color:var(--bad);font-weight:750":"";
+              var mark=(st===c.failAt)?" ✕ 失败在这里":"";
+              return '<span class="node" style="'+style+'">'+s+mark+'</span>'+(i<3?'<span class="arr">→</span>':'');
+            }).join("");
+            $("#fbChanged").innerHTML=c.changed.map(function(x){return '<div class="mitem"><span class="ic" style="background:var(--warnsoft);color:var(--warn)">变</span><div class="body">'+x+'</div></div>'}).join("");
+            $("#fbUnchanged").innerHTML=c.unchanged.map(function(x){return '<div class="mitem keep"><span class="ic" style="background:var(--oksoft);color:var(--ok)">未变</span><div class="body">'+x+'</div></div>'}).join("");
+            $("#fbData").innerHTML=[["失败步骤",chain[c.failAt-1]],["替代历史是否安装","未安装（③失败）/ 已安装不回滚（④后）"],["下一步",c.next]].map(function(r){
+              return '<div class="data-row"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';
+            }).join("");
+          }
+          var box=$("#fbBtns");
+          cases.forEach(function(c,i){
+            var b=document.createElement("button");b.className="switch"+(i===0?" on":"");b.textContent=c.name;
+            b.addEventListener("click",function(){
+              cur=i;Array.prototype.forEach.call(box.children,function(x){x.classList.remove("on")});b.classList.add("on");render();
+            });
+            box.appendChild(b);
+          });
+          render();
+        })();
+        </script>
+      </section>
+
+
+<section class="unit" id="u8">
+        <div class="unithead">
+          <span class="kicker">单元 08 · 掌握机制</span>
+          <h1>同样开头的第二次请求：缓存</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>单元 01–07（本单元会把它们与缓存对上）。</div>
+            <div class="meta-card"><b>读完你能</b>拆读 usage 并算账；说清"压缩、改旧消息、工具变更"对复用的影响。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">场景：同样的开头，为什么第二次更快更便宜</h2>
+          <p>小林连续问了两句：①"帮我把行程里的公交段列出来。"②"把行程里的午饭段列出来。"两句的开头——系统指令、工具说明、全部对话历史——几乎完全一样。官方给这套"重复开头"的优化起名：<b>Prompt Caching（提示词缓存）</b>。</p>
+          <div class="callout"><div class="ttl">人话直给</div><p>模型读材料时，会给每个 token 计算一份"中间状态"（官方叫 <b>KV 状态</b>，key-value states）。缓存把这些状态存下来——下次请求如果<b>开头部分（前缀）一字不差</b>，模型直接<b>拿回这份状态，跳过大半重新计算</b>。</p></div>
+          <div class="tblwrap"><table>
+            <thead><tr><th>术语</th><th>含义</th><th>注意</th></tr></thead>
+            <tbody>
+              <tr><td data-th="术语"><b>前缀</b>（prefix）</td><td data-th="含义">请求开头"未改变的那部分 token"</td><td data-th="注意">匹配的是<b>完整渲染后</b>的上下文（含指令、工具、历史），不只是你可见的文字</td></tr>
+              <tr><td data-th="术语"><b>缓存断点</b>（cache breakpoint）</td><td data-th="含义">标记"前缀到此为止可以存/取"的终点</td><td data-th="注意">新代际支持显式+隐式；旧代际只有隐式、按固定间隔</td></tr>
+              <tr><td data-th="术语"><b>命中</b>（cache hit）</td><td data-th="含义">请求到达了一台仍持有匹配缓存条目的机器，且前缀匹配</td><td data-th="注意">不保证：路由、过期、负载都影响</td></tr>
+            </tbody>
+          </table></div>
+          <div class="callout warn"><div class="ttl">三条关键澄清（官方原文性质）</div><p>① 缓存存的是 <b>KV tensors（中间状态），不是 token 本身</b>；② 命中后<b>本次上下文的总长度不变</b>——省的是"重新计算"，不是"少发材料"；③ <b>缓存输入依然计入速率限制（TPM）</b>。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互：前缀复用与"三个部分"<span class="tag">完整输入 / 复用部分 / 重新处理部分</span></h2>
+          <div class="interact" id="ccApp">
+            <div class="caption"><span class="tt">前缀复用演示</span><span class="pill demo">教学演示：绿色=可复用（假设缓存仍可用且边界合格）｜橙色=重新处理</span></div>
+            <div class="btnrow" id="ccBtns"></div>
+            <div style="margin-top:14px">
+              <div class="phase-label">请求 ①（首次）</div>
+              <div class="seg" id="ccReq1"></div>
+              <div class="phase-label" style="margin-top:12px">请求 ②（第二次）</div>
+              <div class="seg" id="ccReq2"></div>
+            </div>
+            <div class="legend" style="margin-top:10px">
+              <span><span class="sw" style="background:#64748b"></span>系统指令</span>
+              <span><span class="sw" style="background:#7c3aed"></span>工具说明</span>
+              <span><span class="sw" style="background:#2952cc"></span>历史</span>
+              <span><span class="sw" style="background:#ea580c"></span>新输入 / 变化区</span>
+              <span><span class="sw" style="background:var(--oksoft);border:2px solid var(--ok)"></span>绿框=可复用</span>
+            </div>
+            <div class="stage-note" id="ccNote" style="margin-top:10px"></div>
+            <div class="data-table" id="ccData"></div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">规则速览（2026-10-14 官方文档核查）</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>行为</th><th>新代际（GPT-5.6 及以后）</th><th>GPT-5.5 / 5.5 Pro</th><th>更早模型</th></tr></thead>
+            <tbody>
+              <tr><td data-th="行为">最小可缓存前缀</td><td data-th="新"><b>1,024</b> 个可见输入 token（不含隐藏系统内容）</td><td data-th="5.5">依请求设置</td><td data-th="更早">依请求设置</td></tr>
+              <tr><td data-th="行为">断点</td><td data-th="新">显式 + 隐式</td><td data-th="5.5">仅隐式（固定每 <b>2,048</b> token）</td><td data-th="更早">仅隐式（按模型间隔）</td></tr>
+              <tr><td data-th="行为">cached_tokens 上报</td><td data-th="新">精确（合格边界、扣除隐藏 token）</td><td data-th="5.5">向下取整到 <b>128</b> 的倍数</td><td data-th="更早">同左</td></tr>
+              <tr><td data-th="行为">读取费率</td><td data-th="新"><b>0.1×</b> 未缓存输入（个别新模型 0.05×）</td><td data-th="5.5">依模型费率</td><td data-th="更早">依模型费率</td></tr>
+              <tr><td data-th="行为">写入费率</td><td data-th="新"><b>1.25×</b> 未缓存输入</td><td data-th="5.5">无额外写费用</td><td data-th="更早">无额外写费用</td></tr>
+              <tr><td data-th="行为">生命周期控制</td><td data-th="新"><code>prompt_cache_options.ttl</code> 唯一值/默认 <b>"30m"</b>（至少 30 分钟，可能更久）</td><td data-th="5.5"><code>prompt_cache_retention</code>（仅 24h）</td><td data-th="更早"><code>in_memory</code>（5–10 分钟不活动，最长 1 小时）或 <code>24h</code>（通常约 30 分钟，最长 24 小时）</td></tr>
+            </tbody>
+          </table></div>
+          <p class="small muted">配套事实：每次请求最多 4 次缓存写入；查找范围含"前 2 个 + 最新 50 个显式断点"；<b>缓存不跨组织、不跨区域</b>；条目过期不可手动清除；ZDR 策略影响默认保留值。以上数字为 2026-10-14 核查的官方文档内容。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">拆账：请求、usage 与三次演算</h2>
+<pre><code>请求（教学简化 JSON，字段名真实）：
+{
+  "model": "gpt-5.x",
+  "input": [ …完整渲染的上下文… ],
+  "prompt_cache_key": "session-7f3c…",       // 缓存路由与计费归属
+  "prompt_cache_options": { "ttl": "30m" }    // 生命周期控制（新代际）
+}
+
+响应 usage：
+{
+  "input_tokens": 100000,
+  "input_tokens_details": {
+    "cached_tokens": 96000,       // 从缓存读取（按读取费率）
+    "cache_write_tokens": 0        // 写入缓存（按写入费率）
+  },
+  "output_tokens": 1200
+}</code></pre>
+          <p><b>三个容易记错的关系</b>：① 两项都是<b>输入明细</b>，不能再加到 <code>input_tokens</code> 上；② 普通输入 = input − cached − write；③ 计费当量 = 普通×1 + 读取×0.1 + 写入×1.25——<b>写入的 1.25 倍是完整单价</b>（不是"普通价上再加 1.25 倍"）。</p>
+
+          <div class="interact" id="billApp">
+            <div class="caption"><span class="tt">账单计算器</span><span class="pill const">费率：写 1.25× / 读 0.1×（新代际示例）</span></div>
+            <div class="btnrow" id="billPresets"></div>
+            <div class="calc-grid" style="margin-top:8px">
+              <div class="field"><label for="bIn">input_tokens</label><input id="bIn" type="number" value="100000" min="0"></div>
+              <div class="field"><label for="bCached">cached_tokens（读取）</label><input id="bCached" type="number" value="96000" min="0"></div>
+              <div class="field"><label for="bWrite">cache_write_tokens（写入）</label><input id="bWrite" type="number" value="0" min="0"></div>
+            </div>
+            <div class="data-table" id="billData"></div>
+            <div class="reason-line hidden" id="billWhy"></div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">缓存与上下文管理其他部分的交界</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>机制</th><th>与缓存的关系</th></tr></thead>
+            <tbody>
+              <tr><td data-th="机制">压缩 / 摘要</td><td data-th="关系"><b>会改变前缀</b>：替换历史后，"从第一个变化的 token 起"旧缓存无法复用；压缩后首发请求命中更低，新前缀稳定后回升</td></tr>
+              <tr><td data-th="机制">修改旧消息</td><td data-th="关系">改旧消息不如<b>追加新消息</b>：改写让该消息之后的前缀全部失配</td></tr>
+              <tr><td data-th="机制">工具变更</td><td data-th="关系">工具名/描述/顺序变化都会改变渲染前缀 → 破坏复用（工具说明在前部）</td></tr>
+              <tr><td data-th="机制">长期记忆 / 检索 / 子 Agent / fork / 恢复</td><td data-th="关系">都通过"<b>改变本次请求的前缀</b>"影响缓存：恢复是重建材料，fork 派生新边界，子 Agent 有独立会话与独立缓存键——都是"新前缀"，不该期待顺手命中</td></tr>
+              <tr><td data-th="机制">上下文窗口</td><td data-th="关系"><b>缓存不缩小窗口占用</b>；cached 输入仍计入 TPM 与本次完整上下文</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">独立核查：固定 CLI 快照与缓存的实际连接<span class="tag">本次新增</span></h2>
+          <p>教程纪律："API 文档支持某字段 ≠ 这个 CLI 会发这个字段"。我们回到固定快照查了两个方向：</p>
+          <details class="src">
+            <summary>方向一 · 请求侧：CLI 带缓存键（client.rs L641–653 节选）</summary>
+            <div class="inner">
+<pre><code>fn prompt_cache_key(&amp;self, responses_metadata: &amp;CodexResponsesMetadata) -&gt; String {
+    if let Some(prompt_cache_key) = &amp;self.prompt_cache_key_override {
+        return prompt_cache_key.clone();          // ① 特定会话（如审查会话）用覆盖值
+    }
+    if let SessionSource::Internal(source) = &amp;self.state.session_source
+        &amp;&amp; let Some(parent_thread_id) = responses_metadata.parent_thread_id
+    {
+        return format!("{source}:{parent_thread_id}");  // ② 内部子会话：来源+父线程
+    }
+    responses_metadata.session_id.clone()          // ③ 常规请求：会话 ID
+}</code></pre>
+              <p class="src-line">请求构造处显式赋值：<code>let prompt_cache_key = Some(self.prompt_cache_key(responses_metadata));</code>（L1049）。即：<b>该快照常规请求会携带稳定的缓存键，默认等于会话 ID</b>——同一会话的请求倾向落在同一缓存分组；不同会话/子会话各有自己的键（guardian 审查用 <code>guardian:父线程</code>）。</p>
+            </div>
+          </details>
+          <details class="src">
+            <summary>方向二 · 响应侧：CLI 对账缓存明细（sse/responses.rs L128–151 节选）</summary>
+            <div class="inner">
+<pre><code>impl From&lt;ResponseCompletedUsage&gt; for TokenUsage {
+    fn from(val: ResponseCompletedUsage) -&gt; Self {
+        let input_tokens_details = val.input_tokens_details.unwrap_or_default();
+        TokenUsage {
+            input_tokens: val.input_tokens,
+            cached_input_tokens: input_tokens_details.cached_tokens,           // ①
+            cache_write_input_tokens: input_tokens_details.cache_write_tokens, // ②
+            …
+        }
+    }
+}</code></pre>
+              <p class="src-line">这两个字段进入 <code>TokenUsage</code>（protocol.rs L2362–2382），用于本地计量与遥测（如压缩分析）。</p>
+            </div>
+          </details>
+          <div class="callout"><div class="ttl">这两条证据能证明什么、不能证明什么</div><p>✅ 能证明：该快照在请求里带缓存键、在响应对账缓存读写明细——"CLI 与缓存的连接"不是全靠 API 文档推测。❌ 不能证明：本次一定<b>命中</b>（服务端路由与状态问题，以运行时 usage 为准）；❌ 不能证明：终端界面一定展示这些明细（核查的是写入 <code>TokenUsage</code> 的路径）；❌ 也不能把 API 文档的<b>新参数</b>（30m TTL、显式断点）安到这份 CLI 上——它发历史字段、认历史字段。</p></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">官方原版与中文复现</h2>
+          <p>① <b>官方原页</b>（核查时实际打开、可在线操作）：<a href="https://developers.openai.com/api/docs/guides/prompt-caching" target="_blank" rel="noopener">Prompt caching · OpenAI</a>。</p>
+          <details>
+            <summary>加载 OpenAI 官方原版页面（联网时可用；离线请用外链）</summary>
+            <div class="inner">
+              <p class="small muted" style="margin-bottom:8px">官方页面需要联网加载。若长时间空白或加载失败，请点击上面的外链在新窗口打开——本教程的离线演示不受影响。</p>
+              <button class="btn" id="ofLoad">加载官方整页（交互组件在 "How prefix matching works" 一节）</button>
+              <div id="ofHolder" style="margin-top:10px"></div>
+            </div>
+          </details>
+          <p>② <b>中文复现</b>：本页所有交互为"依据 OpenAI 官方说明制作的中文教学演示"，<b>不是官方组件</b>；绿色"可复用"区域标注了"假设缓存仍可用且边界合格"。官方整页嵌入与自制复现<b>不要混称"原图"</b>。</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">自测</h2>
+          <div class="qs">
+            <div class="q"><div class="qt">拆账：input=50,000、cached=40,000、write=2,000。求普通输入与当量（新代际费率）。cached 要不要从 50,000 再减一次？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>普通 = 50,000 − 40,000 − 2,000 = <b>8,000</b>；当量 = 8,000 + 40,000×0.1 + 2,000×1.25 = 8,000 + 4,000 + 2,500 = <b>14,500</b>。cached 是 input 的<b>明细拆分</b>，已在 50,000 里，<b>不能再减第二次</b>。</p></div></details></div>
+            <div class="q"><div class="qt">判断题：两次请求"文字看起来一样"，就一定命中缓存。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>错。</b>反例（任举两条）：渲染前缀因设置/工具/顺序变化而不一致；缓存过期或未路由到持有条目的机器；前缀未达最小可缓存长度；隐式/显式模式切换导致查找边界不同。</p></div></details></div>
+            <div class="q"><div class="qt">压缩之后，缓存复用会怎样？用"前缀"一词解释。</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>压缩<b>替换了历史</b>，从"第一个变化的 token"开始旧前缀不再匹配——压缩后首发请求通常复用较少；但变化点之前的稳定部分仍可能命中，且新前缀稳定后命中会恢复。<b>压缩改变前缀 → 缓存按前缀退化，不会整体归零。</b></p></div></details></div>
+            <div class="q"><div class="qt">命中缓存后，这次的窗口占用会变小吗？速率限制呢？</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p><b>都不会变小。</b>缓存省的是重新计算（算力、费用、首字延迟方向）；完整上下文仍要占满，cached 输入仍计入 TPM。<b>把缓存当"窗口扩容"或"上下文缩短"都是错的。</b></p></div></details></div>
+          </div>
+        </div>
+
+        <details class="src">
+          <summary>章末 · 本章源码/文档依据</summary>
+          <div class="inner">
+            <p class="src-line">CLI 缓存键：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/core/src/client.rs#L641-L653" target="_blank" rel="noopener">client.rs L641–653</a>、L1049；usage 解析：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/codex-api/src/sse/responses.rs#L117-L151" target="_blank" rel="noopener">sse/responses.rs L117–151</a>；类型：<a href="https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/protocol/src/protocol.rs#L2362-L2382" target="_blank" rel="noopener">protocol.rs L2362–2382</a></p>
+            <p class="src-line">官方文档（2026-10-14 核查）：<a href="https://developers.openai.com/api/docs/guides/prompt-caching" target="_blank" rel="noopener">Prompt caching</a></p>
+          </div>
+        </details>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u7">上一章 <small>失败与手动整理</small></button>
+          <button class="btn primary" data-next="u9">下一章 <small>自己设计一套</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          /* ---------- 前缀演示 ---------- */
+          var scen=[
+            {id:"a",name:"① 只追加新问题",note:"稳定前缀照常复用（绿框）；新输入重新处理。总长度增长，复用部分保持。",
+             r1:[["s","系统指令",15],["t","工具说明",20],["h","历史",40]],
+             r2:[["s","系统指令",15],["t","工具说明",20],["h","历史",40],["n","新输入",25]],
+             reuse:["s","t","h"],
+             data:[["请求①完整输入","3 段（系统/工具/历史）"],["请求②完整输入","4 段（+新输入）——<b>总长度增长</b>"],["复用部分","系统+工具+历史（绿框）"],["重新处理部分","新输入 1 段"]]},
+            {id:"b",name:"② 把日期放到最前面",note:"变化点在最前：从第一个变化的 token 起都无法复用。正确做法是把它移到稳定内容之后。",
+             r1:[["s","系统指令",15],["t","工具说明",20],["h","历史",40]],
+             r2:[["x","系统+今日日期（变了）",15],["t","工具说明",20],["h","历史",40],["n","新输入",25]],
+             reuse:[],
+             data:[["请求①完整输入","3 段"],["请求②完整输入","4 段"],["复用部分","无——变化发生在最前"],["重新处理部分","全部 4 段"],["修复","把日期移到稳定内容之后"]]},
+            {id:"c",name:"③ 历史变成摘要",note:"历史区被替换 → 该段不能当旧前缀复用；前面的系统与工具部分仍合格（未变且仍达最小长度时）。",
+             r1:[["s","系统指令",15],["t","工具说明",20],["h","历史（原）",45],["n","新输入 A",20]],
+             r2:[["s","系统指令",15],["t","工具说明",20],["x","摘要（替换历史）",35],["n","新输入 B",30]],
+             reuse:["s","t"],
+             data:[["请求①完整输入","4 段"],["请求②完整输入","4 段（历史→摘要）"],["复用部分","系统+工具（变化点之前）"],["重新处理部分","摘要 + 新输入"],["结论","压缩改变前缀——按前缀退化，不是整体归零"]]},
+            {id:"d",name:"④ 同样文字，仍未命中",note:"过期 / 未路由到持有条目的机器 / 未达最小长度 / 模式切换——前缀一致是必要条件，不是充分条件。",
+             r1:[["s","系统指令",15],["t","工具说明",20],["h","历史",40],["n","新输入",25]],
+             r2:[["s","系统指令",15],["t","工具说明",20],["h","历史",40],["n","新输入",25]],
+             reuse:[],
+             data:[["请求①完整输入","4 段"],["请求②完整输入","4 段（文字一致）"],["复用部分","无（假设未命中）"],["可能原因","过期 / 路由（未达持有条目的机器）/ 未达最小长度 / 模式切换"],["教训","相同前缀是必要条件之一，不是充分条件"]]}
+          ];
+          var cur=0;
+          function segHTML(segs,reuseList,isReq2){
+            return segs.map(function(s){
+              var reuse=(reuseList||[]).indexOf(s[0])>=0;
+              var cls=(s[0]==="s")?"s-sys":(s[0]==="t")?"s-tools":(s[0]==="h")?"s-hist":(s[0]==="x")?"s-new":"s-new";
+              var mark="";
+              if(isReq2){mark=reuse?" reuse":" noreuse"}
+              return '<span class="'+cls+mark+'" style="flex:'+s[2]+'">'+s[1]+'</span>';
+            }).join("");
+          }
+          function renderCC(){
+            var c=scen[cur];
+            $("#ccReq1").innerHTML=segHTML(c.r1,null,false);
+            $("#ccReq2").innerHTML=segHTML(c.r2,c.reuse,true);
+            $("#ccNote").textContent=c.note;
+            $("#ccData").innerHTML=c.data.map(function(r){
+              return '<div class="data-row"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';
+            }).join("");
+          }
+          var box=$("#ccBtns");
+          scen.forEach(function(c,i){
+            var b=document.createElement("button");b.className="switch"+(i===0?" on":"");b.textContent=c.name;
+            b.addEventListener("click",function(){
+              cur=i;Array.prototype.forEach.call(box.children,function(x){x.classList.remove("on")});b.classList.add("on");renderCC();
+            });
+            box.appendChild(b);
+          });
+          renderCC();
+
+          /* ---------- 账单计算器 ---------- */
+          var presets=[
+            {n:"首次写入",In:100000,C:0,W:100000,note:"全部输入都写入缓存：当量 = 100,000×1.25 = 125,000（1.25×）。"},
+            {n:"再次读取（部分命中）",In:100000,C:96000,W:0,note:"普通 4,000 + 读取 96,000×0.1 = 13,600。"},
+            {n:"再次读取（完整命中）",In:100000,C:100000,W:0,note:"当量 10,000；与首次写入合计 135,000 = 1.35×（对比不缓存两遍 = 2×）。"},
+            {n:"10 次请求（1 写 9 读）",In:100000,C:0,W:100000,note:"单次显示的仍是首次写入 1.25×；官方同型结论：10 次（1 写 + 9 完整读）= 1.25 + 0.9 = 2.15×（不缓存 = 10×）。"}
+          ];
+          function calcBill(){
+            var In=Math.max(0,Math.floor(Number($("#bIn").value)||0));
+            var C=Math.max(0,Math.floor(Number($("#bCached").value)||0));
+            var W=Math.max(0,Math.floor(Number($("#bWrite").value)||0));
+            C=Math.min(C,In);W=Math.min(W,In-C);
+            var ordinary=In-C-W;
+            var weighted=ordinary+C*0.1+W*1.25;
+            var ratio=In>0?(weighted/In):0;
+            return {In:In,C:C,W:W,ord:ordinary,w:weighted,ratio:ratio};
+          }
+          function renderBill(note){
+            var b=calcBill();
+            var rows=[
+              ["input_tokens",b.In.toLocaleString("en-US")],
+              ["普通输入 = input − cached − write",b.ord.toLocaleString("en-US")],
+              ["缓存读取 cached_tokens",b.C.toLocaleString("en-US")+"　(按 0.1×)"],
+              ["缓存写入 cache_write_tokens",b.W.toLocaleString("en-US")+"　(按 1.25×)"],
+              ["计费当量 = 普通 + 读×0.1 + 写×1.25",b.w.toLocaleString("en-US",{maximumFractionDigits:0})],
+              ["相对全部按普通输入",(b.ratio*100).toFixed(1)+"% （"+(b.ratio<=1?"更省":"更贵")+"）"]
+            ];
+            $("#billData").innerHTML=rows.map(function(r){
+              return '<div class="data-row"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';
+            }).join("");
+            var why=$("#billWhy");
+            if(note){why.innerHTML=note;why.classList.remove("hidden")}
+            else if(b.C+b.W>b.In){why.textContent="注意：cached + write 不能超过 input 总数（两项都是 input 的明细）。";why.classList.remove("hidden")}
+            else{why.classList.add("hidden")}
+          }
+          var bbox=$("#billPresets");
+          presets.forEach(function(p,i){
+            var b=document.createElement("button");b.className="preset";b.textContent=p.n;
+            b.addEventListener("click",function(){
+              $("#bIn").value=p.In;$("#bCached").value=p.C;$("#bWrite").value=p.W;
+              renderBill(p.note);
+            });
+            bbox.appendChild(b);
+          });
+          ["#bIn","#bCached","#bWrite"].forEach(function(id){$(id).addEventListener("input",function(){renderBill(null)})});
+          renderBill(null);
+
+          /* ---------- 官方嵌入 ---------- */
+          $("#ofLoad").addEventListener("click",function(){
+            var holder=$("#ofHolder");
+            if(holder.getAttribute("data-loaded"))return;
+            holder.setAttribute("data-loaded","1");
+            holder.innerHTML='<p class="small muted">正在加载官方页面（需联网）……</p>';
+            var ifr=document.createElement("iframe");
+            ifr.src="https://developers.openai.com/api/docs/guides/prompt-caching#how-prefix-matching-works";
+            ifr.title="OpenAI 官方 Prompt Caching 页面（联网加载）";
+            ifr.style.cssText="width:100%;height:640px;border:1px solid var(--line);border-radius:12px;background:#fff";
+            holder.innerHTML="";
+            holder.appendChild(ifr);
+            var p=document.createElement("p");p.className="small muted";p.style.marginTop="8px";
+            p.innerHTML="若长时间空白/被拒绝嵌入：请使用上方的「Prompt caching · OpenAI」外链在新窗口打开（离线环境请直接用中文复现演示）。";
+            holder.appendChild(p);
+          });
+        })();
+        </script>
+      </section>
+
+
+<section class="unit" id="u9">
+        <div class="unithead">
+          <span class="kicker">单元 09 · 独立判断（收束）</span>
+          <h1>自己设计一套：小型 Agent 的上下文管理</h1>
+          <div class="meta-grid">
+            <div class="meta-card"><b>先修</b>全部前八章——本单元把机制拆成能力，做你自己的设计。</div>
+            <div class="meta-card"><b>读完你能</b>提交四份可验收的设计交付，并完成一个未讲过场景的迁移任务。</div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">任务：给"行程规划 Agent"设计上下文管理</h2>
+          <div class="callout"><p>你要为一个班级郊游场景的小型 Agent 做上下文管理设计：接用户目标（时间、人数、约束）、调用几个工具（查资料、读文件、写计划）、处理长输出、在必要时整理、支持第二天继续。<b>已知教训</b>：有助手的"4 点前返校"在整理后丢了；有助手把"已否决的地点"复活了。</p></div>
+          <p>交付四份东西——每份不大，重点在<b>具体</b>：</p>
+          <div class="tblwrap"><table>
+            <thead><tr><th>交付</th><th>核心内容</th><th>自查要点</th></tr></thead>
+            <tbody>
+              <tr><td data-th="交付"><b>1 · 请求材料清单与来源</b></td><td data-th="内容">≥6 行：材料 / 来源 / 怎么进请求 / 预算上限 / 丢失后能否重取</td><td data-th="要点">每个预算标注依据（照抄 Codex 常量或自定）；标出"必须每次带"vs"按需带"</td></tr>
+              <tr><td data-th="交付"><b>2 · 状态流程与伪代码</b></td><td data-th="内容">状态对象（材料列表/约束表/用量计/检查点）× 任务各时刻的读写</td><td data-th="要点">伪代码必须出现"取舍理由"；可标注"参照/故意不同"于 Codex 之处</td></tr>
+              <tr><td data-th="交付"><b>3 · 约束保全、重读与失败恢复</b></td><td data-th="内容">三个子问题各一段：约束怎么不丢 / 什么能重取 / 失败怎么发现与修</td><td data-th="要点">"让摘要带上约束"要写成验证问题；失败表含"不可重复的副作用"</td></tr>
+              <tr><td data-th="交付"><b>4 · 验证方法</b></td><td data-th="内容">质量（约束违背数、旧决定复活数）/ 用量 / 费用 / 时延 / 失败 五维指标</td><td data-th="要点">用含否定、精确数字、过期决定的可测样本；区分实测与推断</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">交互：设计清单<span class="tag">逐项打钩</span></h2>
+          <div class="interact">
+            <div class="caption"><span class="tt">你的设计清单</span><span class="pill demo">勾选进度保存在本页临时状态</span></div>
+            <div class="checklist" id="ckList"></div>
+            <div class="data-table" id="ckData"></div>
+          </div>
+          <details>
+            <summary>参考要点（先自己写，再看）</summary>
+            <div class="inner">
+              <p class="src-line">① 约束保全的常用组合：约束<b>结构化建表</b>（渲染在请求头部）+ 被否的标"已否决"而不是删除 + 每轮重新渲染 + 用含否定的可测样本验证。② 重读机制：为"可重取"与"不可重取"分类（文件可重读、工具可重跑、模型生成物不可重生）；给重读加预算与去重。③ 失败恢复：区分"替换前失败（原样）/替换后（不回滚）"；把"工具已执行的副作用"从重试中排除（幂等设计）。④ 验证：任务质量优先于压缩率——"1 − 处理后/处理前"只是体积缩减率。</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">迁移任务：同一套思路，换一个界面</h2>
+          <div class="callout"><p>场景：修改一个"用户信息"HTTP 接口——<b>加一个新字段，但旧客户端（老 App）不能坏</b>。任务跨一天：白天改代码、跑测试（日志很长）；晚上关电脑；第二天继续。</p></div>
+          <div class="tblwrap"><table>
+            <thead><tr><th>机制（本教程）</th><th>在这条任务里的对应物</th><th>你要做的动作</th></tr></thead>
+            <tbody>
+              <tr><td data-th="机制">关键约束（4 点返校）</td><td data-th="对应物">"旧客户端必须兼容"</td><td data-th="动作">写进第一条消息的<b>头尾</b>；约束表里标"有效"</td></tr>
+              <tr><td data-th="机制">长工具结果</td><td data-th="对应物">测试日志（几百行，报错在中段）</td><td data-th="动作">保头尾+关键行复述；预判中间最先死</td></tr>
+              <tr><td data-th="机制">三处限长</td><td data-th="对应物">日志在出口/历史/整理三次缩减</td><td data-th="动作">给重读方案（重跑测试/看报告文件）</td></tr>
+              <tr><td data-th="机制">整理触发与产物</td><td data-th="对应物">会话到线时自动压缩</td><td data-th="动作">算两条线；决定提前手动整理的时机；验证交接材料里约束在场</td></tr>
+              <tr><td data-th="机制">保存与恢复</td><td data-th="对应物">隔天 resume 继续</td><td data-th="动作"><b>恢复后先验证约束还在</b>再动手</td></tr>
+              <tr><td data-th="机制">失败处理</td><td data-th="对应物">整理/测试失败</td><td data-th="动作">本轮不动历史；副作用（已推送提交）不重复</td></tr>
+              <tr><td data-th="机制">缓存</td><td data-th="对应物">稳定前缀重复发送</td><td data-th="动作">别为凑缓存改写旧消息；追加新信息</td></tr>
+              <tr><td data-th="机制">验证</td><td data-th="对应物">最终验收</td><td data-th="动作">老客户端用例全绿 + 约束违背数 0 + 用量费用记录</td></tr>
+            </tbody>
+          </table></div>
+          <p class="small muted">（Java/Spring 开发者旁注：这套映射与"多模块构建日志 + 接口兼容 + 隔天恢复"的日常经验一一对应；不熟悉 Java 的读者把它当"任何改代码、保兼容、查长日志"的工作即可。）</p>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">能力评分（自查 / 互评两用）</h2>
+          <p>逐项打"<b>已展示 / 需要提示 / 尚未展示</b>"——这就是本教程"专项中级"的验收口径：</p>
+          <div class="tblwrap"><table>
+            <thead><tr><th>能力</th><th>判断依据</th></tr></thead>
+            <tbody>
+              <tr><td data-th="能力">解释信息流</td><td data-th="依据">说出三层差异并举出自己的一个反例</td></tr>
+              <tr><td data-th="能力">推演预算与信息损失</td><td data-th="依据">算例含单位与条件；指出一处会丢约束的环节</td></tr>
+              <tr><td data-th="能力">选择策略</td><td data-th="依据">场景 >1 个；每个选择给出代价与反例</td></tr>
+              <tr><td data-th="能力">阅读核心源码</td><td data-th="依据">在固定链接里指出触发/保留/替换分支的状态变化</td></tr>
+              <tr><td data-th="能力">设计与排障</td><td data-th="依据">四份交付物完整；失败表含不可重复的副作用</td></tr>
+              <tr><td data-th="能力">评估与迁移</td><td data-th="依据">迁移任务完成；验证方案区分实测/推断</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">综合自测<span class="tag">结业前自检，覆盖全部单元</span></h2>
+          <div class="qs">
+            <div class="q"><div class="qt">"这句话我刚才说过"——它可能存在于哪三层？"我看到了"与"模型看到了"为什么可能不一致？（U1/U6）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>三层：存档（大概率在）/ 活动历史（可能已被替换）/ 请求（可能不在）。"我看到了"通常指前两层（尤其文件层），"模型看到"只看第三层；压缩后替代历史覆盖旧列表就是两层分离的现实例子。</p></div></details></div>
+            <div class="q"><div class="qt">规则文件超了 32 KiB 预算，关键行在尾部。至少两条补救。（U2/U5）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>把关键内容移到文件头部；拆分文件让发现范围覆盖；提高配置预算（若允许）；或把要点显式写进对话（人工冗余）。</p></div></details></div>
+            <div class="q"><div class="qt">W=128,000、M 缺失、用户无配置：范围线多少？A=116,000 到线吗？（U3）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>90%×128,000 = <b>115,200</b>；116,000 ≥ 115,200 → <b>已到线</b>（整段线 121,600 未到，但 OR 已触发）。</p></div></details></div>
+            <div class="q"><div class="qt">整理前有 5 条用户消息（8k/12k/3k/9k/14k，旧→新），本地预算 20k。最终保留清单？（U4）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>倒着装：14k（剩 6k）→ 9k &gt; 6k → 边界截短（保头尾约 6k），停止。最终：[9k 截短片段] → [14k] → [摘要]；3k/12k/8k 不保留（除非摘要带走）。注意"选完边界即停"。</p></div></details></div>
+            <div class="q"><div class="qt">为什么"工具结果在历史里被裁了，但磁盘上可能还是全的"？（U5）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>活动历史保存裁剪后的副本，存档写入未裁剪原载荷——不同流水线上的不同对象（另有各自的持久化预算，如 64 KiB 分片上限）。</p></div></details></div>
+            <div class="q"><div class="qt">恢复会话时，"复用检查点替代历史"与"重放全部旧消息"的差别？（U6）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>前者一步采用"整理时保存的替代材料"（规则重渲染+保留的消息+摘要/压缩条目），成本低、忠实于整理时的取舍；后者会重新经历全部旧消息（重复计算、把已被替换的内容带回来，与系统语义不符）。系统用前者 + 回放检查点之后的<b>后缀</b>。</p></div></details></div>
+            <div class="q"><div class="qt">远端压缩验收要求"恰好一个压缩条目"。收到两个会怎样？（U7）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>验收失败：判 Fatal（"expected exactly one compaction output item"），替代历史<b>不安装</b>；活动历史保持原样，等下轮再试或提示用户。</p></div></details></div>
+            <div class="q"><div class="qt">两次请求文字相同却没命中缓存，写三种可能原因。（U8）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>渲染前缀其实不同（工具/设置/顺序变了）；过期或未路由到持有条目的机器；前缀低于最小可缓存长度；显式/隐式模式切换导致查找边界不同（任选三条）。</p></div></details></div>
+            <div class="q"><div class="qt">"已否决方案"保存到第二天——存进摘要就够吗？为什么？（U9）</div>
+              <details class="answer"><summary>看答案</summary><div class="inner"><p>不够。"否决"是<b>状态</b>，需要结构化保存与更新语义（约束表；被否的标"已否决"而非删除，渲染时可见）；只存摘要等于把关键状态交给有损概括，且无法验证还在不在。第二天正确做法：<b>恢复后先重述验证</b>，再继续。</p></div></details></div>
+          </div>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u8">上一章 <small>同样开头的第二次请求</small></button>
+          <button class="btn primary" data-next="appendix">到附录 <small>术语、速查卡与索引</small></button>
+        </div>
+
+        <script>
+        (function(){
+          var $=function(s){return document.querySelector(s)};
+          var items=[
+            "请求材料清单：≥6 行，含来源、进入方式、预算上限、能否重取",
+            "每个预算都标了依据（源码常量 / 自定）",
+            "状态流程含：材料列表、约束表、用量计、检查点",
+            "伪代码写出触发判断与整理过程的取舍理由",
+            "约束保全方案含：结构化建表 + 被否不删 + 每轮重渲染",
+            "重读机制：分清可重取/不可重取，含去重与预算",
+            "失败表含：『替换前失败→原样』与『不可重复的副作用』",
+            "验证设计：质量（约束违背数/旧决定复活数）优先于体积缩减率",
+            "复用、费用、时延分别记录口径（缓存 token 不重复相加）",
+            "迁移任务：兼容性约束写进头尾；恢复后先验证再动手"
+          ];
+          var box=$("#ckList");
+          items.forEach(function(t,i){
+            var d=document.createElement("label");d.className="checkitem";
+            d.innerHTML='<input type="checkbox" data-ck="'+i+'"><span>'+t+'</span>';
+            box.appendChild(d);
+          });
+          function render(){
+            var n=det_box();
+            $("#ckData").innerHTML=[["已完成",""+n+" / "+items.length],["状态",n===items.length?"全部完成——可以开始写你的设计了":"继续……（设计没有唯一正确答案，但每项都要有具体内容）"]].map(function(r){
+              return '<div class="data-row"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';
+            }).join("");
+          }
+          function det_box(){
+            var n=0;
+            Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"),function(cb){
+              var lab=cb.closest(".checkitem");
+              if(cb.checked){n++;lab.classList.add("done")}else{lab.classList.remove("done")}
+            });
+            return n;
+          }
+          document.querySelectorAll("[data-ck]").forEach(function(cb){cb.addEventListener("change",render)});
+          render();
+        })();
+        </script>
+      </section>
+
+      <section class="unit" id="appendix">
+        <div class="unithead">
+          <span class="kicker">附录</span>
+          <h1>术语 · 速查卡 · 索引 · 边界</h1>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">A · 术语对照表</h2>
+          <div class="tblwrap"><table>
+            <thead><tr><th>中文</th><th>英文/源码名</th><th>一句话</th></tr></thead>
+            <tbody>
+              <tr><td data-th="中文">令牌</td><td data-th="英文">token</td><td data-th="一句话">模型处理文字的小块单位；窗口与计费的度量</td></tr>
+              <tr><td data-th="中文">上下文窗口</td><td data-th="英文">context window（W）</td><td data-th="一句话">一次请求输入+输出的 token 总上限</td></tr>
+              <tr><td data-th="中文">有效窗口</td><td data-th="英文">usable context window（H=W×p/100）</td><td data-th="一句话">扣掉预留后的可用上限（p 缺省 95）</td></tr>
+              <tr><td data-th="中文">自动整理限额</td><td data-th="英文">auto compact token limit</td><td data-th="一句话">范围线原料：min(模型字段, 90%W)</td></tr>
+              <tr><td data-th="中文">当前用量</td><td data-th="英文">active context tokens（A）</td><td data-th="一句话">上次服务端用量 + 本地新增估算</td></tr>
+              <tr><td data-th="中文">输入基线</td><td data-th="英文">prefill input tokens（P）</td><td data-th="一句话">本窗口开始时的输入量（增长口径的减数）</td></tr>
+              <tr><td data-th="中文">范围口径</td><td data-th="英文">AutoCompactTokenLimitScope</td><td data-th="一句话">范围线对"全部"（Total）还是"增长量"（BodyAfterPrefix）</td></tr>
+              <tr><td data-th="中文">直接保留预算</td><td data-th="英文">retained budget（20,000 / 64,000）</td><td data-th="一句话">整理后给旧候选的共享预算</td></tr>
+              <tr><td data-th="中文">压缩 / 整理</td><td data-th="英文">compaction</td><td data-th="一句话">替换活动历史、追加检查点</td></tr>
+              <tr><td data-th="中文">交接摘要</td><td data-th="英文">CompactionSummary</td><td data-th="一句话">本地路径产物（可读文本）</td></tr>
+              <tr><td data-th="中文">远端压缩条目</td><td data-th="英文">ResponseItem::Compaction</td><td data-th="一句话">远端 v2 产物（含加密内容）</td></tr>
+              <tr><td data-th="中文">替换历史</td><td data-th="英文">replacement_history</td><td data-th="一句话">检查点里保存的替代列表</td></tr>
+              <tr><td data-th="中文">会话存档</td><td data-th="英文">rollout</td><td data-th="一句话">磁盘追加式记录</td></tr>
+              <tr><td data-th="中文">当前工作状态</td><td data-th="英文">WorldState</td><td data-th="一句话">环境/权限/规则/工具等"当前情况单"</td></tr>
+              <tr><td data-th="中文">项目规则</td><td data-th="英文">AGENTS.md</td><td data-th="一句话">按发现范围加载、共享 32 KiB 预算</td></tr>
+              <tr><td data-th="中文">工具调用 / 结果</td><td data-th="英文">FunctionCall / FunctionCallOutput</td><td data-th="一句话">带 call_id 的配对条目</td></tr>
+              <tr><td data-th="中文">头尾裁剪</td><td data-th="英文">truncate middle</td><td data-th="一句话">保头尾、删中间、加标记</td></tr>
+              <tr><td data-th="中文">近似 token</td><td data-th="英文">approx_token_count</td><td data-th="一句话">ceil(UTF-8 字节/4) 的本地估算</td></tr>
+              <tr><td data-th="中文">缓存断点</td><td data-th="英文">cache breakpoint</td><td data-th="一句话">前缀的存取标记点</td></tr>
+              <tr><td data-th="中文">缓存读取 / 写入</td><td data-th="英文">cached_tokens / cache_write_tokens</td><td data-th="一句话">usage 中的输入明细两项</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">B · 速查卡</h2>
+          <div class="callout"><div class="ttl">三组绝不能混的数字</div>
+            <div class="tblwrap" style="margin:8px 0 0"><table>
+              <thead><tr><th>组</th><th>数字</th><th>管什么</th></tr></thead>
+              <tbody>
+                <tr><td data-th="组">触发线</td><td data-th="数字">90%（基础线，可被字段/配置按下）+ 95%（H 缺省比例）</td><td data-th="管什么">何时开始整理</td></tr>
+                <tr><td data-th="组">保留预算</td><td data-th="数字">20,000（本地）/ 64,000（远端 v2）</td><td data-th="管什么">整理后直接保留旧候选的空间</td></tr>
+                <tr><td data-th="组">存储预算</td><td data-th="数字">32 KiB（项目规则）/ 64 KiB（分片命令输出、MCP 结果）</td><td data-th="管什么">磁盘与加载环节的独立上限</td></tr>
+              </tbody>
+            </table></div>
+          </div>
+          <div class="callout"><div class="ttl">常量与费率（按出处）</div>
+            <p class="src-line"><code>(W×9)/10</code>；<code>H=W×p/100, p=95</code>；20,000 / 64,000 / 10,000（单条 AgentMessage）；4 字节≈1 token；split_budget 左 floor 右 ceil；标记"…N tokens truncated…"（额外长度）；写 1.25×、读 0.1×；1 写 1 读 = <b>1.35×</b>；10 次（1 写 9 读）= <b>2.15×</b>；最小可缓存 <b>1,024</b>；5.5 隐式间隔 <b>2,048</b>；cached 取整 <b>128</b> 倍数；每次请求最多 <b>4</b> 次缓存写入；远端 v2 重试 ≤ <b>min(provider,2)</b>；TTL 30m（新代际）/ in_memory 5–10 分钟（最长 1 小时）/ 24h（通常 30 分钟）。</p>
+          </div>
+          <div class="callout"><div class="ttl">行为速记</div>
+            <p class="src-line">到线 = 范围线 <b>OR</b> 整段线；轮前检查<b>不含</b>即将写入的新输入（有 TODO）；整理骨架 = 筛候选 → 从新到旧装预算 → 边界截短 → 产物另加 → 重组规则；成功安装 = 替换内存 <b>+</b> 追加检查点；恢复 = 替代历史 <b>+</b> 后缀回放；失败 ≠ 无变化；替换后不回滚；缓存 = 省计算、不省容量；压缩换前缀 → 缓存按前缀退化。</p>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">C · 固定源码索引</h2>
+          <p class="small muted">基址：<code>https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/</code>（路径后加 <code>#L起-L止</code>）。以下为本教程引用的全部位置。</p>
+          <div class="tblwrap"><table>
+            <thead><tr><th>主题</th><th>文件</th><th>行</th></tr></thead>
+            <tbody>
+              <tr><td data-th="主题">请求组装</td><td data-th="文件">core/src/session/turn.rs</td><td data-th="行">1563–1591</td></tr>
+              <tr><td data-th="主题">历史不变量 / 用量计量</td><td data-th="文件">core/src/context_manager/history.rs</td><td data-th="行">922–960、962–980</td></tr>
+              <tr><td data-th="主题">90%/95%/窗口解析</td><td data-th="文件">protocol/src/openai_models.rs</td><td data-th="行">393–395、518–540</td></tr>
+              <tr><td data-th="主题">两口径与到线</td><td data-th="文件">core/src/session/context_window.rs</td><td data-th="行">60–117</td></tr>
+              <tr><td data-th="主题">轮前/轮中/轮后/切模型</td><td data-th="文件">core/src/session/turn.rs</td><td data-th="行">180–222、548–654、718–757、1334–1426</td></tr>
+              <tr><td data-th="主题">20K 与选取 / 重组</td><td data-th="文件">core/src/compact.rs</td><td data-th="行">63、574–603、690–770、80–110</td></tr>
+              <tr><td data-th="主题">失败与重试</td><td data-th="文件">core/src/compact.rs</td><td data-th="行">272–368、419–424</td></tr>
+              <tr><td data-th="主题">远端 v2</td><td data-th="文件">core/src/compact_remote_v2.rs</td><td data-th="行">78–82、477–497、548–597、625–722</td></tr>
+              <tr><td data-th="主题">provider 能力</td><td data-th="文件">model-provider/src/capabilities.rs</td><td data-th="行">31–51</td></tr>
+              <tr><td data-th="主题">头尾裁剪</td><td data-th="文件">utils/string/src/truncate.rs</td><td data-th="行">4、62–183</td></tr>
+              <tr><td data-th="主题">工具出口 / 多块预算</td><td data-th="文件">utils/output-truncation/src/lib.rs</td><td data-th="行">17–41、164–251</td></tr>
+              <tr><td data-th="主题">替换与检查点</td><td data-th="文件">core/src/session/mod.rs</td><td data-th="行">4130–4222</td></tr>
+              <tr><td data-th="主题">恢复重建</td><td data-th="文件">core/src/session/rollout_reconstruction.rs</td><td data-th="行">480–520</td></tr>
+              <tr><td data-th="主题">缓存键 / usage</td><td data-th="文件">core/src/client.rs；codex-api/src/sse/responses.rs</td><td data-th="行">641–653、1049；117–151</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="block">
+          <h2 class="sec">D · 未验证边界</h2>
+          <div class="callout warn"><div class="ttl">本教程没做的事（诚实清单）</div>
+            <p class="src-line">① <b>未运行真实模型实验</b>：无实测压缩保留率、摘要保真度、费用与时延数据；教学"保留/丢失"结论均为算法推演或源码警告。② <b>未运行 Rust 测试</b>：测试样本数字不是任何账号的真实配置。③ <b>未审计服务端与云端</b>：远端压缩语义、缓存实际命中率不可从本地源码逐句核实。④ <b>界面展示未核实</b>：缓存明细是否在终端界面展示未核查（只核实到写入 TokenUsage 的路径）。⑤ <b>教学效果待验证</b>：需真实读者完成迁移任务与设计交付。⑥ <b>时效性</b>：官方数字以 2026-10-14 核查为准；CLI 行为以固定快照为准，均可能随版本变化。</p>
+          </div>
+        </div>
+
+        <div class="foot">
+          <p>Codex CLI 上下文管理 · 交互教程（独立重做版）｜源码快照 a07c8eb（2026-10-14 复核）｜本页讲稿与中文练习可离线使用；官方缓存原版嵌入需联网｜本页所有演示为教学构造，已与真实运行数据区分标注。</p>
+        </div>
+
+        <div class="unitfoot">
+          <button class="btn" data-prev="u9">上一章 <small>自己设计一套</small></button>
+          <button class="btn primary" data-next="intro">回到开头 <small>开始之前</small></button>
+        </div>
+      </section>
+
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ================= 阅读器全局逻辑 ================= */
+(function(){
+  var order=["intro","u1","u2","u3","u4","u5","u6","u7","u8","u9","appendix"];
+  var names={intro:"开始之前",u1:"01 一次任务，多次请求",u2:"02 聊天之外的工作条件",u3:"03 什么时候整理",u4:"04 整理后带上什么",u5:"05 信息在哪一步没的",u6:"06 关掉再打开",u7:"07 失败与手动整理",u8:"08 同样开头的第二次请求",u9:"09 自己设计一套",appendix:"附录：术语、速查卡与索引"};
+  var cur="intro";
+  function $(s,c){return (c||document).querySelector(s)}
+  function $all(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s))}
+  function show(id,push){
+    if(order.indexOf(id)<0) id="intro";
+    cur=id;
+    $all(".unit").forEach(function(u){u.classList.toggle("active",u.id===id)});
+    $all(".navlink").forEach(function(b){b.setAttribute("aria-current", b.getAttribute("data-go")===id?"page":"false")});
+    $("#where").textContent=names[id]||"";
+    var i=order.indexOf(id);
+    $("#prevBtn").disabled=i<=0;
+    $("#nextBtn").disabled=i>=order.length-1;
+    if(push!==false){try{history.replaceState(null,"","#"+id)}catch(e){}}
+    window.scrollTo({top:0,behavior:"instant" in window?"instant":"auto"});
+    closeMenu();
+  }
+  window.__wbShow=show;
+  $all("[data-go]").forEach(function(b){b.addEventListener("click",function(){show(b.getAttribute("data-go"))})});
+  $("#prevBtn").addEventListener("click",function(){var i=order.indexOf(cur);if(i>0)show(order[i-1])});
+  $("#nextBtn").addEventListener("click",function(){var i=order.indexOf(cur);if(i<order.length-1)show(order[i+1])});
+  var sb=$("#sidebar"),sc=$("#scrim");
+  function openMenu(){sb.classList.add("open");sc.classList.add("open")}
+  function closeMenu(){sb.classList.remove("open");sc.classList.remove("open")}
+  $("#menuBtn").addEventListener("click",openMenu);
+  sc.addEventListener("click",closeMenu);
+  window.addEventListener("hashchange",function(){var id=location.hash.slice(1);if(id&&id!==cur)show(id,false)});
+  var initial=location.hash?location.hash.slice(1):"intro";
+  show(initial,false);
+  /* 上一章/下一章在章节末尾的按钮复用 */
+  $all("[data-next]").forEach(function(el){el.addEventListener("click",function(){show(el.getAttribute("data-next"))})});
+  $all("[data-prev]").forEach(function(el){el.addEventListener("click",function(){show(el.getAttribute("data-prev"))})});
+})();
+</script>
+<!-- 页面内所有交互脚本已内嵌于各单元末尾；本注释为构建标记，无外部依赖。 -->
+</body>
+</html>

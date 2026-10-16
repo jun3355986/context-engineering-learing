@@ -1,0 +1,28 @@
+{
+  "source_call": "truncation-call/rollout.jsonl:12",
+  "source_output": "truncation-call/rollout.jsonl:13",
+  "call_id": "call_e47661c7e2414f2f8edda5f4483342f5",
+  "tool_name": "exec",
+  "actual_call_input": "const r = await tools.exec_command({cmd:\"cat long-output.txt\",workdir:\"<LAB>/workspace\",yield_time_ms:10000,max_output_tokens:128});\ntext(JSON.stringify(r));\n",
+  "raw_execution_utf8_bytes": 136009,
+  "saved_output_json_utf8_bytes": 886,
+  "saved_text_block_utf8_bytes": [
+    47,
+    740
+  ],
+  "markers": {
+    "head": true,
+    "middle": false,
+    "tail": true
+  },
+  "saw_truncation": true,
+  "final": "{\"head_marker\":\"ALPHA_20261014\",\"middle_marker\":\"UNKNOWN\",\"tail_marker\":\"OMEGA_20261014\",\"saw_truncation_marker\":true}",
+  "nested_exec_output_utf8_bytes": 622,
+  "nested_exec_result": {
+    "chunk_id": "836411",
+    "wall_time_seconds": 2.334e-06,
+    "exit_code": 0,
+    "original_token_count": 34003,
+    "output": "Warning: truncated output (original token count: 34003)\nTotal output lines: 1602\n\nHEAD_MARKER=ALPHA_20261014\nrow-0001 | meaningless synthetic padding to expose length limits | checksum 000003e5\nrow-0002 | meaningless synthetic padding to expose length limits | checksum 000007ca\nrow-0003 | meaningless synthetic padding to expose length l…33875 tokens truncated…thetic padding to expose length limits | checksum 00184f76\nrow-1599 | meaningless synthetic padding to expose length limits | checksum 0018535b\nrow-1600 | meaningless synthetic padding to expose length limits | checksum 00185740\nTAIL_MARKER=OMEGA_20261014\n"
+  }
+}

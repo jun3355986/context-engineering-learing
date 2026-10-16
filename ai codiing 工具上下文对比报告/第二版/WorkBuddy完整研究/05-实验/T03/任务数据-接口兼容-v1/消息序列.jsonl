@@ -1,0 +1,13 @@
+{"seq":1,"id":"MSG-C001","role":"user","turn":"D1-T1","content":"改一下用户信息接口 GET /api/user/{id}：加一个新字段 displayName。**硬要求：旧客户端（App v1）必须继续能用**，它们不会跟着升级。","carries":["HC-01","HC-02"]}
+{"seq":2,"id":"MSG-C002","role":"tool","turn":"D1-T1","toolName":"read_file","toolCallId":"call_c001","contentRef":"工具结果-接口定义.json","summary":"读取 UserController.java 与 UserDto.java 现状：GET /api/user/{id}，字段 user_name(string)、age(int)、email(string)。","carries":["背景"]}
+{"seq":3,"id":"MSG-C003","role":"assistant","turn":"D1-T2","content":"先把 user_name 直接改成 displayName 最省事，旧字段就留着不用了。","carries":["REJ-01(临时提议)"]}
+{"seq":4,"id":"MSG-C004","role":"user","turn":"D1-T2","content":"**不行，不能重命名 user_name**，旧客户端认这个字段名，改了会直接解析失败。新增字段、旧字段原样保留。","carries":["REJ-01(否决)"],"negates":["REJ-01"]}
+{"seq":5,"id":"MSG-C005","role":"user","turn":"D1-T2","content":"另外 age 也别动，保持 int；**把 age 改成 string 这个想法作废**。","carries":["HC-03","REJ-03(否决)"],"negates":["REJ-03"]}
+{"seq":6,"id":"MSG-C006","role":"assistant","turn":"D1-T3","content":"那就干脆加个 v2：/api/v2/user/{id} 上放新字段，v1 慢慢下线。","carries":["REJ-02(临时提议)"]}
+{"seq":7,"id":"MSG-C007","role":"user","turn":"D1-T3","content":"**v2 路径也不行**，别下线 v1，就在原路径上加可选字段。","carries":["REJ-02(否决)"],"negates":["REJ-02"]}
+{"seq":8,"id":"MSG-C008","role":"assistant","turn":"D1-T3","content":"明白：原路径不动，只新增一个可选字段 displayName（nullable）。开始改代码。","carries":[]}
+{"seq":9,"id":"MSG-C009","role":"tool","turn":"D1-T4","toolName":"run_tests","toolCallId":"call_c009","contentRef":"长工具结果-测试日志-v1.txt","contentLines":300,"summary":"契约测试 300 行日志：关键失败在中段（displayNameShouldBeOptional FAILED），结论在尾段（BUILD FAILURE）。","carries":["HC-01(证据)","HC-02(证据)"]}
+{"seq":10,"id":"MSG-C010","role":"user","turn":"D1-T5","content":"先到这，**整理一下当前进度**，我下班了，明天接着弄。","carries":["整理触发点"]}
+{"seq":11,"id":"MSG-C011","role":"assistant","turn":"D1-T5","contentRef":"坏摘要样例.md","kind":"summary","content":"【会话整理产物，见 坏摘要样例.md】","summary":"故意漏掉兼容硬约束、复活 REJ-01（重命名 user_name）、把测试未通过写成全部通过","carries":["坏摘要"]}
+{"seq":12,"id":"MSG-C012","role":"user","turn":"D2-T6(隔天恢复)","content":"早上好，接着昨天的用户信息接口任务继续。**先说一遍：现在有效的约束还有哪些？**再说下一步计划。","carries":["HC-04","恢复后先验证"]}
+{"seq":13,"id":"MSG-C013","role":"assistant","turn":"D2-T6(隔天恢复)","content":"【候选进展与结论，见检查器 fixtures】","carries":["待检查产物"]}

@@ -1,0 +1,18 @@
+{
+  "source": "automatic/rollout.jsonl",
+  "source_line": 24,
+  "timestamp": "2026-10-14T15:38:58.046Z",
+  "type": "compacted",
+  "message_is_empty": true,
+  "replacement_item_count": 6,
+  "replacement_types": {
+    "message": 5,
+    "compaction": 1
+  },
+  "message_roles": {
+    "developer": 3,
+    "user": 2
+  },
+  "encrypted_block_present": true,
+  "note": "只公布结构；不公布不可读的 encrypted_content，也不编造摘要正文。"
+}

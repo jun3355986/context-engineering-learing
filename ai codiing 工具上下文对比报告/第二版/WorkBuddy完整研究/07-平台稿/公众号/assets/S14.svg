@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" role="img" aria-label="缓存击穿账单示意（grok）">
+<style>
+text{font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.bg{fill:#f4f6fb}
+.card{fill:#ffffff;stroke:#dfe5ef;stroke-width:1.5}
+.tag{font-size:13.5px;fill:#5b6779;letter-spacing:.08em}
+.h1{font-size:30px;font-weight:700;fill:#1b2330}
+.sub{font-size:15.5px;fill:#5b6779}
+.ct{font-size:16.5px;font-weight:700;fill:#1b2330}
+.bb{font-size:14px;fill:#1b2330}
+.mini{font-size:12.5px;fill:#5b6779}
+.big{font-size:26px;font-weight:700;fill:#1b2330}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+<rect class="bg" x="0" y="0" width="1200" height="700"/>
+<text class="tag" x="40" y="42">上下文管理 · S14</text>
+<text class="h1" x="40" y="82">缓存击穿账单（grok · 示意）</text>
+<text class="sub" x="40" y="114">硬清旧工具输出 → 前缀被改 → 缓存按前缀退化 → 成本 ×2.9</text>
+
+<!-- 前 -->
+<rect class="card" x="40" y="140" width="450" height="230" rx="12"/>
+<rect x="40" y="140" width="450" height="46" rx="12" fill="#e6f6ea"/>
+<rect x="40" y="174" width="450" height="12" fill="#e6f6ea"/>
+<text class="ct" x="64" y="172" fill="#15803d">硬清前（前缀稳定）</text>
+<text class="mini" x="64" y="216">cache_read</text>
+<text class="big" x="64" y="252" fill="#15803d">61,824</text>
+<text class="mini" x="64" y="296">costUsdTicks</text>
+<text class="big" x="64" y="332" fill="#15803d">≈ 109.5 M</text>
+
+<!-- 后 -->
+<rect class="card" x="710" y="140" width="450" height="230" rx="12"/>
+<rect x="710" y="140" width="450" height="46" rx="12" fill="#fdeaea"/>
+<rect x="710" y="174" width="450" height="12" fill="#fdeaea"/>
+<text class="ct" x="734" y="172" fill="#b91c1c">硬清后（前缀被改）</text>
+<text class="mini" x="734" y="216">cache_read</text>
+<text class="big" x="734" y="252" fill="#b91c1c">17,792</text>
+<text class="mini" x="734" y="296">costUsdTicks</text>
+<text class="big" x="734" y="332" fill="#b91c1c">≈ 317.2 M</text>
+
+<!-- 中：箭头 + ×2.9 -->
+<path d="M 500 240 L 700 240" stroke="#b91c1c" stroke-width="3" marker-end="url(#ar14)"/>
+<defs><marker id="ar14" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto"><path d="M0,0 L11,5.5 L0,11 z" fill="#b91c1c"/></marker></defs>
+<rect x="524" y="196" width="152" height="56" rx="12" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.5"/>
+<text class="big" x="600" y="234" text-anchor="middle" fill="#b91c1c">×2.9</text>
+<text class="mini" x="600" y="278" text-anchor="middle" fill="#b91c1c">成本击穿</text>
+
+<!-- 机制 -->
+<rect x="40" y="392" width="1120" height="112" rx="12" fill="#ffffff" stroke="#dfe5ef" stroke-width="1.5"/>
+<text class="ct" x="64" y="424">为什么会更贵？—— 前缀退化</text>
+<text class="mini" x="64" y="452">硬清把「过旧的工具输出」替换为占位符（实测：轮龄 11 → <tspan class="mono">[Tool result omitted — too old]</tspan>），<tspan font-weight="700">前缀从此处被改</tspan>；</text>
+<text class="mini" x="64" y="474">缓存只认「完整渲染后的前缀」——变化点之后的内容<tspan font-weight="700">全部重建</tspan>，可复用的 cache_read 骤降（61,824 → 17,792），于是这一次比不清还贵。</text>
+<text class="mini" x="64" y="496" fill="#5b6779">这是设计后果，不是 bug：<tspan font-weight="700">压缩 / 改旧消息 / 工具变更</tspan>都通过「改变前缀」起作用。</text>
+
+<!-- 边界 -->
+<rect x="40" y="524" width="1120" height="118" rx="12" fill="#fdeede" stroke="#c2410c" stroke-width="1.5"/>
+<text class="bb" x="64" y="556" font-weight="700" fill="#c2410c">边界注</text>
+<text class="mini" x="64" y="584">· 本图为<tspan font-weight="700">【示意】</tspan>：用「前 / 后」两个读数说明方向，非逐笔账单明细。</text>
+<text class="mini" x="64" y="606">· <tspan font-weight="700">费用可核验仅 grok</tspan>（批次合计 Σ $0.9757，逐日志核算；1 USD = 10¹⁰ ticks）；其余工具为订阅 / 代理，<tspan font-weight="700">费用不可核验</tspan>。</text>
+<text class="mini" x="64" y="628">· 服务端命中率 / TTL 仍 UNOBSERVABLE；<tspan font-weight="700" fill="#b91c1c">不排名次</tspan>（各工具执行模型 / provider 不同，条件不可比）。</text>
+
+<text class="mini" x="40" y="674" fill="#5b6779">出处：T19 `07-grok.md`（硬清实测 + 缓存击穿）、T19 总表 §2.1/§3；T15 M07 §二「压缩按设计失效对话层」。</text>
+</svg>

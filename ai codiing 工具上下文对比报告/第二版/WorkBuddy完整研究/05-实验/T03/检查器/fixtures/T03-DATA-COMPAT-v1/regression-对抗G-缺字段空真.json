@@ -1,0 +1,9 @@
+{
+  "taskId": "T03-DATA-COMPAT-v1",
+  "candidateId": "regression-对抗G-缺字段空真",
+  "regressionOf": "T03R 对抗测试例 G（P-07）：apiDiff={} 时 4/5 条硬约束检查曾判 PASS（缺字段空真）",
+  "apiDiff": {},
+  "selectedOptionIds": ["OPT-ADD-OPTIONAL-FIELD"],
+  "statusClaims": {"testsPassed": false, "changeCommitted": false, "compatVerified": false},
+  "notes": "接口改动已完成，细节见代码。"
+}
