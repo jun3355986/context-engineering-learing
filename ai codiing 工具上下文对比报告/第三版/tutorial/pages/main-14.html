@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>失败恢复：溢出、压缩失败与兜底 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本章专属：只作用于 main-14 */
+  body[data-chapter="main-14"] .prose :not(pre) > code,
+  body[data-chapter="main-14"] .modal :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="main-14"] .modal .kv dd {
+    min-width: 0;
+  }
+  #fig-recovery-fsm .sm-box {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+  }
+  #fig-recovery-fsm .sm-box--ok {
+    fill: var(--green-soft);
+    stroke: var(--green-line);
+  }
+  #fig-recovery-fsm .sm-box--warn {
+    fill: var(--orange-soft);
+    stroke: var(--orange-line);
+  }
+  #fig-recovery-fsm .sm-box--bad {
+    fill: var(--red-soft);
+    stroke: var(--red-line);
+  }
+  #fig-recovery-fsm .sm-title {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 650;
+  }
+  #fig-recovery-fsm .sm-sub {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 12px;
+  }
+  #fig-recovery-fsm .sm-line {
+    stroke: var(--muted);
+    stroke-width: 1.4;
+    fill: none;
+  }
+  #fig-recovery-fsm .sm-line--user {
+    stroke: var(--orange);
+    stroke-width: 1.4;
+    stroke-dasharray: 6 4;
+    fill: none;
+  }
+  #fig-recovery-fsm .sm-arrow {
+    fill: var(--muted);
+  }
+  #fig-recovery-fsm .sm-arrow--user {
+    fill: var(--orange);
+  }
+  #fig-recovery-fsm .sm-edge {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body data-chapter="main-14">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 14 章</span></p>
+      <h1>失败恢复：溢出、压缩失败与兜底</h1>
+      <p class="lede">压缩是窗口快满时的最后一根绳子，但绳子自己也会断：压缩请求本身也要装下待压缩的历史。本章按一次失败发生的时间顺序拆开：怎么识别溢出、压不动时删什么、连续失败什么时候该停、以及哪三种情况再怎么压也没用。</p>
+      <ul class="meta">
+        <li>约 18 分钟</li>
+        <li>1 张状态机</li>
+        <li>L2 → L3</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>区分“主动压缩”与“溢出后恢复”，并说出两者各自允许重试几次。</li>
+          <li>给定一次压缩失败，判断下一步该删最旧、砍整组、换模型，还是直接停。</li>
+          <li>列出无法再压缩的三种情况，并为每种给出一个可操作的兜底动作。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 场景 ========== -->
+    <section id="why-recovery">
+      <p class="sec-no">01 · 一次真实的卡死</p>
+      <h2>“它转了很久，然后什么都没了”</h2>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 三次重试之后，只剩一个转圈</p>
+        <p>周五下午，Agent 跑到第 62 轮。屏幕上先出现一行 “context length exceeded”，接着自动压缩启动；几秒后，同一行错误又出现一次。界面显示“正在压缩”，然后是第二次、第三次。十分钟后，用户点了取消，又点了 <code>/clear</code>。四十多分钟的排查记录没了——不是被压缩掉的，是从来没被写进可恢复的地方。</p>
+      </div>
+
+      <p>这个下午包含了失败恢复的全部难点。第一，<strong>恢复动作本身也要花上下文</strong>：压缩要把待压缩的历史再发一遍，这段历史可能已经超窗。第二，<strong>重试不一定改变结果</strong>：同样的 payload 再发一次，必然再超。第三，<strong>失败会叠加</strong>：一次压缩失败后，下一轮请求仍然超窗，于是再触发一次注定失败的压缩，形成循环。第四，<strong>用户看到的是“在忙”，不是“失败了”</strong>：没有显式的失败状态，人只会等。</p>
+      <p class="lead-in">失败恢复不是“再试一次”，而是“在一个更小的预算里，重新决定删什么、保什么、什么时候放弃”。</p>
+      <p>所以评价一个实现的恢复能力，不能只看“有没有重试”。要看四件事：它认不认得溢出、它每次重试<strong>改变了什么</strong>、它在第几次之后停止、以及停止时<strong>留下了什么状态</strong>。这四件事分别对应 2.1、2.2、2.4、2.5 四小节。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">最贵的失败不是报错，是静默</p>
+        <p>取消、失败、正在压缩，是三种不同的状态。把它们混成一个“加载中”，用户就无法判断该等、该重试，还是该开新会话。Grok Build 把取消单独命名成 <code>compact cancelled</code>，dsh 给手动压缩定义了 <code>busy / cancelled / changed / summary / commit / persistence</code> 六个错误码，都是为了不把“失败”说成“稍等”。</p>
+      </div>
+    </section>
+
+    <!-- ========== 02 Codex ========== -->
+    <section id="codex">
+      <p class="sec-no">02 · Codex 主线</p>
+      <h2>先删最旧，再试一次</h2>
+      <p>Codex 的恢复逻辑很短，短到可以一句话说完：压缩请求遇到 <code>ContextWindowExceeded</code> 时，如果待压缩输入不止一条，删掉最旧一条、重置重试计数、再试；如果只剩一条，就把总用量标记为“满”，返回错误。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L359-L371">compact.rs#L359-L371</a> <span class="tag tag--ok">已核实</span> 短，但它把本章的四个问题都碰到了。</p>
+
+      <h3 id="codex-detect">2.1 识别：本地估算到线，还是服务端拒绝</h3>
+      <p>溢出的信号有两种。一种是<strong>主动</strong>的：本地估算当前用量已到线，提前压缩。Codex 用两把尺子：整段线是窗口 × 95%，范围线默认取 <code>min(模型声明的 auto_compact_token_limit, 窗口 × 90%)</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L393-L395">openai_models.rs#L393-L395</a> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L526-L540">openai_models.rs#L526-L540</a> <span class="tag tag--ok">已核实</span></p>
+      <p>另一种是<strong>被动</strong>的：请求已经发出去，服务端返回上下文超限。被动信号更可靠，因为它不依赖本地估算；但它来得更晚——此时这一轮已经失败，恢复只能“压缩后重发”。主动信号能避免一次失败，代价是估算偏保守时会过早压缩，白花一次摘要钱。</p>
+      <p><strong>为什么两种都要有。</strong>本地估算用字节数除 4，对中文、代码、JSON 都会偏<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L89-L98">truncate.rs#L89-L98</a> <span class="tag tag--ok">已核实</span>；只靠它，要么过早压，要么漏判。服务端拒绝是真相，但每次都是一次失败。两者配合，才是“平时靠估算、卡住靠错误码”。</p>
+
+      <h3 id="codex-shrink">2.2 缩小：为什么删的是“最旧一条”</h3>
+      <p>同一个 payload 再发一次，必然再超。能改变的只有输入大小，所以重试前必须先删。Codex 删最旧一条，源码注释给了两个理由：保留基于前缀的缓存，同时让最近消息不受影响。</p>
+      <p><strong>为什么不是删最新。</strong>最新消息通常包含这一轮的任务指令、最近的错误、刚改的文件路径。删它等于把“现在要做什么”丢掉，即使压缩成功，模型也不知道下一步干什么。<strong>为什么不是删一半。</strong>删一半会让输入大小骤降，但也会让摘要失去中段上下文；逐步删一条，可以在“刚好装下”的位置停下，信息损失最小。</p>
+      <p><strong>代价</strong>是每重试一次就永久少一条历史。如果超窗的是一条不可分割的巨型消息（比如一次 80k 的测试日志），删到只剩它时就没有退路——这正是 3.3 节“无法再压缩”的第二种情况。</p>
+
+      <h3 id="codex-classify">2.3 分类：哪些错误值得重试</h3>
+      <p>Codex 把压缩失败分成几类，处理方式不同：</p>
+      <ul>
+        <li><strong>中断、取消、会话预算耗尽、响应不完整</strong>：直接返回，不重试。这些不是“再试一次就能好”的错误，重试只会浪费钱。</li>
+        <li><strong>普通 provider 错误</strong>：按退避重试。网络抖动、限流属于这一类。</li>
+        <li><strong>轮后压缩失败</strong>：只记警告，已经完成的那一轮照样保留。因为压缩是“为下一轮做准备”，这一轮的工作不该被回滚。</li>
+        <li><strong>后台 / 投机压缩失败</strong>：直接丢弃结果，但已经发生的 token 仍然计费。</li>
+      </ul>
+      <p>这四类可以在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L338-L388">compact.rs#L338-L388</a> 与 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/async_compaction.rs#L125-L140">async_compaction.rs#L125-L140</a> 看到。<span class="tag tag--ok">已核实</span></p>
+      <p><strong>为什么“取消”不能重试。</strong>取消是用户的意图，不是系统的故障。把取消当失败重试，会让用户按了停止却停不下来。这也是为什么“区分取消与失败”在恢复设计里不是文案问题，而是语义问题。</p>
+
+      <h3 id="codex-no-breaker">2.4 熔断：Codex 这一版没有</h3>
+      <p>本快照里，Codex 没有会话级的“连续失败熔断”。每次请求到线，它仍会尝试压缩；压缩失败、删最旧、再失败，直到只剩一条才报错。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-14-1" id="fnref-main-14-1">1</a></sup></p>
+      <p>没有熔断的直接后果是：如果某条历史注定压不动，用户每一轮都会再付一次压缩请求的钱，再等一次超时。代价不在 token 上，在<strong>延迟和可预期性</strong>上——用户不知道要等多久，也不知道等完会不会好。</p>
+      <p>有熔断的实现（Claude Code 连续 3 次）把“注定失败”变成“立刻告诉用户”。代价是熔断后即使环境已经变化（比如换了模型、删了大文件），本会话也不会再自动尝试，必须手动 <code>/compact</code> 或开新会话。这是“少花钱”与“不错过恢复机会”的取舍。</p>
+
+      <h3 id="codex-consistency">2.5 一致性：内存换了，检查点也要写</h3>
+      <p>压缩成功后，Codex 先从空历史重建：放回选中的用户消息，最后放摘要；然后 <code>replace_compacted_history</code> 把重建后的历史装回内存，并向 rollout 追加一条 <code>CompactedItem</code> 检查点。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/mod.rs#L4321-L4356">session/mod.rs#L4321-L4356</a> <span class="tag tag--ok">已核实</span> 源码还强调：压缩流中途的条目改成“成功后一次性提交”，避免半提交。</p>
+      <p><strong>为什么顺序不能反。</strong>模型下一步只读内存；检查点是为了“以后还能恢复”。如果先写检查点、再换内存，中途崩溃就会出现“磁盘上已经压缩、内存里还是旧历史”的短暂不一致。反过来，先换内存、再写检查点，崩溃时最多是“内存前进了一步、磁盘还没记”，可以用下一条检查点兜住。<strong>代价</strong>是这套操作必须尽量原子：压缩流失败时不能提交一半，否则检查点和内存会对不上。</p>
+
+      <div class="hf hf--qa">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <div class="hf__body">
+          <p class="hf__q">问：删最旧一条之后，为什么“重置重试计数”？那不是会无限重试吗？</p>
+          <p class="hf__a">答：重置的是“这一次压缩内部的重试计数”，因为每次重试的输入已经变小了，不该沿用上一次的失败次数。它仍然受“只剩一条就报错”的终止条件约束，所以不会无限。真正可能无限的是外层：下一轮请求又超窗，又触发一次新的压缩。这就是需要熔断的地方。</p>
+        </div>
+      </div>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>溢出有主动（估算到线）和被动（服务端拒绝）两种信号，前者省一次失败，后者更可靠。</li>
+            <li>重试前必须改变输入：Codex 删最旧一条，既缩小输入又尽量保住缓存前缀。</li>
+            <li>取消、中断、预算耗尽不重试；只有“再试可能好”的错误才退避重试。</li>
+            <li>本快照没有会话级熔断，注定失败的压缩会被反复触发，代价是延迟与可预期性。</li>
+            <li>内存替换与检查点写入要尽量原子，失败不能半提交。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 03 恢复路径 ========== -->
+    <section id="recovery-path">
+      <p class="sec-no">03 · 恢复路径</p>
+      <h2>五个决策，三种绝境</h2>
+      <p>把各家实现放在一条时间线上，一次恢复要连续做五个决策。任何一个决策做错，后面的重试都只是把错误放大。</p>
+      <ol>
+        <li><strong>识别</strong>：这是溢出，还是限流、超时、载荷过大？误判会把“重发必失败”的错误当成“等一下就好”。</li>
+        <li><strong>缩小</strong>：删最旧、砍整组、降预算、剥图，还是换一个更大的窗口模型？</li>
+        <li><strong>重试</strong>：同模型重发，还是换模型？重试几次？每次之间等多久？</li>
+        <li><strong>放弃</strong>：第几次之后停？停了之后本会话还允不允许再自动压缩？</li>
+        <li><strong>收尾</strong>：内存、日志、文件、工具副作用，哪些要回滚，哪些要保留？</li>
+      </ol>
+
+      <figure class="fig" id="fig-recovery-fsm">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-fsm-title fig-fsm-desc">
+          <title id="fig-fsm-title">上下文溢出后的恢复状态机</title>
+          <desc id="fig-fsm-desc">正常状态在用量到阈值后进入接近阈值，再触发压缩。压缩成功且低于水位则恢复；压缩失败或超窗则进入缩小重试。仍有可删内容时回到压缩，否则进入熔断或停止。恢复后下一轮回到正常。虚线表示需要用户介入。</desc>
+          <defs>
+            <marker id="sm-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="sm-arrow" d="M0 0 L10 5 L0 10 z"/>
+            </marker>
+            <marker id="sm-u" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="sm-arrow--user" d="M0 0 L10 5 L0 10 z"/>
+            </marker>
+          </defs>
+
+          <rect class="sm-box sm-box--ok" x="18" y="30" width="126" height="48" rx="8"/>
+          <text class="sm-title" x="81" y="51" text-anchor="middle">正常</text>
+          <text class="sm-sub" x="81" y="69" text-anchor="middle">低于阈值</text>
+
+          <rect class="sm-box sm-box--warn" x="186" y="30" width="126" height="48" rx="8"/>
+          <text class="sm-title" x="249" y="51" text-anchor="middle">接近阈值</text>
+          <text class="sm-sub" x="249" y="69" text-anchor="middle">估算或实测到线</text>
+
+          <rect class="sm-box" x="354" y="30" width="126" height="48" rx="8"/>
+          <text class="sm-title" x="417" y="51" text-anchor="middle">压缩中</text>
+          <text class="sm-sub" x="417" y="69" text-anchor="middle">独立请求，工具为空</text>
+
+          <rect class="sm-box sm-box--ok" x="522" y="30" width="100" height="48" rx="8"/>
+          <text class="sm-title" x="572" y="51" text-anchor="middle">已恢复</text>
+          <text class="sm-sub" x="572" y="69" text-anchor="middle">低于水位</text>
+
+          <rect class="sm-box sm-box--warn" x="354" y="142" width="126" height="48" rx="8"/>
+          <text class="sm-title" x="417" y="163" text-anchor="middle">缩小重试</text>
+          <text class="sm-sub" x="417" y="181" text-anchor="middle">删最旧 / 降预算</text>
+
+          <rect class="sm-box sm-box--bad" x="170" y="232" width="180" height="48" rx="8"/>
+          <text class="sm-title" x="260" y="253" text-anchor="middle">熔断 / 停止</text>
+          <text class="sm-sub" x="260" y="271" text-anchor="middle">显式报错，交还用户</text>
+
+          <line class="sm-line" x1="144" y1="54" x2="182" y2="54" marker-end="url(#sm-a)"/>
+          <text class="sm-edge" x="163" y="46" text-anchor="middle">到线</text>
+          <line class="sm-line" x1="312" y1="54" x2="350" y2="54" marker-end="url(#sm-a)"/>
+          <text class="sm-edge" x="331" y="46" text-anchor="middle">触发</text>
+          <line class="sm-line" x1="480" y1="54" x2="518" y2="54" marker-end="url(#sm-a)"/>
+          <text class="sm-edge" x="499" y="46" text-anchor="middle">成功</text>
+
+          <line class="sm-line" x1="405" y1="78" x2="405" y2="138" marker-end="url(#sm-a)"/>
+          <line class="sm-line" x1="440" y1="142" x2="440" y2="82" marker-end="url(#sm-a)"/>
+
+          <line class="sm-line" x1="390" y1="190" x2="320" y2="228" marker-end="url(#sm-a)"/>
+          <text class="sm-edge" x="336" y="206" text-anchor="middle">无可删 / 连续失败</text>
+
+          <path class="sm-line" d="M572 30 L572 12 L81 12 L81 30" marker-end="url(#sm-a)"/>
+          <text class="sm-edge" x="326" y="26" text-anchor="middle">下一轮（自动）</text>
+
+          <path class="sm-line--user" d="M81 78 L81 226 L166 250" marker-end="url(#sm-u)"/>
+          <text class="sm-edge" x="108" y="200">不可恢复的溢出</text>
+        </svg>
+        <figcaption>图 14-1　溢出恢复的状态机。实线是自动路径，虚线是“需要用户或外层介入”的路径。注意两个停止条件：压缩后仍高于水位（缩小重试），以及无可删内容或连续失败（熔断）。</figcaption>
+      </figure>
+
+      <h3 id="uncompactable">3.1 无法再压缩的三种情况</h3>
+      <p>“压缩失败”不等于“无法压缩”。前者是这一次调用出错，后者是结构上再怎么压也装不下。后者必须被单独识别，否则会陷入“失败—重试—再失败”的循环。各家文档里反复出现的，是下面三种<sup class="fn-ref"><a href="#fn-main-14-4" id="fnref-main-14-4">4</a></sup>。</p>
+
+      <p><strong>第一种：固定前缀本身就超窗。</strong>系统提示词、工具定义、规则文件、输出预留加起来已经接近或超过窗口。压缩只替换对话历史，动不了这些固定开销。Grok Build 明确把“系统提示词 + 工具定义逼近窗口”列为压缩无能为力的情况；dsh 的限制清单第一条也是“系统提示词 / 工具 / 会话前缀本身逼近窗口”。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/README.md#L235-L246">compaction-basic/README.md#L235-L246</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>怎么识别</strong>：把历史清空、只发固定前缀，仍然超窗；或者压缩后总量几乎没降。<strong>还能做什么</strong>：减少工具数量、把大工具表改成按需加载、缩短规则文件、换更大窗口的模型。这些都不是压缩能解决的，应该直接报给用户，而不是继续重试。</p>
+
+      <p><strong>第二种：单个不可分割的单元超窗。</strong>一条 80k 的工具结果、一条超长的用户消息，或者一个无法再拆的工具单元。压缩的切点只能落在消息边界上，不能把一条消息切成两半（切了也不再是原来的工具结果）。Grok Build 的 full-replace 明确不能拆单元；dsh 把“单个不可分割的非工具节点”和“工具单元里不可裁剪的剩余部分”分别列为两条限制。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/README.md#L243-L246">compaction-basic/README.md#L243-L246</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>怎么识别</strong>：删到只剩这一条时仍超窗；或者切点算法反复回到同一个位置。<strong>还能做什么</strong>：在进入上下文之前就截断或落盘（第 6 章），把原文留在文件里；把这条消息拆成多条再发；或者直接放弃这一轮，让用户决定。<span class="tag tag--guess">推断</span></p>
+
+      <p><strong>第三种：压缩本身不可用或不可完成。</strong>没有配置摘要模型；删到只剩一条后压缩请求仍超窗；摘要输出被 <code>maxTokens</code> 截断（隐藏推理吃掉了预算）；或者压缩锁没有释放，后续请求全被挡住。dsh 把“没有可用模型写摘要且还没有任何已路由请求”列为第四条限制；opencode v1 在压缩自身再溢出时直接 <code>stop</code>，没有第二次兜底。</p>
+      <p><strong>怎么识别</strong>：错误发生在压缩请求内部，而不是主请求；日志里有“summary”“max tokens”“busy/lock”一类字样。<strong>还能做什么</strong>：换一个便宜的摘要模型；给摘要请求单独设更大的输出预算；清理孤儿锁；或者退回“不压缩、只裁剪”的路径（第 7 章）。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">别把三种绝境混成一种</p>
+        <p>固定前缀超窗要“减固定开销”，单元超窗要“在进入上下文前处理”，压缩不可用要“修压缩链路”。三者对应的动作完全不同。把它们都归成“压缩失败，重试三次”，就是把一个结构问题当成一次网络抖动。</p>
+      </div>
+
+      <h3 id="breaker">3.2 熔断：连续几次之后该停</h3>
+      <p>Claude Code 的选择是连续 3 次自动压缩失败后熔断，本会话不再尝试。<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code>，<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L257-L350">autoCompact.ts#L257-L350</a> <span class="tag tag--src">源码 v2.1.88</span> 另外还有递归保护：当请求来源是 <code>compact</code> 或 <code>session_memory</code> 时，禁止再触发自动压缩，避免“压缩请求触发压缩”的套娃。</p>
+      <p><strong>为什么是 3 而不是 1。</strong>1 次太脆：一次网络抖动、一次临时限流就会让整个会话失去自动恢复能力。3 次能过滤掉瞬时错误，又不会让用户在注定失败的循环里等太久。<strong>代价</strong>是第 3 次仍然要付钱；如果前两次是瞬时错误、第三次是真正的结构问题，这三次都是白花的。</p>
+      <p>不同工具的“停”法不一样：</p>
+      <ul>
+        <li><strong>计数熔断</strong>：Claude Code 连续 3 次失败后停，本会话不再自动压缩。</li>
+        <li><strong>次数上限</strong>：pi 的溢出恢复只允许一次 compact-and-retry，第二次直接报 “recovery failed after one compact-and-retry attempt”。</li>
+        <li><strong>进度守卫</strong>：omp 要求压缩后必须降到阈值的约 80% 以下才允许续跑；否则尝试本地救援，仍不行就告警并阻止自动续跑。</li>
+        <li><strong>分类抑制</strong>：Grok Build 把失败分成 size / auth / credit / schema / other；size 与 schema 是粘性抑制，只有上下文预算变化才解除，credit 等到一次成功响应才解除。</li>
+        <li><strong>直接停</strong>：opencode v1 压缩自身再溢出就 <code>stop</code>，没有第二次兜底；自动压缩关闭时溢出也直接报错。</li>
+      </ul>
+
+      <h3 id="consistency">3.3 恢复之后：五个一致性检查</h3>
+      <p>压缩成功不等于恢复完成。恢复的目标是“模型看到的历史、磁盘上的日志、实际的文件系统”三者一致。至少要检查五件事。</p>
+      <ol>
+        <li><strong>内存与检查点同一次提交。</strong>Codex 先换内存、再写 <code>CompactedItem</code>；pi 在摘要失败时直接抛错、不写检查点；dsh 只有在 <code>replaceGeneration</code> 前进时才返回重试。<span class="tag tag--ok">已核实</span> 反过来做，就会出现“日志说压了、内存还是旧的”。</li>
+        <li><strong>工具调用与结果成对。</strong>失败那一轮的 assistant 消息和它的全部工具结果要一起省略，不能留下孤立的结果。pi 的 <code>context_edit</code> 就是先省略“失败的 assistant + 配对结果”，再走压缩。<span class="tag tag--ok">已核实</span></li>
+        <li><strong>文件版本。</strong>摘要是压缩那一刻的快照，磁盘可能已经变了。Claude Code 压缩后会重附最近文件，这可能把旧版本内容带回上下文<span class="tag tag--guess">推断</span>；恢复后应重读，而不是信任摘要里的代码。<span class="tag tag--src">源码 v2.1.88</span></li>
+        <li><strong>副作用不重放。</strong>工具可能已经写了文件、发了请求。重试的应该只是模型调用，不是已经成功的工具。这一点各家没有统一文档，实现上通常靠“只重发模型请求”保证。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-14-2" id="fnref-main-14-2">2</a></sup></li>
+        <li><strong>计数与预算。</strong>删最旧后 Codex 重置重试计数；熔断计数应该在成功后清零，否则一次早期失败会永久缩短本会话的恢复能力。清零时机在源码里没有统一约定，需要按实现核对。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-14-3" id="fnref-main-14-3">3</a></sup></li>
+      </ol>
+      <p>还有一个容易被忽略的收尾：<strong>告诉用户发生了什么</strong>。压缩成功、压缩失败、取消、熔断，是四种不同的结果。用户需要知道“你的历史被换成了摘要”“这次没压成功，但任务继续”“已停止自动压缩，请手动处理”。静默的成功和静默的失败一样危险：前者让人以为什么都没丢，后者让人以为还在处理。</p>
+    </section>
+
+    <!-- ========== 04 工具弹窗 ========== -->
+    <section id="tools">
+      <p class="sec-no">04 · 七个工具</p>
+      <h2>同一场溢出，七种收场</h2>
+      <p>Codex 已经在主线里拆过。剩下七个工具可以按“第一次失败之后做什么”分成三派：<strong>删了再试</strong>（Codex、Claude Code、pi、dsh）、<strong>换条路再试</strong>（omp 先换模型、opencode v2 三级收缩、Grok 分类抑制）、<strong>试一次就停</strong>（opencode v1）。分野不在“重试几次”，而在“每次重试改变了什么”。</p>
+      <div class="tool-grid">
+        <button class="tool-btn" type="button" data-modal="claude-code">
+          <span class="tool-btn__name">Claude Code</span>
+          <span class="tool-btn__id">claude-code</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="pi">
+          <span class="tool-btn__name">pi</span>
+          <span class="tool-btn__id">pi</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="omp">
+          <span class="tool-btn__name">oh-my-pi</span>
+          <span class="tool-btn__id">omp</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v1">
+          <span class="tool-btn__name">opencode v1</span>
+          <span class="tool-btn__id">opencode-v1</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v2">
+          <span class="tool-btn__name">opencode v2</span>
+          <span class="tool-btn__id">opencode-v2</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="grok-build">
+          <span class="tool-btn__name">Grok Build</span>
+          <span class="tool-btn__id">grok-build</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="dsh">
+          <span class="tool-btn__name">DeepSeek Harness</span>
+          <span class="tool-btn__id">dsh</span>
+        </button>
+      </div>
+      <p class="small muted">键盘：<kbd>Esc</kbd> 关闭；<kbd>Tab</kbd> 在弹窗内循环。Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本。</p>
+    </section>
+
+    <!-- ========== 05 对比表 ========== -->
+    <section id="matrix">
+      <p class="sec-no">05 · 八工具对比</p>
+      <h2>把“失败之后”排成一张表</h2>
+      <p>先看第二列“溢出识别”：它决定恢复是主动还是被动。第三列是核心，看每次重试<strong>改变了什么</strong>——删消息、砍整组、降预算、换模型，还是只改等待时间。第四列决定什么时候停。最后一列是停下来之后，用户看到什么。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">溢出识别</th>
+              <th scope="col">压缩请求超窗怎么办</th>
+              <th scope="col">熔断 / 抑制</th>
+              <th scope="col">无法恢复时</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex<span>codex</span></th>
+              <td>95% 整段线 + 90% 范围线；服务端 <code>ContextWindowExceeded</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>删最旧一条、重置重试计数再试；只剩一条则标记满并报错。<span class="tag tag--ok">已核实</span></td>
+              <td>本快照无会话级熔断；后台压缩失败只丢结果。<span class="tag tag--guess">推断</span></td>
+              <td>返回错误，历史保留到最后一个检查点。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>有效窗口 −13k 自动触发；413 / prompt-too-long 被动触发。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>按 API 轮次分组砍最旧一组，最多 3 次（<code>MAX_PTL_RETRIES</code>）。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>连续 3 次自动压缩失败熔断；压缩请求内部禁止再触发压缩。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>熔断后本会话不再自动压缩，需手动 <code>/compact</code> 或新会话。<span class="tag tag--src">源码 v2.1.88</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>provider 溢出或可恢复的 <code>length</code> 停止。<span class="tag tag--ok">已核实</span></td>
+              <td>先省略失败的 assistant 与配对结果，再压缩；只允许一次 compact-and-retry。<span class="tag tag--ok">已核实</span></td>
+              <td>第二次溢出直接报 “recovery failed”；摘要失败不写检查点。<span class="tag tag--ok">已核实</span></td>
+              <td>抛错；已发生的编辑保留，但不追加压缩。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>溢出、输出未完成、413；413 需确证 token 溢出才压缩。<span class="tag tag--ok">已核实</span></td>
+              <td>先跳过 <code>handoff</code> 走 overflow 压缩链；失败后本地救援（更小帧、elide、丢图）。<span class="tag tag--ok">已核实</span></td>
+              <td>压缩后必须降到阈值约 80% 以下；输出未完成连续恢复上限 3 次。<span class="tag tag--ok">已核实</span></td>
+              <td>告警并阻止自动续跑，避免在同一段超大上下文上空转。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td><code>ContextOverflowError</code> 不重试，转压缩信号；自动压缩关闭则直接报错。<span class="tag tag--ok">已核实</span></td>
+              <td>压缩自身再溢出则写 “Session too large to compact…” 并 <code>stop</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>无第二次兜底；普通错误最多重试 5 次，退避 2s 起。<span class="tag tag--ok">已核实</span></td>
+              <td>停止并置 idle，用户需换会话或处理超长内容。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>仅当“还没产出任何输出”时触发 overflow 压缩；每步一次。<span class="tag tag--ok">已核实</span></td>
+              <td>压缩内按 0.7 / 0.5 / 0.35 三级收缩预算，最后 <code>compaction.failed</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>普通重试最多 10 次；输出截断续跑最多 2 次；不完整流 1 次。<span class="tag tag--ok">已核实</span></td>
+              <td>发 <code>compaction.failed</code>；压缩失败也计费。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>preflight 估算 + 采样报错文本启发式（4 类 slug、3 种 413 拼写）。<span class="tag tag--ok">已核实</span></td>
+              <td>压缩重试 3 次 / 间隔 3s / 超时 120s；确定性错误不原样重发。<span class="tag tag--ok">已核实</span></td>
+              <td>size / schema 粘性抑制，credit 到成功为止，other 本回合抑制。<span class="tag tag--ok">已核实</span></td>
+              <td>报错并引导 <code>/compact</code> 或换模型；取消有独立文案。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>只认规范化后的 <code>CONTEXT_WINDOW_EXCEEDED</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>先跑可选 pruner，再选最大的平衡头部区间压缩；<code>maxOverflowRetries</code> 默认 1。<span class="tag tag--ok">已核实</span></td>
+              <td>只有 <code>replaceGeneration</code> 前进才返回重试；否则原样抛错。<span class="tag tag--ok">已核实</span></td>
+              <td>替换前失败则告警并带超预算历史继续；pruner 已落地则从裁剪后继续。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗与事实卡片里。</p>
+    </section>
+
+    <!-- ========== 06 取舍 ========== -->
+    <section id="tradeoffs">
+      <p class="sec-no">06 · 设计取舍</p>
+      <h2>为什么有人只试一次，有人试十次</h2>
+      <p>恢复策略的分歧，本质上是对“失败原因”的不同假设。假设是“网络抖动”，就会多试几次；假设是“结构上装不下”，就会尽快停。下面五组取舍，对应五种假设。</p>
+
+      <h3>取舍一：重试次数多，还是少</h3>
+      <p><strong>多试派</strong>：opencode v2 普通重试最多 10 次，omp 的通用重试也是 10 次（退避 500→8000ms），pi 沿用 3 次。<strong>少试派</strong>：opencode v1 普通错误最多 5 次，Grok 压缩只试 3 次，pi 的溢出恢复只有 1 次。</p>
+      <p><strong>代价</strong>：多试能扛住限流和抖动，但每次重试都要再发一遍历史，成本和延迟线性增长；少试省钱、反馈快，但一次瞬时错误就可能让本可以完成的任务失败。关键不是次数，而是<strong>每次重试是否改变了输入或环境</strong>：不改变的，多试一次就是多花一次钱。</p>
+
+      <h3>取舍二：删最旧一条，还是砍整组 / 整轮</h3>
+      <p><strong>逐条派</strong>：Codex 删最旧一条，理由是保住前缀缓存、不影响最近消息。<strong>整组派</strong>：Claude Code 按 API 轮次分组，砍掉最旧的一组；dsh 选“最大的、平衡的头部区间”；pi 省略失败的 assistant 与配对结果。</p>
+      <p><strong>代价</strong>：逐条删粒度细，能刚好卡在“装得下”的位置，但可能留下半组工具调用（如果删的那条正好是调用或结果）；整组删保证语义完整，但一次可能删掉很多还有用的内容，压缩后剩余空间忽大忽小。多数实现选择整组，是因为“历史合法”比“少删一点”更重要。</p>
+
+      <h3>取舍三：先换模型，还是先压缩</h3>
+      <p><strong>先换模型</strong>：omp 在溢出或输出未完成时，如果配置了更大窗口的同族模型，先切模型重试，不压缩。<strong>先压缩</strong>：Codex、Claude Code、pi、dsh 都是先压缩，压缩不动才考虑别的。<strong>先裁剪</strong>：dsh 在压缩前先跑可选 pruner，pi 先把失败的那一组省略。</p>
+      <p><strong>代价</strong>：换模型最快、信息损失最小，但更贵，而且行为会漂移——同一个任务换模型后可能给出不同风格的修改；先压缩省钱，但会丢细节；先裁剪最便宜，但只能省一部分。omp 的顺序（换模型 → 压缩 → 本地救援）是“用钱换信息”，Codex 的顺序是“用信息换钱”。</p>
+
+      <h3>取舍四：熔断，还是一直试</h3>
+      <p><strong>熔断派</strong>：Claude Code 连续 3 次失败后停；pi 第二次溢出直接报错；opencode v1 压缩再溢出就停。<strong>一直试派</strong>：Codex 本快照没有会话级熔断，每次到线都会再试；Grok 用分类抑制而不是计数熔断，size / schema 类错误只有预算变化才解除。</p>
+      <p><strong>代价</strong>：熔断让用户快速看到“这条路走不通”，但可能在环境已经变化（换了模型、删了大文件）后仍然拒绝尝试；一直试不会错过恢复机会，但会在注定失败的循环里反复烧钱、拖长等待。分类抑制是中间路线：不是“失败太多次”，而是“这类失败重试也没用”。</p>
+
+      <h3>取舍五：失败后继续跑，还是立即停</h3>
+      <p><strong>继续派</strong>：dsh 在“替换之前失败”时记 warning，带着完整超预算历史继续，不阻断用户请求；omp 在压缩后仍高于水位时尝试本地救援，救援失败才阻止续跑。<strong>立即停派</strong>：opencode v1 压缩失败直接 <code>stop</code>；Grok 重试 3 次仍失败就报错。</p>
+      <p><strong>代价</strong>：继续跑可能让用户把这一轮做完，但下一次请求大概率还会溢出，等于把失败推迟一轮；立即停让用户马上知道，但可能打断一个其实只差一次工具调用就能完成的任务。判断标准是“剩下的工作是否还需要模型调用”：如果这一轮已经是最后一次，继续跑是划算的；如果后面还有十轮，继续跑只是把问题延后。</p>
+
+      <p>还有一组横切的取舍：<strong>失败时保留已落地的裁剪，还是全部回滚</strong>。dsh 在 pruner 已落地但摘要失败时，从裁剪后的 surface 继续，不丢弃已经获得的削减；pi 的摘要失败则不写检查点。前者省一次重复劳动，后者保证“要么全成、要么全不动”。选哪个，取决于裁剪是否可逆、以及用户能否接受“历史已经变短但没有摘要”。</p>
+    </section>
+
+    <!-- ========== 07 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">07 · 小测验</p>
+      <h2>三道题，检验你会不会收场</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">压缩请求自己超窗。为什么“删最旧一条”比“删最新一条”好？如果删到只剩一条仍然超窗，Codex 会怎么做？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>删最旧一条既缩小了输入，又尽量保住基于前缀的缓存，同时不影响最近消息——最近消息通常包含这一轮要做什么、刚改了什么。删最新会丢掉当前任务指令，即使压缩成功，模型也不知道下一步。删到只剩一条仍超窗时，Codex 不再重试，把总用量标记为“满”并返回错误，因为输入已经不可再缩小。见<a href="#codex-shrink">2.2 缩小</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">Claude Code 连续 3 次自动压缩失败后熔断。第 4 次如果其实能成功，会怎样？这个设计省下了什么，又牺牲了什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>本会话不会再自动尝试第 4 次，即使它本可以成功；用户必须手动 <code>/compact</code> 或开新会话。省下的是“每次请求都打一次注定失败的压缩”的钱和等待，也避免用户在无限循环里以为程序还在工作；牺牲的是“环境已经变化后自动恢复”的机会。代价由用户承担：他要知道有这个手动入口。见<a href="#breaker">3.2 熔断</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">说出三种“无法再压缩”的情况，并为每种给出一个和“继续重试压缩”不同的动作。</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>一，固定前缀（系统提示 + 工具 + 规则 + 输出预留）本身超窗：应减少工具、按需加载、缩短规则或换更大窗口的模型，压缩动不了前缀。二，单个不可分割单元超窗（一条巨型工具结果或超长消息）：应在进入上下文前截断或落盘，或把消息拆开，切点无法把它切成两半。三，压缩本身不可用或不可完成（无摘要模型、摘要请求仍超窗、摘要被 maxTokens 截断、锁未释放）：应换摘要模型、单独给摘要输出预算、清理孤儿锁，或退回只裁剪的路径。见<a href="#uncompactable">3.1 无法再压缩的三种情况</a>。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-main-14-1">
+          事实卡片把“本快照未见会话级连续失败熔断”标为【推断】：已检索 <code>compact.rs</code>、<code>session/mod.rs</code> 与 <code>async_compaction.rs</code> 的失败分支，只看到单次压缩内部的重试与终止条件，没有找到跨轮次的失败计数。缺少对宿主层（TUI / app-server）的穷举，因此不能排除外层自己实现了熔断。
+          <a class="footnotes__back" href="#fnref-main-14-1">↩</a>
+        </li>
+        <li id="fn-main-14-2">
+          “重试只重发模型调用、不重放已完成的工具”是根据恢复流程推断的：已核对 pi 的 <code>context_edit</code> 与 Codex 的删最旧重试，二者都只改历史、不重新执行工具；但没有找到明确文档承诺“工具副作用至多一次”。若宿主在重试前重新跑工具，可能出现重复写文件。
+          <a class="footnotes__back" href="#fnref-main-14-2">↩</a>
+        </li>
+        <li id="fn-main-14-3">
+          熔断计数在何时清零，源码只显示了“失败累加”与“成功后停止自动压缩”的分支，未找到显式的“成功即清零”语句。已检查 <code>autoCompact.ts</code> 的计数读写，缺少跨会话恢复场景的验证。因此正文按“应当清零、实现需核对”表述，不把它当作已核实行为。
+          <a class="footnotes__back" href="#fnref-main-14-3">↩</a>
+        </li>
+        <li id="fn-main-14-4">
+          “三种情况”是本教程对 Grok Build 第 14 节与 dsh 第 14 节限制清单的归纳，不是原文的三分法。已核对 dsh 的 <code>compaction-basic/README.md#L235-L246</code>（不可分割单元、前缀超窗、摘要截断）；Grok 卡片给出了“full-replace 不能拆单元、系统提示 + 工具逼近窗口时压缩无能为力”的描述，但其 §14 的 permalink 指向溢出判定与错误分类，没有一条直接对应这段限制清单。因此正文的“三种”按归纳表述，引用分别落在能落到源码或文档的部分。
+          <a class="footnotes__back" href="#fnref-main-14-4">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：<a href="main-15.html">扩展点：hooks 与插件</a>。</p>
+
+  </article>
+</main>
+
+<!-- ========== 弹窗 ========== -->
+<div class="modal" id="modal-claude-code" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">两条恢复路径。主动路径是 autocompact；被动路径是 reactive compact：API 返回 413 / prompt-too-long 时先把错误扣住，压缩成功后用 <code>reactive_compact_retry</code> 重试本轮，每轮只允许一次。压缩请求自身超窗时，按 API 轮次分组砍掉最旧一组，最多 3 次。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd><code>MAX_PTL_RETRIES = 3</code>；<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code>；reactive compact 每轮 1 次；输出上限 8,000 被截断时升级到 64,000 重试一次。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dt>设计意图</dt>
+        <dd>被动路径把“失败”变成“一次内部重试”，用户看不到 413；熔断避免每次请求都打一次注定失败的压缩。代价是每轮只能被动恢复一次，且熔断后需要手动介入。递归保护（压缩请求内部禁止再压缩）防止套娃。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L257-L350">autoCompact.ts#L257-L350</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/query.ts#L1150-L1183">query.ts#L1150-L1183</a></dd>
+      </dl>
+      <p class="modal__note">官方文档只描述“溢出时压缩并重试”，没有给次数；源码更细。结论只代表非官方 v2.1.88 源码。<span class="tag tag--both">两者一致</span></p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pi" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · pi</p>
+        <h2 class="modal__title" id="modal-pi-title">pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">溢出时先做一次 <code>context_edit</code>：把失败的 assistant 与配对的工具结果一起省略，再跑 <code>autoCompaction("overflow")</code>。整个会话只允许一次 compact-and-retry，第二次溢出直接报 “recovery failed after one compact-and-retry attempt”。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>溢出恢复 1 次（<code>_overflowRecoveryAttempted</code>）；摘要重试沿用 <code>maxRetries = 3</code>；摘要失败（error / length / 尝试调工具）直接抛错，不写检查点。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>先省略失败那一组，保证重试时历史里没有孤立工具结果；只给一次机会，避免在同一条超长历史上反复烧钱。代价是遇到瞬时错误也只剩一次机会，且没有本地救援层。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/agent-session.ts#L3007-L3077">agent-session.ts#L3007-L3077</a>、<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L585-L593">compaction.ts#L585-L593</a></dd>
+      </dl>
+      <p class="modal__note">用户或扩展取消时保留已发生的编辑，但不追加 compaction；手动压缩会先 abort 当前回合，成功后不续跑被打断的那一轮。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-omp" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · omp</p>
+        <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">恢复顺序是“先升级模型，再压缩”：溢出或输出未完成时，若配置了更大窗口的同族模型，先切模型重试，不压缩。必须压缩时跳过 <code>handoff</code>，走 overflow 方法链，成功后 <code>agent.continue()</code>。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>恢复带宽 <code>COMPACTION_RECOVERY_BAND = 0.8</code>；输出未完成连续恢复上限 3 次；载荷拒绝需确证 token 溢出才压缩，本地估算有 ≥10% 余量时只告警；通用重试 10 次，退避 500→8000ms。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>“进度守卫”要求压缩后必须降到阈值 80% 以下才允许续跑，否则先本地救援（更小帧、elide 到 artifact、丢图），仍不行就阻止自动续跑。代价是逻辑复杂，且换模型会让行为漂移。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L328-L328">session-maintenance.ts#L328</a>、<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/docs/compaction.md#L113-L150">compaction.md#L113-L150</a></dd>
+      </dl>
+      <p class="modal__note">413 不会被自动当成 token 溢出；这是为了避免“把网关的载荷限制误判成上下文超限”，代价是判断多一步。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v1" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">普通错误最多重试 5 次，退避 2s 起、带抖动；<code>ContextOverflowError</code> 不重试，转成压缩信号。自动压缩关闭时溢出直接报错并置 idle。压缩自身再溢出则写 “Session too large to compact…” 并 <code>stop</code>。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd><code>RETRY_MAX_RETRIES = 5</code>、初始 2000ms、因子 2、抖动 0.25、无 <code>retry-after</code> 时单次上限 30s；<code>DOOM_LOOP_THRESHOLD = 3</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>它把“压缩失败”当成终局，而不是再试一次：没有再收缩预算、没有第二次兜底。实现简单、行为可预期，代价是用户更早看到失败，长任务更容易中断。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/retry.ts#L26-L31">session/retry.ts#L26-L31</a>、<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L450-L459">session/compaction.ts#L450-L459</a></dd>
+      </dl>
+      <p class="modal__note">连续 3 次相同工具 + 相同输入会触发 <code>doom_loop</code> 权限询问（默认 ask），这是另一条防循环机制，和压缩熔断不是一回事。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v2" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">溢出只在“还没产出任何输出”时触发 <code>compact({reason:"overflow"})</code>，每步一次；成功则新建 assistant 消息、重建上下文重发。压缩内部有自己的预算收缩阶梯：0.7 → 0.5 → 0.35，最后发 <code>compaction.failed</code>。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>普通重试最多 10 次、单次间隔上限 10s、<code>retry-after</code> 夹到 ≤15 分钟、超时类 3 次；输出截断续跑最多 2 次（第 3 次 <code>output-limit</code>）；不完整流续跑 1 次。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>三级收缩是“在不换模型的前提下，反复把预算调小再试”，比一次失败就停更有韧性；代价是每次收缩都要重发历史，最坏情况要付三次压缩成本。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/runner/llm.ts#L265-L271">runner/llm.ts#L265-L271</a>、<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L403-L455">compaction.ts#L403-L455</a></dd>
+      </dl>
+      <p class="modal__note">v2 是 beta（<code>v2.0.29</code>）；压缩失败与中断也计费，评估成本时不要漏掉 <code>UsageRecorded source:"compaction"</code>。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-grok-build" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">三条恢复路径，按代价从低到高：preflight 估算已超窗就先压缩；采样报上下文超限时识别错误文本，判定为确定性错误、不原样重发，转压缩后重发；压缩本身失败则按 Size / Auth / CreditBlock / Schema / Other 分类抑制。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>压缩重试 3 次 / 间隔 3s / 超时 120s；size、schema 为粘性抑制，只有上下文预算变化才解除；credit 等到一次成功响应；取消有独立文案 <code>compact cancelled</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>它不靠“失败次数”熔断，而靠“失败类型”抑制：重试也没用的错误立刻停，可能恢复的错误继续试。代价是分类依赖错误文本启发式，provider 改文案就可能失配。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/compaction.rs#L461-L480">compaction.rs#L461-L480</a>、<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/common/xai-grok-compaction/src/code_compaction/failure.rs#L6-L59">failure.rs#L6-L59</a></dd>
+      </dl>
+      <p class="modal__note">full-replace 无法拆分单个不可分割单元；系统提示 + 工具定义逼近窗口时，压缩也无能为力。这两种情况应尽早报给用户。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-dsh" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">溢出只认一种信号：适配器把 provider 的上下文超限规范化成 <code>CONTEXT_WINDOW_EXCEEDED</code>。接住后跳过常规阈值与保留策略，先跑可选 pruner，再选一个“最大的、平衡的头部区间”压缩；只有当 surface 的 <code>replaceGeneration</code> 前进时才返回重试。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd><code>maxOverflowRetries</code> 默认 1（<code>0</code> 只关闭恢复）；替换前失败 → 记 warning，带完整超预算历史继续；pruner 已落地但摘要失败 → 从已落地的 pruned surface 继续；手动错误码 <code>busy / cancelled / changed / summary / commit / persistence</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd><code>replaceGeneration</code> 是“这次重试到底有没有改变投影”的证据：没前进就原样抛错，避免无意义重试。代价是要求 surface 维护版本号，恢复路径与投影实现强耦合。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/src/index.ts#L186-L234">compaction-basic/src/index.ts#L186-L234</a>、<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/compaction.md#L86-L99">compaction.md#L86-L99</a></dd>
+      </dl>
+      <p class="modal__note">未配对的 <code>compaction/start</code> 会被当成孤儿锁，阻塞后续压缩；这是“恢复失败”之外的另一类卡死，排查时先看锁。</p>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

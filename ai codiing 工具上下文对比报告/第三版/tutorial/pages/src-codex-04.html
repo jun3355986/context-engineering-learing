@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Codex · 头尾保留的截断预算 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-codex-04 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-codex-04 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-codex-04 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-codex-04 code {
+    overflow-wrap: anywhere;
+  }
+  #src-codex-04 .path-card code,
+  #src-codex-04 .callout code,
+  #src-codex-04 .quiz__q code,
+  #src-codex-04 details code {
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+<body data-chapter="src-codex-04">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-codex-04">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Codex CLI</span><span>·</span><span>第 04 节</span></p>
+      <h1>头尾保留的截断预算</h1>
+      <p class="lede">工具输出太长时，Codex 不砍头也不砍尾，而是把中间挖掉，换成一句「…N tokens truncated…」。听起来简单，但要同时做对四件事：按 token 估预算、左右对半分、UTF-8 不切半个字符、标记不占预算。这一节读的就是这四件事。</p>
+      <ul class="meta">
+        <li>约 13 分钟</li>
+        <li>3 张示意图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>76ed3b4</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>用一个公式算出给定字符串在 <code>max_tokens</code> 下的左右预算与保留字节数。</li>
+          <li>解释为什么最终结果可能超过 <code>max_tokens</code>，以及这是不是 bug。</li>
+          <li>说清多块输出共享预算时，文本、图片、音频各自怎么处理。</li>
+          <li>比较 Codex、pi、opencode v1、DeepSeek Harness 四家「保留哪一端、原文能否回读」的差异。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>这一节只读 <code>codex-rs/utils/string/src/truncate.rs</code> 与它的调用方 <code>utils/output-truncation</code>。所有行号对应提交 <code>76ed3b484d62ccceb9fa512ff4dd139f421814c3</code>。文中的「预算」指 token 数，「字节」指 UTF-8 编码后的长度。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>为什么是「挖中间」，不是「砍尾巴」</h2>
+
+      <p>工具输出有两种典型形态。一种是命令回显：开头是命令行，结尾是错误信息或统计，中间是大段无关日志。另一种是文件内容：开头是导入与类型定义，结尾是导出与主逻辑，中间是重复的实现。两种形态都指向同一个结论：<b>头和尾有信息，中间最容易冗余</b>。<span class="tag tag--guess">推断</span></p>
+
+      <p class="lead-in">砍尾巴会丢掉错误信息，砍头会丢掉「这是什么命令」。挖中间是唯一能同时保住两端的做法。</p>
+
+      <p>Codex 把这件事做成一个纯函数：输入字符串与 token 预算，输出「头 + 标记 + 尾」。它不关心调用方是 shell、文件读取还是 MCP 工具，也不关心内容语义；所有判断都落在「保留多少字节」上。这种「只做机械截断」的设计，让它可以被所有工具复用，也让行为可预测。<span class="tag tag--ok">已核实</span></p>
+
+      <p>在整条链路里，它位于「工具返回结果」和「写入活历史」之间。上游的 <code>formatted_truncate_text()</code> 先判断是否超限，超限时加一行说明头（原始 token 数、总行数），再调用 <code>truncate_text()</code>；<code>truncate_text()</code> 按策略分派，token 策略走本节这个函数。下游把结果写进历史，原始载荷仍留在 rollout 存档里。<span class="tag tag--ok">已核实</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">工具输出截断的五个步骤，本节讲第 3 步</title>
+          <desc id="fig-1-desc">五条横向长条：工具返回原始输出、按策略判断是否超限、头尾保留的 token 截断、加说明头、写入活历史。第三条橙色高亮，标注本节。</desc>
+          <rect class="svg-track" x="8" y="14" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="39" text-anchor="middle">1</text>
+          <text class="svg-label svg-label--dark" x="48" y="39">工具返回原始输出</text>
+          <text class="svg-note" x="620" y="39" text-anchor="end">可能几十万字节</text>
+
+          <rect class="svg-track" x="8" y="60" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="85" text-anchor="middle">2</text>
+          <text class="svg-label svg-label--dark" x="48" y="85">按策略判断是否超限</text>
+          <text class="svg-note" x="620" y="85" text-anchor="end">bytes / tokens 两种</text>
+
+          <rect class="svg-seg--c" x="8" y="106" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="26" y="131" text-anchor="middle">3</text>
+          <text class="svg-label" x="48" y="131">头尾保留的 token 截断</text>
+          <text class="svg-label" x="620" y="131" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="152" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="177" text-anchor="middle">4</text>
+          <text class="svg-label svg-label--dark" x="48" y="177">加说明头</text>
+          <text class="svg-note" x="620" y="177" text-anchor="end">原始 token 数 + 总行数</text>
+
+          <rect class="svg-track" x="8" y="198" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="223" text-anchor="middle">5</text>
+          <text class="svg-label svg-label--dark" x="48" y="223">写入活历史</text>
+          <text class="svg-note" x="620" y="223" text-anchor="end">原始载荷留在 rollout</text>
+        </svg>
+        <figcaption>图 1　工具输出截断的五个步骤。本节讲第 3 步；第 2 步与第 4 步在 <code>utils/output-truncation</code>，第 5 步在历史层。</figcaption>
+      </figure>
+
+      <p>先给结论：这个函数保证「保留的文本不超过预算」，但不保证「最终字符串不超过预算」。标记是额外加的，说明头也是额外加的。理解这一点，后面看代码时就不会把「超预算」误判成 bug。<span class="tag tag--ok">已核实</span></p>
+
+      <p>为什么要在「写入历史」时截断，而不是「发请求」时截断？因为历史是活的：一条工具结果写进去之后，会被后续很多轮请求反复读取。写入时截一次，后面每轮都省；发请求时截，每轮都要重算，而且模型看到的投影会随预算变化而抖动。Codex 选择在写入时定稿，代价是「原文只留存档、消息里不可逆」；收益是「一次成本，长期复用」。<span class="tag tag--guess">推断</span></p>
+
+      <p>这个选择还有一个副作用：同一份存档在不同截断策略下恢复，得到的活历史长度可能不同。因为恢复时会按「当前策略」重新套用截断，而不是沿用写入时的结果。这也解释了为什么 rollout 里必须保留原始载荷——否则换一个更宽松的策略，也找不回已经被砍掉的中间。<span class="tag tag--guess">推断</span></p>
+
+      <p>从工程角度看，这套函数刻意只依赖 <code>&amp;str</code> 和两个整数，不依赖任何配置、模型或网络。它可以在一次请求里被调用几十次，也可以被单元测试穷举边界。把「策略」留在调用方、把「机制」做成纯函数，是这类基础设施代码最值得学的一点：机制越纯，越容易被复用和验证。<span class="tag tag--guess">推断</span></p>
+
+      <p>纯函数还有一个好处：它可以在写历史之前被单独测试。测试里用 <code>"é中😀é"</code>、<code>"😀😀😀"</code> 这类边界输入，就能覆盖「预算小于一个字符」「全是被挖掉的中间」等极端情况，不需要构造完整的请求或启动模型。截断这种「看起来简单、边界很多」的逻辑，最值得这样测。<span class="tag tag--ok">已核实</span></p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五个位置，从规划到拼装</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 主函数：头尾保留</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L69-L85">codex-rs/utils/string/src/truncate.rs#L69-L85</a><br>
+          <code>truncate_middle_with_token_budget()</code>：调用规划函数，拼装结果，返回「截断后字符串 + 原始 token 数」。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 规划：算预算与 UTF-8 边界</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L17-L29">codex-rs/utils/string/src/truncate.rs#L17-L29</a><br>
+          <code>plan_token_truncation()</code>：字节预算 = token × 4；左右各一半；用 <code>floor_char_boundary</code> / <code>ceil_char_boundary</code> 对齐。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 估算：向上取整的字节/token</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L87-L94">codex-rs/utils/string/src/truncate.rs#L87-L94</a><br>
+          <code>approx_token_count()</code> 与 <code>approx_bytes_for_tokens()</code>：<code>(len + 3) / 4</code>，以及 <code>tokens × 4</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 分预算与拼装</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L142-L153">codex-rs/utils/string/src/truncate.rs#L142-L153</a><br>
+          <code>split_budget()</code> 取 <code>budget/2</code> 与剩余；<code>assemble_truncated_output()</code> 按「前缀 + 标记 + 后缀」拼接。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 调用方：策略分派与说明头</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L23-L41">codex-rs/utils/output-truncation/src/lib.rs#L23-L41</a><br>
+          <code>formatted_truncate_text()</code> 先判断是否超限，再加说明头；<code>truncate_text()</code> 按 token / bytes 分派。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：多块输出共享预算在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L164-L231">output-truncation/src/lib.rs#L164-L231</a>；序列化余量 <code>×1.2</code> 在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L21">同文件 L17-L21</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】事实卡片的行号漂移</p>
+        <p>卡片把「<code>split_budget</code> + UTF-8 对齐」标在 <code>truncate.rs#L62-L90</code>。本提交里 L62 属于 <code>truncate_middle_with_marker</code> 的拼装，<code>split_budget</code> 实际在 L142-L145，UTF-8 对齐在 L23 与 L59-L60。主函数 L69-L85、估算 L87-L90 与卡片一致。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>三段，三十九行</h2>
+
+      <p>第一段是规划函数，第二段是主函数，第三段是两个小工具。三段合起来正好覆盖「算预算 → 拼结果」的完整路径。</p>
+
+      <p class="small muted">文件：<code>codex-rs/utils/string/src/truncate.rs</code>　行号：L17-L29（全文 13 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">pub fn plan_token_truncation(s: &amp;str, max_tokens: usize) -&gt; Option&lt;TextTruncation&gt; {</span>
+<span class="code__line">    let max_bytes = approx_bytes_for_tokens(max_tokens); <span class="cmt">// token → 字节</span></span>
+<span class="code__line">    if s.len() &lt;= max_bytes {</span>
+<span class="code__line">        return None; <span class="cmt">// 没超，原样返回</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    let (left_budget, right_budget) = split_budget(max_bytes); <span class="cmt">// 对半分</span></span>
+<span class="code__line">    let removed = s.floor_char_boundary(left_budget)..s.ceil_char_boundary(s.len() - right_budget);</span>
+<span class="code__line">    let removed_tokens = approx_tokens_from_byte_count(s.len() - max_bytes);</span>
+<span class="code__line">    Some(TextTruncation {</span>
+<span class="code__line">        removed, <span class="cmt">// 要被挖掉的字节区间</span></span>
+<span class="code__line">        marker: format!("…{removed_tokens} tokens truncated…"),</span>
+<span class="code__line">    })</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>codex-rs/utils/string/src/truncate.rs</code>　行号：L69-L85（全文 17 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">pub fn truncate_middle_with_token_budget(s: &amp;str, max_tokens: usize) -&gt; (String, Option&lt;u64&gt;) {</span>
+<span class="code__line">    let Some(truncation) = plan_token_truncation(s, max_tokens) else {</span>
+<span class="code__line">        return (s.to_string(), None); <span class="cmt">// 没超：原文 + None</span></span>
+<span class="code__line">    };</span>
+<span class="code__line">    let truncated = assemble_truncated_output(</span>
+<span class="code__line">        &amp;s[..truncation.removed.start], <span class="cmt">// 头</span></span>
+<span class="code__line">        &amp;s[truncation.removed.end..], <span class="cmt">// 尾</span></span>
+<span class="code__line">        &amp;truncation.marker, <span class="cmt">// 中间的标记</span></span>
+<span class="code__line">    );</span>
+<span class="code__line">    let total_tokens = u64::try_from(approx_token_count(s)).unwrap_or(u64::MAX);</span>
+<span class="code__line"> </span>
+<span class="code__line">    if truncated == s { <span class="cmt">// 防御：边界对齐后可能没真正删掉东西</span></span>
+<span class="code__line">        (truncated, None)</span>
+<span class="code__line">    } else {</span>
+<span class="code__line">        (truncated, Some(total_tokens)) <span class="cmt">// 返回原始 token 数，供上层记录</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>codex-rs/utils/string/src/truncate.rs</code>　行号：L87-L90、L142-L145（共 9 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">pub fn approx_token_count(text: &amp;str) -&gt; usize {</span>
+<span class="code__line">    let len = text.len();</span>
+<span class="code__line">    len.saturating_add(APPROX_BYTES_PER_TOKEN - 1) / APPROX_BYTES_PER_TOKEN <span class="cmt">// ceil(len/4)</span></span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line">fn split_budget(budget: usize) -&gt; (usize, usize) {</span>
+<span class="code__line">    let left = budget / 2;</span>
+<span class="code__line">    (left, budget - left) <span class="cmt">// 奇数预算时右边多 1 字节</span></span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">三段合计 39 行（13 + 17 + 9），都在 60 行以内。第二段省略了拼装函数的定义（L147-L153），但保留了调用与参数顺序。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四个动作：估、分、对齐、拼</h2>
+
+      <h3>第 1 段　估：token 与字节的换算</h3>
+
+      <p>常量 <code>APPROX_BYTES_PER_TOKEN = 4</code> 写在文件开头（L6）。预算换算只有两行：<code>approx_bytes_for_tokens(tokens) = tokens × 4</code>，<code>approx_token_count(text) = ceil(len / 4)</code>。两个方向都是估算，不是真实分词。<span class="tag tag--ok">已核实</span></p>
+
+      <p>为什么用 4？源码没有注释解释。<span class="tag tag--ok">已核实</span>从效果看，这是一个跨语言的折中：英文大约 4 字节一个 token，中文一个字 3 字节、往往也接近一个 token，代码与符号的密度更高。用固定 4 的好处是实现简单、无依赖、可预测；坏处是对中文和代码的误差方向不同——中文可能低估，代码可能高估。<span class="tag tag--guess">推断</span></p>
+
+      <p>误差方向很重要。低估意味着「以为还在预算内，实际已经超了」，截断不够；高估意味着「提前截断」，浪费预算。Codex 在工具出口还有一层 <code>×1.2</code> 的序列化余量（output-truncation L17-L21），可以理解为对低估的补偿。<span class="tag tag--guess">推断</span></p>
+
+      <p class="lead-in">估算是预算系统的第一道误差源。所有「按 token 截断」的工具，本质上都在用一个近似值做硬决策。</p>
+
+      <h3>第 2 段　分：为什么对半分</h3>
+
+      <p><code>split_budget(max_bytes)</code> 把预算切成 <code>budget/2</code> 与 <code>budget - budget/2</code>。奇数时右边多 1 字节。这个选择没有语义判断，纯粹是「头尾同等重要」的默认假设。<span class="tag tag--ok">已核实</span></p>
+
+      <p>对半分的代价是：如果内容明显「头重要尾不重要」，会浪费一半预算在尾部。比如一个 JSON 输出，开头是结构、结尾是闭合括号，中间是数据；对半分能保住结构和闭合，但保不住更多数据。要做得更好，需要按内容类型给不同权重，比如 shell 输出尾部权重更高、文件读取头部权重更高。Codex 没有这么做，因为它要的是一个通用函数，而不是每个工具一套启发式。<span class="tag tag--guess">推断</span></p>
+
+      <p>对半分的好处是可解释。用户看到「…N tokens truncated…」时，可以预期头和尾各留了大约一半；调试时也容易复现。启发式权重虽然可能更优，但很难让用户建立稳定预期。<span class="tag tag--guess">推断</span></p>
+
+      <p>还有一个实现上的细节：<code>split_budget</code> 把「余数」给了右边。预算 41 字节时，左 20、右 21。这个 1 字节的偏向没有语义，只是整数除法 + 减法的自然结果。它不会造成可见差异，但如果你在写测试断言「左右完全相等」，就会在奇数预算上失败。<span class="tag tag--ok">已核实</span></p>
+
+      <h3>第 3 段　对齐：不切半个字符</h3>
+
+      <p>Rust 的字符串是 UTF-8 字节序列，不能随便按字节下标切片。代码用 <code>floor_char_boundary(left_budget)</code> 把前缀终点退到最近的字符边界，用 <code>ceil_char_boundary(len - right_budget)</code> 把后缀起点进到最近的字符边界。前者只会让头更短，后者只会让尾更短，所以保留总量不会超过预算。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这两个函数的方向容易记反：前缀要「向下取整」，因为切在字符中间会留下半个字符；后缀要「向上取整」，因为起点必须落在字符开始处，否则会从半个字符开始。一个向下、一个向上，保证两端都是完整字符。<span class="tag tag--ok">已核实</span></p>
+
+      <p>对齐的副作用是「实际保留可能略少于预算」。最坏情况是一个 4 字节的 emoji 跨在边界上，左右各退/进 3 字节，保留量比预算少 6 字节。对预算来说这是安全方向；对「尽量多用预算」来说这是小损失。测试里用 <code>"é中😀é"</code> 与 <code>max_tokens=1</code> 验证了这一点：预算 4 字节，最终只剩头尾两个 <code>é</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p>为什么不做「按行截断」？按行看起来更自然：保留前 N 行和后 M 行，不会切到半个字符，也不会切到半行。但行长度差异极大：一行可能是 10 个字符，也可能是 10 万字符的压缩 JSON。按行数分配，无法保证 token 预算；按字节分配再对齐到行，又会让短行浪费大量预算。按字节 + 字符边界，是「预算可控」与「不切坏字符」之间的最小折中。<span class="tag tag--guess">推断</span></p>
+
+      <p>这个测试还揭示了一个容易忽略的语义：截断可能把整段内容「压缩到只剩两端各一个字符」。对 <code>"😀😀😀"</code> 这种全是 4 字节字符的串，预算 1 token（4 字节）时，左预算 2 字节落不到任何完整字符，右预算 2 字节也落不到，结果只剩标记。也就是说，「头尾保留」在极端情况下会退化成「只保留标记」，而不是「至少保留一个字符」。调用方如果假设「结果一定非空且包含原文」，需要自己加判断。<span class="tag tag--ok">已核实</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">一段字符串被切成头、被挖掉的中间、尾</title>
+          <desc id="fig-2-desc">一条 640 宽的长条代表原字符串，左段是头，右段是尾，中间橙色段被挖掉并替换成省略标记。下方标注左预算、右预算与标记。</desc>
+          <text class="svg-note" x="8" y="18">原字符串（按字节，示意，非真实比例）</text>
+          <rect class="svg-track" x="8" y="30" width="624" height="54" rx="8"/>
+          <rect class="svg-seg--a" x="9" y="31" width="150" height="52" rx="6"/>
+          <text class="svg-label" x="84" y="63" text-anchor="middle">头（左预算）</text>
+          <rect class="svg-seg--c" x="161" y="31" width="310" height="52" rx="6"/>
+          <text class="svg-label" x="316" y="63" text-anchor="middle">被挖掉的中间</text>
+          <rect class="svg-seg--b" x="473" y="31" width="158" height="52" rx="6"/>
+          <text class="svg-label" x="552" y="63" text-anchor="middle">尾（右预算）</text>
+
+          <text class="svg-note" x="8" y="112">预算 = max_tokens × 4 字节；左右各一半</text>
+          <text class="svg-note" x="8" y="136">头终点：floor_char_boundary(左预算)</text>
+          <text class="svg-note" x="8" y="160">尾起点：ceil_char_boundary(len − 右预算)</text>
+          <text class="svg-note" x="8" y="184">标记：…N tokens truncated…，加在预算之外</text>
+          <text class="svg-note" x="8" y="208">N = ceil((原长 − 预算) ÷ 4)</text>
+          <text class="svg-note" x="8" y="232">结果 = 头 + 标记 + 尾；总长可能略超预算</text>
+        </svg>
+        <figcaption>图 2　切分与对齐。橙色段被替换成标记；标记不计入保留预算，所以最终字符串会比预算多出标记本身的长度。</figcaption>
+      </figure>
+
+      <h3>第 4 段　拼：标记为什么不算预算</h3>
+
+      <p><code>plan_token_truncation()</code> 先算出 <code>removed</code> 区间，再生成标记。标记的长度没有参与 <code>max_bytes</code> 的计算，也没有从左右预算里扣除。规划函数的注释（L15-L16）明确写了这一点：标记在保留文本预算之外。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这是一个有意的取舍。如果标记也占预算，那么预算很小时（比如 10 token），标记可能占掉一半，留给正文的只有几个字节，结果几乎不可读。把标记放在预算外，保证「无论预算多小，至少能看到一句解释」。代价是最终长度可能超过预算，超出的部分就是标记的长度。<span class="tag tag--guess">推断</span></p>
+
+      <p>测试里 <code>max_tokens=0</code> 的结果是 <code>"…2 tokens truncated…"</code>，原文 <code>"abcdef"</code> 被完全挖掉。这验证了「0 预算不是空字符串，而是只剩标记」。如果上层把「输出为空」当成错误，这个行为就会制造麻烦；Codex 的调用方显然接受「只有标记」这种结果。<span class="tag tag--ok">已核实</span></p>
+
+      <p>标记里的 <code>N</code> 也不是精确的「被删 token 数」，而是 <code>ceil((原长 − 预算) ÷ 4)</code>。它用的是「超出预算的字节数」，不是「实际被删字符的 token 数」。因为对齐可能多删了几个字节，这个 N 会略小于真实删除量；又因为 4 是估算，它和真实分词器也有偏差。它的作用是「给一个量级」，不是「精确计数」。<span class="tag tag--guess">推断</span></p>
+
+      <p>返回值里的 <code>Some(original_token_count)</code> 也值得一说。它返回的是<b>原始</b> token 数，不是「被删掉的」token 数；调用方拿到它，可以写日志、打点、或者在说明头里告诉模型「原文有多大」。如果只返回截断后的字符串，上层就不知道这次截断损失了多少信息，也无法判断「是否需要提醒用户重跑」。<span class="tag tag--guess">推断</span></p>
+
+      <p>最后的 <code>truncated == s</code> 是一个防御分支。理论上只要 <code>s.len() &gt; max_bytes</code>，<code>removed</code> 就非空；但 UTF-8 对齐后，如果整个字符串都在边界之外，<code>removed</code> 可能覆盖全部内容，拼出来只剩标记，不可能等于原串。这个判断更像是为未来改动兜底：如果某天 <code>plan_token_truncation</code> 的逻辑变了，返回了「空删除区间」，这里不会误报 <code>Some</code>。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 5 段　多块：共享一份预算</h3>
+
+      <p>单个字符串的截断之外，工具输出还可能是多块：文本、图片、音频混在一起。<code>truncate_function_output_items_with_policy()</code> 用一个 <code>remaining_budget</code> 贯穿所有块，按顺序扣减。文本按字节或 token 计价，图片直接放行（不占这份预算），音频用调用方传入的估算函数计价。<span class="tag tag--ok">已核实</span></p>
+
+      <p>顺序在这里很关键。预算先到先得：前面的文本块拿满，后面的文本块可能只剩一点，甚至被记成 <code>omitted_text_items</code> 只留一个计数。空文本块会被直接跳过，因为它不贡献内容却占一个数组位置。图片不占预算，意味着「一张图 + 一大段文本」的结果里，文本可能被截得很短，但图片仍然完整。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这套规则没有「按重要性排序」，也没有「先给图片留预算」。它假设调用方已经把重要的块放在前面。如果调用方把日志放在图片之前，日志会先吃掉预算，图片仍然放行，最终请求可能比预期大。这是「共享预算」的边界：它只控制文本与音频，不控制图片。<span class="tag tag--guess">推断</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 236" role="img" aria-labelledby="fig-3-title fig-3-desc">
+          <title id="fig-3-title">多块输出共享一份预算</title>
+          <desc id="fig-3-desc">一条预算条从 100% 开始，文本块 1 扣掉 40%，文本块 2 扣掉 35%，文本块 3 只剩 25% 被截断；图片块直接放行，不扣预算；音频块按估算扣减。</desc>
+          <text class="svg-note" x="8" y="18">remaining_budget 从满开始，逐块扣减</text>
+          <rect class="svg-track" x="8" y="30" width="624" height="34" rx="7"/>
+          <rect class="svg-seg--a" x="9" y="31" width="250" height="32" rx="5"/>
+          <text class="svg-label" x="134" y="52" text-anchor="middle">文本 1（40%）</text>
+          <rect class="svg-seg--b" x="260" y="31" width="218" height="32" rx="5"/>
+          <text class="svg-label" x="369" y="52" text-anchor="middle">文本 2（35%）</text>
+          <rect class="svg-seg--c" x="479" y="31" width="152" height="32" rx="5"/>
+          <text class="svg-label" x="555" y="52" text-anchor="middle">文本 3：截断</text>
+
+          <rect class="svg-track" x="8" y="92" width="624" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark" x="24" y="114">图片块：直接放行，不扣 remaining_budget</text>
+
+          <rect class="svg-track" x="8" y="142" width="624" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark" x="24" y="164">音频块：按 estimate_audio_token_count 扣减</text>
+
+          <text class="svg-note" x="8" y="204">预算耗尽后，后续文本块只累加 omitted_text_items，不再进入结果</text>
+          <text class="svg-note" x="8" y="228">这是「共享预算」，不是「每块独立预算」</text>
+        </svg>
+        <figcaption>图 3　多块共享预算。文本按顺序扣减，图片放行，音频按估算扣减；预算耗尽后，后续文本只留计数，不再留内容。</figcaption>
+      </figure>
+
+      <h3>第 6 段　调用方：说明头与 ×1.2</h3>
+
+      <p><code>formatted_truncate_text()</code> 在真正截断前先算原始 token 数与总行数，截断后把这两项拼成说明头：<code>Warning: truncated output (original token count: N)</code> 与 <code>Total output lines: M</code>。说明头也在预算之外，最终结果比「头 + 标记 + 尾」又多一段。<span class="tag tag--ok">已核实</span></p>
+
+      <p>说明头的价值在于「让模型知道自己看的是残片」。没有它，模型可能把截断后的输出当成完整结果，进而得出错误结论。有了它，模型至少知道「原文有 N 个 token、M 行，我只看到一部分」，可以选择让用户重跑、读文件或换一种命令。<span class="tag tag--guess">推断</span></p>
+
+      <p><code>×1.2</code> 的序列化余量则在更外层：<code>with_serialization_allowance(policy)</code> 把策略乘以 1.2，注释说是为序列化与头部预留。它和标记、说明头是三笔独立的额外开销，都不在「保留文本」的预算里。读代码时如果把这三笔混在一起，就会得出「预算完全不准」的错误结论；分开看，每一笔都有明确目的。<span class="tag tag--ok">已核实</span></p>
+
+      <p>把四笔开销列出来，账就清楚了：保留文本 ≤ <code>max_tokens</code>；标记约 20 字节；说明头约 60 字节；序列化余量是策略层的 20%。最终请求里这一条工具结果的真实大小，是四者之和。任何「按 max_tokens 估算请求大小」的做法，都必须把这四笔加回去，否则会低估。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 7 段　与压缩时截断的关系</h3>
+
+      <p>这套函数不只用于工具出口。压缩时，候选用户消息如果放不下，也会调用 <code>truncate_annotated_text()</code>，而后者内部用的是同一套头尾保留逻辑（见 <code>src-codex-01</code> 第 3 段）。错误信息、沙箱报错、附加上下文也各自调用 <code>truncate_middle_with_token_budget</code>，只是传入的 <code>max_tokens</code> 不同（例如沙箱错误用 900）。<span class="tag tag--ok">已核实</span></p>
+
+      <p>调用点分散带来的一个后果是：同一份文本在不同位置可能被截两次。比如一个工具输出先在 <code>formatted_truncate_text()</code> 里被截到 10k token，写进历史后又在压缩阶段被 <code>truncate_annotated_text()</code> 按 20k 预算重新处理。第二次通常不会再截（因为已经小于 20k），但如果中间又拼了别的片段，就可能触发二次截断。<span class="tag tag--guess">推断</span></p>
+
+      <p>这说明它是一个「基础原语」，而不是「工具专用函数」。理解它的行为，等于理解了 Codex 所有「中间截断」场景的共同底线：头尾保留、UTF-8 对齐、标记不占预算。不同调用方只需要选一个预算数字，不需要各自实现一套截断。<span class="tag tag--guess">推断</span></p>
+
+      <p>代价是「语义适配」被留给了调用方。压缩场景希望保留「用户需求的开头与结尾」，工具场景希望保留「命令与错误」，两者都用对半分，未必各自最优。但统一原语带来的可测试性、可解释性，通常比每个场景单独调参更重要。<span class="tag tag--guess">推断</span></p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>预算按 <code>tokens × 4</code> 换成字节，左右各一半，UTF-8 边界只退不进。</li>
+            <li>标记、说明头、<code>×1.2</code> 余量都在保留预算之外，最终长度可能超过 <code>max_tokens</code>。</li>
+            <li>被挖掉的中间用「…N tokens truncated…」标记，N 是量级，不是精确分词。</li>
+            <li>多块输出共享一份预算：文本扣减、音频估算、图片放行。</li>
+            <li>原始输出仍留在 rollout；消息里只有残片与标记，没有回读指针。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>保留哪一端，决定模型还能不能自救</h2>
+
+      <p>截断策略的分歧不在「留多少」，而在「留哪一端」以及「原文能不能回读」。前者决定模型看到什么，后者决定模型能不能自己补看。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">保留位置</th>
+              <th scope="col">预算口径</th>
+              <th scope="col">原文回读</th>
+              <th scope="col">来源</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>头 + 尾，挖中间</td>
+              <td>token（<code>ceil(bytes/4)</code>）</td>
+              <td>rollout 存档；消息里无路径</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>读类保头，bash 保尾</td>
+              <td>2000 行 / 50 KB，先到者</td>
+              <td>临时文件 + <code>Full output: &lt;path&gt;</code></td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>默认保头，可传 tail</td>
+              <td>2000 行 / 50 KB，先到者</td>
+              <td>截断目录，保留 7 天</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>头 + 尾，各分剩余预算一半</td>
+              <td>共享估算 token 预算</td>
+              <td>spill 文件 + read/grep 指引</td>
+              <td><span class="tag tag--guess">推断</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>按工具类型固定上限</td>
+              <td>40 KB / 20k 字符 / 1000 行</td>
+              <td>bash 日志文件 + <code>read</code></td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 6 节（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径，Grok Build 为源码常量）。</p>
+
+      <p>第一个对照是<b>「保留位置」与「工具语义」的匹配</b>。pi 让读类工具保头、bash 保尾，因为文件开头有结构、命令结尾有错误；Codex 统一挖中间，不区分工具，因为它要的是一个跨工具通用的原语。统一策略的好处是行为可预测，坏处是对某类工具不够贴合：比如 <code>git diff</code> 的尾部可能比头部更重要，挖中间会同时保住两端，但也可能把关键的 diff 块挖掉。<span class="tag tag--guess">推断</span></p>
+
+      <p>第二个对照是<b>「原文可回读」</b>。pi、opencode、dsh、Grok 都会在消息里留下路径或句柄，模型可以再读一次；Codex 的消息里只有标记，没有路径。原文虽然留在 rollout 存档里，但模型在当轮看不到「去哪读」。这意味着 Codex 更依赖「头尾保留得足够好」，而不是「让模型自己补看」。两种设计的代价不同：前者要求截断策略更准，后者要求文件系统与权限更可靠。<span class="tag tag--guess">推断</span></p>
+
+      <p>第三个对照是<b>「预算单位」</b>。Codex 与 dsh 用估算 token，pi、opencode、Grok 用字节或行数。字节/行数的优点是可直接测量、无分词依赖；缺点是同样 50 KB，中文与英文的 token 数差很多。token 估算的优点是更贴近计费，缺点是估算本身有误差。没有哪种绝对更好，关键看你要优化的是「请求大小」还是「账单大小」。<span class="tag tag--guess">推断</span></p>
+
+      <p>第四个对照是<b>「截断发生的时机」</b>。Codex 在写入活历史时截断，之后每轮复用同一份残片；pi、opencode 在工具返回时截断并落盘；dsh 在 <code>tools/post-execute</code> 之后按共享预算处理；Grok 在工具实现内部按上限截断。时机越靠前，原文越完整、后续策略越可调；时机越靠后，模型看到的投影越稳定、缓存越友好。Codex 选择「靠后但一次定稿」，等于用「不可逆」换「可预测」。<span class="tag tag--guess">推断</span></p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从算数到改策略</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">一个 100 字节的纯 ASCII 字符串，<code>max_tokens = 10</code>。左右预算各多少字节？被挖掉多少字节？标记里的 N 是多少？最终字符串大约多少字节？它满足「不超过 10 token」吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>预算 = 10 × 4 = 40 字节；<code>split_budget(40)</code> 得到 20 与 20；被挖掉的是 100 − 40 = 60 字节；N = ceil(60/4) = 15。</p>
+          <p>标记 <code>"…15 tokens truncated…"</code> 本身约 22 字节，加在 40 字节之外，所以最终约 62 字节。按 4 字节/token 估算约 15.5 token，明显超过 10。这不是 bug，是「标记不占预算」的直接结果。</p>
+          <p>再算一步：如果调用方看到「结果 62 字节」就以为预算失效，把 <code>max_tokens</code> 调到 5，标记仍然是 22 字节，正文只剩 20 字节，最终仍有 42 字节。预算越小，标记占比越大，这是这套设计在极小预算下的固有失真；如果调用方经常传很小的预算，应该考虑单独限制标记长度或直接拒绝。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">一段 900 字节的中文（约 300 个汉字），<code>max_tokens = 100</code>。按 Codex 的估算会保留多少字节？如果真实分词器大约 1 个汉字 1 token，这次截断够不够？你会怎么改？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>900 字节 ÷ 4 = 225 token，超过 100；预算 400 字节，左右各 200 字节；UTF-8 边界对齐后，大约保留 133 个汉字（400 ÷ 3）。</p>
+          <p>按真实 1 字 1 token 算，133 字约 133 token，仍然超过 100。要修正，可以把中文的字节/token 比调低（比如 2 或 2.5），或者改用真实分词器。代价是失去「无依赖、可预测」这两个优点。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">多块输出里有一张图片、一段 10 万字节的日志、一段 2 千字节的错误信息，顺序是「日志 → 图片 → 错误」。预算 10k token。结果会怎样？如果希望错误信息一定保住，你会怎么改？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>日志先吃掉全部预算（10 万字节 ≈ 25k token，远超 10k），被截断；图片直接放行，不占预算；错误信息轮到时 <code>remaining_budget</code> 已经是 0，只会增加 <code>omitted_text_items</code>，内容完全不进结果。</p>
+          <p>最直接的改法是调整顺序，把错误信息放在日志之前。更稳的做法是给「错误/摘要类块」单独的保留预算，或者先按块类型排序再扣减。代价是策略变复杂，且需要调用方给块打类型标签。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-claude-code-01.html">Claude Code · 系统提示的静态/动态分段</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

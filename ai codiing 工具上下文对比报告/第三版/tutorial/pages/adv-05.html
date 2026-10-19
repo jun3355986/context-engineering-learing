@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>评估方法：L5 入门 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本章专属：只作用于 adv-05 */
+  body[data-chapter="adv-05"] .prose :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="adv-05"] .k-lvl {
+    margin-left: 10px;
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+  #fig-grid .a5-cell {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+  }
+  #fig-grid .a5-cell--key {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  #fig-grid .a5-head {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 650;
+  }
+  #fig-grid .a5-row {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 650;
+  }
+  #fig-grid .a5-n {
+    fill: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+  }
+  #fig-grid .a5-q {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 9.5px;
+  }
+  #fig-grid .a5-line {
+    stroke: var(--border-strong);
+    stroke-width: 1;
+  }
+  #fig-abl .a5-box {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+  }
+  #fig-abl .a5-box--full {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  #fig-abl .a5-box--ctrl {
+    fill: var(--orange-soft);
+    stroke: var(--orange-line);
+  }
+  #fig-abl .a5-t {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  #fig-abl .a5-s {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+  }
+  #fig-abl .a5-line {
+    stroke: var(--border-strong);
+    stroke-width: 1.2;
+    fill: none;
+  }
+  #fig-abl .a5-arrow {
+    fill: var(--border-strong);
+  }
+  body[data-chapter="adv-05"] .record-table {
+    min-width: 690px;
+  }
+  @media print {
+    body[data-chapter="adv-05"] .table-wrap {
+      overflow: visible;
+    }
+    body[data-chapter="adv-05"] .record-table {
+      min-width: 0;
+      font-size: 9.5pt;
+    }
+  }
+</style>
+</head>
+<body data-chapter="adv-05">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第三部分 · 进阶</b><span>·</span><span>第 05 章</span></p>
+      <h1>评估方法：L5 入门</h1>
+      <p class="lede">主线第 16 章给了你十三个指标和一张 A/B 模板，那是“会测”。这一章往前一步：怎么设计一个别人能复现、结论站得住的实验。评测集怎么分层，配对怎么配，多小的差异才值得相信。消融怎么做，结论怎么写才不越界。</p>
+      <ul class="meta">
+        <li>约 30 分钟</li>
+        <li>2 张图</li>
+        <li>L4 → L5</li>
+        <li>前置：主线第 16 章</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>构造一个按任务族、长度、工具密度分层的评测集，并说明每格为什么存在。</li>
+          <li>在开跑之前算出最小可检测效应，判断这次实验值不值得跑。</li>
+          <li>设计一次消融，并把结果写成一句有边界、可反驳的结论。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 ========== -->
+    <section id="two-teams">
+      <p class="sec-no">01 · 两个都“赢了”的实验<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>同样的策略，相反的结论</h2>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 两份互相打脸的周报</p>
+        <p>甲团队报告：压缩阈值调到 70%，成本降 22%，成功率不变，建议全量上线。乙团队报告：同样的改动，成本只降 4%，成功率掉了 5 个百分点，建议回滚。两边都没造假。甲的评测集是 30 个短任务，乙的是 60 个长任务。甲按请求统计成本，乙按任务统计。甲没有配对，乙配了。差异不在策略，在实验设计。</p>
+      </div>
+
+      <p>“跑一下看看”得到的是观察，不是结论。观察可以提出假设，但不能回答“这个策略是不是更好”。要回答因果问题，实验设计必须做四件事：</p>
+      <ol>
+        <li><strong>把问题写成可证伪的句子</strong>：改什么、期望哪个方向、在什么任务上、多大算成功。</li>
+        <li><strong>制造一个只差一个变量的对照</strong>：除了被测的那一项，其他全部相同。</li>
+        <li><strong>让样本能支撑结论</strong>：先算最小可检测效应，再决定跑多少。</li>
+        <li><strong>提前写好结论的边界</strong>：适用于哪些任务、不适用于哪些，不达标时怎么判。</li>
+      </ol>
+      <p class="lead-in">这四件事，主线第 16 章讲了“为什么”；本章讲“怎么做”。</p>
+      <p>观察和实验的差别，不在用了多少数据，而在有没有“反事实”。观察只能告诉你“用了新策略后是这样”，实验能告诉你“如果不用，会怎样”。配对的作用，就是为每个任务造一个反事实。</p>
+
+      <div class="hf hf--think">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <div class="hf__body">
+          <p>甲团队用 30 个任务测出“成本降 22%”。这个数字要满足什么条件，乙团队才可能复现不出来？</p>
+          <p class="small muted">提示：任务构成、统计单位、是否配对，三处任一不同就够了。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 02 ========== -->
+    <section id="design">
+      <p class="sec-no">02 · 研究设计的四个部件<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>从“调参”升级为“实验”</h2>
+      <p>一个能站住的实验，可以拆成四个部件。缺一个，结论就会被打折。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">部件</th>
+              <th scope="col">要写清什么</th>
+              <th scope="col">写不清会怎样</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">研究问题</th>
+              <td>一句话，含对象、干预、结果、方向。例：在长任务上，把阈值从 90% 降到 70%，能否把 <code>CPS</code> 降 10% 而不损 <code>SR</code>。</td>
+              <td>变成“看看压缩好不好”，跑完不知道算不算达标。</td>
+            </tr>
+            <tr>
+              <th scope="row">对照</th>
+              <td>基线是什么、变体只改哪一项、两臂共用什么。</td>
+              <td>一次改三处，结果无法归因，也没法回退。</td>
+            </tr>
+            <tr>
+              <th scope="row">样本</th>
+              <td>任务从哪来、怎么分层、每格多少、配对还是独立。</td>
+              <td>样本只覆盖短任务，结论被外推到长任务。</td>
+            </tr>
+            <tr>
+              <th scope="row">边界</th>
+              <td>结论适用的任务族、长度、工具密度、模型版本；不达标时的判定。</td>
+              <td>“A 比 B 好”变成一句无法反驳也无法执行的口号。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">四个部件里，最容易被跳过的是“边界”。它不进入统计，但决定了结论能不能被别人复用。</p>
+
+      <p>还有一个前置问题：<strong>这个实验值得做吗</strong>。如果一个改动最多只能省 3% 成本，而你的实验只能检测 10% 以上的差异。那跑完无论结果如何都说明不了问题。先算最小可检测效应，再决定跑不跑。这是第 05 节的内容。</p>
+
+      <p>再往下还有一层：<strong>内部效度与外部效度</strong>。内部效度问“这个差异真的是策略造成的吗”，靠配对、随机化、固定环境来保证。外部效度问“这个结论能推到别的任务上吗”，靠分层与边界描述来保证。两者常常拉扯。把环境控制得越死，结论越干净，也越难推广到真实的脏环境。做法不是二选一，而是分两轮。第一轮控死，确认因果。第二轮放松一个条件（比如允许联网），看结论还成不成立。</p>
+      <p>还有第三个效度：<strong>构念效度</strong>。它问的是“指标是否真的测到了你想测的东西”。用 token 数代表“上下文压力”通常可以，用压缩次数代表“策略好坏”就不行。选指标时问一句：如果这个数字变好，是否一定意味着用户受益？答不上来，就换一个。</p>
+    </section>
+
+    <!-- ========== 03 评测集 ========== -->
+    <section id="evalset">
+      <p class="sec-no">03 · 评测集：三个维度分层<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>格子空着，比填满更重要</h2>
+      <p>主线第 16 章按“长度与形态”分了 T1–T6 六层。这一章再加两个维度：<strong>任务族</strong>与<strong>工具密度</strong>。原因是上下文策略的效果，对这两件事特别敏感：</p>
+      <ul>
+        <li><strong>任务族</strong>决定“什么信息不能丢”。修 bug 不能丢复现步骤。重构不能丢 public API。迁移不能丢映射表。同一个压缩策略，在不同任务族上的 <code>IRR</code> 可能差一倍。</li>
+        <li><strong>工具密度</strong>决定“减量从哪里开始”。低密度任务（读为主）主要靠压缩。高密度任务（每轮跑测试）主要靠截断与落盘。只测低密度，会低估截断的价值。只测高密度，会高估压缩的必要性。</li>
+      </ul>
+
+      <figure class="fig" id="fig-grid">
+        <svg viewBox="0 0 640 320" role="img" aria-labelledby="fig-grid-title fig-grid-desc">
+          <title id="fig-grid-title">评测集按任务族与长度分格，每格内配额工具密度</title>
+          <desc id="fig-grid-desc">四行任务族、三列长度的十二个格子，每格标注任务数与工具密度配额。修 bug、加功能、重构、迁移四族各占一行；短、中、长三列。每格八个任务，其中约三个为高工具密度。</desc>
+          <text class="a5-head" x="120" y="20" text-anchor="middle">短（&lt;10 轮）</text>
+          <text class="a5-head" x="280" y="20" text-anchor="middle">中（10–30 轮）</text>
+          <text class="a5-head" x="440" y="20" text-anchor="middle">长（&gt;30 轮）</text>
+          <text class="a5-head" x="580" y="20" text-anchor="middle">作用</text>
+
+          <text class="a5-row" x="8" y="58">修 bug</text>
+          <rect class="a5-cell" x="60" y="36" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="70" y="54">n=8</text>
+          <text class="a5-q" x="70" y="70">高密度 3</text>
+          <rect class="a5-cell" x="220" y="36" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="230" y="54">n=8</text>
+          <text class="a5-q" x="230" y="70">高密度 3</text>
+          <rect class="a5-cell a5-cell--key" x="380" y="36" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="390" y="54">n=8</text>
+          <text class="a5-q" x="390" y="70">高密度 3</text>
+          <text class="a5-q" x="512" y="54">复现步骤不能丢</text>
+
+          <text class="a5-row" x="8" y="114">加功能</text>
+          <rect class="a5-cell" x="60" y="92" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="70" y="110">n=8</text>
+          <text class="a5-q" x="70" y="126">高密度 3</text>
+          <rect class="a5-cell" x="220" y="92" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="230" y="110">n=8</text>
+          <text class="a5-q" x="230" y="126">高密度 3</text>
+          <rect class="a5-cell" x="380" y="92" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="390" y="110">n=8</text>
+          <text class="a5-q" x="390" y="126">高密度 3</text>
+          <text class="a5-q" x="512" y="110">接口契约不能丢</text>
+
+          <text class="a5-row" x="8" y="170">重构</text>
+          <rect class="a5-cell" x="60" y="148" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="70" y="166">n=8</text>
+          <text class="a5-q" x="70" y="182">高密度 3</text>
+          <rect class="a5-cell" x="220" y="148" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="230" y="166">n=8</text>
+          <text class="a5-q" x="230" y="182">高密度 3</text>
+          <rect class="a5-cell a5-cell--key" x="380" y="148" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="390" y="166">n=8</text>
+          <text class="a5-q" x="390" y="182">高密度 3</text>
+          <text class="a5-q" x="512" y="166">行为等价性不能丢</text>
+
+          <text class="a5-row" x="8" y="226">迁移</text>
+          <rect class="a5-cell" x="60" y="204" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="70" y="222">n=8</text>
+          <text class="a5-q" x="70" y="238">高密度 3</text>
+          <rect class="a5-cell" x="220" y="204" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="230" y="222">n=8</text>
+          <text class="a5-q" x="230" y="238">高密度 3</text>
+          <rect class="a5-cell a5-cell--key" x="380" y="204" width="120" height="44" rx="6"/>
+          <text class="a5-n" x="390" y="222">n=8</text>
+          <text class="a5-q" x="390" y="238">高密度 3</text>
+          <text class="a5-q" x="512" y="222">映射表不能丢</text>
+
+          <line class="a5-line" x1="60" y1="266" x2="500" y2="266"/>
+          <text class="a5-q" x="60" y="286">12 格 × 8 = 96 个任务；每格 3 个高密度任务 = 36 个</text>
+          <text class="a5-q" x="60" y="304">高亮的三个长任务格子，是压缩策略的主战场</text>
+        </svg>
+        <figcaption>图 05-1　评测集的 4 × 3 主网格。行是任务族，列是长度，格内再按工具密度配额。每格八个任务，其中约三个是“每轮都有大工具输出”的高密度任务。高亮的三个长任务格子决定压缩策略能不能被证伪；其余格子负责发现“短任务被压坏”这类退化。</figcaption>
+      </figure>
+
+      <p>为什么用“格内配额”而不是再乘一个维度？因为 4 × 3 × 3 = 36 格，每格至少 8 个就要 288 个任务。大多数团队跑不起。配额的做法是：工具密度不单独成格，而是在每格里按比例分配。这样既保证每个任务族、每种长度都有高密度样本，又不会把样本切碎<sup class="fn-ref"><a href="#fn-adv-05-2" id="fnref-adv-05-2">2</a></sup>。</p>
+      <p>如果一定要再细，优先加一个维度：<strong>约束保持</strong>。在任务开头给一条硬约束。比如“不要改 public API”“必须保留 <code>x</code> 字段”。最后检查是否遵守。它比“工具密度”更能暴露压缩的问题。因为约束通常出现在很早的轮次，正好是被压掉的那一段。</p>
+
+      <h3 id="cell">3.1 每一格要固定什么</h3>
+      <p>格子只是分类。真正决定可比性的是格子里那个任务单元。主线第 16 章列了八项固定条件。这八项是仓库、workspace、权限、模型、预算、验收、探针、初始提示。这里只补充三条容易漏的：</p>
+      <ul>
+        <li><strong>依赖状态</strong>：两臂的 <code>node_modules</code>、构建缓存要一致。一臂热、一臂冷，工具耗时和失败率都会不同。</li>
+        <li><strong>网络</strong>：要么都断网，要么都允许，且记录域名。半开半关会让“重试”变成隐藏变量。</li>
+        <li><strong>种子</strong>：如果 agent 有随机性（采样、并行工具顺序），固定种子。不能固定的，记录并作为区组因素。</li>
+      </ul>
+
+      <h3 id="empty">3.2 空格子也是结论</h3>
+      <p>设计完网格，先画一遍“哪些格子是空的”。空着不可怕，可怕的是不知道自己空着。一个常见的空法是：<strong>有长任务，但没有“长 × 高工具密度”</strong>。这时压缩的收益看不到。因为压力主要来自工具输出，而截断已经把问题解决了。你会得出“压缩没用”的错误结论。</p>
+      <p>另一个空法是：<strong>有长任务，但没有“长 × 强约束”</strong>。这时 <code>IRR</code> 看起来很好，因为被压掉的内容本来就不重要。上线后遇到真实任务，约束一丢，成功率就掉。</p>
+      <p>评测集还要有版本。任务改了、验收脚本改了、仓库升级了，都要升版本号；跨版本的结果不能直接比。另一个纪律是保留集。调参用开发集，最后验证用保留集，保留集看过一次就算脏了。</p>
+    </section>
+
+    <!-- ========== 04 配对 ========== -->
+    <section id="pairing">
+      <p class="sec-no">04 · 配对与区组<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>配三层，不是配一次</h2>
+      <p>主线第 16 章讲过“同任务、同初始状态、随机顺序”。这里再往下一层：配对其实有三个层次，少一层就会混入一种偏差。</p>
+      <ol>
+        <li><strong>任务级配对</strong>：同一个任务在两臂各跑一次。抵消任务难度。</li>
+        <li><strong>格子级区组</strong>：同一格里的任务一起分析。不跨格平均，抵消任务构成差异（辛普森悖论）。</li>
+        <li><strong>批次级平衡</strong>：同一批实验里，A/B 的先后顺序交替（ABBA）。同时记录机器与时段，抵消顺序效应与资源漂移。</li>
+      </ol>
+      <p>第三层最容易被忽略。假设总是 A 先跑，A 会先占满 CPU、先把依赖装好、先把缓存预热。B 后跑，看起来更快或更慢，都可能只是顺序的功劳。ABBA 的做法是：一半任务按 A→B，另一半按 B→A。分析时把顺序作为一个区组变量。</p>
+      <p>区组变量要记录，不要只在脑子里想。至少记三个：顺序、机器、时段。顺序分 A 先还是 B 先，机器分同一台还是不同台。时段要看是否跨了缓存 TTL、是否跨了供应商的高峰。记录的目的是分析时能检查“差异是不是集中在某个区组”。不是为了做一张好看的表。</p>
+
+      <p><strong>重复几次？</strong>如果 agent 完全确定，同一任务重复两次的结果应该一样。所谓确定，指温度 0、工具顺序固定。重复没有意义。如果不确定，重复能估计“同一臂内的方差”。这是算最小可检测效应的输入。实务做法：先做 5 个任务各跑 3 次，估计方差。再决定正式实验要不要重复。不要一上来就全量重复三遍。成本会翻三倍，而方差可能很小。</p>
+      <p>如果任务量大到跑不完，优先保“格子内的配对”，而不是“格子的数量”。十个格子各两对，不如五个关键格子各四对。前者每格都看不出方向，后者至少能回答最关键的那几层。</p>
+      <p>配对之外，还有一个降低方差的小技巧。把同一任务的两次运行放在同一台机器、同一时段完成。跨机器、跨时段的差异会进入 <code>σ_diff</code>，把 MDE 推高。这不是理论问题，是实测中很常见的一类噪声。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">配对不能配掉的东西</p>
+        <p>配对能抵消任务难度，不能抵消<strong>策略本身的有状态性</strong>。上下文策略会改写历史，同一会话里前半段用 A、后半段用 B，两臂都不干净。所以分流单位必须是“整个任务”，不是“单次请求”。这条主线第 16 章已经说过，但在做消融时更容易犯。把一次会话里的压缩关掉再打开，等于制造了第三种策略。</p>
+      </div>
+    </section>
+
+    <!-- ========== 05 MDE ========== -->
+    <section id="mde">
+      <p class="sec-no">05 · 最小可检测效应<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>先算能看见多大的差异</h2>
+      <p>最小可检测效应（minimum detectable effect）简称 MDE。它回答一个问题。<strong>以我现在的样本量，多大的差异才不是噪声</strong>。它应该在开跑之前算，而不是跑完之后解释。</p>
+
+      <p>连续指标（成本、延迟、token 数）用配对差值的近似公式：</p>
+      <div class="codeblock" data-lang="text">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">MDE 近似</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">MDE ≈ (1.96 + 0.84) × σ_diff / √n = 2.8 × σ_diff / √n</span>
+<span class="code__line"> </span>
+<span class="code__line">σ_diff：同一任务在两臂上的差值标准差（先做小样本估）</span>
+<span class="code__line">n：配对数（一个任务算一对）</span>
+<span class="code__line">假设：双侧 α = 0.05，power = 0.8，差值近似正态</span>
+</code></pre>
+      </div>
+
+      <p>举个算例。先跑 10 个任务，得到成本比值的差值标准差 <code>σ_diff ≈ 0.25</code>。多数任务的两臂成本差在 ±25% 以内。如果正式实验有 40 对：</p>
+      <ul>
+        <li><code>MDE ≈ 2.8 × 0.25 / √40 = 2.8 × 0.25 / 6.32 ≈ 0.11</code>。这相当于 <strong>11%</strong>。</li>
+        <li>也就是说，40 对只能看出“成本降 11% 以上”的差异；降 5% 看不出来。</li>
+        <li>想看到 5%，需要 <code>n ≈ (2.8 × 0.25 / 0.05)² = 196</code>，约 200 对。</li>
+      </ul>
+
+      <p>二分类指标（成功率）不能用上面的公式，因为它的方差由比例决定。配对二分类用 McNemar 的近似，MDE 与“不一致对”的比例有关：</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">配对数 n</th>
+              <th scope="col">成功率上能检测的差异</th>
+              <th scope="col">成本上能检测的差异</th>
+              <th scope="col">说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">50</th>
+              <td>约 22 个百分点</td>
+              <td>约 10%</td>
+              <td>只能筛“明显更好/更差”的方案。</td>
+            </tr>
+            <tr>
+              <th scope="row">100</th>
+              <td>约 15 个百分点</td>
+              <td>约 7%</td>
+              <td>适合检测大改（换架构、换压缩方法）。</td>
+            </tr>
+            <tr>
+              <th scope="row">200</th>
+              <td>约 11 个百分点</td>
+              <td>约 5%</td>
+              <td>调阈值的常规量级。</td>
+            </tr>
+            <tr>
+              <th scope="row">400</th>
+              <td>约 8 个百分点</td>
+              <td>约 3.5%</td>
+              <td>接近工程上值得关心的下限。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">按 α = 0.05、power = 0.8、双侧估算。成功率列假设不一致对约 30%，成本列假设 <code>σ_diff = 0.25</code><sup class="fn-ref"><a href="#fn-adv-05-1" id="fnref-adv-05-1">1</a></sup>。两列不是同一套假设，不能互相换算。换任务集要重算。</p>
+
+      <p>这张表最有用的一行是“50 对”。很多团队用 30–50 个任务跑一次，看到成功率差 5 个百分点就下结论。按这张表，50 对根本分辨不出 22 个百分点以下的差异。这不是说小样本没有价值。它能排除“明显更差”，但不能证明“略微更好”。</p>
+      <p>降 MDE 有三条路，按性价比排序：</p>
+      <ol>
+        <li><strong>减少方差</strong>：同任务配对、固定种子、统一环境、把长尾任务单独分层。通常最便宜。</li>
+        <li><strong>增加配对数</strong>：直接加任务，成本线性上升。</li>
+        <li><strong>放宽目标</strong>：只声明“能检测 15 个百分点以上的差异”。把结论写窄，这不是作弊，是诚实。</li>
+      </ol>
+      <p>算出 MDE 之后，还要把它写进实验记录。不是为了好看，是为了在结果出来时有个参照。如果观测到的差异小于 MDE，就不能声称“有效”。只能写“未检测到”。这句话比“没有显著差异”更准确，因为它承认了样本量的限制。</p>
+    </section>
+
+    <!-- ========== 06 消融 ========== -->
+    <section id="ablation">
+      <p class="sec-no">06 · 消融设计<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>把策略拆开，一次关一个</h2>
+      <p>A/B 回答“这套策略比那套好吗”，消融回答“这套策略里，哪一部分在起作用”。一个策略通常由几个组件叠成：截断、裁剪、压缩、子代理、记忆。全量上线有效，不代表每个组件都有用；有的组件可能在做负功。</p>
+
+      <figure class="fig" id="fig-abl">
+        <svg viewBox="0 0 640 286" role="img" aria-labelledby="fig-abl-title fig-abl-desc">
+          <title id="fig-abl-title">消融实验：全量策略与四个单组件关闭臂</title>
+          <desc id="fig-abl-desc">顶部是全量策略，包含截断、裁剪、压缩、子代理四个组件。下面四个臂各自只关闭一个组件，另有一个负对照把压缩调到极端。箭头表示每个臂都与全量比较，而不是两两比较。</desc>
+          <defs>
+            <marker id="a5-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="a5-arrow" d="M0 0 L10 5 L0 10 z"/>
+            </marker>
+          </defs>
+
+          <rect class="a5-box a5-box--full" x="200" y="12" width="240" height="46" rx="7"/>
+          <text class="a5-t" x="320" y="32" text-anchor="middle">全量 S</text>
+          <text class="a5-s" x="320" y="48" text-anchor="middle">截断＋裁剪＋压缩＋子代理</text>
+
+          <rect class="a5-box" x="10" y="98" width="140" height="46" rx="7"/>
+          <text class="a5-t" x="80" y="118" text-anchor="middle">S − 截断</text>
+          <text class="a5-s" x="80" y="134" text-anchor="middle">看工具输出变大</text>
+
+          <rect class="a5-box" x="166" y="98" width="140" height="46" rx="7"/>
+          <text class="a5-t" x="236" y="118" text-anchor="middle">S − 裁剪</text>
+          <text class="a5-s" x="236" y="134" text-anchor="middle">看旧结果堆积</text>
+
+          <rect class="a5-box" x="322" y="98" width="140" height="46" rx="7"/>
+          <text class="a5-t" x="392" y="118" text-anchor="middle">S − 压缩</text>
+          <text class="a5-s" x="392" y="134" text-anchor="middle">看是否还能跑完</text>
+
+          <rect class="a5-box" x="478" y="98" width="152" height="46" rx="7"/>
+          <text class="a5-t" x="554" y="118" text-anchor="middle">S − 子代理</text>
+          <text class="a5-s" x="554" y="134" text-anchor="middle">看父会话膨胀</text>
+
+          <rect class="a5-box a5-box--ctrl" x="200" y="196" width="240" height="46" rx="7"/>
+          <text class="a5-t" x="320" y="216" text-anchor="middle">负对照：极端压缩</text>
+          <text class="a5-s" x="320" y="232" text-anchor="middle">每轮都压 / 永不压，确认指标会动</text>
+
+          <line class="a5-line" x1="300" y1="58" x2="90" y2="94" marker-end="url(#a5-arr)"/>
+          <line class="a5-line" x1="310" y1="58" x2="240" y2="94" marker-end="url(#a5-arr)"/>
+          <line class="a5-line" x1="330" y1="58" x2="390" y2="94" marker-end="url(#a5-arr)"/>
+          <line class="a5-line" x1="340" y1="58" x2="550" y2="94" marker-end="url(#a5-arr)"/>
+          <line class="a5-line" x1="10" y1="176" x2="630" y2="176" stroke-dasharray="4 4"/>
+
+          <text class="a5-s" x="10" y="222">负对照</text>
+          <text class="a5-s" x="10" y="270">每个臂都与“全量 S”比，不两两比；一次只关一个组件</text>
+        </svg>
+        <figcaption>图 05-2　消融的五个臂。上面是全量策略，中间四个臂各关一个组件，下面一个是负对照。所有比较都以全量为参照；一次只关一个，才能把差值归因到那个组件。负对照不是为了赢，是为了确认指标真的有分辨力。</figcaption>
+      </figure>
+
+      <p>三条设计规则：</p>
+      <ol>
+        <li><strong>一次只关一个</strong>：同时关截断和压缩，差值无法分配。真要看交互，再单独做“两个都关”的臂，并且只解释交互项。</li>
+        <li><strong>以全量为参照</strong>：每个臂的差值是“去掉这个组件后，比全量差多少”。不要拿每个臂和基线两两比。那样会得到一堆互相矛盾的结论。</li>
+        <li><strong>必须有负对照</strong>：把压缩调到“每轮都压”或“永不压”，确认主指标会明显变化。如果极端设置下指标几乎不动，说明你的指标没有分辨力。也可能任务集根本触发不到这个机制。</li>
+      </ol>
+
+      <p><strong>“关掉后更好”是重要信号。</strong>如果 <code>S − 压缩</code> 的成功率不降、成本还更低，说明在这个任务集上压缩是净负担<sup class="fn-ref"><a href="#fn-adv-05-3" id="fnref-adv-05-3">3</a></sup>。这时候不要急着删组件，先做两件事。看分层（长任务层是不是变差了），看 <code>IRR</code>（约束是不是丢了）。如果长任务层明显变差，只是被短任务的平均值盖住了。那就不是“压缩无用”，而是“压缩不该在短任务上开”。</p>
+
+      <p>消融还有一个好处：它能让“策略”变成可讨论的对象。评审时，别人问“为什么要子代理”。你可以回答“关掉它，父会话 token 涨 40%，成功率不变”。这比“业界都在用”有说服力。</p>
+
+      <p>但消融很贵：五个臂就是五倍的运行量。第一次做，不要一上来就全量消融。顺序是：先用 <strong>2 个臂</strong>（全量 vs 最可疑的组件）。在<strong>两个格子</strong>（长任务高密度、长任务强约束）上跑一轮，确认方向。方向成立，再扩到四臂和全部分层。消融的目的是找“哪一部分值得留”，不是一次把所有交互都测清。</p>
+      <p>消融结果要按“相对全量的差值”记录，不要只记绝对值。绝对值的波动会被误读成组件效果。差值配合置信区间，才能说明“这个组件贡献了多少”。如果差值区间跨 0，诚实的写法是“未观察到贡献”，而不是“略有提升”。</p>
+    </section>
+
+    <!-- ========== 07 写作 ========== -->
+    <section id="writing">
+      <p class="sec-no">07 · 结果怎么写<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>一句话里要有五个东西</h2>
+      <p>一个能用的结论句，包含五件事：<strong>条件、对象、方向、幅度、区间</strong>。缺哪个，读者就得猜哪个。</p>
+      <p class="lead-in">在长任务（&gt;30 轮、高工具密度）上，变体 B 相对基线 A 降低成本。每成功任务成本从 1.00 降到 0.86。降幅 −14%，95% CI [−20%, −8%]。成功率 72% → 71%（−1pp，CI [−3, +1]），未超出护栏。</p>
+      <p>这句话说完，读者知道：在哪测的、比什么、好了多少、有多确定、有没有副作用。下面五种写法，各自缺了一样东西。</p>
+
+      <h3 id="bad-1">反例一：“成本降低 18%”</h3>
+      <p><strong>缺什么</strong>：分母与口径。是总成本还是每成功任务成本？含不含压缩请求、重试、重附文件？失败任务算不算？<strong>怎么改</strong>：写成“每成功任务成本（含压缩与重试）下降 18%”。分子为全部任务成本，分母为该层成功任务数。</p>
+
+      <h3 id="bad-2">反例二：“显著提升”</h3>
+      <p><strong>缺什么</strong>：样本量、效应量、区间。显著只说明“不太可能是噪声”，不说明“值得上线”。<strong>怎么改</strong>：给出 n、差值、置信区间。再补一句“这个幅度是否超过事先定的决策阈值”。</p>
+
+      <h3 id="bad-3">反例三：“所有任务上都更好”</h3>
+      <p><strong>缺什么</strong>：分层。总体均值变好，可能来自某一层大幅改善，掩盖了另一层退化。<strong>怎么改</strong>：至少报告四个任务族的方向。任一关键层退化，就要写“仅在某层成立”。</p>
+
+      <h3 id="bad-4">反例四：“压缩次数减少，说明策略更好”</h3>
+      <p><strong>缺什么</strong>：主指标。压缩次数是诊断指标，不是目标。不压缩次数也可以是 0，但任务没做完。<strong>怎么改</strong>：主指标用 <code>CPS</code> 或 <code>SR</code>。压缩次数只作为解释“为什么成本变了”的中间变量。</p>
+
+      <h3 id="bad-5">反例五：“A 比 B 好”</h3>
+      <p><strong>缺什么</strong>：边界。没说任务族、长度、工具密度、模型版本、预算。别人换一个任务集，结论可能反过来——第 01 节的两个团队就是这样。<strong>怎么改</strong>：把“在什么条件下”写在句首，把“不适用于什么”写在句尾。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">还有一个隐藏反例</p>
+        <p>“p &lt; 0.05，所以值得上线。”统计显著不等于工程显著。样本足够大时，1% 的成本差异也能显著。但它可能抵不过新增的一个配置项、一个失败模式。上线决策要同时看效应量、护栏和可运维性。这一条不进统计，但能否决。</p>
+      </div>
+
+      <p>写结论时，还有一个顺序技巧：<strong>先写“不成立的部分”，再写“成立的部分”</strong>。比如“短任务层没有改善，长任务层成本降 14%”。读者会先看到边界，再看到收益，不容易把结论外推。反过来写，读者记住的只有 14%。</p>
+      <p>结论后面附三样东西，别人才能复现。一是评测集版本与空格子清单。二是实验记录 ID。三是一份可重跑的脚本或命令。没有这三样，结论只能算一次演示。附上它们，也是在提醒自己。下次换任务集，结论可能要重写。</p>
+    </section>
+
+    <!-- ========== 08 模板 ========== -->
+    <section id="record">
+      <p class="sec-no">08 · 实验记录模板<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>把研究设计写进字段里</h2>
+      <p>下面的模板和主线第 16 章那张表是配套关系。<strong>指标名直接引用那 13 项，不在这里重复定义</strong>。新增的字段全部属于“研究设计”，也就是这一章讲的东西。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table record-table">
+          <thead>
+            <tr>
+              <th scope="col">新增字段</th>
+              <th scope="col">填什么</th>
+              <th scope="col">为什么必须有</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">设计类型</th>
+              <td>配对 / 区组 / 消融 / 负对照，可多选。</td>
+              <td>决定后面怎么分析；消融与 A/B 的结论含义不同。</td>
+            </tr>
+            <tr>
+              <th scope="row">分层配额</th>
+              <td>任务族 × 长度 × 工具密度，每格 n；空格子单独标注。</td>
+              <td>防止结论被某一层垄断；空格子本身是结论。</td>
+            </tr>
+            <tr>
+              <th scope="row">计划样本量与 MDE</th>
+              <td>先算的 n 与能检测的最小差异；σ 或不确定率的来源。</td>
+              <td>防止“跑完才发现看不出差异”。</td>
+            </tr>
+            <tr>
+              <th scope="row">随机化与顺序</th>
+              <td>随机种子、ABBA 顺序、区组变量（机器、时段）。</td>
+              <td>抵消顺序效应与资源漂移。</td>
+            </tr>
+            <tr>
+              <th scope="row">消融臂</th>
+              <td>每个臂关掉哪个组件；负对照设成什么。</td>
+              <td>回答“哪一部分在起作用”，而不只是“整体好不好”。</td>
+            </tr>
+            <tr>
+              <th scope="row">结论边界</th>
+              <td>适用 / 不适用的任务族、长度、工具密度、模型版本。</td>
+              <td>让别人知道能不能复用，避免第 01 节的互相打脸。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">其余字段沿用主线第 16 章的模板。字段有实验 ID、假设、变体、模型版本、提交、评测集版本。剩下的字段是环境、主指标、护栏、结果。还有分层结果、成本口径、异常剔除、结论与决策。指标名与公式以那一章为准。</p>
+
+      <p>模板的价值不在填，而在“填之前就想清楚”。如果“消融臂”一栏写不出来，说明你还没想好要验证哪一部分。如果“结论边界”写不出来，说明你还没想好结论给谁用。空着的字段，往往就是实验设计的漏洞。</p>
+
+      <p class="small muted">下面这份可以直接复制到实验文档里。填不满，说明这次还不具备可复现性。</p>
+      <div class="codeblock" data-lang="text">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">实验记录 · 研究设计版</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">实验 ID：</span>
+<span class="code__line">研究问题（对象 / 干预 / 结果 / 方向）：</span>
+<span class="code__line">假设（可证伪，含期望幅度）：</span>
+<span class="code__line">设计类型（配对 / 区组 / 消融 / 负对照）：</span>
+<span class="code__line">变体 A（基线）：</span>
+<span class="code__line">变体 B（只改一个变量）：</span>
+<span class="code__line">消融臂（各关哪个组件）：</span>
+<span class="code__line">负对照（极端设置）：</span>
+<span class="code__line">模型与版本（温度 / 最大输出）：</span>
+<span class="code__line">代码与配置提交：</span>
+<span class="code__line">评测集版本：</span>
+<span class="code__line">分层配额（任务族 × 长度 × 工具密度，每格 n）：</span>
+<span class="code__line">空格子（哪些格子没有样本，为什么）：</span>
+<span class="code__line">执行环境（机器 / 联网 / 依赖状态 / 种子）：</span>
+<span class="code__line">随机化与顺序（ABBA / 区组变量）：</span>
+<span class="code__line">计划样本量 n 与 MDE（先算）：</span>
+<span class="code__line">主指标（引用主线第 16 章的哪一项 + 公式口径）：</span>
+<span class="code__line">护栏指标（阈值）：</span>
+<span class="code__line">探针问题（3–5 个，答案只能来自被压缩段）：</span>
+<span class="code__line">结果（A / B / 差值 / 95% CI / 效应量）：</span>
+<span class="code__line">分层结果（每层方向与 n）：</span>
+<span class="code__line">消融结果（各臂相对全量的差值）：</span>
+<span class="code__line">成本口径（是否含压缩 / 重试 / 重附）：</span>
+<span class="code__line">异常与剔除（原因 / 剔除前后是否一致）：</span>
+<span class="code__line">结论（条件 + 方向 + 幅度 + 区间）：</span>
+<span class="code__line">结论边界（适用 / 不适用）：</span>
+<span class="code__line">决策（通过 / 不通过 / 仅限某层）与下一步：</span>
+</code></pre>
+      </div>
+    </section>
+
+    <!-- ========== 09 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">09 · 小测验<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>三道题，检验你会不会设计实验</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">你先跑 10 个任务，得到成本差值的 <code>σ_diff ≈ 0.2</code>。正式实验只能凑出 100 对。这次实验能看出多大的成本差异？如果老板要你证明“降 5%”，你该怎么办？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p><code>MDE ≈ 2.8 × 0.2 / √100 = 0.056</code>，约 5.6%。也就是说，100 对勉强能看出 5% 左右的差异，但已经在边界上，估计不稳。要更稳地证明 5%，需要约 <code>(2.8 × 0.2 / 0.05)² ≈ 125</code> 对以上。或者先降方差：同任务配对、固定种子、统一依赖。把 <code>σ_diff</code> 压到 0.15，100 对就能看到 4.2%。见<a href="#mde">第 05 节</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">消融结果：全量 <code>SR</code> 78%、<code>CPS</code> 1.00；<code>S − 压缩</code> 的 <code>SR</code> 80%、<code>CPS</code> 0.92。能否直接删掉压缩？还要看什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>不能直接删。先看分层。如果收益全部来自短任务，而长任务层 <code>SR</code> 明显下降，结论应是“短任务关压缩、长任务保留”，不是“压缩无用”。再看 <code>IRR</code> 与溢出率。压缩去掉后，长任务可能靠溢出重试勉强跑完。成本被记在重试里，<code>CPS</code> 的下降可能是假象。最后看负对照是否动过。如果「永不压缩」和「每轮压缩」结果差不多，说明任务集压根没触发这个机制。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">把这句话改写成合格结论：“新策略显著降低了成本，效果很好，建议推广。”</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>至少补五样：条件、对象、方向、幅度、区间。示例：“在长任务（&gt;30 轮、高工具密度）上，新策略相对基线把 <code>CPS</code> 从 1.00 降到 0.88（−12%，95% CI [−18%, −6%]），<code>SR</code> 71% → 70%（−1pp，CI [−3, +1]），未超护栏；短任务层无改善，暂不推广。”再补一句边界：“不适用于短任务与低工具密度场景。”见<a href="#writing">第 07 节</a>。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-adv-05-1">
+          MDE 表按正态近似估算：连续指标用 <code>2.8 × σ_diff / √n</code>，二分类用 McNemar 的近似 <code>2.8 × √(p_d / n)</code>（<code>p_d</code> 为不一致对比例，取 0.30）。已用 50 / 100 / 200 / 400 四档复算，未做模拟验证；实际所需样本随基线比例、是否单侧、是否多重比较变化。正式实验前应用自己的小样本估计重算，不要直接抄表。
+          <a class="footnotes__back" href="#fnref-adv-05-1">↩</a>
+        </li>
+        <li id="fn-adv-05-2">
+          “每格 8 个、其中 3 个高密度”是设计建议，不是统计结论：它来自 12 格 × 8 = 96 个任务的成本约束，以及“每格至少能看出方向”的经验。没有做过“每格 6 个 vs 12 个”的对照，不能保证 8 是最优。样本紧时优先保长任务格与约束格。
+          <a class="footnotes__back" href="#fnref-adv-05-2">↩</a>
+        </li>
+        <li id="fn-adv-05-3">
+          “关掉某组件后更好，说明该组件在该任务集上是净负担”是解释框架，不是定律：消融只能说明“在这个任务集、这个配置下”去掉更好，不能排除组件与任务长度、工具密度的交互。已核对消融臂只改一个组件的前提；若要下更强结论，需要再加“关两个组件”的交互臂。
+          <a class="footnotes__back" href="#fnref-adv-05-3">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">进阶部分到此结束。下一步：<a href="src-codex-01.html">源码解读 · Codex 压缩保留谁</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

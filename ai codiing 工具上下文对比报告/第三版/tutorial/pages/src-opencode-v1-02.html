@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>opencode v1 · prune：默认关闭的旧结果擦除 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-opencode-v1-02 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-opencode-v1-02 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-opencode-v1-02 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-opencode-v1-02 .path-card code,
+  #src-opencode-v1-02 .callout code,
+  #src-opencode-v1-02 .quiz__q code,
+  #src-opencode-v1-02 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-opencode-v1-02">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-opencode-v1-02">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v1</span><span>·</span><span>第 02 节</span></p>
+      <h1>prune：默认关闭的旧结果擦除</h1>
+      <p class="lede">v1 有一个不调模型的减量器，叫 prune。它从最新消息往回扫，保护最近 40k 的工具输出，只有能擦掉超过 20 000 token 时才真的动手。它默认是关的，调用点还在主循环退出之后。这一节读它为什么这么保守，以及 v2 为什么把它整个删掉。</p>
+      <ul class="meta">
+        <li>约 13 分钟</li>
+        <li>2 个代码块 · 2 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>733b2c6</code>（tag v1.19.0）</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出 prune 的三条保护线：轮数、token 数、最小收益，以及它们各自的默认值。</li>
+          <li>解释「擦除」为什么只是打一个时间戳，以及序列化时如何变成占位文本。</li>
+          <li>说明 <code>skill</code> 结果为什么永不擦除，以及遇到已擦除结果时为什么直接终止扫描。</li>
+          <li>把 v1 的 prune 与 v2 的「压缩时文本化 + 丢最旧 exchange」放在一起比较。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>「裁剪」与「压缩」的分界是：前者不调用模型，后者调用。prune 属于前者，但它不是「把旧消息删掉」，而是「给旧工具结果打一个标记，序列化时显示成占位符」。原文一直在 SQLite 里。理解这一点，才能理解它为什么可逆。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>三道门槛，一个时间戳</h2>
+
+      <p>入口是 <code>SessionCompaction.prune({ sessionID })</code>。函数第一行读配置，第二行就是早退：<code>if (!cfg.compaction?.prune) return</code>。<span class="tag tag--ok">已核实</span>也就是说，<b>默认情况下这个函数什么都不做</b>；配置注释把 <code>prune</code> 的默认值写成 <code>false</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p class="lead-in">它的策略可以概括成一句话：从最新往回数，最近两个 user 轮不动，最近 40k 的工具输出不动，剩下的如果加起来能省 20 000 以上，才一起擦。</p>
+
+      <p>三个常量：<code>PRUNE_MINIMUM = 20_000</code>、<code>PRUNE_PROTECT = 40_000</code>、<code>PRUNE_PROTECTED_TOOLS = ["skill"]</code>。<span class="tag tag--ok">已核实</span>前两个是 token 数，第三个是工具名白名单。</p>
+
+      <p>擦除动作只有一行：<code>part.state.time.compacted = Date.now()</code>，然后 <code>session.updatePart(part)</code>。<span class="tag tag--ok">已核实</span>序列化时，<code>part.state.time.compacted</code> 为真就把输出替换成 <code>[Old tool result content cleared]</code>。<span class="tag tag--ok">已核实</span>原文没有删除，消息结构也没有改变，只是「读的时候显示成一句话」。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 292" role="img" aria-labelledby="v12-f1-title v12-f1-desc">
+          <title id="v12-f1-title">prune 的三条保护线与擦除区</title>
+          <desc id="v12-f1-desc">从右到左是消息时间轴。最近两个 user 轮不动，其后的 40 000 token 工具输出不动，更旧的工具输出进入可擦区，只有可擦总量超过 20 000 token 才落地。</desc>
+          <text class="svg-note" x="8" y="18">消息时间轴（左旧右新）</text>
+          <rect class="svg-track" x="8" y="30" width="150" height="46" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="83" y="58" text-anchor="middle">更早的消息</text>
+          <rect class="svg-seg--c" x="166" y="30" width="180" height="46" rx="7"/>
+          <text class="svg-label svg-label--s" x="256" y="52" text-anchor="middle">可擦区</text>
+          <text class="svg-label svg-label--s" x="256" y="70" text-anchor="middle">超出 40k 的旧结果</text>
+          <rect class="svg-seg--b" x="354" y="30" width="150" height="46" rx="7"/>
+          <text class="svg-label svg-label--s" x="429" y="58" text-anchor="middle">最近 40k</text>
+          <rect class="svg-seg--a" x="512" y="30" width="120" height="46" rx="7"/>
+          <text class="svg-label svg-label--s" x="572" y="58" text-anchor="middle">最近 2 轮</text>
+
+          <text class="svg-note" x="83" y="104" text-anchor="middle">仍然进入摘要</text>
+          <text class="svg-note" x="256" y="104" text-anchor="middle">候选</text>
+          <text class="svg-note" x="429" y="104" text-anchor="middle">不动</text>
+          <text class="svg-note" x="572" y="104" text-anchor="middle">不动</text>
+
+          <line class="svg-rule" x1="8" y1="126" x2="632" y2="126"/>
+
+          <text class="svg-note" x="8" y="152">门槛 1：turns &lt; 2 时整条消息跳过（最近两个 user 轮内的工具结果不动）</text>
+          <text class="svg-note" x="8" y="178">门槛 2：累计 total ≤ 40 000 时继续往前，不加入候选</text>
+          <text class="svg-note" x="8" y="204">门槛 3：候选总量 pruned &gt; 20 000 才真的写时间戳</text>
+
+          <rect class="svg-seg--b" x="8" y="224" width="300" height="44" rx="7"/>
+          <text class="svg-label svg-label--s" x="158" y="251" text-anchor="middle">未达 20 000 → 一个都不擦</text>
+          <rect class="svg-seg--c" x="320" y="224" width="312" height="44" rx="7"/>
+          <text class="svg-label svg-label--s" x="476" y="251" text-anchor="middle">超过 20 000 → 候选全部擦除</text>
+        </svg>
+        <figcaption>图 1　三条保护线。橙色是唯一会被改写的区域；门槛 3 是「全有或全无」——要么一个不擦，要么候选全部擦掉，没有「擦一半」。</figcaption>
+      </figure>
+
+      <p>调用点在 <code>runLoop</code> 的末尾：<code>yield* compaction.prune(...).pipe(Effect.ignore, Effect.forkIn(scope))</code>。<span class="tag tag--ok">已核实</span>三个细节：它在循环退出后、返回最后一条 assistant 之前执行；<code>forkIn</code> 让它在后台跑，不阻塞返回；<code>Effect.ignore</code> 吞掉所有错误。也就是说，prune 失败不会影响本轮任务的完成。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四条链接：常量、实现、占位、调用</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 常量与默认值</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L28-L33">compaction.ts#L28-L33</a><br>
+          <code>PRUNE_MINIMUM = 20_000</code>、<code>PRUNE_PROTECT = 40_000</code>、<code>PRUNE_PROTECTED_TOOLS = ["skill"]</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 实现：倒序扫描与三道门槛</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L273-L317">compaction.ts#L273-L317</a><br>
+          <code>prune</code>：轮数保护、40k 保护、已擦除即停、20k 最小收益。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 占位：序列化时替换输出</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L72-L79">compaction.ts#L72-L79</a><br>
+          <code>part.state.time.compacted ? "[Old tool result content cleared]" : truncate(...)</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 调用点：循环退出后异步执行</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/prompt.ts#L1338-L1339">prompt.ts#L1338-L1339</a><br>
+          <code>forkIn(scope)</code> + <code>Effect.ignore</code>，失败静默，不阻塞返回。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：配置项与默认值注释见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/core/src/v1/config/config.ts#L149-L168">v1/config/config.ts#L149-L168</a>；擦除后的 <code>updatePart</code> 落盘见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L308-L316">compaction.ts#L308-L316</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】<code>PRUNE_PROTECT</code> 保护的是「累计值」，不是「每条消息」</p>
+        <p>代码里 <code>total += estimate</code> 之后才判断 <code>total &lt;= PRUNE_PROTECT</code>。所以前 40 000 token 可能是十几条小结果，也可能是一条大结果的一部分——但擦除的单位是「整条 part」，不是 part 内的片段。一旦 <code>total</code> 跨过 40 000，当前这条 part 就会整体进入候选，哪怕它只有 50 token 落在保护线之外。<span class="tag tag--ok">已核实</span></p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：扫描与占位</h2>
+
+      <p>第一段是 <code>prune()</code> 的完整体，45 行；只去掉了两行日志的参数展开。第二段是序列化时的占位判断，3 行。合计 50 行。</p>
+
+      <p class="small muted">文件：<code>packages/opencode/src/session/compaction.ts</code>　行号：L273-L317（46 行，完整）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 默认关闭：没开就直接返回，连消息都不读</span>
+<span class="code__line">const prune = Effect.fn("SessionCompaction.prune")(function* (input: { sessionID: SessionID }) {</span>
+<span class="code__line">  const cfg = yield* config.get()</span>
+<span class="code__line">  if (!cfg.compaction?.prune) return</span>
+<span class="code__line">  yield* Effect.logInfo("pruning")</span>
+<span class="code__line"> </span>
+<span class="code__line">  const msgs = yield* session</span>
+<span class="code__line">    .messages({ sessionID: input.sessionID })</span>
+<span class="code__line">    .pipe(Effect.catchIf(NotFoundError.isInstance, () =&gt; Effect.succeed(undefined)))</span>
+<span class="code__line">  if (!msgs) return <span class="cmt">// 会话不存在：静默退出</span></span>
+<span class="code__line"> </span>
+<span class="code__line">  let total = 0 <span class="cmt">// 已扫过的工具输出总量</span></span>
+<span class="code__line">  let pruned = 0 <span class="cmt">// 可擦除的总量</span></span>
+<span class="code__line">  const toPrune: SessionV1.ToolPart[] = []</span>
+<span class="code__line">  let turns = 0 <span class="cmt">// 从新往旧数到的 user 轮数</span></span>
+<span class="code__line"> </span>
+<span class="code__line">  loop: for (let msgIndex = msgs.length - 1; msgIndex &gt;= 0; msgIndex--) {</span>
+<span class="code__line">    const msg = msgs[msgIndex]</span>
+<span class="code__line">    if (msg.info.role === "user") turns++</span>
+<span class="code__line">    if (turns &lt; 2) continue <span class="cmt">// 门槛 1：最近两轮不动</span></span>
+<span class="code__line">    if (msg.info.role === "assistant" &amp;&amp; msg.info.summary) break loop <span class="cmt">// 到上次压缩就停</span></span>
+<span class="code__line">    for (let partIndex = msg.parts.length - 1; partIndex &gt;= 0; partIndex--) {</span>
+<span class="code__line">      const part = msg.parts[partIndex]</span>
+<span class="code__line">      if (part.type !== "tool") continue</span>
+<span class="code__line">      if (part.state.status !== "completed") continue <span class="cmt">// 只处理已完成</span></span>
+<span class="code__line">      if (PRUNE_PROTECTED_TOOLS.includes(part.tool)) continue</span>
+<span class="code__line">      if (part.state.time.compacted) break loop <span class="cmt">// 更旧的也擦过了</span></span>
+<span class="code__line">      const estimate = Token.estimate(part.state.output)</span>
+<span class="code__line">      total += estimate</span>
+<span class="code__line">      if (total &lt;= PRUNE_PROTECT) continue <span class="cmt">// 门槛 2：前 40k 不动</span></span>
+<span class="code__line">      pruned += estimate</span>
+<span class="code__line">      toPrune.push(part)</span>
+<span class="code__line">    }</span>
+<span class="code__line">  }</span>
+<span class="code__line"> </span>
+<span class="code__line">  yield* Effect.logInfo("found", { pruned, total })</span>
+<span class="code__line">  if (pruned &gt; PRUNE_MINIMUM) { <span class="cmt">// 门槛 3：收益够大才动手</span></span>
+<span class="code__line">    for (const part of toPrune) {</span>
+<span class="code__line">      if (part.state.status === "completed") {</span>
+<span class="code__line">        part.state.time.compacted = Date.now() <span class="cmt">// 只打时间戳</span></span>
+<span class="code__line">        yield* session.updatePart(part)</span>
+<span class="code__line">      }</span>
+<span class="code__line">    }</span>
+<span class="code__line">    yield* Effect.logInfo("pruned", { count: toPrune.length })</span>
+<span class="code__line">  }</span>
+<span class="code__line">})</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/opencode/src/session/compaction.ts</code>　行号：L76-L78（4 行，完整）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 序列化工具结果时：擦过的显示占位，没擦的按长度截断</span>
+<span class="code__line">const output = part.state.time.compacted</span>
+<span class="code__line">  ? "[Old tool result content cleared]"</span>
+<span class="code__line">  : truncate([part.state.output, ...attachments].join("\n"))</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段省略了两处 <code>Effect.logInfo</code> 的对象展开（源码里各占 1 行，已在此保留为单行），其余逐行对应。第二段是三元表达式的三行，没有省略。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四次「停」，一次「才动手」</h2>
+
+      <h3>第 1 段　为什么先数轮，再看 token</h3>
+
+      <p><code>turns</code> 在遇到 <code>user</code> 消息时自增，小于 2 就 <code>continue</code>。<span class="tag tag--ok">已核实</span>这是「最近两轮绝对安全」的硬保护：即使这两轮里有 200k 的工具输出，也不擦。理由是最近两轮通常就是当前任务的上下文，擦掉它们等于让模型失忆。</p>
+
+      <p>注意 <code>continue</code> 跳的是整条消息，不是「只跳过 user 消息」。所以最近两轮里的 assistant、tool 消息全部不处理。</p>
+
+      <p>这道保护与 40 000 的 token 保护是<b>叠加</b>的，不是二选一。最近两轮可能只有 2 000 token，那么 40 000 的保护线会继续往旧消息延伸；反过来，如果最近两轮就有 100 000 token，40 000 早就越过了，但轮数保护仍然挡住它们。</p>
+
+      <h3>第 2 段　遇到上次压缩就停</h3>
+
+      <p><code>if (msg.info.role === "assistant" &amp;&amp; msg.info.summary) break loop</code>：扫描到「摘要 assistant 消息」时整个循环结束。<span class="tag tag--ok">已核实</span>因为摘要之前的历史已经被压缩替换，不会再进入模型上下文；继续擦它们没有收益。</p>
+
+      <p>这个判断也解释了 prune 与压缩的关系：prune 只处理「当前保留段」里的工具输出。它不会去动已经被摘要掉的部分，也不会跨过一次压缩往前扫。</p>
+
+      <h3>第 3 段　「已擦除即停」而不是「跳过」</h3>
+
+      <p><code>if (part.state.time.compacted) break loop</code>。为什么不是 <code>continue</code>？因为扫描是从新往旧的：一旦遇到一条已经擦过的结果，说明更旧的结果在上一轮 prune 里也已经处理过了（上一轮要么全擦，要么全不擦）。再往前扫只会重复统计。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这也意味着一个边界情况：如果用户手动改过某条旧结果的 <code>compacted</code> 标记，扫描会提前终止，更旧的结果这一轮不会被处理。这是「信任历史一致性」的代价。</p>
+
+      <h3>第 4 段　20 000 的门槛：为什么是「全有或全无」</h3>
+
+      <p><code>pruned</code> 累加的是候选的估算 token；只有 <code>&gt; 20 000</code> 才进入写回循环。<span class="tag tag--ok">已核实</span>为什么设这么高的门槛？因为擦除会让前缀缓存失效一次。如果只省 3 000 token 却让整个前缀重算，成本可能反而更高。20 000 是一个「值得为它破坏一次缓存」的量级。</p>
+
+      <p>为什么不是「擦到刚好 20 000 就停」？因为代码先把候选收集完，再统一判断。实现简单，代价是有时一次擦掉 60 000，远超门槛。对使用者来说，这是「要么不动，要么动得彻底」。</p>
+
+      <p>还有两个细节。第一，<code>Token.estimate(part.state.output)</code> 只算输出文本，不算附件；第二，擦除只改 <code>time.compacted</code>，<code>state.output</code> 原样保留在库里。所以「擦除」是可逆的：把时间戳去掉，原文立刻回来。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 236" role="img" aria-labelledby="v12-f2-title v12-f2-desc">
+          <title id="v12-f2-title">擦除只改序列化结果，不改存储</title>
+          <desc id="v12-f2-desc">左边是 SQLite 里的 part：state.output 原文与 time.compacted 时间戳。右边是模型看到的序列化文本：被擦除的显示占位符，未擦除的显示截断后的输出。</desc>
+          <text class="svg-note" x="8" y="18">SQLite 里的 part</text>
+          <rect class="svg-track" x="8" y="28" width="280" height="120" rx="8"/>
+          <text class="svg-note" x="24" y="54">state.status = "completed"</text>
+          <text class="svg-note" x="24" y="78">state.output = "……原文 12k……"</text>
+          <text class="svg-note" x="24" y="102">state.time.compacted = 1.73e9</text>
+          <text class="svg-note" x="24" y="126">（原文仍在，未删除）</text>
+
+          <line class="svg-rule" x1="300" y1="88" x2="340" y2="88"/>
+          <text class="svg-note" x="320" y="78" text-anchor="middle">序列化</text>
+
+          <text class="svg-note" x="352" y="18">模型看到的内容</text>
+          <rect class="svg-seg--b" x="352" y="28" width="280" height="52" rx="8"/>
+          <text class="svg-label" x="492" y="50" text-anchor="middle">[Tool result]:</text>
+          <text class="svg-label" x="492" y="70" text-anchor="middle">[Old tool result content cleared]</text>
+          <rect class="svg-track" x="352" y="88" width="280" height="60" rx="8"/>
+          <text class="svg-note" x="368" y="112">未擦除的结果：</text>
+          <text class="svg-note" x="368" y="136">truncate(output + attachments)</text>
+
+          <text class="svg-note" x="8" y="186">擦除 = 打时间戳 + 落盘；恢复 = 去掉时间戳。两步都不碰 output。</text>
+          <text class="svg-note" x="8" y="212">所以 prune 不会让「原文永远消失」，但会让模型这一轮看不见它。</text>
+        </svg>
+        <figcaption>图 2　擦除的真实含义。存储层保留原文，序列化层按时间戳切换成占位符；这是 prune 与 omp 的 shake 最大的区别。</figcaption>
+      </figure>
+
+      <div class="callout callout--info">
+        <p class="callout__title">与 v2 的对照：为什么 v2 把 prune 删了</p>
+        <p>v2 的配置规范化把 <code>compaction.prune</code> 标成 <b>unsupported</b>，出现就产生诊断（<code>config/normalize.ts#L333-L334</code>）。<span class="tag tag--ok">已核实</span>v2 把「旧工具输出的治理」挪进了压缩流程：构造摘要请求时，<code>flattenAndDropOldest()</code> 把历史文本化（丢掉 reasoning、媒体、指令更新，切长短工具输出），仍装不下才按 exchange 整块丢最旧的，并插入 <code>[N older exchanges omitted]</code>（<code>session/compaction.ts#L457-L504</code>）。<span class="tag tag--ok">已核实</span>一句话：v1 是「平时静默擦，压缩时再摘要」，v2 是「平时不动，压缩时一次性决定丢谁」。<b>为什么改：</b>压缩本来就要重写前缀，在那里丢内容的边际成本最低；平时擦则要单独承担一次缓存失效，收益不确定。前者省日常 token，后者让磁盘与模型可见历史保持更强的对应关系。</p>
+      </div>
+
+      <h3>第 5 段　走查：从最新往回数，候选在哪里开始</h3>
+
+      <p>设最近两个 user 轮之外有六个已完成工具结果，按从新到旧排列，token 如下：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">顺序</th>
+              <th scope="col">工具</th>
+              <th scope="col">token</th>
+              <th scope="col">累计 total</th>
+              <th scope="col">进入候选</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">①<span>20 000</span></th><td><code>grep</code></td><td>20 000</td><td>20 000</td><td>否（≤ 40 000）</td></tr>
+            <tr><th scope="row" class="cell-tool">②<span>30 000</span></th><td><code>read</code></td><td>30 000</td><td>50 000</td><td>是（跨线那条整体入选）</td></tr>
+            <tr><th scope="row" class="cell-tool">③<span>15 000</span></th><td><code>bash</code></td><td>15 000</td><td>65 000</td><td>是</td></tr>
+            <tr><th scope="row" class="cell-tool">④<span>30 000</span></th><td><code>read</code></td><td>30 000</td><td>95 000</td><td>是</td></tr>
+            <tr><th scope="row" class="cell-tool">⑤<span>40 000</span></th><td><code>bash</code></td><td>40 000</td><td>135 000</td><td>是</td></tr>
+            <tr><th scope="row" class="cell-tool">⑥<span>skill</span></th><td><code>skill</code></td><td>8 000</td><td>143 000</td><td>否（受保护工具）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：数字为示意。真实 <code>Token.estimate</code> 是 <code>round(len / 4)</code>；<code>skill</code> 的 8 000 计入 <code>total</code> 但不进候选。</p>
+
+      <p>结果是 <code>pruned = 115 000</code>（②+③+④+⑤），大于 20 000，于是这四个 part 全部被打上 <code>time.compacted</code>。①在累计跨线之前，整条留在候选之外——即使它自己有 20 000 token，也不会被擦。<span class="tag tag--ok">已核实</span>这正是「按累计值保护、按整条 part 擦除」的组合效果。</p>
+
+      <p>如果同样的序列里②只有 15 000，那么累计到⑤时 <code>total = 20 000 + 15 000 + 15 000 + 30 000 + 40 000</code>，候选是 15+30+40 = 85 000，仍然超过门槛。要让它不触发，得把候选压到 20 000 以下——大约相当于只剩一条小结果。门槛的设计意图就是「小打小闹不值得破坏缓存」。</p>
+
+      <p>还有一个反直觉的点：<code>skill</code> 结果虽然不擦，但会推高 <code>total</code>。这意味着一条 8 000 token 的技能正文，会让 40 000 的保护线「更快被用完」，从而让更旧的结果更早进入候选。<span class="tag tag--ok">已核实</span>如果你希望技能输出完全不影响裁剪决策，得把它从 <code>total</code> 里排除；当前实现没有这么做。</p>
+
+      <p>最后看开关。默认 <code>compaction.prune</code> 为 <code>false</code>，上面的计算根本不会发生；开启后它也只在一轮结束时异步跑一次。<span class="tag tag--ok">已核实</span>所以它的定位不是「实时救火」，而是「会话跑久了，顺手清一清」。</p>
+
+      <h3>第 6 段　默认关闭是不是过度保守</h3>
+
+      <p>把 prune 的收益与代价写成一句话：它用「一次前缀缓存失效」换「后续每轮少读若干 token」。是否划算，取决于这次会话还会持续多久。</p>
+
+      <p>假设擦掉 115 000 token，下一次请求的前缀从第一个被擦的位置断开。此后的每一轮，输入都少 115 000；但第一轮要重新写缓存，写缓存的单价比读缓存高。于是存在一个「回本轮数」：会话在回本点之前结束，prune 就是亏的；之后才是赚的。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-src-opencode-v1-02-1" id="fnref-src-opencode-v1-02-1">1</a></sup></p>
+
+      <p>这解释了默认关闭的合理性：CLI 会话里大量是「问一个问题、拿到答案就退出」的短会话，回本点根本到不了。反过来，常驻的 IDE 会话、跑一整天的大任务，prune 的收益会很明显。默认值服务的是前者，配置项服务的是后者。</p>
+
+      <p>20 000 的门槛也是同一个逻辑的粗粒度版本：它不计算回本点，只要求「省得足够多」。15 000 不擦、25 000 就擦，中间没有渐变。这种「阈值 + 全有全无」的设计在工程上很常见：它不最优，但可预测、好解释、不会每轮都抖动。</p>
+
+      <p>omp 的 prune 走得更远：它不只算总量，还看「候选结果之后的 suffix 是否还在热缓存前缀里」。在热前缀里就不改，等于把「回本点」的判断交给 provider 的缓存位置。<span class="tag tag--ok">已核实</span>代价是需要 provider 的 lookback 信息，而 v1 要兼容大量 OpenAI 兼容端点，拿不到这个信息，只能退回「靠门槛猜」。</p>
+
+      <p>所以「默认关闭」不是保守，而是「缺少判断所需的信息时的安全默认」。v2 干脆删掉它，把决策集中到压缩时刻——那里本来就要重写前缀，擦除的边际成本为零。</p>
+
+      <h3>第 7 段　prune 与压缩的相互作用</h3>
+
+      <p>prune 在一轮结束时跑，压缩在阈值触发时跑。两者的顺序决定了一件事：<b>摘要能不能看到被擦的原文</b>。</p>
+
+      <p>答案是不能。压缩序列化历史时，遇到 <code>part.state.time.compacted</code> 为真的工具结果，直接输出 <code>[Old tool result content cleared]</code>（L76-L78）。<span class="tag tag--ok">已核实</span>所以如果 prune 先擦、压缩后压，摘要模型看到的是占位符，不是原文。</p>
+
+      <p>这不一定坏。prune 擦的是「40 000 token 之外的旧结果」，本来就是要被摘要概括掉的内容；摘要看不到细节，只能写「曾经运行过若干命令」。如果这些细节重要，用户应该在会话还短的时候解决，而不是指望压缩记住。</p>
+
+      <p>但如果顺序反过来——先压缩、再 prune——情况不同：压缩时原文还在，摘要能读到；prune 只是在上一次压缩的保留段里再擦一遍。v1 的实际顺序是「压缩按需、prune 在每轮结束」，两者可能交替发生，取决于阈值什么时候到。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这也给了一个使用建议：如果你打算靠摘要保留某个关键输出，不要开 prune，或者在它被擦之前手动压缩。开 prune 等于告诉系统「旧输出的细节可以永久放弃」，而摘要只能概括它看得见的东西。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>prune 默认关闭；开启后保护最近 2 轮与最近 40k 的工具输出。</li>
+            <li>候选总量必须超过 20 000 token 才落地，落地时全擦，不擦一半。</li>
+            <li>擦除只写 <code>time.compacted</code>，序列化时显示 <code>[Old tool result content cleared]</code>，原文仍在库里。</li>
+            <li><code>skill</code> 结果永不擦；遇到已擦除结果直接终止扫描。</li>
+            <li>调用点在循环退出后异步执行，失败被忽略；v2 删掉了这个能力，改在压缩时统一丢最旧 exchange。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>五种「擦旧结果」，保护线各不相同</h2>
+
+      <p>同样是「旧工具输出换占位符」，四家的保护逻辑差异很大：v1 按轮数 + token 双保护，omp 的 prune 只看 token 且有缓存守卫，shake 按区域类型，pi 干脆没有自动裁剪。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">机制</th>
+              <th scope="col">保护线</th>
+              <th scope="col">落地门槛</th>
+              <th scope="col">默认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>打 <code>time.compacted</code> 时间戳</td>
+              <td>最近 2 轮 + 40 000 token</td>
+              <td>可擦 &gt; 20 000</td>
+              <td>关闭</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td><code>pruneToolOutputs</code> 换占位符</td>
+              <td>最近 40 000，另有缓存守卫</td>
+              <td>可擦 ≥ 20 000</td>
+              <td>压缩前自动</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span>（shake）</th>
+              <td>区域机械省略 + artifact</td>
+              <td>最近 16 000（自动档）</td>
+              <td>净省 ≥ 4 000</td>
+              <td>方法链中启用</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td><code>context_edit</code> 省略条目</td>
+              <td>无自动阈值</td>
+              <td>无</td>
+              <td>仅溢出恢复</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：v1 <code>733b2c6</code>；omp <code>f979f46</code>；pi <code>b45e0eb</code>。omp 的 <code>pruneToolOutputs</code> 与 <code>shake</code> 是两套机制，前者按 token 预算批量裁，后者按区域类型省略。</p>
+
+      <p>三点对照：</p>
+
+      <p>一是<b>双保护还是单保护</b>。只有 v1 同时用「轮数」和「token」两条线。多一条线意味着更安全，也意味着更难预测：用户看到「还有 30k 旧输出没擦」，可能只是因为它们落在最近两轮里。</p>
+
+      <p>二是<b>缓存守卫</b>。omp 的 prune 在改一条候选之前，会检查它后面的 suffix 是否还在热缓存前缀里；在热前缀里就不改。v1 没有这层守卫，20 000 的门槛是它唯一的「值不值得破坏缓存」判断。</p>
+
+      <p>三是<b>可逆性的实现方式</b>。v1 与 omp 的 prune 都保留原文，只是打标记；omp 的 shake 把原文挪到 artifact，会话文件里只剩占位符；pi 的 <code>context_edit</code> 连原文都不动，只追加一条编辑记录。三种做法的「恢复」成本依次升高。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从门槛到默认值</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">最近两轮内有 50 000 token 的工具输出；更旧的结果一共 15 000 token。prune 会擦掉多少？如果把 <code>PRUNE_PROTECT</code> 改成 10 000 呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先看轮数保护：最近两轮的 50 000 根本不进统计。再看的更旧部分：<code>total</code> 只有 15 000，永远不超过 40 000，所以 <code>pruned</code> 是 0。</p>
+          <p>改成 10 000 后，更旧的 15 000 里超出 10 000 的部分才会进候选；但候选只有 5 000，仍小于 20 000 的门槛。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">为什么 <code>skill</code> 的结果永不擦除？如果放开这条限制，会有什么具体后果？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>技能正文不是「数据」，而是「行为指令」。它告诉模型按什么流程做事。</p>
+          <p>擦掉之后，模型可能还在按技能流程执行，但看不到具体步骤与约束；更糟的是，它可能把占位符当成「技能内容为空」，从而跳过必要检查。</p>
+          <p>omp 的保护名单更宽：连 <code>skill://</code> 读取与 artifact 回读都保护，理由类似。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">prune 默认关闭，但 v2 直接删掉了它。如果你是 v1 的维护者，会选择「改默认值」还是「加缓存守卫」？说出你的判断依据。</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先看默认关闭的原因：擦除会让前缀缓存失效，收益不确定。改默认值等于让所有用户承担这个风险。</p>
+          <p>再看缓存守卫的成本：要判断 suffix 是否在热前缀里，需要 provider 的缓存 lookback 信息；不是所有 provider 都给。</p>
+          <p>v2 的选择是「把决策集中到压缩时刻」，代价是平时不省 token、压缩请求更大。三条路都有代价，关键是你的用户更常遇到哪一种问题。</p>
+        </details>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-src-opencode-v1-02-1">
+          查了 <code>session/compaction.ts</code> 的 prune 实现与 <code>v1/config/config.ts</code> 的默认值，没有找到任何按 token 计价、按缓存单价计算回本点的代码；provider 的缓存读写单价不在仓库内，无法本地复现。因此这里只做定性推断：回本点存在，但给不出具体轮数。结论「默认关闭对短会话更安全」依赖这条推断，不依赖任何数值。
+          <a class="footnotes__back" href="#fnref-src-opencode-v1-02-1">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一节：opencode v1 · filterCompacted 重排替代历史。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

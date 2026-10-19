@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>pi · 用 section 补丁保住前缀缓存 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-pi-03 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-pi-03 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-pi-03 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-pi-03 .path-card code,
+  #src-pi-03 .callout code,
+  #src-pi-03 .quiz__q code,
+  #src-pi-03 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-pi-03">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-pi-03">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>pi</span><span>·</span><span>第 03 节</span></p>
+      <h1>用 section 补丁保住前缀缓存</h1>
+      <p class="lede">系统提示词最容易变成「每次都整段重发」的东西：换了个目录、装了个技能、规则文件改了一行，整块提示就变了，缓存从第一个字节开始失效。pi 的解法是把提示词拆成具名 section，变化时只写一条补丁，让旧的那几段字节原样不动。</p>
+      <ul class="meta">
+        <li>约 13 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>b45e0eb</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>列出 pi 系统提示词的 section 顺序，并说出哪些 section 在自定义提示词时会消失。</li>
+          <li>给定前后两份 section 表，手写出 <code>diffSystemPromptSections()</code> 的返回值。</li>
+          <li>解释 <code>null</code> 为什么必须存在，以及「只发变化」在什么情况下其实救不了缓存。</li>
+          <li>把 pi 的补丁、Codex 的世界状态差分、opencode v2 的指令增量放在同一张表里比较。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>「前缀缓存」要求请求开头有一段<b>字节级不变</b>的前缀。系统提示词通常就在开头，所以它的任何改动都会让缓存从改动处失效。本节讨论的不是「怎么让提示词更短」，而是「怎么让没变的部分真的没变」。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>提示词不是一整块字符串，而是八个小格子</h2>
+
+      <p><code>buildSystemPromptSections()</code> 返回一个 <code>Record&lt;string, string&gt;</code>：键是 section 名，值是已经渲染好的文本。只有 <code>preamble</code> 是裸文本；其余每个 section 都会被包成同名 XML 标签，例如 <code>&lt;rules&gt;…&lt;/rules&gt;</code>、<code>&lt;project_context&gt;…&lt;/project_context&gt;</code>。<span class="tag tag--ok">已核实</span>标签不是装饰：模型后续收到的补丁会用同一个标签名，模型因此能把「这段是新版 rules」对应到原来的位置。</p>
+
+      <p class="lead-in">section 化的真正目的不是「好读」，而是让「哪一块变了」变成一个可以比较的字符串。</p>
+
+      <p>顺序是固定的：<code>preamble → tools → rules → docs → addendum → project_context → skills → cwd</code>，最后接调用方通过 <code>sections</code> 传入的自定义 section。<span class="tag tag--ok">已核实</span>固定顺序有两个好处：同一份配置每次渲染出的字节完全一致；模型读到的结构稳定，不会因为某个 section 缺失而错位。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="pi3-f1-title pi3-f1-desc">
+          <title id="pi3-f1-title">系统提示词的八个具名 section</title>
+          <desc id="pi3-f1-desc">横向色块依次为 preamble、tools、rules、docs、addendum、project_context、skills、cwd，宽度不同表示体积不同；下方标注只有 preamble 不带标签。</desc>
+          <text class="svg-note" x="8" y="18">一次组装的输出（宽度仅示意体积，非真实比例）</text>
+          <rect class="svg-seg--a" x="8" y="30" width="120" height="42" rx="7"/>
+          <text class="svg-label svg-label--s" x="68" y="56" text-anchor="middle">preamble</text>
+          <rect class="svg-seg--b" x="136" y="30" width="86" height="42" rx="7"/>
+          <text class="svg-label svg-label--s" x="179" y="56" text-anchor="middle">tools</text>
+          <rect class="svg-seg--b" x="230" y="30" width="86" height="42" rx="7"/>
+          <text class="svg-label svg-label--s" x="273" y="56" text-anchor="middle">rules</text>
+          <rect class="svg-track" x="324" y="30" width="76" height="42" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="362" y="56" text-anchor="middle">docs</text>
+          <rect class="svg-seg--c" x="408" y="30" width="80" height="42" rx="7"/>
+          <text class="svg-label svg-label--s" x="448" y="56" text-anchor="middle">addendum</text>
+          <rect class="svg-seg--b" x="496" y="30" width="136" height="42" rx="7"/>
+          <text class="svg-label svg-label--s" x="564" y="56" text-anchor="middle">project_context</text>
+
+          <rect class="svg-seg--b" x="8" y="80" width="96" height="42" rx="7"/>
+          <text class="svg-label svg-label--s" x="56" y="106" text-anchor="middle">skills</text>
+          <rect class="svg-track" x="112" y="80" width="70" height="42" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="147" y="106" text-anchor="middle">cwd</text>
+          <rect class="svg-track svg-seg--free" x="190" y="80" width="150" height="42" rx="7"/>
+          <text class="svg-note" x="265" y="106" text-anchor="middle">自定义 section…</text>
+
+          <text class="svg-note" x="8" y="150">只有 preamble 是裸文本；其余 section 渲染成 &lt;name&gt;…&lt;/name&gt;，</text>
+          <text class="svg-note" x="8" y="174">补丁因此可以按标签名替换，而不必重述整段。</text>
+          <text class="svg-note" x="8" y="206">体积最大的一般是 project_context（规则文件）与 tools（工具清单），</text>
+          <text class="svg-note" x="8" y="230">它们也最值得避免重发。</text>
+        </svg>
+        <figcaption>图 1　section 布局。八个具名 section 按固定顺序拼接，只有 <code>preamble</code> 不带标签；自定义 section 追加在最后，顺序由调用方决定。</figcaption>
+      </figure>
+
+      <p>组装完之后，<code>_preparePromptAndToolLoadout()</code> 拿「模型当前已有 sections」与「本次期望 sections」做差：只把变化的键写进一条新的系统消息，<code>content</code> 留空，<code>sections</code> 放补丁；没变化就返回 <code>undefined</code>，一条消息都不加。<span class="tag tag--ok">已核实</span>这条消息不会替换历史里的旧系统消息，它只是<b>追加</b>在转录里。</p>
+
+      <p>请求真正发出时，<code>packages/ai</code> 有两种处理方式：支持中途系统消息的 provider（例如 Anthropic）保留这条消息，把它渲染成「Updated system prompt section "rules": …」；不支持的 provider 会把所有系统消息<b>折叠</b>成一条，按名字重放补丁后重新渲染完整提示词。<span class="tag tag--ok">已核实</span>这个分叉很关键，第 4 节会专门讲它对缓存的真实影响。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五条链接：组装、差分、调用、两种渲染</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 组装：八个 section 怎么排</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/system-prompt.ts#L128-L193">system-prompt.ts#L128-L193</a><br>
+          <code>buildSystemPromptSections()</code>：先渲染内容，再统一包标签。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 差分：只留变化的键</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/system-prompt.ts#L217-L229">system-prompt.ts#L217-L229</a><br>
+          <code>diffSystemPromptSections()</code>：值变了写新值，键没了写 <code>null</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 调用点：每条请求前比一次</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/agent-session.ts#L1743-L1755">agent-session.ts#L1743-L1755</a><br>
+          从转录里取当前 sections，与本次渲染结果比较，有差才造消息。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 重放：补丁怎么变回完整提示词</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/ai/src/utils/transcript.ts#L68-L96">utils/transcript.ts#L68-L96</a><br>
+          <code>getCurrentSystemMessage()</code>：<code>null</code> 删除，其余按名覆盖。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 中途渲染：给支持的 provider 用</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/ai/src/utils/text.ts#L23-L40">utils/text.ts#L23-L40</a><br>
+          <code>renderSystemMessageUpdate()</code>：把补丁写成「更新了某 section」的说明。</p>
+        </div>
+      </div>
+
+      <p class="small muted">本节只讨论系统提示词的 section 机制；工具增删走的是另一条通道（<code>toolsAdded</code> / <code>toolsRemoved</code>），见 <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/ai/src/utils/transcript.ts#L144-L160">transcript.ts#L144-L160</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】大纲说「只发变化」，准确说法是「只<b>存</b>变化」</p>
+        <p>补丁是写进转录的，不是直接写进请求。对支持中途系统消息的 provider，请求里确实只多了一小段更新说明；对不支持的 provider，请求前会把补丁重放成完整提示词，发出去的仍然是整段。所以「保住前缀缓存」不是无条件的：它取决于 provider 能否在对话中途接收系统消息。第 4 节会把两条路径画在一起。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：先拼，再比</h2>
+
+      <p>第一段是组装的后半部分（从 <code>declaredTools</code> 到返回），43 行；<code>preamble</code> 的两个分支完整保留。第二段是差分，13 行，没有省略。合计 52 行。</p>
+
+      <p class="small muted">文件：<code>packages/coding-agent/src/core/system-prompt.ts</code>　行号：L150-L192（节选 38 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 隐藏工具不出现在提示词里：它们只能经别的工具调用</span>
+<span class="code__line">const declaredTools = selectedTools.filter((name) =&gt; !hiddenTools.includes(name));</span>
+<span class="code__line">const promptSections: Record&lt;string, string&gt; = {};</span>
+<span class="code__line">if (customPrompt) {</span>
+<span class="code__line">    promptSections.preamble = customPrompt; <span class="cmt">// 自定义提示词整段替换前言</span></span>
+<span class="code__line">} else {</span>
+<span class="code__line">    promptSections.preamble =</span>
+<span class="code__line">        "You are an expert coding assistant operating inside pi, a coding agent harness. …";</span>
+<span class="code__line">    const visibleTools = declaredTools.filter((name) =&gt; !!toolSnippets[name]);</span>
+<span class="code__line">    const tools =</span>
+<span class="code__line">        visibleTools.length &gt; 0 ? visibleTools.map((name) =&gt; `- ${name}: ${toolSnippets[name]}`).join("\n") : "(none)";</span>
+<span class="code__line">    promptSections.tools = `${tools}\n\nIn addition to the tools above, …`;</span>
+<span class="code__line">    promptSections.rules = buildRules(declaredTools, toolGuidelines, promptGuidelines);</span>
+<span class="code__line">    promptSections.docs = `Pi documentation (read only when the user asks about pi itself, …)`;</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 以下 section 与 customPrompt 无关，始终按需追加</span>
+<span class="code__line">if (appendSystemPrompt) promptSections.addendum = appendSystemPrompt;</span>
+<span class="code__line">if (contextFiles.length &gt; 0) promptSections.project_context = renderProjectContext(contextFiles);</span>
+<span class="code__line">const readers = ["read", "bash"] as const;</span>
+<span class="code__line">const skillFileReadTool =</span>
+<span class="code__line">    readers.find((tool) =&gt; declaredTools.includes(tool)) ??</span>
+<span class="code__line">    (readers.some((tool) =&gt; selectedTools.includes(tool)) ? "indirect" : undefined);</span>
+<span class="code__line">if (skillFileReadTool &amp;&amp; skills.length &gt; 0) {</span>
+<span class="code__line">    const skillsPrompt = formatSkillsForPrompt(skills, skillFileReadTool).trim();</span>
+<span class="code__line">    if (skillsPrompt) promptSections.skills = skillsPrompt;</span>
+<span class="code__line">}</span>
+<span class="code__line">promptSections.cwd = cwd.replace(/\\/g, "/"); <span class="cmt">// 统一分隔符，避免平台差异</span></span>
+<span class="code__line">for (const [name, content] of Object.entries(customSections)) {</span>
+<span class="code__line">    if (content) promptSections[name] = content;</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 统一包标签；只有 preamble 保持裸文本</span>
+<span class="code__line">const sections: SystemPromptSections = { preamble: promptSections.preamble };</span>
+<span class="code__line">for (const [name, content] of Object.entries(promptSections)) {</span>
+<span class="code__line">    if (name !== "preamble") sections[name] = `&lt;${name}&gt;\n${content}\n&lt;/${name}&gt;`;</span>
+<span class="code__line">}</span>
+<span class="code__line">return sections;</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/coding-agent/src/core/system-prompt.ts</code>　行号：L217-L229（14 行，完整）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// previous 是「模型已有」的 section 表，value 可能为 null（已删除）</span>
+<span class="code__line">export function diffSystemPromptSections(</span>
+<span class="code__line">    previous: Record&lt;string, string | null&gt;,</span>
+<span class="code__line">    current: SystemPromptSections,</span>
+<span class="code__line">): Record&lt;string, string | null&gt; | undefined {</span>
+<span class="code__line">    const patch: Record&lt;string, string | null&gt; = {};</span>
+<span class="code__line">    for (const [name, text] of Object.entries(current)) {</span>
+<span class="code__line">        if (previous[name] !== text) patch[name] = text; <span class="cmt">// 新增或改值</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    for (const name of Object.keys(previous)) {</span>
+<span class="code__line">        if (current[name] === undefined) patch[name] = null; <span class="cmt">// 删掉</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    return Object.keys(patch).length &gt; 0 ? patch : undefined;</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段省略了 L150 之前的函数签名、L162-L169 的大段文档路径文本（用 <code>…</code> 标注）与 L184-L186 的自定义 section 循环前半（未省略逻辑，只压缩了长字符串），所以实际行数少于原区间。第二段没有省略。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>三个判断，一条分叉</h2>
+
+      <h3>第 1 段　自定义提示词会带走三个 section</h3>
+
+      <p>看 <code>if (customPrompt)</code> 的分支：只设置 <code>preamble</code>。也就是说，一旦用户提供了自定义系统提示词，<code>tools</code>、<code>rules</code>、<code>docs</code> 三段就<b>不会生成</b>，而 <code>addendum</code>、<code>project_context</code>、<code>skills</code>、<code>cwd</code> 仍然照常追加。这个边界很容易读错：不是「自定义提示词替换整块」，而是「替换前言，结构性 section 继续存在」。</p>
+
+      <p>为什么保留后四个？因为它们承载的是「环境事实」：追加指令、项目规则、可用技能、当前目录。这些事实与「助手是谁」无关，删掉会让模型失去定位能力。反过来，<code>tools</code> 和 <code>rules</code> 是对前言里行为约定的展开，前言被换掉后它们可能自相矛盾，所以一起省掉。</p>
+
+      <h3>第 2 段　隐藏工具：声明与提示词必须一致</h3>
+
+      <p><code>declaredTools</code> 先减掉 <code>hiddenTools</code>；随后 <code>tools</code> 列表、<code>rules</code>、<code>skills</code> 的读取提示都基于这个减法后的列表。<span class="tag tag--ok">已核实</span>源码注释解释了原因：被隐藏的工具仍然可以通过另一个工具到达，但请求里不带它的声明，提示词就不能假装它存在。</p>
+
+      <p>这一点和缓存有关：<code>hiddenTools</code> 来自 <code>prepareLoadout</code> 钩子，可能逐轮变化。如果它变了，<code>tools</code> 和 <code>rules</code> 两个 section 都会变，补丁里就会出现两大段。反过来，只要 loadout 稳定，这两段就一个字节都不动。</p>
+
+      <p><code>cwd</code> 那行有一个小动作：<code>cwd.replace(/\\/g, "/")</code>。Windows 路径统一成正斜杠，避免「同一目录、两种写法」造成的假变更。这是一个典型的缓存友好细节——它不改变语义，只消除噪声。</p>
+
+      <h3>第 3 段　差分：为什么需要 <code>null</code></h3>
+
+      <p>两个循环不对称。第一个遍历 <code>current</code>：值不同就写进补丁。第二个遍历 <code>previous</code>：<code>current</code> 里没有这个键，就写 <code>null</code>。如果没有第二个循环，「删除」就无法表达——接收方会把缺失当成「没变化」，于是一个已经被移除的 section 永远留在提示词里。</p>
+
+      <p>什么时候会删除？最典型的是 <code>skills</code>：这次加载到了技能，下次技能目录被清空，<code>skills</code> 键就消失了。还有 <code>project_context</code>：切换到没有规则文件的目录。这两种情况都必须让旧 section 消失，否则模型会拿旧技能清单去调用不存在的技能。</p>
+
+      <p>返回值是 <code>undefined</code> 而不是空对象，也有意义：调用点用 <code>sections ? {...} : undefined</code> 判断要不要造消息。空对象在 JS 里是真值，如果返回 <code>{}</code>，每轮都会追加一条空补丁，转录里堆满无意义的系统消息。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 262" role="img" aria-labelledby="pi3-f2-title pi3-f2-desc">
+          <title id="pi3-f2-title">一次补丁的时间线：只有 rules 变化</title>
+          <desc id="pi3-f2-desc">三个时间点。第一次请求发出完整提示词；第二次 rules 变化，追加一条只含 rules 的补丁；第三次 cwd 变化，再追加一条只含 cwd 的补丁。历史消息字节不变。</desc>
+          <text class="svg-note" x="8" y="18">转录（只追加）</text>
+
+          <rect class="svg-seg--a" x="8" y="30" width="180" height="46" rx="7"/>
+          <text class="svg-label" x="98" y="58" text-anchor="middle">system：完整八段</text>
+          <rect class="svg-track" x="196" y="30" width="120" height="46" rx="7"/>
+          <text class="svg-label svg-label--dark" x="256" y="58" text-anchor="middle">user</text>
+          <rect class="svg-track" x="324" y="30" width="120" height="46" rx="7"/>
+          <text class="svg-label svg-label--dark" x="384" y="58" text-anchor="middle">assistant</text>
+
+          <rect class="svg-seg--c" x="452" y="30" width="180" height="46" rx="7"/>
+          <text class="svg-label svg-label--xs" x="542" y="50" text-anchor="middle">system：{ rules: 新值 }</text>
+          <text class="svg-label" x="542" y="68" text-anchor="middle">content 为空</text>
+
+          <text class="svg-note" x="8" y="102">t1：规则文件改了一行 → 只有 rules 进补丁</text>
+          <text class="svg-note" x="8" y="126">t2：切换目录 → 只有 cwd 进补丁</text>
+
+          <rect class="svg-seg--c" x="452" y="140" width="180" height="40" rx="7"/>
+          <text class="svg-label svg-label--xs" x="542" y="165" text-anchor="middle">system：{ cwd: 新值 }</text>
+
+          <line class="svg-rule" x1="8" y1="196" x2="632" y2="196"/>
+
+          <text class="svg-note" x="8" y="220">前三块的字节从头到尾没变；补丁只增加尾部长度。</text>
+          <text class="svg-note" x="8" y="244">这是缓存友好的形态：改的是尾部，不是开头。</text>
+        </svg>
+        <figcaption>图 2　补丁时间线。规则变化只产生一条 <code>{rules}</code> 补丁，目录变化只产生一条 <code>{cwd}</code> 补丁；早先那条完整系统消息与对话消息的字节都不动。</figcaption>
+      </figure>
+
+      <h3>第 4 段　分叉：补丁最终怎么变成请求</h3>
+
+      <p>这是本节最容易被忽略、也最值得记住的一处。<code>packages/ai</code> 在 <code>resolveTranscript()</code> 里按 <code>supportsMidConvoSystemMessages</code> 分成两条路：</p>
+
+      <p>支持中途系统消息的 provider（如 Anthropic）保留转录里的多条系统消息。请求里第一条系统消息是<b>最初的完整提示词</b>，后续补丁各自渲染成一段「Updated system prompt section "rules": …」。<span class="tag tag--ok">已核实</span>前缀因此稳定：第一条系统消息永远是第一次那八段。</p>
+
+      <p>不支持的 provider 走 <code>collapseSystemMessages()</code>：把全部系统消息折叠成一条，按顺序重放补丁（<code>null</code> 删除、其他覆盖），再渲染成完整文本。<span class="tag tag--ok">已核实</span>此时发出去的仍是整段新提示词，前缀从第一个变化的 section 起就变了。</p>
+
+      <p>所以「section 补丁保住前缀缓存」这句话有前提。在支持中途系统消息的链路上，它保住的是<b>请求前缀</b>；在折叠链路上，它保住的是<b>转录可读性与补丁体积</b>，缓存收益接近于零（除了「没变化时根本不发」这一条仍然成立）。opencode v1 的整段重拼、v2 的「基线 + 增量」也是同一个分叉的不同答案，第 5 节展开。</p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">一个反直觉的结论</p>
+        <p>「只发变化」并不自动等于「缓存命中」。真正决定命中的是<b>provider 看到的字节序列</b>。如果传输层必须把补丁重放成完整提示词，那么补丁只节省了存储和带宽，没有节省缓存。评估一个「增量提示词」设计时，先问：这个 provider 支持在对话中途插入系统消息吗？</p>
+      </div>
+
+      <h3>第 5 段　section 的稳定性排序：谁该放前面</h3>
+
+      <p>既然补丁按 section 生效，一个自然的问题是：哪个 section 应该排在前面？答案不是「重要的放前面」，而是「<b>变得最少的放前面</b>」。因为前缀缓存的断点从第一个变化的字节开始，越靠前的 section 变化，后面跟着失效的越多。</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">section</th>
+              <th scope="col">内容来源</th>
+              <th scope="col">变化频率</th>
+              <th scope="col">位置评价</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">preamble<span>前言</span></th><td>内置文本或 <code>customPrompt</code></td><td>几乎不变</td><td>最前，合理</td></tr>
+            <tr><th scope="row" class="cell-tool">tools<span>工具清单</span></th><td>loadout + snippets</td><td>换工具集时变</td><td>靠前，可接受</td></tr>
+            <tr><th scope="row" class="cell-tool">rules<span>行为规则</span></th><td>工具 guideline</td><td>随工具集变</td><td>与 tools 绑定</td></tr>
+            <tr><th scope="row" class="cell-tool">docs<span>文档路径</span></th><td>安装路径</td><td>几乎不变</td><td>稳定</td></tr>
+            <tr><th scope="row" class="cell-tool">addendum<span>追加指令</span></th><td>用户配置</td><td>低</td><td>稳定</td></tr>
+            <tr><th scope="row" class="cell-tool">project_context<span>规则文件</span></th><td>AGENTS.md 等</td><td>编辑时变</td><td>靠后，合理</td></tr>
+            <tr><th scope="row" class="cell-tool">skills<span>技能清单</span></th><td>技能目录</td><td>装/卸时变</td><td>靠后，合理</td></tr>
+            <tr><th scope="row" class="cell-tool">cwd<span>当前目录</span></th><td>运行时</td><td>切换目录时变</td><td>最后，合理</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：顺序来自 <code>buildSystemPromptSections()</code> 的插入顺序，不是按字母或重要性排序。自定义 section 追加在最后。</p>
+
+      <p>这个排序基本符合「越易变越靠后」的原则，只有一个例外：<code>rules</code> 夹在 <code>tools</code> 与 <code>docs</code> 之间，而它随工具集变化。如果某次 loadout 只换了一个工具，<code>tools</code> 与 <code>rules</code> 都会变，<code>docs</code> 之后的 section 也一起失效。<span class="tag tag--ok">已核实</span>这不是 bug，而是「工具清单与规则必须一致」的代价：两者都由 <code>declaredTools</code> 决定，不能拆开。</p>
+
+      <p>自定义 section 的位置值得单独提醒。<code>for (const [name, content] of Object.entries(customSections))</code> 用对象插入顺序追加；如果扩展在两次运行里以不同顺序注册 section，即使内容完全一样，渲染结果的字节顺序也会变。<span class="tag tag--ok">已核实</span>差分看到的是「两个 section 的值都变了」，于是发两条补丁——其实只是顺序换了。修法很简单：注册时按名字排序，或在扩展侧保证稳定顺序。</p>
+
+      <p>排障时怎么定位这种抖动？在 <code>_preparePromptAndToolLoadout()</code> 后面打一行日志，输出 <code>Object.keys(sections ?? {})</code>。如果每轮都出现同样的键，说明有东西在稳定地改变它们；再逐个 section 对比 <code>buildSystemPromptSections(options)</code> 与 <code>getCurrentSystemMessage(messages)?.sections</code> 的值，就能找到源头。常见原因有三个：<code>cwd</code> 被解析成绝对路径但分隔符不一致、技能列表顺序不稳定、工具 loadout 受权限检查影响逐轮变化。</p>
+
+      <h3>第 6 段　补丁机制的三个边界</h3>
+
+      <p>section 补丁不是万能的。三个边界值得记住：</p>
+
+      <p><b>强制提示词。</b><code>forceSystemPrompt</code> 一旦设置，请求头会被投影成一段不透明文本：<code>_installAgentForcedPromptProjection()</code> 把系统消息折叠成一条，用强制文本替换头部。<span class="tag tag--ok">已核实</span>结构化 sections 仍然照常差分、照常持久化，但它们在请求里被强制文本盖住。所以补丁的缓存收益对这段头部不生效——强制文本只要变一个字，整个前缀就断。扩展想用强制提示词，就要接受这个代价。</p>
+
+      <p><b>工具增删走另一条通道。</b>工具变化不写进 <code>sections</code>，而是 <code>toolsAdded</code> / <code>toolsRemoved</code>。两条通道分开的好处是「提示词补丁」与「工具声明」互不干扰；坏处是「工具变了但提示词没变」时，模型可能按旧规则调用新工具。源码用「tools 与 rules 都由 declaredTools 生成」来保证一致，但扩展仍可能只改一边。</p>
+
+      <p><b>自定义 section 的命名。</b><code>SYSTEM_PROMPT_SECTION_NAME</code> 要求小写字母开头、只含小写字母/数字/下划线/连字符，且不能叫 <code>preamble</code>。<span class="tag tag--ok">已核实</span>不合法的名字会直接抛错，而不是跳过。这是「宁可启动失败，也不要生成一个模型对不上的标签」的选择。</p>
+
+      <p>三个边界合起来说明：补丁机制的稳定性依赖「所有变化都走同一条渲染路径」。任何绕开 <code>buildSystemPromptSections()</code> 的改动，都会让差分看到假变化，或者让模型看到不一致的提示词。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>提示词拆成八个具名 section，只有 <code>preamble</code> 裸文本，其余包同名标签。</li>
+            <li><code>customPrompt</code> 只替换前言，<code>tools</code> / <code>rules</code> / <code>docs</code> 随之消失，其余照常。</li>
+            <li>差分返回补丁：改值写新值，删键写 <code>null</code>，无变化返回 <code>undefined</code>。</li>
+            <li>补丁是追加进转录的；请求时按 provider 能力决定「保留为中途系统消息」还是「折叠重放」。</li>
+            <li>只有支持中途系统消息的链路，补丁才真正保住请求前缀；折叠链路只省存储。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>四家都在做「只发变化」，差在变化的粒度</h2>
+
+      <p>粒度的排序大致是：Codex 按<b>文件快照</b>（整份 AGENTS.md 变了就重发这一份）、pi 按<b>section</b>、opencode v2 按<b>指令源</b>（还能发 unified diff）、Claude Code 按<b>附件源</b>。粒度越细，补丁越小，但重建逻辑越复杂。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">变化单位</th>
+              <th scope="col">删除怎么表达</th>
+              <th scope="col">补丁怎么送达</th>
+              <th scope="col">缓存收益</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>具名 section（八段）</td>
+              <td><code>null</code></td>
+              <td>追加系统消息，按 provider 决定是否折叠</td>
+              <td>支持中途系统消息时成立</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>单个规则文件快照</td>
+              <td>发移除通知</td>
+              <td>世界状态差分消息</td>
+              <td>未变文件不重发</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>指令源（含 unified diff）</td>
+              <td>增量里标删除</td>
+              <td>持久化 <code>InstructionsUpdated</code> 事件</td>
+              <td>基线稳定，增量在尾部</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>无（每步整段重拼）</td>
+              <td>不适用</td>
+              <td>整条 system 字符串</td>
+              <td>任何一块变化即全失效</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：pi <code>b45e0eb</code>；Codex <code>76ed3b4</code>；opencode v2 <code>042d083</code>（beta）；opencode v1 <code>733b2c6</code>。Claude Code 的附件 delta 属于同一思路，但它的源码不是官方开源版本，本节不并入表格。</p>
+
+      <p>三点对照：</p>
+
+      <p>一是<b>删除语义</b>。没有删除语义的差分是不完整的：文件被删、技能被卸载、目录切换，都会让某个 section 消失。pi 用 <code>null</code>，Codex 用单独的移除通知，v2 在 delta 里用 <code>"removed"</code> 标记。三种写法，同一个需求。</p>
+
+      <p>二是<b>补丁的持久性</b>。pi 把补丁当普通消息存进转录，重放时合并；v2 把渲染好的增量文本<b>冻结进事件</b>，理由是「事后无法重建 Location 作用域的源」。前者轻，后者可审计。代价也不同：pi 的转录会随着补丁增多而变长，v2 的事件流同样只增不减。</p>
+
+      <p>三是<b>失败模式</b>。pi 的差分只比较「当前渲染结果」与「转录里重放出来的 sections」。如果某个扩展在 <code>before_agent_start</code> 里改了提示词选项但没走同一条渲染路径，差分可能反复抖动，每轮都发一条补丁。v1 没有这个问题——它每轮都整段重发，永远不会「漏发」，只是永远不命中缓存。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从手算差分包到判断缓存</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">上一轮 sections 是 <code>{preamble:"P", rules:"R1", skills:"S", cwd:"/a"}</code>，这一轮是 <code>{preamble:"P", rules:"R2", cwd:"/a", addendum:"A"}</code>。补丁是什么？如果这一轮与上一轮完全相同，返回值是什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先遍历 current：哪些键的值和 previous 不同？再遍历 previous：哪个键在 current 里不存在？</p>
+          <p>第二个问题看返回值那一行：<code>Object.keys(patch).length &gt; 0 ? patch : undefined</code>。空对象不会返回。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">同一个 pi 会话，先接 Anthropic，再接一个不支持中途系统消息的 OpenAI 兼容端点。同一串补丁，两次请求的前缀缓存表现一样吗？为什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>看 <code>resolveTranscript()</code>：一个分支保留多条系统消息，另一个分支调用 <code>collapseSystemMessages()</code>。</p>
+          <p>折叠之后，请求里的第一条系统消息是「重放补丁后的完整文本」。只要任何一个 section 变过，这段文本就与上次不同，前缀从变化处断开。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你要给 pi 加一个「每 10 分钟把当前时间写进提示词」的功能。直接加一个 <code>time</code> section 会发生什么？有没有更好的位置？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先想 section 的顺序：<code>time</code> 如果排在 <code>cwd</code> 之前，它后面所有 section 的字节都跟着移动；如果排在最后，至少只有它自己变。</p>
+          <p>再想 provider：对折叠型链路，任何 section 变化都会导致整段重渲染，排最后也救不了前缀。omp 的做法是把日期/cwd 提醒移到「每次请求的首个用户轮」，完全离开系统提示词。</p>
+          <p>最后一个问题：这个时间戳真的需要精确到分钟吗？如果只需要日期，变化频率会从每 10 分钟降到每天一次。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：oh-my-pi · 压缩方法链与回退。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

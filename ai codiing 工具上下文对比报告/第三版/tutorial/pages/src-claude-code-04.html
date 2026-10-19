@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Claude Code · 只注入变化的附件 delta · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-claude-code-04 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-claude-code-04 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-claude-code-04 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-claude-code-04 code {
+    overflow-wrap: anywhere;
+  }
+  #src-claude-code-04 .path-card code,
+  #src-claude-code-04 .callout code,
+  #src-claude-code-04 .quiz__q code,
+  #src-claude-code-04 details code {
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+<body data-chapter="src-claude-code-04">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-claude-code-04">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Claude Code</span><span>·</span><span>第 04 节</span></p>
+      <h1>只注入变化的附件 delta</h1>
+      <p class="lede">Claude Code 每轮会跑 37 个附件来源：日期、文件变更、技能列表、plan 模式、todo、诊断、token 用量……如果每个来源都整份重发，系统提示和工具描述早就被撑爆了。它挑了三类「会变化且必须让模型知道」的清单，做成 delta：只发新增与移除。这一节读 agent 列表 delta，也读那条「10.2% cache_creation」的教训。<span class="tag tag--src">源码 v2.1.88</span></p>
+      <ul class="meta">
+        <li>约 15 分钟</li>
+        <li>3 张示意图</li>
+        <li>L4</li>
+        <li>源码 <code>v2.1.88</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出 <code>getAttachments()</code> 的三组来源，以及为什么附件要放在消息尾部。</li>
+          <li>解释「从历史重建已公告集合」的做法，以及它为什么比内存 Set 更稳。</li>
+          <li>复述 10.2% cache_creation 的因果链：清单放错位置 → 工具描述变 → 整段 schema 缓存失效。</li>
+          <li>比较 Claude Code、Codex、pi、Grok Build 四家「只注入变化」的实现层次。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--warn">
+      <p class="callout__title">声明 · 非官方源码</p>
+      <p>本节基于 Claude Code <b>v2.1.88 的非官方泄露源码</b>分析，仅供学习参考，不代表 Anthropic 的官方实现或当前版本。函数名可能由 source map 还原。分析根目录为 <code>02-claude-code-source-research/src/</code>，提交 <code>988438af9293b198b03b8c01f97ee5556d2c74e2</code>。</p>
+    </div>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">来源类型对照</p>
+      <p><span class="tag tag--src">源码 v2.1.88</span> 37 个 <code>maybe(...)</code> 来源、三类 delta、1000ms 超时，均逐行核对过。</p>
+      <p><span class="tag tag--doc">官方文档</span> 只说明「system-reminder 由系统注入」，<b>没有</b>描述 delta 的差量机制。</p>
+      <p><b>注意：</b>文档未覆盖的部分，结论只代表 v2.1.88 这一个快照，函数名可能由 source map 还原。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>37 个来源，三类 delta</h2>
+
+      <p><code>getAttachments()</code> 是一个并发聚合器。它把 37 个 <code>maybe(...)</code> 调用分成三组：用户输入相关（@ 文件、MCP 资源、agent 提及、技能发现）、全线程相关（日期变化、延迟工具、agent 列表、MCP 指令、文件变更、嵌套记忆、技能列表、plan 模式、todo、teammate 信箱等）、仅主线程（IDE 选中、诊断、token 用量、预算、验证提醒等）。每组并发执行，最后拉平、过滤掉 null/undefined。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p class="lead-in">附件不是「系统提示的一部分」，而是追加在消息尾部的独立消息；这决定了它只能影响尾部缓存，不会破坏前缀。</p>
+
+      <p>37 这个数字是逐个数出来的：用户输入组 4 个（其中技能发现受特性开关控制）、全线程组 22 个、主线程组 11 个。部分来源受 <code>feature()</code> 或环境变量门控，实际执行数会少于 37；但「来源很多、每个都可能产出附件」这个事实不变。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>附件有两种用法。绝大多数是「状态提醒」：日期变了、文件变了、todo 快到期了，发一条就够，下一次不一定再发。少数是「清单」：agent 列表、延迟工具、MCP 指令，它们描述的是「当前可用的能力集合」，会反复变化，而且模型必须知道完整集合才能正确调用。对清单类附件，整份重发太贵，于是有了 delta。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 280" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">附件聚合器与三类 delta</title>
+          <desc id="fig-1-desc">左侧三组来源汇入 getAttachments，右侧输出附件消息；下方三个 delta：deferred_tools_delta、agent_listing_delta、MCP 指令 delta，各自从历史重建已公告集合并只发差量。</desc>
+          <rect class="svg-track" x="8" y="20" width="180" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="24" y="42">用户输入组（4）</text>
+          <rect class="svg-track" x="8" y="62" width="180" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="24" y="84">全线程组（22）</text>
+          <rect class="svg-track" x="8" y="104" width="180" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="24" y="126">仅主线程（11）</text>
+
+          <rect class="svg-seg--a" x="220" y="52" width="170" height="64" rx="8"/>
+          <text class="svg-label svg-label--s" x="305" y="80" text-anchor="middle">getAttachments</text>
+          <text class="svg-label svg-label--s" x="305" y="102" text-anchor="middle">并发 + 1000ms 超时</text>
+
+          <rect class="svg-seg--b" x="422" y="52" width="210" height="64" rx="8"/>
+          <text class="svg-label svg-label--s" x="527" y="80" text-anchor="middle">Attachment[]</text>
+          <text class="svg-label svg-label--s" x="527" y="102" text-anchor="middle">转为消息，追加到尾部</text>
+
+          <line class="svg-rule" x1="8" y1="158" x2="632" y2="158"/>
+          <text class="svg-note" x="8" y="182">三类 delta（都从历史重建「已公告集合」）</text>
+          <rect class="svg-seg--c" x="8" y="196" width="200" height="56" rx="7"/>
+          <text class="svg-label svg-label--s" x="24" y="220">deferred_tools_delta</text>
+          <text class="svg-label svg-label--s" x="24" y="240">可搜索但未加载的工具</text>
+          <rect class="svg-seg--c" x="220" y="196" width="200" height="56" rx="7"/>
+          <text class="svg-label svg-label--s" x="236" y="220">agent_listing_delta</text>
+          <text class="svg-label svg-label--s" x="236" y="240">可用 agent 类型</text>
+          <rect class="svg-seg--c" x="432" y="196" width="200" height="56" rx="7"/>
+          <text class="svg-label svg-label--s" x="448" y="220">MCP 指令 delta</text>
+          <text class="svg-label svg-label--s" x="448" y="240">MCP 服务器指令</text>
+
+          <text class="svg-note" x="8" y="274">只发新增/移除；没有变化就返回空数组，零字节。</text>
+        </svg>
+        <figcaption>图 1　附件聚合器与三类 delta。37 个来源先生成附件，delta 只负责「清单类」附件；没有变化时返回空数组，不占上下文。</figcaption>
+      </figure>
+
+      <p>为什么 delta 只做这三类？因为它们同时满足两个条件：内容会变，且模型必须知道完整集合。日期变化不需要完整集合，只需要「今天几号」；文件变更只需要「哪个文件变了」；todo 只需要提醒。agent 列表、工具列表、MCP 指令则不同：模型要判断「这个 agent 能不能用」「这个工具能不能调」「这个服务器有什么约束」，缺一条就可能做错。<span class="tag tag--guess">推断</span></p>
+
+      <p>再看三组来源的分工，会更清楚附件的定位。用户输入组只在有输入时运行，处理「@ 文件」「MCP 资源」「agent 提及」「技能发现」，这些是「这一句话带来的临时上下文」；全线程组每轮都跑，处理「线程级状态」，比如日期、delta、文件变更、记忆、技能列表、plan、todo；主线程组只在主会话跑，处理「UI/计费/诊断」这类子代理不需要的信息。三组的分层依据不是「重要性」，而是「作用域」。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这也解释了为什么 delta 放在全线程组：agent 列表、延迟工具、MCP 指令对主线程和子代理都适用。子代理也需要知道自己能调用哪些工具、哪些 agent；如果只在主线程注入，子代理会缺声明。作用域决定注入位置，而不是反过来。<span class="tag tag--guess">推断</span></p>
+
+      <p>1000ms 的超时也值得注意。所有来源并发跑，谁先完成谁先返回；超过 1 秒就 abort，未完成的来源不产出附件。这意味着附件是「尽力而为」的：某个 MCP 服务器慢、某个目录扫描卡住，不会阻塞整轮请求，只是那一类附件缺席。缺席的后果由各自的使用方承担：delta 缺席会下一轮补，诊断缺席可能这一轮看不到错误。<span class="tag tag--guess">推断</span></p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>六条链接，从聚合到差分</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 聚合器：37 个来源</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L743-L1003">utils/attachments.ts#L743-L1003</a><br>
+          <code>getAttachments()</code>：三组来源、1000ms 超时、并发执行、拉平过滤。</p>
+        </div>
+        <div class="path-card">
+          <h3>② agent delta：注释与因果</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1477-L1556">utils/attachments.ts#L1477-L1556</a><br>
+          「agent 列表曾放在工具描述里，导致约 10.2% 的 fleet cache_creation」这段注释，以及完整实现。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 已公告集合的重建</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1523-L1539">utils/attachments.ts#L1523-L1539</a><br>
+          遍历历史里的 <code>agent_listing_delta</code>，<code>addedTypes</code> 加入、<code>removedTypes</code> 删除；无变化返回空数组。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 延迟工具 delta</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1455-L1475">utils/attachments.ts#L1455-L1475</a><br>
+          <code>getDeferredToolsDeltaAttachment()</code>：三个前置检查 + 一个 <code>getDeferredToolsDelta()</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ MCP 指令 delta</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1559-L1590">utils/attachments.ts#L1559-L1590</a><br>
+          同样的「重建已公告 + 只发差异」结构；客户端提示与服务端 instructions 分开处理。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑥ 压缩后全量重播</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L563-L585">services/compact/compact.ts#L563-L585</a><br>
+          传空历史，让同一个 delta 函数输出全量；三类 delta 都重播一遍。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：37 个 <code>maybe(...)</code> 的调用点分布在 L774-L986；超时设置在 L766-L768；返回前的过滤在 L998-L1002。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】「37 个附件源」是函数内计数，不是全局常量</p>
+        <p>事实卡片与大纲都写「37 个附件源」。这个数字来自 <code>getAttachments()</code> 函数体内 <code>maybe('...')</code> 的调用数，不是源码里的常量，也不等于「每次都会执行 37 个」——部分受 <code>feature()</code>、<code>isAgentSwarmsEnabled()</code>、环境变量门控。把它当成固定上限会误判实际开销。<span class="tag tag--src">源码 v2.1.88</span></p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>三段，三十六行</h2>
+
+      <p>第一段是那条量化教训，第二段是已公告集合的重建与差量计算，第三段是返回的附件形状。</p>
+
+      <p class="small muted">文件：<code>utils/attachments.ts</code>　行号：L1477-L1485（9 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">/**</span>
+<span class="code__line"> * Diff the current filtered agent pool against what's already been announced</span>
+<span class="code__line"> * in this conversation (reconstructed from prior agent_listing_delta</span>
+<span class="code__line"> * attachments). Returns [] if nothing changed or the gate is off.</span>
+<span class="code__line"> *</span>
+<span class="code__line"> * The agent list was embedded in AgentTool's description, causing ~10.2% of</span>
+<span class="code__line"> * fleet cache_creation: MCP async connect, /reload-plugins, or</span>
+<span class="code__line"> * permission-mode change → description changes → full tool-schema cache bust.</span>
+<span class="code__line"> * Moving the list here keeps the tool description static.</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>utils/attachments.ts</code>　行号：L1523-L1539（17 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">  // Reconstruct announced set from prior deltas in the transcript.</span>
+<span class="code__line">  const announced = new Set&lt;string&gt;()</span>
+<span class="code__line">  for (const msg of messages ?? []) {</span>
+<span class="code__line">    if (msg.type !== 'attachment') continue</span>
+<span class="code__line">    if (msg.attachment.type !== 'agent_listing_delta') continue</span>
+<span class="code__line">    for (const t of msg.attachment.addedTypes) announced.add(t)</span>
+<span class="code__line">    for (const t of msg.attachment.removedTypes) announced.delete(t)</span>
+<span class="code__line">  }</span>
+<span class="code__line"> </span>
+<span class="code__line">  const currentTypes = new Set(filtered.map(a =&gt; a.agentType))</span>
+<span class="code__line">  const added = filtered.filter(a =&gt; !announced.has(a.agentType))</span>
+<span class="code__line">  const removed: string[] = []</span>
+<span class="code__line">  for (const t of announced) {</span>
+<span class="code__line">    if (!currentTypes.has(t)) removed.push(t) <span class="cmt">// 已公告但当前没了</span></span>
+<span class="code__line">  }</span>
+<span class="code__line"> </span>
+<span class="code__line">  if (added.length === 0 &amp;&amp; removed.length === 0) return [] <span class="cmt">// 零变化</span></span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>utils/attachments.ts</code>　行号：L1546-L1555（10 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">  return [</span>
+<span class="code__line">    {</span>
+<span class="code__line">      type: 'agent_listing_delta',</span>
+<span class="code__line">      addedTypes: added.map(a =&gt; a.agentType),</span>
+<span class="code__line">      addedLines: added.map(formatAgentLine),</span>
+<span class="code__line">      removedTypes: removed,</span>
+<span class="code__line">      isInitial: announced.size === 0, <span class="cmt">// 首次 = 全量</span></span>
+<span class="code__line">      showConcurrencyNote: getSubscriptionType() !== 'pro',</span>
+<span class="code__line">    },</span>
+<span class="code__line">  ]</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">三段合计 36 行（9 + 17 + 10），每段都不超过 20 行。第二段省略了排序（L1541-L1544），正文会单独讲。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>把「清单」变成「事件流」</h2>
+
+      <h3>第 1 段　10.2% 的教训：清单放错位置，整段 schema 失效</h3>
+
+      <p>注释把因果链写得很完整：agent 列表原本嵌在 AgentTool 的描述里；MCP 异步连接、<code>/reload-plugins</code>、权限模式变化都会改变列表；列表一变，工具描述变；工具描述在请求的 schema 数组里，属于前缀的一部分；于是整段工具 schema 缓存失效。这个比例是「约 10.2% 的 fleet cache_creation」。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>把清单从工具描述搬到附件，改变了它的位置：工具描述变回静态，schema 前缀稳定；列表变化只追加一条尾部消息，缓存从追加点之后失效。<b>同样一份数据，放在前缀里是「全局失效」，放在尾部是「局部追加」。</b>这是整节最值得记住的一句话。<span class="tag tag--guess">推断</span></p>
+
+      <p>这个教训也解释了为什么 delta 要「只发变化」而不是「每次全量」：全量虽然也在尾部，但每次都要写一大段，缓存写入成本高；delta 没有变化时零字节，有变化时只写差量。省的是写入，不只是读取。<span class="tag tag--guess">推断</span></p>
+
+      <p>把这条因果链拆成四步，可以当成一张检查表。第一步，这段内容是否在请求的前缀里？如果是，它一变就会影响后面所有缓存。第二步，它是否会被频繁改动？如果会，前缀里的每一次改动都很贵。第三步，它是否必须完整呈现？如果不是，可以改成尾部增量。第四步，尾部增量是否稳定？如果不稳定，还要加排序、去时间戳。四步里任何一步答错，都会把「省 token」变成「反复重建缓存」。<span class="tag tag--guess">推断</span></p>
+
+      <p>注释里的「10.2% of fleet cache_creation」是整仓少见的量化数据。它不是说「10.2% 的请求失败」，也不是「10.2% 的成本」，而是「缓存创建量里约 10.2% 来自这个原因」。这个口径很重要：cache_creation 是「写缓存」的量，通常比 cache_read 贵；把它降下来，直接省的是写入成本，间接省的是「因为写入而没能复用」的机会成本。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 2 段　重建：为什么从历史里算，不用内存 Set</h3>
+
+      <p><code>announced</code> 不是模块级变量，而是每次调用时从 <code>messages</code> 里重建：遍历所有附件消息，遇到 <code>agent_listing_delta</code> 就把 <code>addedTypes</code> 加进集合、把 <code>removedTypes</code> 删掉。这样得到的集合，等于「这段历史里所有公告的净效果」。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>为什么不用内存 Set？因为内存 Set 会在三种情况下失配：恢复会话时内存是空的，但历史里有公告；fork 时子会话复制了历史，但没有复制内存；压缩时历史被替换，内存还留着旧集合。从历史重建，把「已公告」变成「可由历史推导的状态」，恢复、fork、压缩都自动对齐。<span class="tag tag--guess">推断</span></p>
+
+      <p>代价是每次都要扫一遍消息数组，复杂度 O(n)。对一个几千条消息的会话，这个扫描不贵，而且只在生成附件时做一次；相比「缓存失效导致整段重算」，这点 CPU 可以忽略。<span class="tag tag--guess">推断</span></p>
+
+      <p>还有一个语义上的好处：重建只看「历史里实际存在的 delta」，不看「内存里以为存在的 delta」。如果某个 delta 因为压缩、过滤、恢复失败而消失，重建会自动认为「没公告过」，下一次补发全量或差量。它把「状态一致性」变成了「日志重放」问题，而不是「两个副本同步」问题；日志只有一个副本，不存在两个副本之间的同步窗口，也不存在同步失败。<span class="tag tag--guess">推断</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 270" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">从历史重建已公告集合，再与当前池求差</title>
+          <desc id="fig-2-desc">左侧历史里的三条 delta 依次应用：加 A、加 B、删 A，得到已公告集合 {B}。右侧当前池 {B,C}，求差得到新增 C。</desc>
+          <text class="svg-note" x="8" y="20">历史里的 delta（按时间顺序）</text>
+          <rect class="svg-track" x="8" y="32" width="190" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="24" y="54">+ A</text>
+          <rect class="svg-track" x="8" y="74" width="190" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="24" y="96">+ B</text>
+          <rect class="svg-track" x="8" y="116" width="190" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="24" y="138">− A</text>
+
+          <rect class="svg-seg--a" x="222" y="62" width="150" height="58" rx="8"/>
+          <text class="svg-label" x="297" y="86" text-anchor="middle">announced</text>
+          <text class="svg-label" x="297" y="108" text-anchor="middle">{B}</text>
+
+          <rect class="svg-seg--b" x="396" y="62" width="150" height="58" rx="8"/>
+          <text class="svg-label" x="471" y="86" text-anchor="middle">current</text>
+          <text class="svg-label" x="471" y="108" text-anchor="middle">{B, C}</text>
+
+          <text class="svg-note" x="384" y="96" text-anchor="middle">→</text>
+          <rect class="svg-seg--c" x="570" y="62" width="62" height="58" rx="8"/>
+          <text class="svg-label" x="601" y="86" text-anchor="middle">+C</text>
+          <text class="svg-label" x="601" y="108" text-anchor="middle">仅此</text>
+
+          <line class="svg-rule" x1="8" y1="176" x2="632" y2="176"/>
+          <text class="svg-note" x="8" y="202">集合为空 → isInitial=true → 全量公告</text>
+          <text class="svg-note" x="8" y="226">集合非空 → 只发 added / removed</text>
+          <text class="svg-note" x="8" y="250">历史里没有 delta → 集合为空 → 下一次自然变成全量</text>
+        </svg>
+        <figcaption>图 2　重建与求差。已公告集合由历史推导，当前池由过滤后的 agent 定义给出；两者相减，只有新增与移除会进入附件。</figcaption>
+      </figure>
+
+      <h3>第 3 段　求差：added 与 removed 各自怎么算</h3>
+
+      <p><code>added</code> 是「当前池里有、已公告集合里没有」的 agent；<code>removed</code> 是「已公告集合里有、当前池里没有」的 type。注意 <code>removed</code> 只存 type 字符串，不存完整定义——移除时不需要描述，只需要名字。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>如果两边都为空，函数返回 <code>[]</code>。这是 delta 的关键优化：没有变化时，一条消息都不发，零 token、零缓存写入。对比「每次发全量」，省下的不只是列表本身，还有「每次都追加一条消息」带来的历史增长。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p><code>isInitial: announced.size === 0</code> 用来标记「这是第一次公告」。第一次时，<code>added</code> 就是全集，<code>removed</code> 为空；接收方看到 <code>isInitial</code> 为真，就知道「这是完整列表」，不需要再去历史里找旧公告。压缩后重播时，传空历史，<code>announced</code> 为空，<code>isInitial</code> 自然为真，同一套逻辑复用。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这里有一个边界：如果已公告集合不为空，但当前池恰好等于已公告集合，<code>added</code> 与 <code>removed</code> 都为空，函数返回 <code>[]</code>，而不是一条 <code>isInitial: false</code> 的空 delta。这是对的：没有变化就不该产生消息。但它也意味着「模型看不到一条确认信息」；模型只能通过「没有新消息」推断「没有变化」。在协议设计上，沉默即同意：没有消息本身就是一种状态，接收方必须把「空」解读为「无变化」，而不是「未知」。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 4 段　排序：为什么必须确定</h3>
+
+      <p><code>added</code> 在返回前按 <code>agentType</code> 排序，<code>removed</code> 直接 <code>sort()</code>。注释解释：agent 的加载顺序不确定（插件加载竞争、MCP 异步连接），如果不排序，同样的集合可能生成不同顺序的 <code>addedLines</code>，字节不同，缓存就会失效。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这是一个「确定性输出」的要求。delta 的内容是集合，但序列化后是数组；数组顺序不稳定，等于内容不稳定。排序把「集合语义」映射成「稳定字节」，这是缓存友好的基本功。所有做增量注入的系统都会遇到这个问题：状态相同，但序列化不同，缓存照样失效。<span class="tag tag--guess">推断</span></p>
+
+      <p>排序还会影响「差量本身」：如果当前池与已公告集合都按 type 排序，<code>added</code> 的顺序就只取决于 type，不取决于插件加载顺序；下一次重建时，同一个集合会生成同一条 delta 的字节。反过来，如果不排序，即使两次的集合完全一样，字节也可能不同，服务端会认为「有变化」，白写一次缓存。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 5 段　过滤：和 AgentTool 保持同一套规则</h3>
+
+      <p>在求差之前，代码先过滤 agent 池：收集 MCP 服务器名、读权限上下文、按 MCP 要求过滤、按 deny 规则过滤、按 <code>allowedAgentTypes</code> 过滤。注释说这套过滤要「与 AgentTool.tsx 保持同步」。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>为什么必须同步？如果 delta 公告了一个「实际不可用」的 agent，模型会尝试调用，然后失败；如果漏公告一个「实际可用」的 agent，模型不知道它能用，能力被浪费。过滤规则是「什么算可用」的唯一来源，公告和调用必须共用，否则就会出现「说得到、做不到」。<span class="tag tag--guess">推断</span></p>
+
+      <p>还有一个前置检查：如果 <code>AgentTool</code> 不在工具池里，直接返回空。因为公告了也没法调用，纯属浪费上下文。这个检查放在最前面，避免后面所有计算白做。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>过滤顺序也有讲究：先按 MCP 要求过滤，再按 deny 规则过滤，最后按 <code>allowedAgentTypes</code> 限制。这个顺序和 AgentTool 的过滤顺序一致，保证「公告的集合」与「实际可调用的集合」是同一个。如果顺序反了，可能出现「先按 allowed 限制，再按 MCP 过滤」的中间集合，与调用侧不一致。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <h3>第 6 段　形状：一条附件，四个字段</h3>
+
+      <p>返回的附件有五个字段：<code>addedTypes</code>（给程序看）、<code>addedLines</code>（给模型看，已格式化）、<code>removedTypes</code>（给模型看）、<code>isInitial</code>（是否首次）、<code>showConcurrencyNote</code>（是否显示并发提示）。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>为什么同时保留 <code>addedTypes</code> 和 <code>addedLines</code>？前者用于下一次重建集合（只需要 type），后者用于渲染消息（需要描述、工具、模型等格式化信息）。两者分开，避免「为了重建集合而解析自然语言」。<span class="tag tag--guess">推断</span></p>
+
+      <p><code>showConcurrencyNote</code> 依赖订阅类型：非 pro 用户显示并发提示。这意味着同样的 agent 列表，在不同订阅下渲染出的附件字节不同；但订阅在会话内稳定，不会每轮变，所以不影响缓存。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 7 段　重播：压缩后为什么要传空历史</h3>
+
+      <p>压缩会把历史里的 delta 消息删掉。如果不重播，下一轮重建 <code>announced</code> 时集合为空，函数会输出全量——这其实是「自愈」，但自愈发生在「下一轮」，压缩后的第一轮会缺声明。Claude Code 选择在压缩结果里直接重播，让第一轮就完整。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>重播的方式很巧：调用同一个函数，传 <code>[]</code> 作为 <code>messages</code>。集合为空、当前池不变，<code>added</code> 就是全集、<code>isInitial</code> 为真，输出全量。一个函数，两种模式，不需要维护两套「全量/增量」代码。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这也意味着「全量」不是特殊的消息类型，而是一条 <code>isInitial: true</code> 的普通 delta。接收方（模型）看到 <code>isInitial</code>，理解为「这是完整列表」；看到 <code>isInitial: false</code>，理解为「在之前的基础上增删」。语义统一，解析简单。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 8 段　代价：重建、超时与遗漏</h3>
+
+      <p>第一类代价是重建成本：每轮扫历史，O(n)。第二类是超时：<code>getAttachments()</code> 设了 1000ms 的 abort，所有来源并发跑；如果某个来源慢，可能整体被取消，delta 也会缺失。第三类是遗漏：如果历史里的 delta 消息因为某种原因被过滤/丢弃，重建出的集合会偏小，下一次会多发一些「新增」，但不会崩。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这三类代价都指向同一个设计取向：<b>delta 是「可重建的缓存」，不是「唯一真实来源」。</b>丢了可以重建，错了下一轮会自愈；它不承担「记录用户意图」的职责，也不承担「审计历史」的职责，只承担「让模型知道当前能力集合」的职责。理解这一点，就不会把它当成必须精确持久化的状态，也不会为了「补上一条完整的历史记录」而牺牲缓存。<span class="tag tag--guess">推断</span></p>
+
+      <p>但「可重建」有一个前提：历史必须保留那些 delta 消息。如果某个压缩路径把 delta 删掉、又没有重播，下一轮重建会得到空集合，于是发全量；这虽然能自愈，但会让压缩后的第一轮缺声明。源码在压缩结果里显式重播，就是为了补上这个窗口。任何新增的压缩路径，都必须记得调用同一段重播逻辑，否则就会制造一个「一轮的空白」。<span class="tag tag--guess">推断</span></p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>37 个附件来源分三组并发执行，1000ms 超时，结果追加在消息尾部。</li>
+            <li>agent 列表、延迟工具、MCP 指令做成 delta：只发新增/移除，无变化零字节。</li>
+            <li>已公告集合从历史重建，不用内存 Set，恢复/fork/压缩自动对齐。</li>
+            <li>排序保证同样的集合生成同样的字节，避免无谓的缓存失效。</li>
+            <li>清单放前缀会导致整段 schema 失效（约 10.2% cache_creation），放尾部只影响追加点。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>四种「只注入变化」，四种状态载体</h2>
+
+      <p>Claude Code 用尾部附件做 delta，Codex 用世界状态做 section diff，pi 用系统提示 section patch，Grok 用已公告集合。目标相同，载体不同。<span class="tag tag--guess">推断</span></p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">差分对象</th>
+              <th scope="col">状态存在哪</th>
+              <th scope="col">无变化时</th>
+              <th scope="col">来源</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>agent 列表 / 延迟工具 / MCP 指令</td>
+              <td>历史里的旧 delta，每轮重建</td>
+              <td>返回空数组，零字节</td>
+              <td><span class="tag tag--src">源码 v2.1.88</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>AGENTS.md / 工具目录 / 权限等 section</td>
+              <td>持久化快照 + rollout merge patch</td>
+              <td>不追加任何片段</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>系统提示 section</td>
+              <td>会话里当前的 sections</td>
+              <td>不生成 patch</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>技能 / MCP 公告</td>
+              <td><code>announced_names</code> / 公告快照文件</td>
+              <td>只发差量或替换块</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>规则注入（TTSR）</td>
+              <td><code>ttsr_injection</code> 条目去重</td>
+              <td>不重复注入</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 4 节（Claude Code v2.1.88 源码，Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，Grok Build 源码，omp 提交 <code>f979f46</code>）。</p>
+
+      <p>第一个对照是<b>「状态存在消息里还是消息外」</b>。Claude Code 把状态存在消息里（旧 delta 本身就是消息），所以能随历史一起恢复、fork、压缩；Codex 把状态存在持久化快照 + rollout patch 里，消息里只有片段；pi 存在会话的 sections 里，系统提示是投影；Grok 存在公告快照文件里。消息内状态最自解释，但占上下文；消息外状态最省，但需要额外的恢复逻辑。<span class="tag tag--guess">推断</span></p>
+
+      <p>第二个对照是<b>「差分发生在系统提示还是消息尾部」</b>。Codex 与 pi 的差分结果进入系统提示/提示词 section，属于请求前缀；Claude Code 的 delta 进入消息尾部，属于追加。前者的好处是「模型总能在系统提示里看到完整状态」，坏处是「一变就影响前缀」；后者的好处是「只影响尾部」，坏处是「状态分散在历史里，需要重建」。<span class="tag tag--guess">推断</span></p>
+
+      <p>第三个对照是<b>「无变化时的行为」</b>。四家都做到「零字节」或「零 patch」，但实现不同：Claude Code 返回空数组，Codex 返回空 updates，pi 不生成 patch，Grok 不发差量。零字节是缓存友好的极致；任何「每次发一条心跳」的设计，都会让缓存每轮失效。<span class="tag tag--guess">推断</span></p>
+
+      <p>第四个对照是<b>「状态错了怎么恢复」</b>。Claude Code 的 delta 是「可重建缓存」：下一轮从历史重算，错了会自愈，丢了会补发；Codex 的快照是「持久化基线」：丢了会退到 <code>Unknown</code>，多发一条替换；pi 的 sections 是「会话投影」：丢了就重新生成整段；Grok 的公告快照是「文件状态」：丢了可能重复公告。可重建的设计更宽容，但依赖「历史不丢」；持久化基线的设计更精确，但依赖「快照不丢」。两种都要面对同一个问题：压缩会删历史，所以压缩后必须显式重播或重建。<span class="tag tag--guess">推断</span></p>
+
+      <p>把四个对照合起来，Claude Code 的 delta 是「消息内的、尾部的、可重建的」增量；Codex 的 section diff 是「快照驱动的、系统提示/历史里的、持久化的」增量。前者轻、后者准；前者适合频繁变化的能力清单，后者适合必须精确对账的规则与环境状态。选哪种，取决于你更怕「缓存失效」还是更怕「状态不一致」。<span class="tag tag--guess">推断</span></p>
+
+      <p>还有一条容易被忽略的差异：Claude Code 的 delta 是「给模型看的自然语言」，Codex 的 section 片段也是自然语言，但 pi 的 patch 是「结构化 JSON」。自然语言更适合模型直接理解，结构化 patch 更适合程序精确重放。前者把解析负担交给模型，后者交给运行时。没有哪种绝对更好，关键看你的消费方是模型还是运行时；如果你的运行时需要严格重放（比如回滚、审计），结构化 patch 更合适；如果只是让模型知道「现在有什么」，自然语言更省事。<span class="tag tag--guess">推断</span></p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从重建到缓存</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">历史里有三条 agent delta：<code>+A</code>、<code>+B</code>、<code>-A</code>。当前可用 agent 是 <code>{B, C}</code>。下一次 delta 会包含什么？<code>isInitial</code> 是 true 还是 false？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>按顺序应用：<code>announced</code> 先加 A，再加 B，再删 A，得到 <code>{B}</code>。当前池是 <code>{B, C}</code>，所以 <code>added = [C]</code>，<code>removed = []</code>。</p>
+          <p><code>isInitial</code> 看的是 <code>announced.size === 0</code>；这里 size 是 1，所以为 false。附件只包含新增的 C，不包含 B。</p>
+          <p>再想一步：如果历史里还有一条更早的 <code>-B</code>、之后又 <code>+B</code>，顺序会影响最终集合。重建是按时间顺序应用的，所以最终状态取决于最后一条操作；这也是为什么 delta 必须按历史顺序扫描，不能只取最后一条。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">如果把「已公告集合」改成模块级 <code>Set</code>，在恢复会话、fork、压缩三种场景下各会发生什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>恢复会话：内存 Set 是空的，但历史里已有公告；下一次会把所有 agent 当成「新增」再公告一遍，浪费 token，模型可能看到重复定义。</p>
+          <p>fork：子会话复制了历史，但没有复制内存；同样会重复公告。压缩：历史被替换，内存还留着旧集合；下一次会认为「已经公告过」，于是不发，模型反而缺声明。三种场景的错法不同，但根因相同：内存状态与历史不同步。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你想给 delta 加一个 <code>generatedAt</code> 时间戳，方便调试。这个改动会带来什么后果？如果一定要保留可调试性，你会怎么做？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>时间戳每轮都不同，delta 的字节就每轮都不同。即使 agent 列表没变，附件也会变成「有变化」，缓存从追加点之后失效；更糟的是，<code>announced</code> 重建只关心类型，时间戳对语义没有贡献，纯属噪声。</p>
+          <p>要调试，可以把时间戳放在日志/遥测里，而不是放进模型可见的附件；或者只在 <code>isInitial</code> 为真时放一次，后续 delta 不带。原则是：凡是进入请求体的字段，都要对「模型理解」有贡献，否则就是缓存负担。</p>
+          <p>还可以把时间戳换成「内容哈希」：哈希只在内容变化时变，既能调试「这是哪一版」，又不会每轮抖动。代价是哈希对模型没有语义，仍然占一点 token；如果只用于排查，最好放在服务端日志里。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-pi-01.html">pi · 切点、单回合拆分与文件跟踪</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

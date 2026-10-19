@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>opencode v2 · 检查点：一条消息 + seq 边界 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-opencode-v2-02 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-opencode-v2-02 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-opencode-v2-02 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-opencode-v2-02 .path-card code,
+  #src-opencode-v2-02 .callout code,
+  #src-opencode-v2-02 .quiz__q code,
+  #src-opencode-v2-02 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-opencode-v2-02">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-opencode-v2-02">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v2</span><span>·</span><span>第 02 节</span></p>
+      <h1>检查点：一条消息 + seq 边界</h1>
+      <p class="lede">v1 的检查点跨两条消息，靠一个 id 找到保留段；v2 把它压成一条消息，摘要和保留段都装在里面，再用单调的 seq 切出一段连续历史。这一节读这条消息长什么样，以及「按 seq 取段」为什么让顺序重新变得可信。</p>
+      <ul class="meta">
+        <li>约 15 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L4</li>
+        <li>源码 <code>042d083</code>（beta v2.0.29）</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>列出 v2 检查点消息的字段，并说出哪些字段只在原生压缩时出现。</li>
+          <li>解释 <code>latestCompaction()</code> 的三种 boundary 各自滤掉了什么。</li>
+          <li>说明 <code>entriesForRunner()</code> 为什么要在一个事务里同时取消息与指令基线。</li>
+          <li>把 v1 的「两条消息 + 重排」与 v2 的「一条消息 + seq」并排讲清。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>v2 的存储是 SQLite，消息表有一个单调递增的 <code>seq</code> 列。压缩写入一条 <code>type: "compaction"</code> 的消息；读取时按 <code>seq</code> 取「这条及之后」的连续段。没有重排，也没有「按 id 找保留段」这一步。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>检查点是一条消息，不是一对消息</h2>
+
+      <p><code>SessionMessage.Compaction</code> 是一个按 <code>status</code> 区分的联合类型：<code>running</code>、<code>completed</code>、<code>failed</code>。<span class="tag tag--ok">已核实</span><code>completed</code> 分支的字段是：</p>
+
+      <p><code>status: "completed"</code>、<code>reason: "auto" | "manual"</code>、可选 <code>model</code>、可选 <code>providerState</code>、<code>summary</code>、<code>recent</code>、可选 <code>providerContext</code>、可选 <code>cost</code> 与 <code>tokens</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p class="lead-in">摘要、保留段、原生窗口、这次压缩自己的花费，全在同一条记录里。读取方只需要一个 <code>seq</code>，不需要再去找「摘要消息」和「保留起点」。</p>
+
+      <p><code>summary</code> 是模型写的结构化摘要；<code>recent</code> 是保留段的<b>文本</b>（由 <code>splitConversation()</code> 生成），不是原始消息的引用；<code>providerContext</code> 只在原生压缩时出现，里面是 provider 返回的加密窗口与 provenance。<span class="tag tag--ok">已核实</span></p>
+
+      <p>投影成模型消息时，<code>providerContext</code> 存在就直接解码成原生块；否则包装成一个 user 消息：</p>
+
+      <p><code>&lt;conversation-checkpoint&gt;</code> + 一句「当作历史、不要当新指令」+ <code>&lt;summary&gt;…&lt;/summary&gt;</code> + <code>&lt;recent-context&gt;…&lt;/recent-context&gt;</code> + <code>&lt;/conversation-checkpoint&gt;</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="v22-f1-title v22-f1-desc">
+          <title id="v22-f1-title">v2 检查点消息的字段与两种投影</title>
+          <desc id="v22-f1-desc">左侧是 completed 检查点的字段：status、reason、summary、recent、providerContext、cost、tokens。右侧分两条投影路径：有 providerContext 时解码成原生块，否则包装成 conversation-checkpoint 文本。</desc>
+          <rect class="svg-seg--c" x="8" y="26" width="250" height="180" rx="8"/>
+          <text class="svg-label" x="133" y="50" text-anchor="middle">compaction（completed）</text>
+          <text class="svg-note" x="24" y="76">status = "completed"</text>
+          <text class="svg-note" x="24" y="98">reason = "auto" | "manual"</text>
+          <text class="svg-note" x="24" y="120">summary：结构化摘要</text>
+          <text class="svg-note" x="24" y="142">recent：保留段文本</text>
+          <text class="svg-note" x="24" y="164">providerContext?：原生窗口</text>
+          <text class="svg-note" x="24" y="186">cost? · tokens? · model?</text>
+
+          <line class="svg-rule" x1="258" y1="110" x2="300" y2="110"/>
+
+          <rect class="svg-seg--a" x="300" y="40" width="332" height="62" rx="7"/>
+          <text class="svg-label" x="466" y="64" text-anchor="middle">有 providerContext</text>
+          <text class="svg-note" x="316" y="88">解码成 provider 原生块，原样回放</text>
+
+          <rect class="svg-seg--b" x="300" y="120" width="332" height="86" rx="7"/>
+          <text class="svg-label" x="466" y="144" text-anchor="middle">没有 providerContext</text>
+          <text class="svg-note" x="316" y="166">&lt;conversation-checkpoint&gt;</text>
+          <text class="svg-note" x="316" y="186">summary + recent-context</text>
+
+          <text class="svg-note" x="8" y="238">running / failed 也是同一条消息，只是 status 不同；投影时直接返回空。</text>
+          <text class="svg-note" x="8" y="262">崩溃恢复会把遗留的 running 结算成 interrupted，把工具结算成 aborted。</text>
+          <text class="svg-note" x="8" y="286">所以「检查点」在读取方看来只有三种状态，没有中间态。</text>
+        </svg>
+        <figcaption>图 1　检查点字段与两条投影路径。原生窗口与文本摘要共用一条消息类型，靠 <code>providerContext</code> 是否存在分流。</figcaption>
+      </figure>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五条链接：结构、查询、读段、事务、投影</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 结构：三种状态的联合</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/schema/src/session-message.ts#L239-L282">schema/session-message.ts#L239-L282</a><br>
+          <code>CompactionRunning</code> / <code>CompactionCompleted</code> / <code>CompactionFailed</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 查询：最近一条完成的检查点</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/history.ts#L28-L60">history.ts#L28-L60</a><br>
+          <code>latestCompaction()</code>：按 <code>seq</code> 降序、<code>status = completed</code>、按 boundary 过滤。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 读段：seq 大于等于边界</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/history.ts#L78-L108">history.ts#L78-L108</a><br>
+          <code>messageEntries()</code>：<code>gte(seq, compaction.seq)</code>，升序，再过滤不可重放的检查点。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 事务：消息与指令基线一起取</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/history.ts#L118-L135">history.ts#L118-L135</a><br>
+          <code>entriesForRunner()</code>：<code>messageEntries</code> + <code>InstructionState.initial</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 投影：文本检查点的包装</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/runner/to-llm-message.ts#L303-L325">to-llm-message.ts#L303-L325</a><br>
+          <code>&lt;conversation-checkpoint&gt;</code> 里放 summary 与 recent-context。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：原生窗口的可重放判定见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/history.ts#L16-L26">history.ts#L16-L26</a>；fork 继承指令基线见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session.ts#L319-L359">session.ts#L319-L359</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】<code>recent</code> 不是「保留段的消息」，是「保留段的文本」</p>
+        <p>事实卡片写「recent 以文本存进检查点」，代码与 schema 都一致。<span class="tag tag--ok">已核实</span>但这一点常被忽略：它意味着被保留的那一段历史<b>失去了消息结构</b>，模型只能读到拼好的文本，不能再对里面的工具调用做续接。v1 保留的是原始消息，结构完整；v2 用「结构」换「顺序可信 + 单条记录」。第 5 节会把两种代价并排。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：找边界，按边界取段</h2>
+
+      <p>第一段是 <code>latestCompaction()</code> 的查询，33 行；第二段是 <code>messageEntries()</code>，25 行。合计 58 行，两段都能独立读懂。</p>
+
+      <p class="small muted">文件：<code>packages/core/src/session/history.ts</code>　行号：L28-L60（34 行，完整）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 只取 seq 一列：调用方只需要边界，不需要整条消息</span>
+<span class="code__line">export const latestCompaction = Effect.fnUntraced(function* (</span>
+<span class="code__line">  db: DatabaseService,</span>
+<span class="code__line">  sessionID: SessionSchema.ID,</span>
+<span class="code__line">  boundary: Boundary,</span>
+<span class="code__line">) {</span>
+<span class="code__line">  return yield* db</span>
+<span class="code__line">    .select({ seq: SessionMessageTable.seq })</span>
+<span class="code__line">    .from(SessionMessageTable)</span>
+<span class="code__line">    .where(</span>
+<span class="code__line">      and(</span>
+<span class="code__line">        eq(SessionMessageTable.session_id, sessionID),</span>
+<span class="code__line">        eq(SessionMessageTable.type, "compaction"),</span>
+<span class="code__line">        sql`json_extract(${SessionMessageTable.data}, '$.status') = 'completed'`, <span class="cmt">// 只要完成的</span></span>
+<span class="code__line">        boundary === "latest"</span>
+<span class="code__line">          ? undefined <span class="cmt">// latest：模型中立，任何检查点都算</span></span>
+<span class="code__line">          : or(</span>
+<span class="code__line">              sql`json_extract(${SessionMessageTable.data}, '$.providerContext') is null`, <span class="cmt">// 文本检查点</span></span>
+<span class="code__line">              boundary === "local"</span>
+<span class="code__line">                ? undefined <span class="cmt">// local：只看文本摘要，原生窗口不算</span></span>
+<span class="code__line">                : and(</span>
+<span class="code__line">                    ...Object.entries(boundary).map(</span>
+<span class="code__line">                      ([key, value]) =&gt;</span>
+<span class="code__line">                        sql`json_extract(${SessionMessageTable.data}, ${`$.providerContext.provenance.${key}`}) = ${value}`,</span>
+<span class="code__line">                    ),</span>
+<span class="code__line">                  ),</span>
+<span class="code__line">            ),</span>
+<span class="code__line">      ),</span>
+<span class="code__line">    )</span>
+<span class="code__line">    .orderBy(desc(SessionMessageTable.seq)) <span class="cmt">// 最近的在前</span></span>
+<span class="code__line">    .limit(1)</span>
+<span class="code__line">    .get()</span>
+<span class="code__line">    .pipe(Effect.orDie)</span>
+<span class="code__line">})</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/core/src/session/history.ts</code>　行号：L78-L108（节选 24 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 第一步：找边界（可能没有）</span>
+<span class="code__line">const compaction = yield* latestCompaction(db, sessionID, boundary)</span>
+<span class="code__line">const rows = yield* db</span>
+<span class="code__line">  .select()</span>
+<span class="code__line">  .from(SessionMessageTable)</span>
+<span class="code__line">  .where(</span>
+<span class="code__line">    and(</span>
+<span class="code__line">      eq(SessionMessageTable.session_id, sessionID),</span>
+<span class="code__line">      compaction ? gte(SessionMessageTable.seq, compaction.seq) : undefined, <span class="cmt">// 边界之后的全要</span></span>
+<span class="code__line">    ),</span>
+<span class="code__line">  )</span>
+<span class="code__line">  .orderBy(asc(SessionMessageTable.seq)) <span class="cmt">// 时间正序返回</span></span>
+<span class="code__line">  .all()</span>
+<span class="code__line">  .pipe(Effect.orDie)</span>
+<span class="code__line">const entries = yield* Effect.forEach(rows, (row) =&gt;</span>
+<span class="code__line">  decodeMessageRow(row).pipe(Effect.map((message) =&gt; ({ seq: row.seq, message }))),</span>
+<span class="code__line">)</span>
+<span class="code__line">// 原生检查点之前的系统消息已被基线取代，不再回放</span>
+<span class="code__line">const native = entries.findLast((entry) =&gt; SessionProviderContext.isCheckpoint(entry.message))</span>
+<span class="code__line">return entries.filter(</span>
+<span class="code__line">  (entry) =&gt;</span>
+<span class="code__line">    !(entry.message.type === "system" &amp;&amp; native &amp;&amp; entry.seq &lt; native.seq) &amp;&amp;</span>
+<span class="code__line">    replayable(entry.message, boundary), <span class="cmt">// 当前模型能否回放这条检查点</span></span>
+<span class="code__line">)</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段省略了 <code>latestCompaction</code> 上方的文档注释（已在正文说明边界语义）与 <code>Boundary</code> 类型定义。第二段省略了 <code>messageEntries</code> 的签名与 <code>db</code>/<code>sessionID</code>/<code>boundary</code> 参数声明（正文交代），判断逻辑完整。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>三个边界概念，一次事务</h2>
+
+      <h3>第 1 段　boundary 的三种语义</h3>
+
+      <p><code>Boundary</code> 是 <code>"latest" | "local" | Provenance</code>。<span class="tag tag--ok">已核实</span>它们回答的是同一个问题：「这条检查点，当前读者能不能用？」</p>
+
+      <p><code>latest</code>：模型中立。任何 <code>completed</code> 的检查点都算，不管它是文本摘要还是原生窗口。用于「只要给我一份能读的历史」的场景。</p>
+
+      <p><code>local</code>：只看文本摘要。<code>providerContext is null</code> 才算数。用于「我要原始转录 / 本地视图」的场景——原生窗口是别家 provider 的加密载荷，本地读不懂。</p>
+
+      <p><code>Provenance</code>：只认「当前模型能重放」的原生窗口。SQL 里按 <code>providerContext.provenance.*</code> 的每个键值匹配。<span class="tag tag--ok">已核实</span>这防止把 Anthropic 的加密窗口发给 OpenAI。</p>
+
+      <p>三种边界对应三种读者，而不是三种存储。存储只有一种：一条 <code>compaction</code> 消息；差别在查询时怎么过滤。</p>
+
+      <h3>第 2 段　seq 大于等于：为什么不用 id 找保留段</h3>
+
+      <p>v1 的 <code>tail_start_id</code> 是一个消息 id，读取时要 <code>findIndex</code> 找到它的位置再切片。v2 不需要：检查点自己就有 <code>seq</code>，保留段直接写在 <code>recent</code> 里，后面的消息按 <code>seq &gt;= compaction.seq</code> 取。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这带来两个好处。第一，<b>顺序可信</b>：<code>orderBy(asc(seq))</code> 出来的就是时间顺序，不会像 v1 那样重排。第二，<b>查询可下推</b>：<code>&gt;=</code> 是索引条件，分页与增量读取都容易。</p>
+
+      <p>代价是保留段从「消息引用」变成「文本」。模型读到的是 <code>&lt;recent-context&gt;</code> 里的一段文字，而不是若干条带 role 的消息。它不能再对保留段里的工具调用做续接，也不能靠 <code>tool_call_id</code> 找回结果。v2 的选择是：保留段只用于「读」，不用于「续」。</p>
+
+      <h3>第 3 段　为什么要过滤「原生检查点之前的 system 消息」</h3>
+
+      <p><code>const native = entries.findLast(isCheckpoint)</code>，然后过滤掉 <code>type === "system" &amp;&amp; seq &lt; native.seq</code> 的条目。<span class="tag tag--ok">已核实</span>原因是指令 epoch：原生压缩完成时，<code>advanceEpoch()</code> 已经把当前的指令值提升为基线；更早的那些「指令更新」消息已经被基线覆盖，再回放就是重复。</p>
+
+      <p>这与下一节的主题直接相连：epoch 推进的时机就是「压缩完成」，而读取时要用同一条规则过滤旧增量。两处必须一致，否则模型会看到「基线 + 基线之前的增量」。</p>
+
+      <h3>第 4 段　事务：消息与基线必须同一快照</h3>
+
+      <p><code>entriesForRunner()</code> 把 <code>messageEntries()</code> 与 <code>InstructionState.initial()</code> 放进同一个 <code>db.transaction()</code>。<span class="tag tag--ok">已核实</span>如果分两次读，中间可能发生一次压缩提交：消息读到了新检查点之后的段，基线却还是压缩前的值，拼出来的请求会自相矛盾。</p>
+
+      <p>这也是「每次请求重新投影」的代价：读取路径必须保证一致性，不能靠内存缓存。v1 的 <code>filterCompacted</code> 是纯函数，没有这个问题；v2 把状态放进了数据库，就必须用事务把它锁住。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 266" role="img" aria-labelledby="v22-f2-title v22-f2-desc">
+          <title id="v22-f2-title">seq 边界与读取窗口</title>
+          <desc id="v22-f2-desc">一条 seq 递增的消息序列，中间第 42 条是完成的检查点。读取窗口从 42 开始向右，包含检查点本身与之后的消息；42 之前的消息不进请求。</desc>
+          <text class="svg-note" x="8" y="18">seq 递增（左小右大）</text>
+          <rect class="svg-track" x="8" y="30" width="48" height="38" rx="5"/>
+          <text class="svg-label svg-label--dark" x="32" y="54" text-anchor="middle">39</text>
+          <rect class="svg-track" x="62" y="30" width="48" height="38" rx="5"/>
+          <text class="svg-label svg-label--dark" x="86" y="54" text-anchor="middle">40</text>
+          <rect class="svg-track" x="116" y="30" width="48" height="38" rx="5"/>
+          <text class="svg-label svg-label--dark" x="140" y="54" text-anchor="middle">41</text>
+          <rect class="svg-seg--c" x="170" y="30" width="72" height="38" rx="5"/>
+          <text class="svg-label" x="206" y="54" text-anchor="middle">42 C</text>
+          <rect class="svg-seg--b" x="248" y="30" width="48" height="38" rx="5"/>
+          <text class="svg-label" x="272" y="54" text-anchor="middle">43</text>
+          <rect class="svg-seg--b" x="302" y="30" width="48" height="38" rx="5"/>
+          <text class="svg-label" x="326" y="54" text-anchor="middle">44</text>
+          <rect class="svg-seg--b" x="356" y="30" width="48" height="38" rx="5"/>
+          <text class="svg-label" x="380" y="54" text-anchor="middle">45</text>
+          <rect class="svg-seg--b" x="410" y="30" width="48" height="38" rx="5"/>
+          <text class="svg-label" x="434" y="54" text-anchor="middle">46</text>
+          <rect class="svg-track svg-seg--free" x="464" y="30" width="168" height="38" rx="5"/>
+          <text class="svg-note" x="548" y="54" text-anchor="middle">之后继续追加</text>
+
+          <line class="svg-rule" x1="170" y1="76" x2="170" y2="104"/>
+          <text class="svg-note" x="170" y="122" text-anchor="middle">seq &gt;= 42</text>
+
+          <rect class="svg-seg--c" x="8" y="146" width="624" height="42" rx="7"/>
+          <text class="svg-label" x="320" y="172" text-anchor="middle">模型消息 = C(summary + recent) + seq 43…46 + 之后</text>
+
+          <text class="svg-note" x="8" y="216">39–41 仍在数据库里，只是不在读取窗口内。</text>
+          <text class="svg-note" x="8" y="240">没有重排：数组顺序 = seq 顺序 = 时间顺序。</text>
+        </svg>
+        <figcaption>图 2　seq 边界。读取窗口是一个简单的「大于等于」，检查点本身在窗口内；窗口左侧的消息保留但不参与请求，顺序不再需要修正。</figcaption>
+      </figure>
+
+      <h3>第 5 段　三种状态与崩溃恢复</h3>
+
+      <p>检查点是一条消息，但它的 <code>status</code> 会在三个值之间移动。读取方必须对三个值都有确定行为：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">status</th>
+              <th scope="col">含义</th>
+              <th scope="col">投影成模型消息</th>
+              <th scope="col">恢复时怎么处理</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">running<span>进行中</span></th><td>压缩请求已发出、未结算</td><td>空（不投影）</td><td>结算成 <code>compaction.interrupted</code></td></tr>
+            <tr><th scope="row" class="cell-tool">completed<span>完成</span></th><td>摘要与保留段已就绪</td><td>检查点消息</td><td>作为边界使用</td></tr>
+            <tr><th scope="row" class="cell-tool">failed<span>失败</span></th><td>摘要失败或被拒</td><td>空（不投影）</td><td>不推进 epoch</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：<code>to-llm-message.ts#L303-L304</code> 对 <code>status !== "completed"</code> 直接返回空数组；崩溃结算见 <code>runner/llm.ts#L332-L385</code>。</p>
+
+      <p>「不投影」这一点很重要：一条 <code>running</code> 的检查点不会让模型看到半截摘要。<code>toLLMMessages()</code> 的判断是 <code>if (message.status !== "completed") return []</code>，干净利落。<span class="tag tag--ok">已核实</span>所以崩溃后重建上下文，模型看到的是「检查点之前的历史」——可能很大，但至少是完整的。</p>
+
+      <p>崩溃恢复分两步。第一步是 write-ahead claim：<code>execution.ts</code> 在开始执行时于同一事务写 <code>time_suspended</code> 标记，正常结束时释放；进程被 kill 时标记留着，下次启动据此判断「上次没跑完」。<span class="tag tag--ok">已核实</span>第二步是结算：启动 drain 之前，把所有遗留 <code>running</code> 的压缩结算成 <code>compaction.interrupted</code>，把所有 <code>streaming</code> / <code>running</code> 的工具结算成 <code>aborted</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这套机制比 v1 强在哪？v1 只有「进程内中断清理」：中断时把未结算的工具标成 <code>error</code> 并加 <code>metadata.interrupted</code>。<span class="tag tag--ok">已核实</span>如果进程直接崩溃，没有下一次启动的结算，遗留状态就一直是 <code>running</code>。v2 把「恢复」变成数据库属性，不再依赖进程优雅退出。</p>
+
+      <p>代价是「谁有权结算」。结算逻辑必须在任何新工作开始之前跑：如果新请求先于结算读到一条 <code>running</code> 检查点，<code>latestCompaction</code> 只认 <code>completed</code>，于是会退到更早的边界、或干脆没有边界——上下文可能突然从「压缩后」变回「压缩前」。两条规则要一起看：<b>查询只认 completed，恢复负责把 running 清掉</b>。少一条都会留下不一致。</p>
+
+      <h3>第 6 段　fork、model 字段与「一条消息」的边界</h3>
+
+      <p>检查点里的 <code>model</code> 在 schema 上是可选字段，但 <code>publish()</code> 每次都会写入 <code>context.model.ref</code>，文本压缩也不例外。<span class="tag tag--ok">已核实</span>它的作用有两个：记录这次摘要由哪个模型产出；以及在原生压缩时，与 <code>providerContext.provenance</code> 一起回答「这段加密窗口能不能被当前模型重放」。</p>
+
+      <p>文本检查点不需要 <code>model</code>，因为摘要是一段普通文本，任何模型都能读。这也是 <code>boundary = "local"</code> 能跨模型使用的原因：它只挑 <code>providerContext is null</code> 的检查点。</p>
+
+      <p>fork 时，<code>boundary</code> 的 <code>before</code> / <code>through</code> 决定复制到哪条消息。如果边界落在一条原生检查点之后，子会话会继承 <code>providerContext</code>；如果子会话换了 provider，<code>replayable()</code> 会把它过滤掉，退回到文本摘要或更早的边界。<span class="tag tag--ok">已核实</span>这是「一条消息自包含」的代价：它把 provider 绑进了记录里。</p>
+
+      <p>最后一个边界：检查点消息本身也是一条普通消息，会被 <code>messageEntries()</code> 的 <code>seq &gt;=</code> 选中，也会被 <code>replayable()</code> 检查。它没有特殊通道，没有「跳过自己」的逻辑。这种「把元数据也当消息」的做法让读取路径统一，代价是每次查询都要多一层类型判断。</p>
+
+      <h3>第 7 段　为什么是 seq，不是 time_created</h3>
+
+      <p>v1 用 <code>time_created</code> 排序，v2 用 <code>seq</code>。两者都能表达「先后」，差别在「同一毫秒」与「导入消息」。</p>
+
+      <p><code>time_created</code> 是毫秒时间戳，同一毫秒内写入的多条消息需要额外的 tie-breaker；v1 的 <code>page()</code> 就用 <code>desc(time_created), desc(id)</code> 两级排序。<span class="tag tag--ok">已核实</span><code>seq</code> 是单列单调值，天然唯一，不需要 tie-breaker。</p>
+
+      <p>更麻烦的是导入。从别的工具迁移过来的会话，<code>time_created</code> 可能不是单调的（时区、时钟回拨、批量导入）；<code>seq</code> 由持久事件写入时分配（projector 直接取 <code>event.durable.seq</code>），导入时按 <code>index + 1</code> 重新编号（<code>session/transfer.ts#L84</code>），与外部时间无关。<span class="tag tag--ok">已核实</span>这也是 v1 注释里那句「IDs are only a deterministic tie-breaker because imported messages do not necessarily have monotonic IDs」的背景。</p>
+
+      <p>代价是 <code>seq</code> 只在单个会话内有意义，不能跨会话比较；<code>time_created</code> 可以。v2 的所有查询都以 <code>session_id</code> 为前缀，所以这不是问题。选 <code>seq</code> 等于承认「会话是独立的时间线」，与 v2 的 event-sourcing 模型一致。</p>
+
+      <h3>第 8 段　<code>cost</code> 与 <code>tokens</code> 记的是什么</h3>
+
+      <p>检查点上的 <code>cost</code> 与 <code>tokens</code> 很容易被误解为「压缩后上下文有多大」。schema 的注释写得很明确：<b>Usage of the compaction request itself, not the size of the resulting context.</b><span class="tag tag--ok">已核实</span></p>
+
+      <p>它们记的是「生成这条摘要花了多少」：输入是发给摘要模型的历史，输出是摘要文本，可能还有缓存读写与推理 token。多次模型调用（例如 NUDGE 之后重试）会累加。<code>publish()</code> 从 <code>spent</code> 这个 Map 里取总和，附在事件上。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这个区分对成本分析很重要。想知道「压缩后上下文多大」，要看下一条 assistant 的 <code>tokens.input</code>，或者 <code>estimateContext()</code>；想知道「压缩本身多贵」，才看检查点的 <code>cost</code>。两个数经常被混在一张报表里，结论就会错。</p>
+
+      <p>另一个细节：失败的压缩也有 <code>cost</code> 与 <code>tokens</code>（<code>CompactionFailed</code> 带 <code>CompactionUsage</code>）。<span class="tag tag--ok">已核实</span>因为模型调用一完成就计费，失败不等于免费。统计「压缩开销」时如果只算成功的，会低估。</p>
+
+      <p>前面讲的两条路径，压成一张表就是「v1 这样、v2 改成那样、为什么」：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th scope="col">维度</th><th scope="col">v1（733b2c6）</th><th scope="col">v2（042d083）</th><th scope="col">为什么改</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">检查点</th><td>两条消息 + <code>tail_start_id</code></td><td>一条 <code>compaction</code></td><td>写入原子，不留「摘要有、指针无」的中间态</td></tr>
+            <tr><th scope="row" class="cell-tool">保留段</th><td>原始消息引用</td><td><code>recent</code> 文本</td><td>单条消息自包含，不必按 id 找回</td></tr>
+            <tr><th scope="row" class="cell-tool">读取</th><td>三切片重排</td><td><code>seq &gt;=</code> 连续段</td><td>顺序可信，可下推成 SQL</td></tr>
+            <tr><th scope="row" class="cell-tool">多次压缩</th><td>隐藏上一对</td><td>只认最近 <code>completed</code></td><td>规则更少，边界自然落在窗口外</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：两列分别固定到各自提交。代价一栏已在前文展开：v2 的保留段失去消息结构，模型能读不能续。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>v2 检查点是一条消息，<code>running</code> / <code>completed</code> / <code>failed</code> 三态。</li>
+            <li><code>completed</code> 带 <code>summary</code>、<code>recent</code>、可选 <code>providerContext</code>、<code>cost</code>、<code>tokens</code>。</li>
+            <li>boundary 有三种：<code>latest</code>（中立）、<code>local</code>（只看文本）、<code>Provenance</code>（只认可重放的原生窗口）。</li>
+            <li>读取是 <code>seq &gt;= checkpoint.seq</code> 的连续段，不重排，顺序可信。</li>
+            <li>保留段以文本存在检查点里，模型能读不能续；消息与指令基线必须同一事务读取。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>检查点的四种记法</h2>
+
+      <p>「压缩后从哪继续」这个问题，四家给了四种答案：pi 记 id、omp 记 id + reset 边界、v1 记 id 并重排、v2 记 seq 并取连续段。差别不在功能，而在「读取方要对顺序负责到什么程度」。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">检查点</th>
+              <th scope="col">保留段</th>
+              <th scope="col">读取顺序</th>
+              <th scope="col">顺序可信</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>一条 compaction 消息</td>
+              <td>文本，存在 <code>recent</code></td>
+              <td><code>seq &gt;=</code>，升序</td>
+              <td>是</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>两条消息 + <code>tail_start_id</code></td>
+              <td>原始消息</td>
+              <td>重排：检查点在前</td>
+              <td>否</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>一条 compaction 条目</td>
+              <td>原始条目（树路径）</td>
+              <td>时间正序</td>
+              <td>是</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>一条 compaction 条目 + <code>reset_boundary</code></td>
+              <td>原始条目（树路径）</td>
+              <td>时间正序</td>
+              <td>是</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：v2 <code>042d083</code>（beta）；v1 <code>733b2c6</code>；pi <code>b45e0eb</code>；omp <code>f979f46</code>。「顺序可信」指读取结果的下标与时间顺序一致。</p>
+
+      <p>三点对照：</p>
+
+      <p>一是<b>检查点的原子性</b>。v1 要写两条消息 + 一个字段，三条记录之间没有事务保证；v2 只有一条消息，写入是原子的。这直接减少了「摘要写了但指针没写」这类中间状态。v2 用 <code>status</code> 显式表达中间态：<code>running</code> 时可以崩溃，恢复时结算成 <code>interrupted</code>。</p>
+
+      <p>二是<b>保留段的结构</b>。pi 与 v1 保留原始消息，模型可以继续调用；v2 把保留段文本化，模型只能读。这不是退步，而是「检查点即归档」的设计：v2 希望一条消息就能完整描述「压缩后的世界」，不依赖外部指针。</p>
+
+      <p>三是<b>多次压缩</b>。v1 需要「隐藏上一对压缩消息」，读取时只认最后一个带 <code>tail_start_id</code> 的标记；v2 只认最近一条 <code>completed</code>，更早的天然在 <code>seq</code> 窗口之外。规则更少，副作用是「上一次的摘要不会自动继承」——v2 靠 <code>previousCompaction()</code> 在生成新摘要时显式带上，而不是读时拼接。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从读 SQL 到判断 boundary</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">会话里有 seq 10（文本检查点）、seq 20（原生检查点）、seq 30（文本检查点）。用 <code>boundary = "local"</code> 查，边界是哪条？换成 <code>"latest"</code> 呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p><code>local</code> 的 SQL 条件里 <code>providerContext is null</code> 为必需，所以 seq 20 被排除；降序取第一条，是 seq 30。</p>
+          <p><code>latest</code> 的 boundary 分支是 <code>undefined</code>，不过滤，降序第一条也是 seq 30。</p>
+          <p>把 seq 30 改成原生检查点再想一次：<code>local</code> 会退到 seq 10，<code>latest</code> 仍是 seq 30。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">为什么 <code>messageEntries()</code> 要过滤「原生检查点之前的 system 消息」，而不只是过滤检查点本身？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>system 消息在 v2 里承载「指令更新」的增量文本。原生压缩完成时，<code>advanceEpoch()</code> 把当前值提升为基线。</p>
+          <p>基线已经包含那些增量的结果，再回放就是重复，甚至可能与基线冲突（旧增量说「改成 A」，基线说「现在是 B」）。</p>
+          <p>这也是下一节「指令 epoch」的入口：读取侧的过滤规则必须与写入侧的推进时机一致。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">如果产品要求「压缩后保留段仍能继续调用工具」，v2 的检查点结构要怎么改？代价是什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>现在 <code>recent</code> 是一段文本，模型读到的是 <code>&lt;recent-context&gt;</code>。要续接，就得恢复成结构化消息，并且保留 <code>tool_call_id</code> 与结果。</p>
+          <p>可以改成「检查点 + 消息引用」：检查点存边界，保留段仍从消息表按 seq 取。这样结构回来了，但「一条消息自包含」的优点没了。</p>
+          <p>代价还包括顺序：引用方案要保证被引用的消息不会被后续操作改写，否则检查点描述的世界与消息表不一致。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：opencode v2 · 指令 epoch 推进。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

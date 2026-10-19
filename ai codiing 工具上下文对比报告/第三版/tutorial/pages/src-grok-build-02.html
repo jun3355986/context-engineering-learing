@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Grok Build · 零成本裁剪：软裁剪与硬清空 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-grok-build-02 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-grok-build-02 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-grok-build-02 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-grok-build-02 .path-card code,
+  #src-grok-build-02 .callout code,
+  #src-grok-build-02 .quiz__q code,
+  #src-grok-build-02 details code {
+    overflow-wrap: anywhere;
+  }
+  /* 行内代码里的长路径/长哈希允许断行，避免 375px 横向溢出 */
+  #src-grok-build-02 code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-grok-build-02">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-grok-build-02">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Grok Build</span><span>·</span><span>第 02 节</span></p>
+      <h1>零成本裁剪：软裁剪与硬清空</h1>
+      <p class="lede">压缩要调一次模型，慢且贵。Grok Build 在压缩之前还有一道完全不调模型的减量：按「轮龄」把老工具结果先砍一刀。规则只有三条——最近三轮不动，中年结果留头留尾，太老的整条清空。这一节逐行读这三条规则，以及它们为什么只作用在请求副本上。</p>
+      <ul class="meta">
+        <li>约 15 分钟</li>
+        <li>2 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>2bdd1d6</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>给定一份消息列表，算出每条工具结果的「轮龄」，并判断它落在保护、软裁剪还是硬清空区间。</li>
+          <li>解释 50% 触发线为什么用严格大于，以及它读的是哪个 token 数。</li>
+          <li>说明这项裁剪为什么不会改变磁盘历史，也不会改变 <code>/context</code> 的显示值。</li>
+          <li>对比 DeepSeek Harness、oh-my-pi、opencode 的同类机制，指出「不调模型」这条路上的三个分叉。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>本节读的是 <code>xai-chat-state</code> crate 里的请求构建路径。所有行号对应提交 <code>2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8</code>。这段代码是纯函数加一个配置结构体，没有网络调用，适合逐行读。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>在调模型之前，先把「死掉的历史」减掉</h2>
+
+      <p>上下文减量按代价排序，最便宜的是「不调模型、只改请求」。Grok Build 把这一步放在请求构建里：每当要发一次请求，先把当前历史克隆一份，按轮龄裁剪克隆里的工具结果，再把克隆发出去。原始历史一个字节都不动。</p>
+
+      <p class="lead-in">这条链最重要的一句话是：裁剪发生在副本上。它省的是「这一次请求的 token」，不是「会话的 token」。</p>
+
+      <p>为什么值得单独讲？因为它处在一个很尴尬的位置：它比压缩便宜得多，却比压缩更容易被误解。用户看到 <code>/context</code> 显示 60%，以为什么都没发生；实际上发出去的请求可能只有 40%。反过来，用户以为「裁剪过了应该很省」，但下一轮读同一个文件，工具又返回一遍完整内容，因为裁剪从来不写回磁盘。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">请求构建链路里裁剪所处的位置</title>
+          <desc id="fig-1-desc">五步纵向流程：克隆历史、图片预算、按轮龄裁剪工具结果、注入记忆提醒、规范化并发出请求。第三步标为橙色，是本节的裁剪；第四步说明仍然写回的是副本。</desc>
+          <rect class="svg-track" x="8" y="10" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="35" text-anchor="middle">1</text>
+          <text class="svg-label svg-label--dark" x="48" y="35">克隆当前历史</text>
+          <text class="svg-note" x="620" y="35" text-anchor="end">原始状态不动</text>
+
+          <rect class="svg-track" x="8" y="56" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="81" text-anchor="middle">2</text>
+          <text class="svg-label svg-label--dark" x="48" y="81">图片字节预算</text>
+          <text class="svg-note" x="620" y="81" text-anchor="end">超限则驱逐旧图</text>
+
+          <rect class="svg-seg--c" x="8" y="102" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="26" y="127" text-anchor="middle">3</text>
+          <text class="svg-label" x="48" y="127">按轮龄裁剪工具结果</text>
+          <text class="svg-label" x="620" y="127" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="148" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="173" text-anchor="middle">4</text>
+          <text class="svg-label svg-label--dark" x="48" y="173">注入记忆提醒</text>
+          <text class="svg-note" x="620" y="173" text-anchor="end">仍写在副本上</text>
+
+          <rect class="svg-track" x="8" y="194" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="219" text-anchor="middle">5</text>
+          <text class="svg-label svg-label--dark" x="48" y="219">规范化 + 发出请求</text>
+          <text class="svg-note" x="620" y="219" text-anchor="end">模型看到裁剪版</text>
+
+          <line class="svg-rule" x1="8" y1="252" x2="632" y2="252"/>
+          <text class="svg-note" x="8" y="276">第 2、3、4 步都只改这份克隆；磁盘上的会话日志与 /context 的读数不受影响。</text>
+        </svg>
+        <figcaption>图 1　裁剪在请求构建里的位置。它在图片预算之后、记忆注入之前，说明它处理的是「文本工具结果」这一种特定对象，不负责图片，也不负责系统提示词。</figcaption>
+      </figure>
+
+      <p>链路上还有一处顺序值得注意：裁剪排在图片预算之后。图片预算可能已经把一部分图片换成了占位文本，但裁剪的触发判断用的是 <code>self.state.total_tokens</code>，也就是裁剪前的会话估算值。换句话说，即使图片驱逐已经腾出了空间，只要会话估算还在 50% 以上，文本裁剪照样运行。这个设计选择很务实：两个机制各自独立、互不依赖，谁先谁后都不会导致对方失效。</p>
+
+      <p>本节要读的函数只有两个：<code>should_prune()</code>（要不要裁）和 <code>prune_conversation()</code>（怎么裁）。前者三行，后者四十四行。裁剪的全部规则都在这四十四行里。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四处位置：触发、算法、默认值、切片工具</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 触发线：50% 与严格大于</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/actor/request_builder.rs#L107-L130">crates/codegen/xai-chat-state/src/actor/request_builder.rs#L107-L130</a><br>
+          <code>prune_items_for_turn_request()</code> 与 <code>should_prune()</code>。<code>total_tokens &gt; context_window / 2</code>，等于 50% 不触发。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 裁剪算法本体</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/actor/request_builder.rs#L132-L177">…/actor/request_builder.rs#L132-L177</a><br>
+          <code>prune_conversation()</code>：倒序遍历、数轮龄、三段分支。整节的主角。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 默认参数</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/types.rs#L65-L94">crates/codegen/xai-chat-state/src/types.rs#L65-L94</a><br>
+          <code>PruningConfig</code>：<code>keep_last_n_turns: 3</code>、<code>soft_trim_threshold: 4000</code>、头尾各 <code>1500</code>、<code>hard_clear_age_turns: 10</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 占位符与按字符切片</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/actor/request_builder.rs#L12-L17">…/request_builder.rs#L12-L17</a> 与 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/actor/request_builder.rs#L241-L251">#L241-L251</a><br>
+          <code>HARD_CLEAR_PLACEHOLDER</code>、<code>SOFT_TRIM_SEPARATOR</code>，以及按 Unicode 字符（不是字节）切头尾的两个小函数。</p>
+        </div>
+      </div>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】大纲的行号与「4000 字符」的口径</p>
+        <p>大纲把 <code>prune_conversation</code> 标在 <code>request_builder.rs:125</code>，实际 L125 是它的文档注释开头，函数签名在 L134。另外「超过 4000 字符软裁剪为 1500+1500」这句要补一个限定：<b>4000 与 1500 都按 Unicode 字符计</b>（<code>chars().count()</code> 与 <code>chars().skip()</code>），不是字节；而同一份代码里的 token 估算按字节 ÷ 4 算。两套口径混用会在中文内容上产生明显偏差，第 4 节会展开。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>一段五十五行，三个分支</h2>
+
+      <p>摘录保留了触发函数、裁剪函数与两个切片工具，删掉了文件里其余的图片预算、记忆注入与测试代码。裁剪函数只把三行注释并到了行尾，两处 <code>continue</code> 与一处 <code>Arc</code> 写入都保留。</p>
+
+      <p class="small muted">文件：<code>crates/codegen/xai-chat-state/src/actor/request_builder.rs</code>　行号：L107-L177（节选 55 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 请求构建时调用的入口：先问「要不要裁」，再裁这份副本（L107-L118）</span>
+<span class="code__line">pub(super) fn prune_items_for_turn_request(</span>
+<span class="code__line">    &amp;self, mut items: Vec&lt;ConversationItem&gt;,</span>
+<span class="code__line">) -&gt; Vec&lt;ConversationItem&gt; {</span>
+<span class="code__line">    if should_prune(self.state.total_tokens, self.state.sampling_config.context_window) {</span>
+<span class="code__line">        prune_conversation(&amp;mut items, &amp;self.pruning_config);</span>
+<span class="code__line">    }</span>
+<span class="code__line">    items</span>
+<span class="code__line">}</span>
+<span class="code__line code__line--cmt">// 严格大于：正好 50% 不裁（测试 should_prune_gating 钉住了这一点）</span>
+<span class="code__line">pub(crate) fn should_prune(total_tokens: u64, context_window: std::num::NonZeroU64) -&gt; bool {</span>
+<span class="code__line">    total_tokens &gt; context_window.get() / 2</span>
+<span class="code__line">}</span>
+<span class="code__line code__line--cmt">// 裁剪本体：从尾部往前扫，按「用户轮次」估算轮龄（L132-L177）</span>
+<span class="code__line">pub(crate) fn prune_conversation(conversation: &amp;mut [ConversationItem], config: &amp;PruningConfig) {</span>
+<span class="code__line">    if !config.enabled { return; } <span class="cmt">// 总开关</span></span>
+<span class="code__line">    let mut turn_from_end: usize = 0; <span class="cmt">// 0 = 当前这一轮</span></span>
+<span class="code__line">    let mut seen_first_user = false;</span>
+<span class="code__line">    for item in conversation.iter_mut().rev() { <span class="cmt">// 从最新一条往回走</span></span>
+<span class="code__line">        if matches!(item, ConversationItem::User(_)) {</span>
+<span class="code__line">            if seen_first_user { turn_from_end += 1; } <span class="cmt">// 遇到更早的 user 才算新的一轮</span></span>
+<span class="code__line">            seen_first_user = true;</span>
+<span class="code__line">            continue; <span class="cmt">// user 消息本身不裁</span></span>
+<span class="code__line">        }</span>
+<span class="code__line">        let ConversationItem::ToolResult(tool_result) = item else {</span>
+<span class="code__line">            continue; <span class="cmt">// 只处理工具结果，其余一律跳过</span></span>
+<span class="code__line">        };</span>
+<span class="code__line code__line--cmt">// 分支一：最近 N 轮内的工具结果永不裁剪</span>
+<span class="code__line">        if turn_from_end &lt; config.keep_last_n_turns { continue; }</span>
+<span class="code__line code__line--cmt">// 分支二：超龄结果整条换成占位符，先判断是否已经是占位符，避免重复写</span>
+<span class="code__line">        if turn_from_end &gt;= config.hard_clear_age_turns {</span>
+<span class="code__line">            if tool_result.content.as_ref() != HARD_CLEAR_PLACEHOLDER {</span>
+<span class="code__line">                tool_result.content = std::sync::Arc::&lt;str&gt;::from(HARD_CLEAR_PLACEHOLDER);</span>
+<span class="code__line">            }</span>
+<span class="code__line">            continue;</span>
+<span class="code__line">        }</span>
+<span class="code__line code__line--cmt">// 分支三：中年结果，超过阈值才留头留尾，中间换成固定分隔符</span>
+<span class="code__line">        let content_len = tool_result.content.chars().count(); <span class="cmt">// 按字符数，不是字节</span></span>
+<span class="code__line">        if content_len &gt; config.soft_trim_threshold {</span>
+<span class="code__line">            let head = safe_char_slice(&amp;tool_result.content, 0, config.soft_trim_head);</span>
+<span class="code__line">            let tail = safe_char_slice_tail(&amp;tool_result.content, config.soft_trim_tail);</span>
+<span class="code__line">            tool_result.content =</span>
+<span class="code__line">                std::sync::Arc::&lt;str&gt;::from(format!("{head}{SOFT_TRIM_SEPARATOR}{tail}"));</span>
+<span class="code__line">        }</span>
+<span class="code__line">    }</span>
+<span class="code__line">}</span>
+<span class="code__line code__line--cmt">// 两个切片函数都遍历 chars，因此不会把多字节字符劈成半个</span>
+<span class="code__line">fn safe_char_slice(s: &amp;str, start: usize, count: usize) -&gt; String {</span>
+<span class="code__line">    s.chars().skip(start).take(count).collect()</span>
+<span class="code__line">}</span>
+<span class="code__line">fn safe_char_slice_tail(s: &amp;str, count: usize) -&gt; String {</span>
+<span class="code__line">    let total = s.chars().count();</span>
+<span class="code__line">    if count &gt;= total { return s.to_string(); } <span class="cmt">// 短于尾巴预算就整条留</span></span>
+<span class="code__line">    s.chars().skip(total - count).collect()</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">本段 55 行（触发 8 行 + 裁剪 41 行 + 切片工具 6 行），在 60 行以内；裁剪函数在源码里是 44 行，摘录时把 3 行注释并进了行尾。删去的是同一文件里的图片预算与记忆注入代码，以及测试模块；常量值见第 2 节链接 ④。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四条规则，一个容易被忽略的副作用</h2>
+
+      <h3>第 1 段　轮龄：从「最后一条用户消息」往回数</h3>
+
+      <p>裁剪不按时间、不按消息条数，而按「用户轮次」。理由很实际：一次用户请求可能触发三十次工具调用，按条数算，最近的三十条全是同一轮的工具结果；按轮算，它们同属第 0 轮，一起受保护。</p>
+
+      <p>实现方式是从后往前扫，维护两个变量。<code>seen_first_user</code> 记录「是否已经见过最新那条用户消息」，<code>turn_from_end</code> 记录「当前处在倒数第几轮」。遇到用户消息时：如果不是第一条，轮次加一；无论是不是，都把它标记为已见。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这套计数有个容易读错的地方：<b>工具结果不一定和用户消息交替出现</b>。真实的顺序常常是「user → assistant(tool_call) → tool_result → assistant(tool_call) → tool_result → assistant」。从尾部往回扫，在遇到那条 user 之前，所有工具结果都属于第 0 轮；跨过它之后才变成第 1 轮。<span class="tag tag--ok">已核实</span>所以「最近 3 轮」保护的是「最近三条用户请求及其全部工具结果」，而不是「最近三条消息」。</p>
+
+      <p>如果一段历史以工具结果开头（比如会话被截断、或者系统注入了一条合成消息），第一轮计数会从 0 开始，这些结果仍然受保护。这是保守的偏差：宁可少裁，也不误裁。</p>
+
+      <p>这里有一个值得注意的细节：Grok Build 的很多注入都是「合成用户消息」，比如日期滚动提醒、任务完成通知、MCP 连接提醒。这段代码只匹配 <code>ConversationItem::User(_)</code>，不检查 <code>synthetic_reason</code>；而同一个 crate 里的别处代码会检查这个字段。也就是说，一条合成提醒可能被当成「用户又提了一个新需求」，让轮龄多加一。<sup class="fn-ref"><a href="#fn-src-grok-build-02-1" id="fnref-src-grok-build-02-1">1</a></sup>后果是：工具结果会比实际更早进入软裁剪区间。这个偏差是保守方向（多裁一点），不会导致漏裁。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 286" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">按轮龄划分的三段裁剪区间</title>
+          <desc id="fig-2-desc">一条横向轴表示从最新到最旧的用户轮次。左侧第 0 到第 2 轮为蓝色保护区，中间第 3 到第 9 轮为青色软裁剪区，右侧第 10 轮及更早为橙色硬清空区。</desc>
+          <text class="svg-note" x="8" y="20">轮龄 = 从最新一条用户消息往回数的「用户轮次」（示意，非真实比例）</text>
+
+          <rect class="svg-seg--a" x="8" y="34" width="170" height="54" rx="8"/>
+          <text class="svg-label" x="93" y="58" text-anchor="middle">0 – 2 轮</text>
+          <text class="svg-label" x="93" y="80" text-anchor="middle">保护</text>
+
+          <rect class="svg-seg--b" x="182" y="34" width="250" height="54" rx="8"/>
+          <text class="svg-label" x="307" y="58" text-anchor="middle">3 – 9 轮</text>
+          <text class="svg-label" x="307" y="80" text-anchor="middle">头 1500 + 尾 1500</text>
+
+          <rect class="svg-seg--c" x="436" y="34" width="196" height="54" rx="8"/>
+          <text class="svg-label" x="534" y="58" text-anchor="middle">10 轮以上</text>
+          <text class="svg-label" x="534" y="80" text-anchor="middle">硬清空：整条占位符</text>
+
+          <text class="svg-note" x="8" y="112">最新</text>
+          <text class="svg-note" x="632" y="112" text-anchor="end">最旧</text>
+
+          <rect class="svg-track" x="8" y="128" width="624" height="72" rx="8"/>
+          <text class="svg-note" x="26" y="152">保护段：无论多长都不动，因为这一轮还在被讨论</text>
+          <text class="svg-note" x="26" y="176">软裁剪段：仅在内容超过 4000 字符时动手，留开头和结尾</text>
+          <text class="svg-note" x="26" y="196">硬清空段：整条换成 [Tool result omitted — too old]</text>
+
+          <line class="svg-rule" x1="8" y1="222" x2="632" y2="222"/>
+          <text class="svg-note" x="8" y="246">三个区间共用同一份配置；没有任何一条规则会删除消息本身，只改工具结果的 content。</text>
+          <text class="svg-note" x="8" y="270">因此工具调用与结果仍然成对，压缩切点不会因为裁剪而错位。</text>
+        </svg>
+        <figcaption>图 2　三段区间。蓝色段完全不动；青色段只裁「过长」的结果；橙色段整条替换。三种处理的共同点是都不删除消息，只改 <code>content</code> 字段，所以消息的数量与配对关系保持不变。</figcaption>
+      </figure>
+
+      <h3>第 2 段　软裁剪：头 1500 + 分隔符 + 尾 1500</h3>
+
+      <p>软裁剪的条件是「内容字符数 &gt; 4000」。注意这个 4000 是阈值，不是「裁到 4000」：裁剪后的长度是 1500 + 分隔符 + 1500，分隔符是 <code>\n\n[…trimmed…]\n\n</code>，大约 20 个字符。所以一条 4,001 字符的结果会被裁到约 3,020 字符，只省下四分之一；一条 40,000 字符的结果会省下 92%。<span class="tag tag--ok">已核实</span></p>
+
+      <p>为什么留头留尾，而不是只留头？因为工具输出里最有价值的两端不一样：开头是「这是什么」（文件名、命令、表格头），结尾是「结果是什么」（错误、汇总、最后一行输出）。中间大段是重复的日志或代码，删掉损失最小。这和 Codex 的 <code>truncate_middle_with_token_budget</code> 是同一个直觉，区别只在预算单位：Codex 按 token，Grok Build 按字符。</p>
+
+      <p>按默认值算一个具体例子。假设历史里有 12 条工具结果，每条 8,000 字符，轮龄都在 3 到 9 之间：每条裁到约 3,020 字符，净省 4,980 字符，12 条共省约 59,760 字符。按字节 ÷ 4 估算，约 15,000 token。如果窗口是 200,000，这一步就把水位从 60% 拉回 52.5%。差一点点还是压不下去——这正是「便宜手段只能削峰、不能替代压缩」的量化写照。</p>
+
+      <p>还有一个细节：<code>soft_trim_threshold</code> 判断的是<b>当前</b>内容的字符数。如果一条结果已经被软裁剪过一次（约 3,020 字符），它下次不会再被裁——因为 3,020 小于 4,000。这意味着软裁剪是幂等的，不会每轮都往里缩。这一点很重要：如果阈值被调到裁剪后的长度以下（比如 2,500），这条结果每轮都会重新进入裁剪函数，但删除区间此刻只覆盖中间那句分隔符，输出与输入几乎一样——白白消耗一次切片，内容不再变短。</p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">两套口径：字符数与字节数</p>
+        <p>裁剪的阈值与切片都按 Unicode 字符（<code>chars()</code>）算，而压缩的 token 估算按 UTF-8 字节 ÷ 4 算。对纯 ASCII 的输出（大多数命令、日志、代码），两者只差 4 倍，不会造成困惑。对中文输出，一条 4,000 字的结果约 12,000 字节、估算 3,000 token，但它刚好卡在裁剪阈值上；而一条 4,000 字节的中文结果只有约 1,333 字，估算 1,000 token，却不会被裁剪。结果是：<b>中文工具输出更容易躲过裁剪，却更容易触发压缩。</b></p>
+      </div>
+
+      <h3>第 3 段　硬清空：整条换成一句占位符</h3>
+
+      <p>轮龄达到 10 轮，工具结果整条被替换成 <code>[Tool result omitted — too old]</code>。这句话本身就占 token（约 10 个），但它换来的是把几万字符变成十个词。</p>
+
+      <p>代码里有一个看起来多余、其实必要的判断：如果内容已经是占位符，就不再写一次。写 <code>Arc&lt;str&gt;</code> 会分配新内存并触发引用计数变化；虽然结果一样，但每轮都重写一次是纯浪费。更重要的是，这个判断让函数对「已经裁剪过的历史」保持幂等——重复调用不会改变任何东西。<span class="tag tag--ok">已核实</span></p>
+
+      <p>硬清空是不可逆的，至少在这一份请求里。模型看到的就是一句话，没有指针、没有文件路径、没有「需要时重读」的提示。这是它和最省事的那种「落盘 + 指针」方案的差别：Grok Build 的工具层确实有落盘（bash 输出写到 <code>&lt;session_folder&gt;/terminal/&lt;tool_call_id&gt;.log</code>），但裁剪这一层不会去查那个路径，也不会把路径写进占位符。模型如果想恢复，只能重新执行一次工具调用。</p>
+
+      <p>这个选择的代价很具体：老旧但仍有用的信息（比如十轮前那次 <code>ls</code> 的目录结构）会被彻底抹掉，而重新获取它要花一次工具调用、一次往返、一次新的 token。收益是确定性：占位符长度固定、行为可预测、不需要维护「原文在哪」的索引。这是一个用「可恢复性」换「实现简单」的典型取舍。</p>
+
+      <h3>第 4 段　为什么只改副本：三个直接后果</h3>
+
+      <p>裁剪发生在 <code>build_conversation_request()</code> 里，作用对象是 <code>self.state.conversation.clone()</code> 产生的临时数组。这一点带来三个可以直接观察到的后果。</p>
+
+      <p><b>后果一：<code>/context</code> 与实发 token 不一致。</b>状态栏与 <code>/context</code> 读的是会话状态里的估算值，裁剪只改副本，所以显示值偏高。用户看到 60%，实际发出去可能只有 45%。这不是 bug，是「显示的是会话，发出去的是请求」这个结构性差异。</p>
+
+      <p><b>后果二：下一轮从同样的原始内容重新裁。</b>因为磁盘没变，每轮构建请求都要重新走一遍裁剪。好在这套规则是纯函数、成本是 O(n) 的字符串切片，比起一次模型调用可以忽略。但如果历史很长，每轮都扫一遍全部消息仍然有成本——这也是为什么它只在 50% 以上才启用。</p>
+
+      <p><b>后果三：缓存从第一个被裁的位置失效。</b>这一点最容易被忽略。裁剪改的是历史中段的内容，而 prompt cache 要求前缀逐字节一致。一旦某条工具结果被裁，从它开始往后的所有 token 都要重新计费。所以「不调模型」不等于「零成本」：省下的是输入 token 的数量，付出的是缓存命中率的下降。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-src-grok-build-02-2" id="fnref-src-grok-build-02-2">2</a></sup>源码没有为裁剪做缓存守卫（对比 oh-my-pi 的 <code>cacheWarmSuffixTokens</code>），说明这个代价被接受了。</p>
+
+      <p>把三个后果放在一起看，这项机制的真实定位就清楚了：它是「压缩前的最后一道便宜闸门」，不是「常态化的瘦身」。50% 的触发线保证了它在大多数请求里根本不运行；一旦运行，说明这一轮已经接近需要压缩，缓存命中率本来就要被打断。</p>
+
+      <p>那为什么是 50%，不是 70% 或 85%？因为它和压缩阈值（默认 85%）之间需要留出一段「缓冲带」。50% 到 85% 这 35 个百分点，就是裁剪独立工作的区间：先靠确定性的切片把水位压下去，如果能压回 50% 以下，这一轮连压缩都不需要；压不下去也不要紧，压缩仍在 85% 那里等着。两条线的间距越大，裁剪承担的份额越多、压缩触发得越少；间距越小，裁剪就只是压缩前的一次「顺手打扫」。</p>
+
+      <p>这个设计还有一个隐含的好处：裁剪的粒度是「单条结果」，压缩的粒度是「整段历史」。前者可以只损失一小块，后者会损失全部细节。先用便宜的手段做小损失，再用昂贵的手段做大损失，是减量链条的通用顺序。Grok Build 把它写成了两级：50% 裁一次，85% 压一次。</p>
+
+      <h3>第 5 段　三段式之外，它没做什么</h3>
+
+      <p>这段代码只处理 <code>ConversationItem::ToolResult</code>，其他类型一律 <code>continue</code>。也就是说，它不做下面这些事：</p>
+
+      <p>不清理「过期文件读取」。同一个文件读了三次，三份内容都保留，只要轮龄不到 10。它不知道哪一份是新的。</p>
+
+      <p>不清理「空搜索结果」。一次零命中的 grep 与一次有结果的 grep 享受同样待遇。</p>
+
+      <p>不清理「思考过程」。推理内容不在 <code>ConversationItem</code> 的这几个变体里，走不到这段代码。</p>
+
+      <p>不压缩用户消息或助手回复。哪怕一条用户消息粘贴了五万字的需求文档，它也不会被裁——只有工具结果会。</p>
+
+      <p>这些「不做」划出了它的能力边界：它是一条<b>按轮龄的、只针对工具结果的、确定性的</b>减量链。所有需要「理解内容」的判断（这份读取是不是过期了、这次搜索是不是空的）都不在它的范围内，要么交给压缩模型，要么交给别的工具层机制。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>触发线是 <code>total_tokens &gt; 窗口 / 2</code>，严格大于，正好 50% 不裁。</li>
+            <li>轮龄按「用户轮次」从尾往前数，最近 3 轮保护，10 轮以上硬清空。</li>
+            <li>3 到 9 轮之间，内容超过 4,000 字符才裁成「头 1,500 + 分隔符 + 尾 1,500」，且幂等。</li>
+            <li>只改请求副本：磁盘不变、<code>/context</code> 不变、下一轮重新裁、缓存从裁点失效。</li>
+            <li>只处理工具结果；过期读取、空搜索、思考过程都不在范围内。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>「不调模型」这条路上，四个分叉</h2>
+
+      <p>同样是零模型成本的裁剪，五家工具在四个地方做了不同选择：<b>什么时候触发</b>、<b>按什么维度选对象</b>、<b>裁到什么程度</b>、<b>原文还能不能找回</b>。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">触发时机</th>
+              <th scope="col">选择维度</th>
+              <th scope="col">裁剪方式</th>
+              <th scope="col">可恢复性</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>估算 &gt; 窗口 50%</td>
+              <td>轮龄</td>
+              <td>头 1500 + 尾 1500，或整条占位符</td>
+              <td>只改副本，原文仍在会话里</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>压缩确认后、选区之前</td>
+              <td>单条结果的码点数</td>
+              <td>8192 触发，留 4096 + 1024</td>
+              <td>原文永久在日志，可用 seq 回溯</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>压缩前，两层</td>
+              <td>token 预算 + 语义（覆盖 / 无用）</td>
+              <td>保护 40k，节省 ≥ 20k 才动手</td>
+              <td>原地改写并落盘，失败回滚</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>循环结束、异步</td>
+              <td>token 预算</td>
+              <td>保护 40k，可擦 &gt; 20k 才落地</td>
+              <td>只打时间戳，原文保留</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>距上条助手消息 &gt; 60 分钟</td>
+              <td>时间 + 白名单工具</td>
+              <td>整条清空，保留最近 5 条</td>
+              <td>另有 <code>cache_edits</code> 路径不动本地</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：Grok Build 见本节 permalink；dsh 见 <code>research/dsh.md</code> 第 7 节与 <code>compaction-tool-result-pruner/src/config.ts</code>；omp 见 <code>research/omp.md</code> 第 7 节；opencode v1 见 <code>research/opencode-v1.md</code> 第 7 节（<code>compaction.prune</code> 默认 false）；Claude Code 为 v2.1.88 源码，时间触发路径默认 disabled。</p>
+
+      <p><b>分叉一：触发时机决定「这是常态还是应急」。</b>Grok Build 用 50% 这条线，意味着它只在会话过半后启动；DeepSeek Harness 更靠后，必须等压缩被确认后才跑裁剪器，低于压力的会话一个字节都不动；opencode v1 更晚，在任务循环退出后异步跑；Claude Code 的时间路径则是「缓存已经冷了，不如顺便清掉」。四种时机对应四种心态：Grok Build 是「提前削峰」，dsh 是「先削峰再决定要不要摘要」，opencode 是「收尾时打扫」，Claude Code 是「反正缓存没了」。</p>
+
+      <p><b>分叉二：选择维度决定「谁被牺牲」。</b>按轮龄选，牺牲的是「旧但可能仍重要」的内容；按单条大小选（dsh），牺牲的是「长但可能是唯一副本」的内容；按语义选（omp 的 superseded / useless），牺牲的是「已经被更新版本取代」的内容，这一种最精准，但需要工具层配合打标记。Grok Build 的代码里没有任何语义判断，它不知道一条结果是否过期——这是它和 omp 最大的差距。</p>
+
+      <p><b>分叉三：预算下限决定「值不值得裁」。</b>omp 要求总节省 ≥ 20,000 token 才动手，opencode v1 要求可擦除量 &gt; 20,000；Grok Build 没有这个下限，一条 4,001 字符的结果被裁到 3,020，净省 981 字符（约 245 token），也照裁。对小结果来说，这次裁剪的收益可能还不如它造成的缓存失效代价。Grok Build 用 50% 触发线间接控制了这个问题：能走到这一步，说明总量已经很大，单条收益小也不再计较。</p>
+
+      <p><b>分叉四：可恢复性决定「敢裁多狠」。</b>dsh 敢把中间 3,000 多个码点直接换成一句标记，因为原始事件永久在 append-only 日志里，一个 seq 就能找回来；opencode 敢擦，因为只打了个时间戳，序列化时才显示占位符。Grok Build 敢硬清空，是因为它只改副本——磁盘上的完整历史还在，下一轮重建请求时又可以看到原文（虽然还是会被裁）。三种「敢」建立在三种不同的保险上，但只有 dsh 和 opencode 给了模型一条「按需找回」的路。</p>
+
+      <p>还有一个不在表里的对照：Codex 没有这一层。它的零模型减量只有两类——写入历史时按 <code>TruncationPolicy</code> 截断工具输出，以及压缩重试时删除最旧条目（<code>remove_first_item</code>，会同步移除配对的另一半）。前者是「进来时就裁」，后者是「压不下去才删」，中间没有「按轮龄打扫」这一步。<span class="tag tag--ok">已核实</span>这解释了为什么 Codex 的旧工具结果往往又长又完整：它选择在写入那一刻就控制长度，而不是在发送前回扫一遍。</p>
+
+      <p>把四种分叉合起来看，Grok Build 的位置很清楚：它选择了一个<b>简单、确定、不可恢复、但只作用于请求副本</b>的方案。这个方案不需要工具层配合打标记，不需要维护原文索引，也不需要理解内容；代价是它无法区分「过期」与「仍然重要」，只能按年龄一刀切。如果你的任务是「长时间围绕同一批文件反复修改」，轮龄会把仍然有效的读取当成老结果裁掉；如果你的任务是「快速问答、上下文很短」，它根本不会启动。判断它适不适合，只要问一句：<b>你的旧工具结果，是「过期了」还是「只是旧」？</b></p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从手算到改参数</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">一段历史从新到旧是：user A（最新）→ 12 条工具结果 → user B → 3 条工具结果 → user C → 1 条工具结果。默认配置下，哪些工具结果会被裁？分别落在哪个区间？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>从尾部往前扫，先遇到的是 user A 吗？不是——最旧的一条在数组开头。倒序遍历时，先看到的是 C 之后的那条工具结果。</p>
+          <p>注意 <code>seen_first_user</code> 的作用：第一次遇到 user 时只做标记、不加轮次。所以「C 之后的 1 条」轮龄是 0，「B 与 C 之间的 3 条」轮龄是 1，「A 与 B 之间的 12 条」轮龄是 2。三个都在保护区内——这道题的答案是「一条都不裁」，但你要能说清为什么。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">把 <code>soft_trim_threshold</code> 从 4000 改成 2500，其他不变。会发生什么？请从「单条结果」和「重复调用」两个角度回答。</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>裁剪后的长度是 1500 + 分隔符 + 1500，约 3,020 字符。把它和新的阈值 2,500 比一比：下一次请求时，这条已经裁过的结果还会不会被判定为「超长」？</p>
+          <p>如果会，那么每轮都会再进一次裁剪函数。第二次要删的区间是 <code>[1500, 3020 − 1500) = [1500, 1520)</code>——正好是那句分隔符本身。输出变成「头 1500 + 分隔符 + 尾 1500」，与输入等价。所以结果会稳定下来，不会越裁越短；真正损失的是每轮一次的切片开销。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">如果给硬清空的占位符加上「原文件路径」，让模型可以按需重读，会带来什么好处和什么新问题？只改这一处够不够？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>好处很直接：模型从「永久丢失」变成「可按需取回」。参考 dsh 的 spill 与 Grok Build 自己的 bash 落盘路径，这个信息在工具层其实已经有了。</p>
+          <p>新问题有三个：路径本身占多少 token？模型怎么知道该不该重读（它看不到内容，只能盲猜）？重读会新增一次工具调用与一轮往返，这部分成本记在谁头上？</p>
+          <p>最后想「只改一处够不够」：占位符是 <code>&amp;str</code> 常量，路径是动态的，需要把常量换成格式化的字符串；还要保证每条工具结果都知道自己的落盘位置；而 <code>ConversationItem::ToolResult</code> 里是否带着这个信息，是另一个要查的问题。</p>
+        </details>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-src-grok-build-02-1">
+          这一条是【推断】。<b>查了什么</b>：<code>prune_conversation</code> 的匹配臂写作 <code>matches!(item, ConversationItem::User(_))</code>（<code>request_builder.rs</code> L143），没有读 <code>synthetic_reason</code>；同 crate 的 <code>compaction_utils.rs</code> L953、L461 在处理合成消息时会显式比较 <code>synthetic_reason</code>。<b>缺什么</b>：没有找到「注入提醒是否真的写成 <code>ConversationItem::User</code> 而不是 <code>System</code>」的直接证据，也没有逐条核对每个注入点的构造函数。<b>如何影响结论</b>：若注入走 <code>System</code>，轮龄不受影响，本段结论只适用于真实的用户消息；若走 <code>User</code>，结论成立，且偏差方向是多裁。两种情况下「按用户轮次计数」的主结论都不变。
+          <a class="footnotes__back" href="#fnref-src-grok-build-02-1">↩</a>
+        </li>
+        <li id="fn-src-grok-build-02-2">
+          这一条是【推断】。<b>查了什么</b>：<code>prune_conversation</code> 只改请求副本的 <code>content</code>，不改前缀里的其他内容；同仓的 oh-my-pi 在裁剪前会检查 <code>cacheWarmSuffixTokens</code>，而这里的代码没有任何类似的缓存判断。<b>缺什么</b>：没有找到 xAI 后端关于前缀缓存粒度的说明，也没有实测命中率变化。<b>如何影响结论</b>：若后端缓存按消息块而非字节前缀命中，失效范围可能小于本段描述，但「裁剪会让缓存失效」这一方向不变。
+          <a class="footnotes__back" href="#fnref-src-grok-build-02-2">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一节：<a href="src-grok-build-03.html">Grok Build · append-only 日志如何回退</a></p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

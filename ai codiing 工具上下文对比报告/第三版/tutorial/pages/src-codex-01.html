@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Codex · 压缩保留谁：候选与预算 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本页专属：思考题提示折叠块（未新增 class，仅给 <details> 加页面内样式） */
+  #src-codex-01 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-codex-01 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-codex-01 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  /* 长路径、长哈希在 375px 下允许断行，避免撑破卡片 */
+  #src-codex-01 .path-card code,
+  #src-codex-01 .callout code,
+  #src-codex-01 .quiz__q code,
+  #src-codex-01 details code {
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+<body data-chapter="src-codex-01">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-codex-01">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Codex CLI</span><span>·</span><span>第 01 节</span></p>
+      <h1>压缩保留谁：候选与预算</h1>
+      <p class="lede">压缩把几万 token 的历史换成一段摘要，但摘要不是全部。Codex 还会挑出一批用户原话，按 20 000 token 的预算塞回去。这一节逐行读这段挑人的代码，看清「保留」到底保留了谁、什么时候停。</p>
+      <ul class="meta">
+        <li>约 14 分钟</li>
+        <li>3 张流程图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>76ed3b4</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出哪些历史条目会进入候选集，并指出排除它们的三道判断各在哪一行。</li>
+          <li>给定一组消息和预算，手算出保留几条、边界那条剩多少。</li>
+          <li>解释「放不下就停」在源码里其实是「先截断再停」，并说出这样做的代价。</li>
+          <li>把 Codex 的「保留消息」和 Claude Code 的「重附清单」放在同一张表里比较。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>这一节读的是 Rust 源码，函数名是原始命名，不是打包还原出来的。所有行号对应提交 <code>76ed3b484d62ccceb9fa512ff4dd139f421814c3</code>，点开链接会落在具体那一行。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>压缩要回答两个问题，这一节只看第二个</h2>
+
+      <p>触发压缩时，Codex 要做两件事：让模型写一段摘要，以及决定<b>摘要之外还要保留哪些原文</b>。第一件事靠提示词模板，第二件事靠代码里的候选筛选和预算循环。后者更值得读，因为它决定「压缩完之后，模型还记得你的哪几句话」。</p>
+
+      <p class="lead-in">「保留」不是把旧消息原样搬过去，而是重新挑一遍、重新裁一遍：留下谁、留多长，都由这次压缩重新算。</p>
+
+      <p>在整条链路里，Codex 的压缩分五步。这一节讲第 2 步，也就是「挑候选 + 按预算保留」。它上接触发判定，下接摘要请求；不理解这一步，后面「替换历史」看到的结果就会显得莫名其妙——为什么压缩完还有一堆用户消息，而工具输出一条不剩。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 254" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">Codex 压缩的五个步骤，本节讲第 2 步</title>
+          <desc id="fig-1-desc">五个横向长条从上到下排列：触发判定、挑候选并按预算保留、发摘要请求、拼装替换历史、换历史并写检查点。第二条是橙色高亮，标注为本节内容。</desc>
+          <rect class="svg-track" x="8" y="16" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="41" text-anchor="middle">1</text>
+          <text class="svg-label svg-label--dark" x="48" y="41">触发判定</text>
+          <text class="svg-note" x="620" y="41" text-anchor="end">到线才触发</text>
+
+          <rect class="svg-seg--c" x="8" y="62" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="26" y="87" text-anchor="middle">2</text>
+          <text class="svg-label" x="48" y="87">挑候选 + 按预算保留</text>
+          <text class="svg-label" x="620" y="87" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="108" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="133" text-anchor="middle">3</text>
+          <text class="svg-label svg-label--dark" x="48" y="133">发摘要请求</text>
+          <text class="svg-note" x="620" y="133" text-anchor="end">模型写摘要</text>
+
+          <rect class="svg-track" x="8" y="154" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="179" text-anchor="middle">4</text>
+          <text class="svg-label svg-label--dark" x="48" y="179">拼装替换历史</text>
+          <text class="svg-note" x="620" y="179" text-anchor="end">初始上下文插回</text>
+
+          <rect class="svg-track" x="8" y="200" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="225" text-anchor="middle">5</text>
+          <text class="svg-label svg-label--dark" x="48" y="225">换历史 + 写检查点</text>
+          <text class="svg-note" x="620" y="225" text-anchor="end">落盘 CompactedItem</text>
+        </svg>
+        <figcaption>图 1　Codex 压缩的五个步骤。本节（橙色）只讲第 2 步：从历史里挑出可保留的用户消息，并在 20 000 token 内决定留到哪一条。</figcaption>
+      </figure>
+
+      <p>第 2 步的入口在 <code>compact.rs</code>。它由一个收集函数和一个重建函数组成：先 <code>collect_annotated_user_messages()</code> 把历史过滤成候选列表，再 <code>build_compacted_history()</code> 在预算内挑人、裁长度、拼成新的历史。外层任务（<code>run_inline_auto_compact_task</code>）只负责把这两步串起来。<span class="tag tag--ok">已核实</span></p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四个位置，够读完整条逻辑</h2>
+
+      <p>下面四条链接都固定到同一个提交，行号已对照源码逐条核对：文件存在、起止行与描述一致、浏览器打开后高亮的就是这几行。</p>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 预算常量：20 000</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L64">codex-rs/core/src/compact.rs#L64</a><br>
+          一行常量 <code>COMPACT_USER_MESSAGE_MAX_TOKENS = 20_000</code>。全仓只在这里定义，没有注释解释为什么是这个数。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 候选筛选：谁能被保留</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L595-L624">codex-rs/core/src/compact.rs#L595-L624</a><br>
+          <code>collect_annotated_user_messages()</code> 遍历历史，<code>compacted_user_message()</code> 逐条判断，<code>is_summary_message()</code> 排除摘要。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 预算循环：从新到旧，放不下就停</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L715-L804">codex-rs/core/src/compact.rs#L715-L804</a><br>
+          <code>build_compacted_history_with_limit()</code> 的本体：<code>rev()</code> 倒序遍历、<code>remaining</code> 递减、边界处截断后 <code>break</code>、最后 <code>reverse()</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 调用点：谁把候选递进来</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L404-L407">codex-rs/core/src/compact.rs#L404-L407</a><br>
+          摘要文本加上前缀后，先收集候选，再用空历史重建。初始上下文不在这里进，稍后由 <code>build_compaction_replacement_history()</code> 插回。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据（正文里会引用）：候选为什么只剩用户消息，看 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/event_mapping.rs#L128-L131">event_mapping.rs#L128-L131</a> 的隐藏片段过滤；远端压缩的另一套预算看 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L87-L91">compact_remote_v2.rs#L87-L91</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】与大纲、事实卡片的三处出入</p>
+        <p>一、大纲写「源码块 <code>compact()</code> 的候选选择循环」，实际执行这个循环的函数是 <code>build_compacted_history_with_limit()</code>（L715）；<code>compact</code> 只是同文件里的外层任务名。二、事实卡片把候选判定标在 L622-L643、循环标在 L723-L802，实际分别是 L604-L620 和 L715-L804，以源码为准。三、卡片说候选「排除 FINAL_ANSWER 类代理消息」，实际候选只接受 <code>TurnItem::UserMessage</code>，助手消息（<code>AgentMessage</code>）整类都进不来；<code>is_real_user_or_agent_message()</code> 判断的是「初始上下文插在哪」，不是候选筛选。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段代码，一共 60 行</h2>
+
+      <p>第一段是候选筛选：一条历史条目凭什么能进候选集。第二段是预算循环：进去之后怎么在 20 000 token 里分配。为了篇幅，去掉了一个 31 行的分支（按源下标挑文本、丢弃图片和音频），省略处已标注行号与原因，语义没有改动。</p>
+
+      <p class="small muted">文件：<code>codex-rs/core/src/compact.rs</code>　行号：L604-L620（第一段）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 候选入口：判断一条历史条目是不是「值得保留」的用户消息（L604-L620）</span>
+<span class="code__line">fn compacted_user_message&lt;'a&gt;(</span>
+<span class="code__line">    item: &amp;'a ResponseItem,</span>
+<span class="code__line">    harness_metadata: Option&lt;&amp;'a CodexHarnessMetadata&gt;,</span>
+<span class="code__line">) -&gt; Option&lt;CompactedUserMessage&lt;'a&gt;&gt; {</span>
+<span class="code__line code__line--cmt">    // parse_turn_item 只把 role=user、且不是隐藏片段的消息认成 UserMessage</span>
+<span class="code__line">    let Some(TurnItem::UserMessage(user)) = parse_turn_item(item) else {</span>
+<span class="code__line">        return None; <span class="cmt">// 助手回复、工具结果、隐藏片段：出局</span></span>
+<span class="code__line">    };</span>
+<span class="code__line">    let message = user.message(); <span class="cmt">// 扁平化文本，只用来算 token、认摘要</span></span>
+<span class="code__line">    if is_summary_message(&amp;message) {</span>
+<span class="code__line">        return None; <span class="cmt">// 上次压缩写的摘要，不能再当候选</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    Some(CompactedUserMessage { message, original: item, harness_metadata })</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>codex-rs/core/src/compact.rs</code>　行号：L715-L819（第二段，节选 45 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 输入候选与摘要，输出一条新的、长度受控的历史（L715-L720）</span>
+<span class="code__line">fn build_compacted_history_with_limit(</span>
+<span class="code__line">    mut history: Vec&lt;ResponseItemEnvelope&gt;, <span class="cmt">// 调用点传空 Vec</span></span>
+<span class="code__line">    user_messages: &amp;[CompactedUserMessage&lt;'_&gt;], <span class="cmt">// 候选，时间正序</span></span>
+<span class="code__line">    summary_text: &amp;str,</span>
+<span class="code__line">    max_tokens: usize, <span class="cmt">// 默认 20_000</span></span>
+<span class="code__line">) -&gt; Vec&lt;ResponseItemEnvelope&gt; {</span>
+<span class="code__line">    let mut selected_messages = Vec::new();</span>
+<span class="code__line code__line--cmt">// 第 1 步：从最新一条往回走，边走边扣额度（L722-L727）</span>
+<span class="code__line">    if max_tokens &gt; 0 { <span class="cmt">// 预算为 0 时一条不留</span></span>
+<span class="code__line">        let mut remaining = max_tokens; <span class="cmt">// 剩余额度</span></span>
+<span class="code__line">        for message in user_messages.iter().rev() { <span class="cmt">// 从最新往回</span></span>
+<span class="code__line">            if remaining == 0 { break; } <span class="cmt">// 刚好用完，不再往前</span></span>
+<span class="code__line">            let tokens = approx_token_count(&amp;message.message); <span class="cmt">// ceil(字节÷4)</span></span>
+<span class="code__line">            let ResponseItem::Message { id, content, .. } = message.original</span>
+<span class="code__line">            else { continue }; <span class="cmt">// 防御：候选理论上都是 Message</span></span>
+<span class="code__line">            let mut harness_metadata = message.harness_metadata.cloned();</span>
+<span class="code__line">            <span class="cmt">// 第 2 步：额度够、且全是文本，才算「能原样搬」（L739-L742）</span></span>
+<span class="code__line">            let preserve_content = tokens &lt;= remaining</span>
+<span class="code__line">                &amp;&amp; content.iter()</span>
+<span class="code__line">                    .all(|part| matches!(part, ContentItem::InputText { .. }));</span>
+<span class="code__line">            let mut item = ResponseItem::Message { <span class="cmt">// 重建干净的消息</span></span>
+<span class="code__line">                role: "user".to_owned(), id: id.clone(),</span>
+<span class="code__line">                content: if preserve_content { content.clone() }</span>
+<span class="code__line">                    else { Vec::new() }, .. }; <span class="cmt">// 装不下先留空，其余字段略</span></span>
+<span class="code__line code__line--cmt">// 第 3 步：搬不过去就按剩余额度截断文本（L757-L789）</span>
+<span class="code__line">            if !preserve_content {</span>
+<span class="code__line">                // …（省略 31 行：按源下标取文本、丢弃图片音频，再截断）</span>
+<span class="code__line">                set_annotated_content(</span>
+<span class="code__line">                    &amp;mut item, truncate_annotated_text(parts, remaining));</span>
+<span class="code__line">            }</span>
+<span class="code__line">            // 截断过就只在元数据标记「来源不完整」（L790-L794，略）</span>
+<span class="code__line">            selected_messages.push(ResponseItemEnvelope {</span>
+<span class="code__line">                item, metadata: harness_metadata }); <span class="cmt">// 先放进去</span></span>
+<span class="code__line code__line--cmt">// 第 4 步：放不下就收工，压进去的不撤回（L799-L802）</span>
+<span class="code__line">            if tokens &gt; remaining { break; } <span class="cmt">// 留截断版后停</span></span>
+<span class="code__line">            remaining = remaining.saturating_sub(tokens); <span class="cmt">// 装得下就扣额度</span></span>
+<span class="code__line">        }</span>
+<span class="code__line">        selected_messages.reverse(); <span class="cmt">// 倒回时间正序（L804）</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    history.extend(selected_messages);</span>
+<span class="code__line">    history.push(ResponseItemEnvelope::new( <span class="cmt">// 摘要固定追加在最后</span></span>
+<span class="code__line">        ContextualUserFragment::into(CompactionSummary::new(summary_text))));</span>
+<span class="code__line">    history</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">两段合计 60 行（15 + 45），都在 60 行以内，都含中文注释行；第二段省略了一个 31 行的分支，用「…（省略 N 行：原因）」标注，没有静默删行。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四段代码，四个决定</h2>
+
+      <h3>第 1 段　候选：谁有资格被保留</h3>
+
+      <p>整条筛选链只有三道判断，但第一道判断背后藏着一次函数调用。<code>parse_turn_item()</code> 把 <code>role == "user"</code> 的消息交给 <code>parse_user_message()</code>，而后者第一件事就是 <code>is_contextual_user_message_content()</code>——只要消息里带任何一个隐藏片段的标记，就返回 <code>None</code>，这条消息连 <code>UserMessage</code> 都算不上。<span class="tag tag--ok">已核实</span></p>
+
+      <p>被这一道挡掉的是一个很长的名单：AGENTS.md 指令、环境状态、shell 命令回显、子代理通知、技能提示、上一轮被中断的提示……它们都以用户消息的形状存在历史里，但都不是你说的。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/contextual_user_message.rs#L22-L37">contextual_user_message.rs#L22-L37</a> 里有完整的匹配器列表。可见的 hook prompt 也会被单独归成 <code>TurnItem::HookPrompt</code>，同样进不了候选。</p>
+
+      <p>第二道判断是摘要前缀。压缩写出的摘要本身是一条用户消息（内容是 <code>SUMMARY_PREFIX</code> 加正文），如果不排除，第二次压缩会把第一次的摘要当成「用户原话」再留一遍，摘要就会自我复制、逐次膨胀。第三道判断是 <code>TurnItem::UserMessage</code> 的类型本身，它顺手挡掉了助手回复、推理、工具调用和工具结果。</p>
+
+      <p class="lead-in">所以「只收真实用户消息」不是一句设计口号，而是三层过滤叠出来的结果：不是隐藏片段、不是上次摘要、类型必须是用户消息。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 292" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">候选筛选：五类历史条目只有一类能进候选集</title>
+          <desc id="fig-2-desc">顶部五个方块依次是用户消息、助手回复、工具调用、隐藏片段、上次摘要；只有第一个标为候选，其余四个标为排除。下方是两道判断的关卡，最后汇成一个蓝框「候选集 = 真实用户消息」。</desc>
+          <text class="svg-note" x="8" y="22">历史快照里的条目，按类型分五堆</text>
+
+          <rect class="svg-seg--a" x="8" y="34" width="116" height="36" rx="7"/>
+          <text class="svg-label" x="66" y="58" text-anchor="middle">用户消息</text>
+          <rect class="svg-track" x="132" y="34" width="116" height="36" rx="7"/>
+          <text class="svg-label svg-label--dark" x="190" y="58" text-anchor="middle">助手回复</text>
+          <rect class="svg-track" x="256" y="34" width="116" height="36" rx="7"/>
+          <text class="svg-label svg-label--dark" x="314" y="58" text-anchor="middle">工具调用</text>
+          <rect class="svg-track" x="380" y="34" width="116" height="36" rx="7"/>
+          <text class="svg-label svg-label--dark" x="438" y="58" text-anchor="middle">隐藏片段</text>
+          <rect class="svg-track" x="504" y="34" width="116" height="36" rx="7"/>
+          <text class="svg-label svg-label--dark" x="562" y="58" text-anchor="middle">上次摘要</text>
+
+          <text class="svg-note" x="66" y="90" text-anchor="middle">候选</text>
+          <text class="svg-note" x="190" y="90" text-anchor="middle">排除</text>
+          <text class="svg-note" x="314" y="90" text-anchor="middle">排除</text>
+          <text class="svg-note" x="438" y="90" text-anchor="middle">排除</text>
+          <text class="svg-note" x="562" y="90" text-anchor="middle">排除</text>
+
+          <rect class="svg-track" x="8" y="104" width="624" height="66" rx="8"/>
+          <text class="svg-note" x="24" y="130">① role=user 且不含隐藏片段标记，才算 UserMessage</text>
+          <text class="svg-note" x="24" y="156">② 去掉上次压缩写的摘要（按前缀识别）</text>
+
+          <rect class="svg-seg--a" x="8" y="192" width="624" height="40" rx="8"/>
+          <text class="svg-label" x="320" y="218" text-anchor="middle">候选集 = 真实用户消息</text>
+
+          <text class="svg-note" x="8" y="256">助手与工具的内容不在候选里，它们只能靠摘要被记住。</text>
+          <text class="svg-note" x="8" y="280">隐藏片段会在压缩后由世界状态重新注入，所以不必留。</text>
+        </svg>
+        <figcaption>图 2　候选筛选。五类历史条目里只有「真实用户消息」能进候选集；助手回复和工具结果全部交给摘要负责，隐藏片段压缩后重建。</figcaption>
+      </figure>
+
+      <h3>第 2 段　预算：20 000 从哪来，为什么从新到旧</h3>
+
+      <p>候选列表是按时间正序的，但循环先用 <code>iter().rev()</code> 把它翻过来，从最新一条开始。理由很直接：越近的话越可能还在被讨论，越旧的话越可能已经被摘要覆盖。如果从旧到新，最先被塞满的会是几万轮之前那句「你好，帮我看看这个仓库」，最近十分钟的需求反而被截断。</p>
+
+      <p>每条消息的 token 由 <code>approx_token_count()</code> 给出，实现是 <code>ceil(UTF-8 字节数 ÷ 4)</code>，<code>APPROX_BYTES_PER_TOKEN = 4</code> 写在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L6">truncate.rs#L6</a>。<span class="tag tag--ok">已核实</span>它算的是 <code>message.message</code>，也就是扁平化后的文本，不是原始结构体；图片和音频在这里不计入，这也解释了下面为什么「非纯文本」会被单独处理。</p>
+
+      <p>关于 20 000 这个数字，源码只给了一行常量，没有注释说明依据。<span class="tag tag--ok">已核实</span>合理的解释是：压缩后腾出来的空间要同时容纳系统提示、工具定义、重新注入的初始上下文、摘要本身，以及这批原文；保留量太大，压完立刻又贴近阈值，就会来回抖动。假设窗口是 200 000，20 000 约占十分之一，是个保守的「安全余量」而不是「最大化保留」。<span class="tag tag--guess">推断</span></p>
+
+      <p>远端压缩是另一套数：保留预算 64 000，单条助手消息上限 10 000，重试 2 次（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L87-L91">compact_remote_v2.rs#L87-L91</a>）。<span class="tag tag--ok">已核实</span>本地 20k 更保守，一个可能是本地路径还要把初始上下文插回同一份历史，得留出余量。<span class="tag tag--guess">推断</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-3-title fig-3-desc">
+          <title id="fig-3-title">20 000 token 预算从最新一条往回累加</title>
+          <desc id="fig-3-desc">一条横条代表 20 000 token 的预算，从右往左依次放入 3k、4k、6k、5k 四条消息，最左边剩下 2k，用来截断第五条消息。</desc>
+          <text class="svg-note" x="8" y="20">整条 = 20 000 token，从最新一条往回放（示意，非真实比例）</text>
+
+          <rect class="svg-track" x="16" y="32" width="608" height="52" rx="8"/>
+          <rect class="svg-seg--a" x="533" y="33" width="90" height="50" rx="6"/>
+          <text class="svg-label" x="578" y="64" text-anchor="middle">3k</text>
+          <rect class="svg-seg--a" x="411" y="33" width="120" height="50" rx="6"/>
+          <text class="svg-label" x="471" y="64" text-anchor="middle">4k</text>
+          <rect class="svg-seg--a" x="229" y="33" width="180" height="50" rx="6"/>
+          <text class="svg-label" x="319" y="64" text-anchor="middle">6k</text>
+          <rect class="svg-seg--a" x="77" y="33" width="150" height="50" rx="6"/>
+          <text class="svg-label" x="152" y="64" text-anchor="middle">5k</text>
+          <rect class="svg-seg--c" x="17" y="33" width="58" height="50" rx="6"/>
+          <text class="svg-label" x="46" y="64" text-anchor="middle">2k</text>
+
+          <text class="svg-note" x="16" y="104">最旧</text>
+          <text class="svg-note" x="624" y="104" text-anchor="end">最新 ← 从这里开始</text>
+          <text class="svg-note" x="16" y="128">↑ 只剩 2k：这条被截断后停止</text>
+
+          <text class="svg-note" x="16" y="164">① 装得下 → remaining 减去这条，继续往前</text>
+          <text class="svg-note" x="16" y="192">② 装不下 → 用剩下的 2k 截断这条，然后 break</text>
+          <text class="svg-note" x="16" y="220">③ break 之后不再往前找，更旧的内容只能靠摘要</text>
+          <text class="svg-note" x="16" y="244">④ reverse() 恢复时间正序，摘要接在最后</text>
+        </svg>
+        <figcaption>图 3　预算累加。橙色那条是边界：它没有拿到完整额度，只拿到剩下的 2k，被截断后循环立即结束，更旧的消息不再尝试。</figcaption>
+      </figure>
+
+      <h3>第 3 段　切点：放不下的时候，到底发生了什么</h3>
+
+      <p>这里是最容易被讲错的一处。很多介绍会说 Codex「放不下就跳过，继续往前找更小的那条」——不是。代码的顺序是：先算 <code>preserve_content</code>，装不下就把 <code>content</code> 置空、走截断分支，用 <code>truncate_annotated_text(parts, remaining)</code> 把文本裁到剩余额度，<b>先把这条 push 进去</b>，然后才 <code>break</code>。</p>
+
+      <p>也就是说，边界那条消息不是被丢弃，也不是被跳过，而是「留半条」。<code>truncate_annotated_text()</code> 裁的是头尾保留、中间替换成 <code>…N tokens truncated…</code> 标记，所以读者仍能看到这句话的开头和结尾。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】大纲说「放不下立即停止」，源码是「先截断再停」</p>
+        <p>两步差别在结果上：立即停止 → 边界那条整条消失；先截断再停 → 边界那条留半条。后者的代价是这条消息可能语义不完整（比如需求写了一半），好处是最新的一条总不至于一个字都留不下。<span class="tag tag--ok">已核实</span></p>
+      </div>
+
+      <p>为什么不跳过、继续往前找一条更小的？因为跳过会破坏「时间连续性」这个隐含前提：留下来的消息仍然必须是一段连续的历史，中间缺一条，模型读到的就是「用户先说 A，然后突然说 C」。而且跳过意味着循环可能扫完全部历史，最坏情况是 O(n) 次无效比较，收益却是留下一条更旧的、更可能无关的话。</p>
+
+      <p>还有两个边界：<code>remaining == 0</code> 在循环开头就 <code>break</code>，所以「刚好装满」不会再多留一条 0 token 的空壳；<code>max_tokens == 0</code> 时整个 <code>if</code> 块被跳过，结果里一条用户消息都没有，只剩摘要。</p>
+
+      <h3>第 4 段　重建：摘要永远在最后</h3>
+
+      <p>循环结束时 <code>selected_messages</code> 是「新到旧」的顺序，直接拼进历史会让模型看到时间倒流，所以最后一步 <code>reverse()</code> 把它翻回正序。随后 <code>history.extend()</code> 接上候选，<code>history.push()</code> 把摘要追加在末尾——摘要必须在最后，因为它是「对前面所有内容的总结」，放在中间会让模型把它当成一句普通的历史发言。</p>
+
+      <p>调用点传进来的是 <code>Vec::new()</code>，所以这一刻历史里只有「保留的用户消息 + 摘要」。初始上下文（系统指令、AGENTS.md、环境）随后由 <code>build_compaction_replacement_history()</code> 生成并插回，插入位置规则写在 <code>insert_initial_context_before_last_real_user_or_summary()</code> 的注释里：优先插在最后一条真实用户消息之前。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这也解释了一个看起来矛盾的现象：压缩后工具输出全没了，但 AGENTS.md 还在。因为前者只能靠摘要记住，后者是重新生成的，压根没打算「保留」。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>候选只有真实用户消息：隐藏片段、上次摘要、助手与工具内容全部排除。</li>
+            <li>预算 20 000 token，从最新一条往回累加，额度按 <code>ceil(字节÷4)</code> 估算。</li>
+            <li>放不下不跳过、不丢弃：边界那条用剩余额度截断后留下，然后立即停止。</li>
+            <li>最后 <code>reverse()</code> 恢复时间正序，摘要固定追加在最后。</li>
+            <li>工具输出和助手推理只能靠摘要被记住，这是这套设计最大的代价。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>同样是「压缩后留一点」，四家留的东西完全不同</h2>
+
+      <p>把 Codex 放在一起比，会发现真正的分歧不在预算大小，而在<b>保留的对象是什么</b>：Codex 留消息，Claude Code 留清单，pi 留连续的尾部，opencode v1 留整轮。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">保留预算</th>
+              <th scope="col">候选范围</th>
+              <th scope="col">切点约束</th>
+              <th scope="col">代价</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>本地 <code>20_000</code>；远端 <code>64_000</code>，单条 <code>10_000</code></td>
+              <td>仅真实用户消息</td>
+              <td>新→旧累加，截断即停</td>
+              <td>工具输出只剩摘要</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>重附：文件 <code>50_000</code>、技能 <code>25_000</code></td>
+              <td>文件 / 技能 / plan</td>
+              <td>不切消息，按清单重附</td>
+              <td>清单外的全部丢失</td>
+              <td><span class="tag tag--src">源码 v2.1.88</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td><code>keepRecentTokens</code> <code>20_000</code></td>
+              <td>切点后的全部条目</td>
+              <td>最近的合法边界</td>
+              <td>切点搜索复杂</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td><code>clamp(窗口×0.25, 2k, 15k)</code></td>
+              <td>尾部整轮</td>
+              <td>消息边界，可拆轮</td>
+              <td>预算随窗口浮动</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 8 节（Codex 提交 <code>76ed3b4</code>，Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>）。Codex 与 pi 的保留预算都是 20 000，但装的不是同一种东西：Codex 只往里放用户消息，pi 放的是含工具结果的连续尾部，同数字不等于同容量。</p>
+
+      <p>两个值得记住的对照：</p>
+
+      <p>一是<b>候选宽度</b>。Codex 只留用户消息，等于承认「助手说过什么不重要，摘要能概括」；pi 留连续尾部，等于承认「工具结果的精确细节不能概括」。前者省预算，后者省重读。选哪个取决于你的任务是「多轮讨论」还是「反复改同一个文件」。</p>
+
+      <p>二是<b>切点自由度</b>。pi 要求切点落在合法边界、绝不切在工具结果中间，为此写了专门的搜索逻辑；Codex 根本不需要，因为候选里没有工具结果，剩下的都是独立用户消息，切哪儿都不会破坏配对。约束少，是因为候选窄——这是一个用「保留范围」换「实现简单」的取舍。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从读代码到改设计</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">某条候选消息的扁平化文本是 8 000 字节，<code>remaining</code> 正好是 20 000。它能被原样保留吗？此时 <code>tokens</code> 是多少？如果这条消息里还夹了一张图片，结论会变吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先看 <code>approx_token_count()</code> 的换算式（<code>truncate.rs#L87-L90</code>）：它是向上取整，不是截断。再看 <code>preserve_content</code> 是不是「额度够」<b>并且</b>「全是文本」两个条件同时成立。</p>
+          <p>最后想一件事：<code>tokens</code> 是从 <code>message.message</code> 算的，而图片在不在这个扁平化文本里？</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">把 <code>COMPACT_USER_MESSAGE_MAX_TOKENS</code> 改成 <code>5_000</code>。历史里有 10 条真实用户消息，从旧到新每条 3 000 token。压缩后保留几条？最后保留的那条完整吗？还剩多少额度？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>循环是<b>从新到旧</b>的，所以「先留下的两条」是最新的那两条，不是最旧的两条。按 3 000 一条算，从第几条开始出现「不够」？</p>
+          <p>关键在 <code>break</code> 写在 <code>push</code> 之后：那一条在停之前有没有被放进去？它拿到的额度是 <code>remaining</code> 还是 <code>tokens</code>？</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">假设你的任务总是「改了 6 个文件、最后让我 review 改动」，用户消息很少。Codex 这套候选策略会在哪里失效？只改一处代码，你会改哪里？代价是什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先对照第 5 节的表：pi 为什么坚持「绝不切在 toolResult」，Claude Code 为什么干脆改成重附「最近 5 个文件」，而不是保留消息。</p>
+          <p>再看一个线索：仓库里已有 <code>compact_retained_tool_outputs.rs</code>，专门处理「没有配对调用的命名工具输出」，注释写明这类输出「要么整条留、要么整条丢」，共享同一份预算。说明保留工具输出不是做不到，而是必须配一套「整条取舍」的规则。</p>
+          <p>最后想清楚：改一处代码<b>不够</b>。放宽候选之后，切点约束也必须跟着改，否则会拼出没有配对的孤立调用。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-codex-02.html">Codex · 请求四块与增量工具</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

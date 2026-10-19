@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>推荐阅读 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  body[data-chapter="appendix-reading"] #appendix-reading .data-table {
+    font-size: 13px;
+  }
+  body[data-chapter="appendix-reading"] #appendix-reading .data-table th[scope="row"] {
+    min-width: 168px;
+  }
+  body[data-chapter="appendix-reading"] #appendix-reading .data-table td:nth-child(2) {
+    min-width: 150px;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  body[data-chapter="appendix-reading"] #appendix-reading .data-table td:nth-child(3) {
+    min-width: 230px;
+  }
+</style>
+</head>
+<body data-chapter="appendix-reading">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>附录</b><span>·</span><span>延伸</span></p>
+      <h1>推荐阅读</h1>
+      <p class="lede">这份清单只回答一个问题：<strong>读完这一条，你能多解决什么</strong>。不列「必读经典」，也不列与本教程重复的入门文章；每条都标了读它的最佳时机。</p>
+      <ul class="meta">
+        <li>4 组</li>
+        <li>12 条材料</li>
+        <li>3 条阅读路线</li>
+        <li>源码固定提交</li>
+      </ul>
+      <div class="callout callout--info">
+        <p class="callout__title">先看这一句</p>
+        <p>不要从论文开始。先用一条主线章建立「一次请求长什么样」，再去读源码；否则你会在别人的抽象里迷路。论文放在最后读，它的作用是给你一把尺子，而不是给你一个实现。</p>
+      </div>
+    </header>
+
+    <div id="appendix-reading">
+
+      <!-- ========== 官方文档 ========== -->
+      <section id="reading-docs">
+        <p class="sec-no">A · 官方文档与手册</p>
+        <h2>先确认「用户能按到哪个按钮」</h2>
+        <p>源码告诉你机制，文档告诉你入口。两者不一致时，先以源码为准，再把文档的措辞当作「用户以为会发生什么」的证据。</p>
+
+        <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">材料</th>
+                <th scope="col">类型 / 版本</th>
+                <th scope="col">读它能解决什么问题</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row"><a href="https://github.com/openai/codex/tree/76ed3b484d62ccceb9fa512ff4dd139f421814c3">Codex 仓库与 <code>codex-rs</code> 源码注释</a></th>
+                <td>官方仓库 · <code>76ed3b4</code></td>
+                <td>建立「Prompt 四块 + 输入项数组」的基本模型；读完再去看 <code>build_prompt</code>，不会把 Responses API 的形状误当成聊天气泡。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://github.com/xai-org/grok-build/tree/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide">Grok Build 用户手册（仓库内）</a></th>
+                <td>官方手册 · <code>2bdd1d6</code></td>
+                <td>确认 <code>/compact</code>、<code>/context</code>、<code>/rewind</code>、子代理类型在用户侧的真实入口；尤其能看出「源码有能力、当前前端没开放」这类差异。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://github.com/anthropics/claude-code">Claude Code 官方仓库</a></th>
+                <td>官方仓库 · 文档与 issue 入口</td>
+                <td>核对官方口径（权限、hooks、<code>/compact</code> 行为）。注意：本教程的源码结论来自另一份非官方 v2.1.88 快照，不能拿这个仓库反推实现。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-caption">官方文档也会滞后：Grok Build 的命令表写 <code>/compact [context]</code>，本快照的 TUI 却拒绝任何参数。读到「文档说可以」时，先确认当前入口是否真的接上了。</p>
+      </section>
+
+      <!-- ========== 源码入口 ========== -->
+      <section id="reading-source">
+        <p class="sec-no">B · 源码入口</p>
+        <h2>六个文件，六种骨架</h2>
+        <p>每条都固定到提交与行号。不要从头读到尾，带着一个问题进去：这段代码在「保留谁、丢掉谁、什么时候停」三件事上做了什么选择。<sup class="fn-ref"><a href="#fn-appendix-reading-1" id="fnref-appendix-reading-1">1</a></sup></p>
+
+        <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">材料</th>
+                <th scope="col">类型 / 版本</th>
+                <th scope="col">读它能解决什么问题</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row"><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L600-L660">Codex · 压缩候选循环</a></th>
+                <td>源码 · <code>compact.rs</code></td>
+                <td>看懂「只收真实用户消息 + 20k 预算从新到旧累加」为什么会让压缩结果偏向最近的任务目标，而不是最近的文件内容。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/systemPromptSections.ts#L16-L58">Claude Code · 系统提示分段与记忆化</a></th>
+                <td>非官方源码 v2.1.88 · <code>988438a</code></td>
+                <td>看懂「静态段只算一次、/clear 与 /compact 才清缓存」如何把前缀稳定性写进代码；也看懂为什么 MCP 指令要单独标成不缓存。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L476-L573">pi · 日志与投影两层</a></th>
+                <td>源码 · <code>session-manager.ts</code></td>
+                <td>看懂「压缩只追加一条记录、不删历史」如何实现；这是理解所有树状会话工具的入口，也是「摘要不可逆 ≠ 原文被删」的证据。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/compaction-methods.ts#L44-L50">oh-my-pi · 压缩方法链</a></th>
+                <td>源码 · <code>compaction-methods.ts</code></td>
+                <td>看懂「为什么压缩不是一个函数，而是一条会回退的链」；读完能解释 remote / snapcompact / handoff / shake / soft 各自在什么条件下被跳过。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L195-L251">opencode v2 · 触发与预算</a></th>
+                <td>源码 · beta <code>v2.0.29</code></td>
+                <td>看懂「实测锚点 + 本地估算」的混合计量，以及为什么「刚压完要跳过」「锚点必须晚于检查点」这两条判据是必需的。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/src/region.ts#L117-L155">DeepSeek Harness · 压缩选区</a></th>
+                <td>源码 · <code>region.ts</code></td>
+                <td>看懂「预算、工具配对、system 保护」三个约束如何在一个 30 行函数里同时满足；这是切点问题最干净的教学样本。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-caption">Claude Code 这一条来自非官方泄露源码，只代表 v2.1.88，函数名可能由 source map 还原；读它是为了看设计，不要当作 Anthropic 的官方实现。</p>
+      </section>
+
+      <!-- ========== 论文 ========== -->
+      <section id="reading-papers">
+        <p class="sec-no">C · 论文与长文</p>
+        <h2>三把尺子，不是三个实现</h2>
+        <p>论文的价值在于给你可复用的实验设计与失效模式，不是给你一段能抄的代码。读的时候只抓两件事：它怎么定义指标、它在什么条件下失效。</p>
+
+        <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">材料</th>
+                <th scope="col">类型 / 版本</th>
+                <th scope="col">读它能解决什么问题</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row"><a href="https://arxiv.org/abs/2307.03172">Lost in the Middle: How Language Models Use Long Contexts</a></th>
+                <td>论文 · Liu et al., 2023</td>
+                <td>给「位置效应」一个可引用的实验依据：为什么关键约束要放在开头或结尾，而不是埋在中段；也解释为什么「窗口够大」不等于「中间能用」。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://arxiv.org/abs/2311.04934">Prompt Cache: Modular Attention Reuse for Low-Latency Inference</a></th>
+                <td>论文 · Gim et al., 2023</td>
+                <td>把「前缀缓存为什么只能从第一个不同 token 处断开」讲清楚；读完再看各工具的断点位置，就不会把「多打断点」当成「多省钱」。</td>
+              </tr>
+              <tr>
+                <th scope="row"><a href="https://arxiv.org/abs/2310.06770">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a></th>
+                <td>论文 · Jimenez et al., 2023</td>
+                <td>给「用任务成功率而不是主观感受评估」一个模板：真实仓库、可执行验收、按任务分层。它是主线第 16 章评测集设计的直接参照。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-caption">论文链接指向 arXiv 摘要页，版本以页面为准。不要把论文里的模型与预算直接套到今天的工具上：上下文窗口、计价与缓存策略都变了，结论的方向仍成立，数值不能照搬。</p>
+      </section>
+
+      <!-- ========== 阅读顺序 ========== -->
+      <section id="reading-order">
+        <p class="sec-no">D · 对照阅读顺序</p>
+        <h2>三条路线，按你的目标选</h2>
+        <p>同一个材料，在不同目标下的读法不同。下面三条路线都从教程内部开始，读到卡住的地方再跳到外部材料；不要反过来。</p>
+
+        <ul>
+          <li>
+            <strong>路线 A · 先懂原理（L2）</strong>
+            <p>入门第 1 章 → 入门第 4 章 → 入门第 5 章 → 主线第 8 章 → 主线第 13 章 → 主线第 14 章。走完这条线，你能解释「为什么压缩会同时省 token 和丢信息」，也能判断一次缓存失效是不是计划内的。</p>
+          </li>
+          <li>
+            <strong>路线 B · 要改代码（L3）</strong>
+            <p>主线第 7 章 → 主线第 8 章 → 源码 · pi 第 2 节 → 源码 · DeepSeek Harness 第 2 节 → 源码 · oh-my-pi 第 1 节 → Codex <code>compact.rs</code>。先看「日志与投影」，再看「切点」，最后看「方法链」；顺序反了会以为压缩就是调一次模型。</p>
+          </li>
+          <li>
+            <strong>路线 C · 要做评估（L5）</strong>
+            <p>主线第 16 章 → 进阶第 5 章 → SWE-bench → 回到主线第 8 章做一次消融。先定指标与分层，再选材料；不要先跑一轮再找指标，那样只会得到一张无法解释的曲线。</p>
+          </li>
+        </ul>
+
+        <div class="callout callout--warn">
+          <p class="callout__title">一个常见的读法错误</p>
+          <p>把「源码」当成「文档的补充说明」，从头读到尾。源码是按实现组织的，不是按学习顺序组织的；正确做法是带着一个具体问题（切点在哪、什么时候停、失败了怎么办）去读一个函数，读完就停。</p>
+        </div>
+      </section>
+
+      <div class="footnotes">
+        <p class="footnotes__title">脚注</p>
+        <ol>
+          <li id="fn-appendix-reading-1">
+            本页只固定了 8 个工具快照中的 6 个源码入口；opencode v1、Grok Build 的完整入口已在对应源码章节给出。所有链接的提交号与 <code>research/versions.md</code> 一致，核实日期 2026-10-18。外部链接可能随仓库迁移失效，失效时以提交号在原仓库检索文件名。
+            <a class="footnotes__back" href="#fnref-appendix-reading-1">↩</a>
+          </li>
+        </ol>
+      </div>
+
+    </div>
+
+    <p class="footer-note">下一份附录：<a href="appendix-video.html">视频分镜脚本</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

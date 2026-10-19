@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Codex · 规则差分：只发变化 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-codex-03 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-codex-03 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-codex-03 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-codex-03 code {
+    overflow-wrap: anywhere;
+  }
+  #src-codex-03 .path-card code,
+  #src-codex-03 .callout code,
+  #src-codex-03 .quiz__q code,
+  #src-codex-03 details code {
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+<body data-chapter="src-codex-03">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-codex-03">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Codex CLI</span><span>·</span><span>第 03 节</span></p>
+      <h1>规则差分：只发变化</h1>
+      <p class="lede">AGENTS.md 改了一个字，Codex 不会把整份规则再发一遍——至少不会以「新的一段前缀」的方式重发。它把规则当成一份有状态的世界快照，逐轮比较，只在变化时追加一条「替换通知 + 新全文」，删除时追加一条「不再适用」。这一节读这段最小的差分实现。</p>
+      <ul class="meta">
+        <li>约 14 分钟</li>
+        <li>3 张流程图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>76ed3b4</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出「section 级差分」和「行级文本 diff」的区别，并指出 Codex 用的是哪一种。</li>
+          <li>给定「上次有、这次没有」等四种状态组合，写出各自会产生哪条通知。</li>
+          <li>解释为什么旧规则必须留在历史里，新通知为什么必须写明「替换全部旧规则」。</li>
+          <li>比较 Codex、DeepSeek Harness、pi、opencode v1 在「规则变化怎么告知模型」上的四种做法。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>这一节的核心文件只有 85 行，<code>render_diff</code> 本体 37 行。所有行号对应提交 <code>76ed3b484d62ccceb9fa512ff4dd139f421814c3</code>。文中「通知」指一条追加到 <code>input</code> 的开发者/用户片段，不是系统推送。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>差分的是「状态」，不是「文本」</h2>
+
+      <p>Codex 把模型可见的环境状态拆成若干个具名 section：AGENTS.md、环境、权限、插件、工具目录、模型指令等。每个 section 都有自己的快照类型和 <code>render_diff()</code> 实现。每轮采样前，<code>WorldState</code> 遍历所有 section，把当前值与上次保存的快照比较，只有变化的 section 才产出更新片段。<span class="tag tag--ok">已核实</span></p>
+
+      <p class="lead-in">这里的「差分」不是把新旧两版 AGENTS.md 做逐行 diff，而是比较「这一份规则的整体状态」：有还是没有、文本是否相等、目录是否相同。</p>
+
+      <p>这个区别决定了三件事。第一，变化时发的是<b>新全文</b>，不是补丁；模型不需要理解 diff 语法，只需要理解「这段替换之前所有同名规则」。第二，未变化时<b>一个字节都不发</b>，历史不增长，前缀缓存不受影响。第三，删除时发的是一条<b>移除通知</b>，因为旧全文还留在历史里，必须显式告诉模型「它不再适用」。<span class="tag tag--ok">已核实</span></p>
+
+      <p>在整条链路里，这段代码位于「发现规则」和「发请求」之间。上游 <code>agents_md.rs</code> 负责从项目根到 cwd 逐级找到并拼接 AGENTS.md；<code>AgentsMdState::new()</code> 把结果包成一个 <code>UserInstructions</code> 片段；<code>render_diff()</code> 决定这一轮要不要把它变成一条新消息；下游 <code>merge_world_state_updates()</code> 把片段转成 <code>ResponseItem</code>，追加到历史。<span class="tag tag--ok">已核实</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">AGENTS.md 从磁盘到请求的五个步骤，本节讲第 3 步</title>
+          <desc id="fig-1-desc">五条横向长条：发现并拼接规则、构建 AgentsMdState、render_diff 比较快照、把更新片段转成 ResponseItem、发请求。第三条橙色高亮，标注本节。</desc>
+          <rect class="svg-track" x="8" y="14" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="39" text-anchor="middle">1</text>
+          <text class="svg-label svg-label--dark" x="48" y="39">发现并拼接 AGENTS.md</text>
+          <text class="svg-note" x="620" y="39" text-anchor="end">根 → cwd，32 KiB 上限</text>
+
+          <rect class="svg-track" x="8" y="60" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="85" text-anchor="middle">2</text>
+          <text class="svg-label svg-label--dark" x="48" y="85">构建 AgentsMdState</text>
+          <text class="svg-note" x="620" y="85" text-anchor="end">包成 UserInstructions</text>
+
+          <rect class="svg-seg--c" x="8" y="106" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="26" y="131" text-anchor="middle">3</text>
+          <text class="svg-label" x="48" y="131">render_diff：比较快照</text>
+          <text class="svg-label" x="620" y="131" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="152" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="177" text-anchor="middle">4</text>
+          <text class="svg-label svg-label--dark" x="48" y="177">片段转 ResponseItem</text>
+          <text class="svg-note" x="620" y="177" text-anchor="end">merge_world_state_updates</text>
+
+          <rect class="svg-track" x="8" y="198" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="223" text-anchor="middle">5</text>
+          <text class="svg-label svg-label--dark" x="48" y="223">追加到历史并发请求</text>
+          <text class="svg-note" x="620" y="223" text-anchor="end">未变化则不追加</text>
+        </svg>
+        <figcaption>图 1　AGENTS.md 的五个步骤。本节只讲第 3 步：拿到当前状态和上次快照，决定「不发、发全文、发替换、发移除」。</figcaption>
+      </figure>
+
+      <p>为什么要把规则做成「世界状态」而不是「每轮拼进系统提示」？因为规则会在会话中途变化：用户改了 AGENTS.md、切了目录、加载了新的子目录规则。如果每轮都拼进系统提示，任何一次改动都会让整段前缀失效；做成状态差分，改动只追加在历史尾部，前面的对话前缀仍然可以命中缓存。<span class="tag tag--guess">推断</span></p>
+
+      <p>还有一个更实际的理由：规则不是唯一会变的东西。权限模式、工具目录、插件说明、模型指令都会变。如果每个都写一套「变了就重发」的逻辑，代码会迅速失控。Codex 的做法是把它们统一成 <code>WorldStateSection</code>：每节自己决定快照长什么样、变化时发什么，外层只负责遍历、比较、收集。AGENTS.md 只是这套骨架上的一个实现，也是最适合拿来教学的一个。<span class="tag tag--guess">推断</span></p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五个位置，读完一条状态的生命周期</h2>
+
+      <p>前三条是本节主线，第四条讲快照怎么被驱动，第五条讲快照怎么落盘与恢复。</p>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 两条通知文案</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/agents_md.rs#L11-L13">codex-rs/core/src/context/world_state/agents_md.rs#L11-L13</a><br>
+          <code>REPLACEMENT_NOTICE</code> 说「替换之前提供的全部 AGENTS.md 指令」；<code>REMOVAL_NOTICE</code> 说「之前提供的 AGENTS.md 指令不再适用」。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 差分本体：四种分支</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/agents_md.rs#L44-L80">codex-rs/core/src/context/world_state/agents_md.rs#L44-L80</a><br>
+          <code>render_diff()</code>：快照相等直接返回 <code>(None, vec![])</code>；否则按「当前有没有 / 上次可能有没有」四象限生成片段。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 快照结构：只有两个字段</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/agents_md.rs#L21-L26">codex-rs/core/src/context/world_state/agents_md.rs#L21-L26</a><br>
+          <code>AgentsMdSnapshot { directory, text }</code>。没有 mtime、没有 hash、没有版本号；相等就是逐字段相等。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 驱动：逐 section 比较并收集更新</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/mod.rs#L507-L533">codex-rs/core/src/context/world_state/mod.rs#L507-L533</a><br>
+          <code>render_with()</code> 遍历所有 section，调用各自的 <code>render_diff()</code>，把返回的片段收集成 <code>updates</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 基线：更新后立刻替换</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L451-L460">codex-rs/core/src/context_manager/history.rs#L451-L460</a><br>
+          <code>update_world_state()</code> 用当前快照覆盖 <code>world_state_baseline</code>，并把 diff 写入 rollout，供恢复时对齐。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：<code>WorldStateSection</code> trait 的契约在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/mod.rs#L302-L350">mod.rs#L302-L350</a>；快照的 merge-patch 语义在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/mod.rs#L408-L427">mod.rs#L408-L427</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】大纲与事实卡片的两处口径</p>
+        <p>一、大纲与卡片都把这段叫「差分注入」，容易让人以为是文本 diff；实际是<b>section 状态 diff</b>：变化时发新全文，不发补丁。二、卡片把差分标在 <code>agents_md.rs#L36-L80</code>，其中 L36-L42 是 trait 实现头与 <code>matches_legacy_fragment</code>，<code>render_diff</code> 本体从 L44 开始；按 L44-L80 引用更准确。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两条通知 + 一个函数，四十七行</h2>
+
+      <p>第一段是通知文案与快照结构，第二段是 <code>render_diff</code> 全文。第二段一行未删，正好 37 行；两段合计 47 行。</p>
+
+      <p class="small muted">文件：<code>codex-rs/core/src/context/world_state/agents_md.rs</code>　行号：L11-L26（节选 10 行，跳过结构体之间的空行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 变化时不是「追加一段新规则」，而是「声明旧规则作废」</span>
+<span class="code__line">const REPLACEMENT_NOTICE: &amp;str =</span>
+<span class="code__line">    "These AGENTS.md instructions replace all previously provided AGENTS.md instructions.";</span>
+<span class="code__line">const REMOVAL_NOTICE: &amp;str = "The previously provided AGENTS.md instructions no longer apply.";</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 快照只存「模型可见」的两件事：来自哪个目录、正文是什么</span>
+<span class="code__line">pub(crate) struct AgentsMdSnapshot {</span>
+<span class="code__line">    directory: Option&lt;String&gt;,</span>
+<span class="code__line">    text: Option&lt;String&gt;,</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>codex-rs/core/src/context/world_state/agents_md.rs</code>　行号：L44-L80（全文 37 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">fn render_diff(</span>
+<span class="code__line">    &amp;self,</span>
+<span class="code__line">    previous: PreviousSectionState&lt;'_, Self::Snapshot&gt;,</span>
+<span class="code__line">) -&gt; SectionTransition&lt;Self::Snapshot&gt; { <span class="cmt">// (新快照, 要追加的片段)</span></span>
+<span class="code__line">    let current = match &amp;self.instructions { <span class="cmt">// 当前状态 → 快照</span></span>
+<span class="code__line">        Some(instructions) =&gt; AgentsMdSnapshot {</span>
+<span class="code__line">            directory: instructions.directory.clone(),</span>
+<span class="code__line">            text: Some(instructions.text.clone()),</span>
+<span class="code__line">        },</span>
+<span class="code__line">        None =&gt; AgentsMdSnapshot::default(), <span class="cmt">// 两个字段都是 None</span></span>
+<span class="code__line">    };</span>
+<span class="code__line">    if matches!(previous, PreviousSectionState::Known(previous) if previous == &amp;current) {</span>
+<span class="code__line">        return (None, Vec::new());</span>
+<span class="code__line">    }</span>
+<span class="code__line"> </span>
+<span class="code__line">    let previous_may_contain_instructions = match previous {</span>
+<span class="code__line">        PreviousSectionState::Known(previous) =&gt; previous.text.is_some(),</span>
+<span class="code__line">        PreviousSectionState::Unknown =&gt; true, <span class="cmt">// 旧会话：宁可信其有</span></span>
+<span class="code__line">        PreviousSectionState::Absent =&gt; false,</span>
+<span class="code__line">    };</span>
+<span class="code__line">    let instructions = match (&amp;self.instructions, previous_may_contain_instructions) {</span>
+<span class="code__line">        (Some(instructions), true) =&gt; UserInstructions { <span class="cmt">// 有 → 有：替换</span></span>
+<span class="code__line">            directory: instructions.directory.clone(),</span>
+<span class="code__line">            text: format!("{REPLACEMENT_NOTICE}\n\n{}", instructions.text),</span>
+<span class="code__line">        },</span>
+<span class="code__line">        (Some(instructions), false) =&gt; instructions.clone(), <span class="cmt">// 无 → 有：直接发</span></span>
+<span class="code__line">        (None, true) =&gt; UserInstructions { <span class="cmt">// 有 → 无：移除通知</span></span>
+<span class="code__line">            directory: None,</span>
+<span class="code__line">            text: REMOVAL_NOTICE.to_string(),</span>
+<span class="code__line">        },</span>
+<span class="code__line">        (None, false) =&gt; return (Some(current), Vec::new()), <span class="cmt">// 无 → 无：静默</span></span>
+<span class="code__line">    };</span>
+<span class="code__line">    (</span>
+<span class="code__line">        Some(current), <span class="cmt">// 无论发不发，都把当前快照交回去</span></span>
+<span class="code__line">        vec![WorldStateUpdate::fragment(instructions)], <span class="cmt">// 恰好一条</span></span>
+<span class="code__line">    )</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">两段合计 47 行。第一段省略了 <code>AgentsMdState</code> 结构体与两个 derive 之间的空行；第二段的代码顺序、字段名、分支与源码一致，只加了中文注释。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四个分支，三种语义</h2>
+
+      <h3>第 1 段　快照为什么只有两个字段</h3>
+
+      <p><code>AgentsMdSnapshot</code> 存的是 <code>directory</code> 和 <code>text</code>。没有文件路径列表、没有 mtime、没有内容哈希。这不是偷懒，而是「模型可见状态」的最小充分集：模型只知道「这些规则来自哪个目录」和「规则正文是什么」，它不知道文件何时被修改，也不该知道。<span class="tag tag--ok">已核实</span></p>
+
+      <p>把 <code>directory</code> 放进快照，意味着「同样的文本出现在不同目录」也会被判定为变化。假设项目根和子目录各有一份内容相同的 AGENTS.md，合并后的文本一样，但目录不同；模型看到的提示是「这些规则来自 /repo/sub」，来源变了，语义也可能变（比如规则的作用范围）。所以目录必须参与比较。<span class="tag tag--guess">推断</span></p>
+
+      <p>反过来说，文件内容的「修改时间」不参与比较。用户把 AGENTS.md 保存了两次但内容没变，不会触发任何通知；这是对的，因为模型看到的字节没变。<span class="tag tag--guess">推断</span></p>
+
+      <p>这也解释了「合并后的文本」为什么不能直接拿来当快照。上游会把「根 → cwd」沿途每一级的 AGENTS.md 拼成一份文本，如果只看最终文本，你无法区分「根目录的规则改了」和「子目录的规则改了」；而 <code>directory</code> 字段至少保留了「这份合并结果来自哪个目录」这一层信息。严格说它仍然不足以定位到具体文件，但对模型来说，「规则来自哪个目录」通常比「来自哪个文件」更有用，因为目录决定了作用范围。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 2 段　未变化：返回 None 不是删除</h3>
+
+      <p>第一个分支返回 <code>(None, Vec::new())</code>。这里最容易读错：<code>None</code> 不是「把快照删掉」，而是「不更新快照，沿用已存的那份」。<code>render_with()</code> 在 L518-L522 明确处理了这一点：如果 section 返回 <code>None</code>，就从 <code>stored</code> 里取旧快照补上。<span class="tag tag--ok">已核实</span></p>
+
+      <p>为什么要这样设计？因为 <code>render_diff</code> 的返回值同时承担两个职责：告诉调用方「新快照是什么」，以及「要追加哪些片段」。未变化时，新快照和旧快照相同，没必要重复传递；但调用方仍然需要一份完整快照来落盘。用 <code>None</code> 表示「沿用」，用 <code>Some</code> 表示「更新」，就把两个职责分开了。<span class="tag tag--guess">推断</span></p>
+
+      <p>如果误把 <code>None</code> 当成删除，下一次比较就会把「已知」变成「未知」，进而触发一次多余的替换通知。状态机里最贵的错误，往往就是把「没变化」误读成「消失了」；前者只是少发一条消息，后者会让模型重新遵守一份已经作废的规则。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 3 段　三态 previous：为什么需要 Unknown</h3>
+
+      <p><code>PreviousSectionState</code> 有三个值：<code>Known</code>、<code>Unknown</code>、<code>Absent</code>。<code>Known</code> 是「有持久化快照，可以逐字段比较」；<code>Absent</code> 是「确定没有」；<code>Unknown</code> 是「没有快照，但历史里可能有一条旧的规则片段」。<span class="tag tag--ok">已核实</span></p>
+
+      <p><code>Unknown</code> 来自 <code>render_history_diff()</code> 的兜底：如果没有持久化快照，就去历史里找 <code>matches_legacy_fragment</code> 认得的片段；找到就返回 <code>Unknown</code>，找不到才返回 <code>Absent</code>。这样做的原因是兼容旧会话：旧版本可能把 AGENTS.md 直接拼进历史，没有快照；恢复后不能假设「没声明过」，否则会漏发替换通知，模型会同时遵守新旧两份规则。<span class="tag tag--ok">已核实</span></p>
+
+      <p><code>Unknown</code> 被保守地当成「上次有」处理。代价是可能多发一条替换通知，收益是不会漏掉旧规则的作废声明。在规则这种「错了会持续犯错」的内容上，宁可多发一条，也不能让旧规则继续生效。<span class="tag tag--guess">推断</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">render_diff 的四个分支</title>
+          <desc id="fig-2-desc">顶部判断快照是否相等，相等则不发。不等时按当前有无与上次可能有四象限：有有发替换通知加新全文，无有直接发全文，有无发移除通知，无无不发。</desc>
+          <rect class="svg-track" x="8" y="12" width="624" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark" x="24" y="34">快照相等？ → 是 → (None, 空)：不发，基线沿用</text>
+          <text class="svg-note" x="624" y="66" text-anchor="end">否 ↓</text>
+
+          <rect class="svg-seg--a" x="8" y="80" width="300" height="86" rx="8"/>
+          <text class="svg-label" x="24" y="106">当前有 + 上次可能有</text>
+          <text class="svg-label" x="24" y="132">替换通知 + 新全文</text>
+          <text class="svg-label" x="24" y="154">旧规则作废，新规则生效</text>
+
+          <rect class="svg-seg--b" x="332" y="80" width="300" height="86" rx="8"/>
+          <text class="svg-label" x="348" y="106">当前有 + 上次确定无</text>
+          <text class="svg-label" x="348" y="132">直接发全文</text>
+          <text class="svg-label" x="348" y="154">首次出现，不需要作废声明</text>
+
+          <rect class="svg-seg--c" x="8" y="184" width="300" height="86" rx="8"/>
+          <text class="svg-label" x="24" y="210">当前无 + 上次可能有</text>
+          <text class="svg-label" x="24" y="236">移除通知</text>
+          <text class="svg-label" x="24" y="258">旧全文仍在，需显式作废</text>
+
+          <rect class="svg-track" x="332" y="184" width="300" height="86" rx="8"/>
+          <text class="svg-label svg-label--dark" x="348" y="210">当前无 + 上次确定无</text>
+          <text class="svg-label svg-label--dark" x="348" y="236">不发，只更新空快照</text>
+          <text class="svg-note" x="348" y="258">从未有过，没什么可作废</text>
+        </svg>
+        <figcaption>图 2　四个分支。真正会被模型读到的只有前三种；「无 → 无」是静默路径，但它仍然返回当前快照，保证基线正确。</figcaption>
+      </figure>
+
+      <h3>第 4 段　为什么变化时发全文，而不是发 diff</h3>
+
+      <p>如果发的是行级 diff，模型需要先理解 diff 语法，再把补丁应用到历史里的旧文本上。这会引入三类风险：模型可能应用错位置；补丁可能因为上下文不匹配而失败；旧文本可能已经被压缩或截断，补丁失去锚点。发全文则把「应用补丁」变成「替换整段」，模型只需要理解一句自然语言通知。<span class="tag tag--guess">推断</span></p>
+
+      <p>代价是 token：AGENTS.md 上限 32 KiB，改一个标点也要重发整份。但这份成本只在变化的那一轮发生，而且后续轮次会把它当成普通历史，不再重复。相比「每轮都拼进系统提示」，这仍然是省的；相比「行级 diff」，它用一次性的全文成本换掉了正确性风险。<span class="tag tag--guess">推断</span></p>
+
+      <p>更关键的是，旧全文<b>不能被删</b>。Codex 的历史是追加式的，压缩之前不会回头改旧消息；即使想做行级 diff，也没有一个「原地替换」的操作可用。于是「替换通知 + 新全文」成了唯一自洽的选择：旧文本留在原处，新消息在语义上覆盖它。<span class="tag tag--ok">已核实</span></p>
+
+      <p>从模型视角看，这套语义也更自然。人读一份修订说明时，最关心的不是「第 3 行第 12 列改了什么」，而是「哪一版现在有效」。「这些规则替换之前全部」这句话直接回答了后者；行级 diff 回答的是前者，还需要读者自己推断后者。对语言模型来说，显式的「哪一版有效」比精确的「改了哪里」更不容易出错。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 5 段　删除为什么要单独发通知</h3>
+
+      <p>「当前无 + 上次有」这个分支只发一条 <code>REMOVAL_NOTICE</code>，不带任何正文。这条消息的作用不是告诉模型「新规则是什么」，而是告诉它「之前那条不再适用」。如果没有这条通知，模型会在历史里看到一份 AGENTS.md，然后继续遵守它——因为在它的视角里，没有任何东西撤销过这份规则。<span class="tag tag--guess">推断</span></p>
+
+      <p>这也是「追加式历史」的代价：删除一个状态，不能靠「不发送」来表达，必须靠一条显式的否定消息。所有基于追加日志的系统都会遇到这个问题：dsh 用「移除通知」，Grok Build 用 rewind marker，pi 用 section patch 的 <code>null</code>。表达「不存在」永远比表达「存在」更贵。<span class="tag tag--guess">推断</span></p>
+
+      <p>这里还有一个语义细节：移除通知不带 <code>directory</code>，正文只有一句「不再适用」。为什么不带目录？因为通知的作用是「作废之前所有同名规则」，而不是「作废某一个目录下的规则」。如果带上目录，模型可能会理解成「只有那个目录的规则失效，其他目录的仍然有效」，这与实际语义不符。Codex 选择让通知尽量短、尽量绝对，就是为了避免这种歧义。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 6 段　缓存收益与粒度代价</h3>
+
+      <p>未变化时零字节，这是缓存友好的理想状态。变化时只追加一条消息，前面的系统提示、工具定义、历史对话都不变，缓存从追加点之后失效，而不是从请求开头失效。对于一个聊了很长的会话，这意味着改一次 AGENTS.md 不会让整段对话重新计费。<span class="tag tag--guess">推断</span></p>
+
+      <p>但要小心一个方向性错误：这里的「缓存从追加点失效」指的是<b>消息历史</b>这一段。系统提示与工具定义在请求的最前面，它们本来就不受这条追加消息影响；真正被保住的，是「追加点之前的所有消息」。如果 AGENTS.md 是在系统提示里，改动会让整段系统提示失效，进而让整条消息历史都失去可复用的前缀。把规则从系统提示搬到历史尾部，最大的收益就在这里。<span class="tag tag--guess">推断</span></p>
+
+      <p>粒度代价也很明显：section 级差分只能回答「这一份规则变没变」，不能回答「哪一行变了」。如果一份 32 KiB 的 AGENTS.md 只改了一个字，重发的仍然是 32 KiB。要做得更细，就得引入行级 diff、补丁应用和锚点校验，复杂度和失败面都会上升。Codex 选择了「粗粒度、可证明正确」的那一端。<span class="tag tag--guess">推断</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 280" role="img" aria-labelledby="fig-3-title fig-3-desc">
+          <title id="fig-3-title">四轮会话里 AGENTS.md 状态的追加时序</title>
+          <desc id="fig-3-desc">四条时间线：第一轮首次出现发全文，第二轮未变不发，第三轮修改发替换通知加新全文，第四轮删除发移除通知。每轮下方标注历史增长量。</desc>
+          <text class="svg-note" x="8" y="18">轮次 →　历史只追加，不回头改</text>
+          <line class="svg-rule" x1="8" y1="54" x2="632" y2="54"/>
+
+          <rect class="svg-seg--b" x="8" y="30" width="140" height="18" rx="5"/>
+          <text class="svg-label" x="78" y="44" text-anchor="middle">T1 首次</text>
+          <text class="svg-note" x="8" y="76">发全文</text>
+          <text class="svg-note" x="8" y="96">+N token</text>
+
+          <rect class="svg-track" x="164" y="30" width="140" height="18" rx="5"/>
+          <text class="svg-label svg-label--dark" x="234" y="44" text-anchor="middle">T2 未变</text>
+          <text class="svg-note" x="164" y="76">什么都不发</text>
+          <text class="svg-note" x="164" y="96">+0</text>
+
+          <rect class="svg-seg--c" x="320" y="30" width="140" height="18" rx="5"/>
+          <text class="svg-label" x="390" y="44" text-anchor="middle">T3 修改</text>
+          <text class="svg-note" x="320" y="76">替换通知 + 新全文</text>
+          <text class="svg-note" x="320" y="96">+N token + 通知</text>
+
+          <rect class="svg-seg--c" x="476" y="30" width="140" height="18" rx="5"/>
+          <text class="svg-label" x="546" y="44" text-anchor="middle">T4 删除</text>
+          <text class="svg-note" x="476" y="76">只发移除通知</text>
+          <text class="svg-note" x="476" y="96">+几十 token</text>
+
+          <rect class="svg-track" x="8" y="126" width="624" height="52" rx="8"/>
+          <text class="svg-label svg-label--dark" x="24" y="150">T1 的全文仍然在历史里</text>
+          <text class="svg-note" x="24" y="170">T3 的替换通知在语义上覆盖它，T4 的移除通知再覆盖一次</text>
+
+          <rect class="svg-seg--a" x="8" y="196" width="624" height="52" rx="8"/>
+          <text class="svg-label" x="24" y="220">缓存边界：T1 之前的前缀一直有效</text>
+          <text class="svg-label" x="24" y="240">每次追加只在尾部产生新的缓存写入</text>
+        </svg>
+        <figcaption>图 3　四轮时序。历史是追加式的：T1 的全文不会被删除，T3 与 T4 靠通知在语义上覆盖它。缓存只在追加点之后失效。</figcaption>
+      </figure>
+
+      <h3>第 7 段　基线落盘：恢复时靠什么对齐</h3>
+
+      <p><code>update_world_state()</code> 在拿到 diff 后，立刻用新快照覆盖 <code>world_state_baseline</code>，并通过 <code>world_state_item()</code> 把「快照的 merge patch」写进 rollout。也就是说，磁盘上保存的不是「AGENTS.md 全文」，而是「这一轮状态相对上一轮的补丁」；恢复时按顺序应用补丁，就能重建基线。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这里有一个容易被忽略的约束：快照不能序列化成 <code>null</code>。因为 merge patch 里的 <code>null</code> 表示删除，如果某个合法状态被序列化成 <code>null</code>，恢复时就会被当成「这一节不存在」，下一次比较从 <code>Absent</code> 开始，可能漏发替换通知。trait 的注释专门写了这一点（mod.rs#L306-L308）。<span class="tag tag--ok">已核实</span></p>
+
+      <p>如果基线丢了会怎样？<code>render_history_diff()</code> 会退回到历史里找旧片段：找到就 <code>Unknown</code>，找不到就 <code>Absent</code>。前者会多发一条替换通知，后者可能漏发。这就是为什么「快照持久化」不是可选项，而是正确性的一部分。<span class="tag tag--guess">推断</span></p>
+
+      <p>再往前一步：section 的 <code>ID</code> 必须稳定。trait 的注释写明它会被写进 rollout，改动它等于让旧会话找不到自己的快照；<code>add_section()</code> 还会对重复 ID 直接 <code>assert</code>。这两条约束一起保证了「恢复时能对上号」。如果某个重构把 <code>agents_md</code> 改成 <code>agents_md_v2</code>，旧会话恢复时就会退到 <code>Unknown</code>，多发一条替换通知；如果改成和别的 section 重名，程序会直接崩溃，而不是悄悄错乱。<span class="tag tag--ok">已核实</span></p>
+
+      <p>把这段代码放在更大的背景里看，它其实是「让提示词具备数据库语义」的一次尝试：状态有主键（section ID）、有快照（当前值）、有变更日志（追加的片段）、有恢复机制（merge patch）。规则文件只是第一张表；工具目录、权限、环境都可以按同一套模式接入。理解了一张表，其他表只是换字段；差异在快照结构与通知文案，骨架不变，变的只是字段名与通知措辞。<span class="tag tag--guess">推断</span></p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>差分单位是 section，不是行；变化时发新全文，不发补丁。</li>
+            <li>四种状态组合：替换、直发、移除、静默；只有前三种会产生消息。</li>
+            <li>未变化返回 <code>None</code> 表示「沿用旧快照」，不是删除。</li>
+            <li><code>Unknown</code> 是旧会话的保守兜底：宁可多发替换，不漏作废。</li>
+            <li>删除必须显式通知，因为追加式历史不会回头删掉旧规则。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>五种「规则变了怎么告诉模型」</h2>
+
+      <p>规则文件的发现方式各家有各家的做法，但真正影响上下文的是「变化怎么表达」。下面五家代表五种不同的选择：状态差分、按需发现、提示词补丁、每次重发、全量加载。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">变化检测</th>
+              <th scope="col">变化时发什么</th>
+              <th scope="col">删除怎么表达</th>
+              <th scope="col">来源</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>section 快照逐字段比较</td>
+              <td>替换通知 + 新全文</td>
+              <td>单独的移除通知</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>按需发现 + 与基线对账</td>
+              <td>新增/替换指令文件</td>
+              <td>产生「移除通知」</td>
+              <td><span class="tag tag--guess">推断</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>系统提示 section 与期望值比较</td>
+              <td>一条 section patch（新值）</td>
+              <td><code>null</code> 表示删除</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>不做持续差分</td>
+              <td>每轮把规则拼进 system</td>
+              <td>随整段 system 重建消失</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>不做差分</td>
+              <td>每轮全文加载，无上限</td>
+              <td>随整段提示重建消失</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 2 节（Codex 提交 <code>76ed3b4</code>，dsh 为同仓文档口径，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，Grok Build 为源码 + 用户手册）。</p>
+
+      <p>第一个对照是<b>「差分发生在哪一层」</b>。Codex 与 dsh 都在「规则文件」这一层做状态对账，变化时发的是文件级的新全文/移除通知；pi 在「系统提示 section」这一层做补丁，规则只是众多 section 之一；opencode 与 Grok 干脆不做差分，每轮重建整段。层次越靠上，差分的收益越大，但实现也越依赖「历史是否可追加」这个前提。</p>
+
+      <p>第二个对照是<b>「删除是否可表达」</b>。Codex 用一条独立通知，pi 用 <code>null</code> 补丁，dsh 用移除通知，opencode 与 Grok 靠「下一次重建时自然消失」。前三种都需要模型理解「否定」，后两种不需要，但代价是每轮重建整段提示，缓存无法只失效尾部。删除语义越显式，缓存越友好，模型的理解负担也越重。</p>
+
+      <p>第三个对照是<b>「体积上限」</b>。Codex 有 32 KiB 上限，超出从尾部截断；dsh 有整条基线消息的字节预算，超预算先省略更宽的文件、再截断最具体的文件；pi、opencode、Grok 在本快照里都没有找到单文件硬上限。上限不只影响成本，也影响差分的粒度：有上限的系统更倾向于「整份替换」，因为文本本来就被截断过，做行级 diff 的锚点不稳定。<span class="tag tag--guess">推断</span></p>
+
+      <p>把这三条轴放在一起，可以看出一个规律：<b>越靠近「系统提示」的实现，越倾向于每次全量；越靠近「历史消息」的实现，越倾向于差分。</b>原因不在设计品味，而在成本结构。系统提示是请求的前缀，改一个字就要重算整段；历史消息是尾部，追加一条只影响新增部分。Codex 把规则搬进历史，才换来了差分的可能；opencode 把规则留在 system 字符串里，就只能每轮重建。<span class="tag tag--guess">推断</span></p>
+
+      <p>第四个对照是<b>「谁负责发现变化」</b>。Codex 每轮由宿主重新读取 AGENTS.md，再把结果交给 section 比较；dsh 只在 <code>read</code>/<code>write</code>/<code>edit</code> 触达更深目录时才把新规则带进下一次请求，不是持续 watch；opencode 在 <code>read</code> 工具输出里就近追加规则；Grok 在每轮开始时全量加载。前三者都在「变化发生的那一刻」或「下一次请求前」处理，后两者把成本摊到每轮。选择哪种，取决于你更怕「规则陈旧」还是更怕「每轮开销」。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从状态机到设计</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">AGENTS.md 从 A 改成 B，下一轮又改回 A。假设两轮之间没有其他变化，Codex 会发几条通知？模型最终看到的是 A 还是 B？旧的两份文本还在历史里吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>每次比较的基线是「上一轮的快照」，不是「最初的状态」。A→B 时当前是 B、上次是 A，走「有 → 有」；B→A 时当前是 A、上次是 B，还是「有 → 有」。</p>
+          <p>历史是追加式的：T1 的 A、T2 的替换通知+B、T3 的替换通知+A 会同时存在。模型要靠最后一条通知来判断哪份有效。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">恢复一个旧会话时没有持久化快照，历史里也找不到 AGENTS.md 片段，但磁盘上现在有一份 AGENTS.md。下一轮会发生什么？如果历史里其实有一份旧片段，只是匹配器没认出来，又会发生什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先看 <code>render_history_diff()</code> 的三分支：有快照 → <code>Known</code>；没快照但历史里有 legacy 片段 → <code>Unknown</code>；两者都没有 → <code>Absent</code>。</p>
+          <p><code>Absent + 当前有</code> 走「无 → 有」，直接发全文，不带替换通知；<code>Unknown + 当前有</code> 走「有 → 有」，带替换通知。两种情况模型最终都看到新全文，差别在于有没有显式作废旧规则。哪种更安全？</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">产品经理要求「只发改动的那几行，省 token」。你会怎么改 <code>render_diff</code>？改完之后，压缩、恢复、缓存三条路径各会出什么问题？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>行级 diff 需要一个稳定的锚点。压缩会把旧消息换掉，锚点可能消失；恢复会重放历史，补丁的应用顺序必须严格；缓存要求补丁的字节稳定，而 diff 算法很容易因为上下文行数变化而产生不同输出。</p>
+          <p>更根本的问题：模型不是 patch 工具。它可以把「替换全部旧规则」执行得很稳，但把「第 12 行到第 14 行改成……」执行错位的概率高得多。省下的 token 可能被一次错误理解的代价抵消。</p>
+          <p>如果一定要做，比较稳妥的折中是「按小节替换」：把 AGENTS.md 拆成若干具名小节，变化时只发「某一节的新全文 + 该节名」，而不是发行号补丁。这样既有差分收益，又保留「整段替换」的语义；代价是上游要先把文件结构化，纯文本规则做不到。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-codex-04.html">Codex · 头尾保留的截断预算</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

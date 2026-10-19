@@ -1,0 +1,1046 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>评估与可观测：指标与 A/B · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本章专属：只作用于 main-16 */
+  body[data-chapter="main-16"] .prose :not(pre) > code,
+  body[data-chapter="main-16"] .modal :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="main-16"] .modal .kv dd {
+    min-width: 0;
+  }
+  #fig-ab-design .ab-box {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+  }
+  #fig-ab-design .ab-box--key {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  #fig-ab-design .ab-box--warn {
+    fill: var(--orange-soft);
+    stroke: var(--orange-line);
+  }
+  #fig-ab-design .ab-title {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 650;
+  }
+  #fig-ab-design .ab-sub {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+  }
+  #fig-ab-design .ab-line {
+    stroke: var(--muted);
+    stroke-width: 1.3;
+    fill: none;
+  }
+  #fig-ab-design .ab-arrow {
+    fill: var(--muted);
+  }
+  #fig-ab-design .ab-note {
+    fill: var(--orange);
+    font-family: var(--font-sans);
+    font-size: 12px;
+  }
+  body[data-chapter="main-16"] #metrics .data-table {
+    font-size: 12.5px;
+  }
+  body[data-chapter="main-16"] #metrics .data-table td,
+  body[data-chapter="main-16"] #metrics .data-table th {
+    vertical-align: top;
+  }
+  body[data-chapter="main-16"] #metrics .data-table th[scope="row"] {
+    min-width: 108px;
+  }
+  body[data-chapter="main-16"] #metrics .data-table td:nth-child(2) {
+    min-width: 172px;
+  }
+  body[data-chapter="main-16"] #metrics .data-table td:nth-child(3) {
+    min-width: 160px;
+  }
+  body[data-chapter="main-16"] #metrics .data-table td:nth-child(4) {
+    min-width: 148px;
+  }
+</style>
+</head>
+<body data-chapter="main-16">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 16 章</span></p>
+      <h1>评估与可观测：指标与 A/B</h1>
+      <p class="lede">你改了阈值、换了压缩模板、加了一个 hook，怎么证明它更好？本章给一份可以直接抄的指标清单、一套评测集设计、一套 A/B 分流方法，以及几个最容易把结论带偏的陷阱。</p>
+      <ul class="meta">
+        <li>约 20 分钟</li>
+        <li>4 张表</li>
+        <li>L3 → L5</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>用 13 个指标搭一份上下文策略的评测清单，并说清每个指标对应哪条结论。</li>
+          <li>设计一个配对 A/B：分层抽样、同任务同初始状态、独立 workspace、分层分析。</li>
+          <li>判断一个“成本降了 18%”的结论是否可信，并指出它可能漏掉了什么。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 场景 ========== -->
+    <section id="why-eval">
+      <p class="sec-no">01 · 一次庆祝得太早</p>
+      <h2>“成本降了 18%，为什么还被叫停”</h2>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 省下的钱，赔在返工里</p>
+        <p>一个团队把自动压缩阈值从 90% 调到 75%，月底账单降了 18%，大家在群里发了红包。两周后，线上任务成功率掉了 6 个百分点；更糟的是，失败的任务往往已经跑了很久，返工要重读文件、重跑测试。复盘时他们发现：成本下降有一部分是因为任务提前失败、少跑了轮次——省下的不是效率，是没做完的工作。</p>
+      </div>
+
+      <p>这不是“指标选错了”这么简单，而是<strong>只看了一个能被作弊的指标</strong>。成本可以靠“少做事”降低，token 可以靠“少读文件”降低，压缩次数可以靠“不压缩”降低。任何一个单独看的指标，都有一种让它变好看却不改善结果的方法。</p>
+      <p>所以评测的第一原则不是“多采集”，而是<strong>让指标之间能互相证伪</strong>：成本必须和成功率一起看，压缩率必须和信息保留率一起看，缓存命中率必须和失效原因一起看。第二原则是<strong>让比较可复现</strong>：同一个任务、同一个初始仓库、同一个模型版本，只改一个变量。</p>
+      <p class="lead-in">没有对照的指标是观察，有对照的指标才是证据。</p>
+    </section>
+
+    <!-- ========== 02 Codex ========== -->
+    <section id="codex">
+      <p class="sec-no">02 · Codex 主线</p>
+      <h2>它给你原始数据，不给你结论</h2>
+      <p>Codex 没有面向用户的评测框架，也没有 A/B 实验入口。它能提供的是三类副产品：rollout 存档（可离线重放并统计 token 与工具调用）、analytics 事件、OTEL 追踪。换句话说，工具负责“记录发生了什么”，不负责“判断哪种策略更好”。<span class="tag tag--ok">已核实</span></p>
+
+      <h3 id="codex-data">2.1 三样原始数据</h3>
+      <ul>
+        <li><strong>rollout JSONL</strong>：按时间追加的会话记录，包含用户消息、模型输出、工具调用与结果、压缩检查点。它可以离线重放，重建某个时刻模型看到的历史。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/rollout_reconstruction.rs#L485-L520">rollout_reconstruction.rs#L485-L520</a> <span class="tag tag--ok">已核实</span></li>
+        <li><strong>TokenUsage</strong>：未缓存输入、缓存读、缓存写、输出，以及总量。它是算成本与命中率的唯一可靠来源。</li>
+        <li><strong>OTEL / analytics</strong>：用于把一次任务串起来，看耗时、重试、错误分布。它们不直接给“上下文策略”的指标，但能提供时间线。</li>
+      </ul>
+      <p>这三样加起来，足够做“事后归因”：这次任务为什么多花了 30%？是压缩次数多了、缓存失效多了，还是工具输出变大了？但都不足以做“事前预测”：换一个阈值会怎样，必须自己跑对照实验。</p>
+
+      <h3 id="codex-no-eval">2.2 为什么“工具不自带评测”是常态</h3>
+      <p>八份事实卡片里，有成型评测设施的只有 pi 与 omp：pi 有 <code>packages/evals</code>，用 <code>vitest-evals</code> 跑“有文档 / 无文档”的对照；omp 有 <code>snapcompact</code> 的研究评测（SQuAD 的 recall / F1）和 <code>packages/stats</code> 的本地观测面板。Grok 算半套：遥测字段齐全，但没有运行器。其余工具大多只有记账与事件。没有一家提供“压缩策略 A/B”这种开箱即用的能力。</p>
+      <p>原因不难理解：上下文策略的效果高度依赖任务分布。一个在“读代码问答”上更好的压缩策略，可能在“跨文件重构”上更差；一个在短会话里省钱的阈值，在长会话里会让成功率下降。工具厂商很难替你定义“你的任务”，所以只能给你原始数据。</p>
+      <p class="lead-in">评测不是工具的附属功能，是你对自己任务分布的理解。</p>
+
+      <h3 id="codex-pipeline">2.3 一个最小可用的评估管线</h3>
+      <p>不需要一上来就搭平台。四步就够跑第一轮：</p>
+      <ol>
+        <li><strong>采集</strong>：每次任务记录一条结构化记录——任务 ID、分层、变体、模型版本、开始/结束时间、总 token（分未缓存/读/写）、压缩次数与耗时、是否溢出、是否成功、失败原因。</li>
+        <li><strong>对齐</strong>：把“一次任务”作为一行，而不是“一次请求”。同一任务里的多次请求、压缩、重试，都要归到同一行，否则成本会被拆散。</li>
+        <li><strong>分层</strong>：按任务类型（短/中/长/易溢出/约束保持）分组统计。总体均值只能用来做概览，不能用来下结论。</li>
+        <li><strong>判定</strong>：先看护栏指标（成功率、溢出率）有没有退化，再看主指标（每成功任务成本、p95 延迟）。护栏破了，主指标再漂亮也不能上线。</li>
+      </ol>
+
+      <h3 id="codex-attribution">2.4 从“能观测”到“能归因”</h3>
+      <p>原始数据只能告诉你“变了”，归因才能告诉你“为什么变”。这一层各家差距很大。</p>
+      <ul>
+        <li><strong>Claude Code</strong> 有专门的缓存失效检测：对比系统提示词哈希、工具哈希、TTL/scope 变化，判断“本可命中却没命中”的原因，并把这些原因上报<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/promptCacheBreakDetection.ts#L31">promptCacheBreakDetection.ts#L31</a>。这是少数把归因做进产品的例子。<span class="tag tag--src">源码 v2.1.88</span></li>
+        <li><strong>Grok Build</strong> 把压缩当成一等遥测事件：<code>AutoCompactFired</code> 带压缩前 token 与百分比，<code>CompactionTriggered</code> 带触发原因、窗口、模型、是否子代理，<code>CompactionCompleted</code> 带耗时、压缩前后 token、退化重试次数、输入溢出重试次数。有了这些字段，压缩回收率、压缩耗时、退化重试率都能直接算。<span class="tag tag--ok">已核实</span></li>
+        <li><strong>dsh</strong> 提供三个投影键：<code>tokenUsage</code>（未缓存输入、输出、缓存读、缓存写）、<code>contextPressure</code>（最新上报 prompt、下一请求预估、窗口）、<code>contextBreakdown</code>（system / tools / messages 的启发式构成）。客户端可以直接订阅，不需要事后解析日志。<span class="tag tag--guess">推断</span></li>
+        <li><strong>opencode v1/v2</strong> 是“记账 + 事件”：每条 assistant 消息带 tokens 与 cost，压缩自身也记账（<code>UsageRecorded source:"compaction"</code>），失败与中断也计费。<span class="tag tag--ok">已核实</span></li>
+      </ul>
+      <p>归因的价值在于“可行动”。知道“成本涨了”只能让人焦虑；知道“成本涨在压缩后的重附文件上”才能改。做评测时，至少要把成本拆成四块：普通输入、缓存写、缓存读、压缩请求。拆不开，就找不到杠杆。</p>
+
+      <div class="hf hf--qa">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <div class="hf__body">
+          <p class="hf__q">问：只有几个人的团队，也要做 A/B 吗？</p>
+          <p class="hf__a">答：不必一开始就做“线上分流”。可以先做“离线配对”：取 30–50 个历史任务，在同一初始仓库上，用两套配置各跑一遍。关键是“配对”和“同初始状态”，不是“线上”。跑完再看差异是否大于噪声；如果连离线配对都做不了，那任何“感觉更快了”的结论都只能算假设。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 03 指标清单 ========== -->
+    <section id="metrics">
+      <p class="sec-no">03 · 指标清单</p>
+      <h2>十三个指标，六条结论</h2>
+      <p>下面这份清单可以直接用。先记住六条结论，再看每个指标对应哪一条——指标不是越多越好，而是每条结论至少有一个指标能支持、一个指标能证伪。</p>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">本章的六条结论</p>
+        <p><strong>C1</strong> 只看成本会奖励“提前失败”，必须用“每成功任务成本”。<strong>C2</strong> 缓存命中率是诊断指标，不是目标；压缩会主动制造一次失效。<strong>C3</strong> 压缩收益随剩余任务长度递减，短任务上压缩是净成本。<strong>C4</strong> 总体均值会被任务分层掩盖，必须分层报告。<strong>C5</strong> A/B 必须配对同一任务与同一初始状态，否则差异来自任务难度。<strong>C6</strong> 样本量不足时，小差异不可解释；先算最小可检测效应。</p>
+      </div>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">指标</th>
+              <th scope="col">定义（公式）</th>
+              <th scope="col">怎么采</th>
+              <th scope="col">判读方式</th>
+              <th scope="col">对应结论</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">任务成功率<code>SR</code></th>
+              <td>通过验收脚本的任务数 ÷ 总任务数。分层各算一遍，不只给总体。</td>
+              <td>每个任务一个验收脚本（测试、构建、断言），退出码 0 记为成功；人工评审只用于脚本覆盖不到的任务。</td>
+              <td>先看绝对值，再看两臂差值。下降超过 1 个百分点就要停下来分析，不要用“成本省了”抵消。</td>
+              <td>C1 / C4</td>
+            </tr>
+            <tr>
+              <th scope="row">每成功任务成本<code>CPS</code></th>
+              <td>该层总成本 ÷ 该层成功任务数；失败任务的成本也要计入分子。</td>
+              <td>从 usage 汇总：未缓存输入、缓存写、缓存读、输出分别乘单价，再加压缩请求与重试的成本。</td>
+              <td>它才是可比较的成本。总成本下降但 CPS 不降，说明只是少做了任务。</td>
+              <td>C1 / C3</td>
+            </tr>
+            <tr>
+              <th scope="row">缓存命中率<code>CHR</code></th>
+              <td><code>cache_read ÷ (cache_read + cache_write + uncached_input)</code>，按请求算再按任务聚合。</td>
+              <td>Codex 读 <code>cached_tokens</code> / <code>cache_write_tokens</code>；opencode v2 读 <code>cache.read</code> / <code>cache.write</code>；pi 读 footer 的 cacheRead / cacheWrite。</td>
+              <td>只做诊断：突然下降要查失效原因（改前缀、改工具表、压缩、驱逐）。不要设“越高越好”的 KPI。</td>
+              <td>C2</td>
+            </tr>
+            <tr>
+              <th scope="row">缓存失效次数<code>CI</code> 与归因分布</th>
+              <td>一次任务中“前缀从某处断开”的次数，按原因分类：系统提示变化、工具表变化、压缩、驱逐、其他。</td>
+              <td>客户端记录每次请求的拼接哈希（系统 / 工具 / 历史首块），与上一次比较；有归因模块的工具直接用其事件。</td>
+              <td>看“每次任务几次”与“哪类占多数”。压缩导致的失效是计划内的，工具表变化导致的失效通常是可以避免的。</td>
+              <td>C2</td>
+            </tr>
+            <tr>
+              <th scope="row">压缩次数<code>CN</code></th>
+              <td>一次任务中自动压缩 + 手动压缩的总次数。</td>
+              <td>从压缩事件或检查点计数；没有事件就从 rollout 里数 <code>CompactedItem</code> 一类记录。</td>
+              <td>与任务长度一起看。长任务压缩次数高不一定是坏事；短任务频繁压缩通常是阈值太低。</td>
+              <td>C3</td>
+            </tr>
+            <tr>
+              <th scope="row">压缩回收率<code>CRR</code></th>
+              <td><code>(tokens_before − tokens_after) ÷ tokens_before</code>，只看输入侧。</td>
+              <td>Grok 的 <code>CompactionCompleted</code> 直接给 before / after；其他工具从压缩前后 usage 或检查点估算。</td>
+              <td>回收率低说明“压了等于没压”，要查保留预算是否过大、切点是否太靠后。它不能单独作为好坏标准，必须配 IRR。</td>
+              <td>C3</td>
+            </tr>
+            <tr>
+              <th scope="row">压缩后信息保留率<code>IRR</code></th>
+              <td>探针问题的正确率：问题只能从“被压缩掉的那段历史”里回答。</td>
+              <td>压缩后插入 3–5 个探针问题（或另开一个只读探针会话），答案与标准答案比对；同一任务重复 3 次取均值。</td>
+              <td>低于 80% 说明摘要丢了关键约束；逐题看错在哪类信息（接口、路径、决策、验收命令）。这是压缩策略最直接的质量指标。</td>
+              <td>C3 / C4</td>
+            </tr>
+            <tr>
+              <th scope="row">溢出率<code>OR</code></th>
+              <td>发生上下文超限的任务数 ÷ 总任务数；分“主动拦截”和“被动报错”两档。</td>
+              <td>从错误码与事件统计：<code>ContextWindowExceeded</code>、413、prompt-too-long 等，按任务去重。</td>
+              <td>主动拦截多说明阈值偏保守；被动报错多说明估算不准或恢复路径有问题。两者要分开。</td>
+              <td>C3</td>
+            </tr>
+            <tr>
+              <th scope="row">溢出恢复成功率<code>RSR</code></th>
+              <td>溢出后最终完成的任务数 ÷ 发生溢出的任务数。</td>
+              <td>按任务串起“溢出事件 → 压缩 → 重试 → 结束”，看最终状态；失败任务要记录停在哪一步。</td>
+              <td>低于 70% 说明恢复路径不可靠；配合“恢复耗时 p95”看用户等待是否可接受。</td>
+              <td>C1 / C6</td>
+            </tr>
+            <tr>
+              <th scope="row">压缩失败率与熔断率</th>
+              <td>压缩失败次数 ÷ 压缩次数；熔断会话数 ÷ 总会话数。</td>
+              <td>从压缩事件、错误码、熔断标记统计；注意把“取消”排除在“失败”之外。</td>
+              <td>失败率高但熔断率低，说明重试在起作用；两者都高，说明有结构性问题（见第 14 章三种绝境）。</td>
+              <td>C6</td>
+            </tr>
+            <tr>
+              <th scope="row">上下文压力峰值<code>CPP</code></th>
+              <td>一次任务中“单次请求输入 ÷ 有效窗口”的最大值，用同一口径估算。</td>
+              <td>优先用服务端 usage；没有就用“上次 usage + 本地增量估算”，并标注口径。dsh 的 <code>contextPressure</code> 直接给预估。</td>
+              <td>长期贴近 100% 说明阈值太晚或任务太重；长期低于 50% 说明阈值太早、压缩过度。看分布，不看单点。</td>
+              <td>C3</td>
+            </tr>
+            <tr>
+              <th scope="row">首 token 延迟<code>TTFT</code> 与 p95</th>
+              <td>从请求发出到收到第一个 token 的时间；按任务聚合看 p50 与 p95。</td>
+              <td>OTEL 或客户端计时；压缩、重试、工具执行要单独打点，才能拆出“慢在哪”。</td>
+              <td>p95 比均值更能反映用户体感。压缩带来的额外延迟要计入，不能只算模型时间。</td>
+              <td>C1</td>
+            </tr>
+            <tr>
+              <th scope="row">重复读取率<code>RRR</code></th>
+              <td>同一文件被 read 的次数 ÷ 该文件被修改或引用的次数；也可统计“同一路径重复 read 的会话占比”。</td>
+              <td>从工具调用日志按路径聚合；区分“用户要求重读”和“模型不知道已读过”。</td>
+              <td>压缩后 RRR 明显上升，说明摘要没保住文件状态；这是“信息丢失”的行为侧证据，比探针更接近真实任务。</td>
+              <td>C3 / C4</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">口径提醒：<code>CHR</code> 在不同 provider 上的分母不同（有的把缓存写算进输入，有的单列），跨工具比较前先统一口径<sup class="fn-ref"><a href="#fn-main-16-3" id="fnref-main-16-3">3</a></sup>；<code>CPS</code> 的单价要按实际账单，不要用公开价目猜。指标名是为了沟通，公式才是契约。</p>
+
+      <p>这张表怎么用？先选一个你要回答的问题，再选 2–3 个指标，不要一次上全。比如“把阈值从 90% 调到 75% 好不好”，主指标是 <code>CPS</code>，护栏是 <code>SR</code> 与 <code>IRR</code>，诊断是 <code>CN</code> 与 <code>CRR</code>。如果 <code>CPS</code> 降了但 <code>SR</code> 或 <code>IRR</code> 破了，结论就是“不成立”，不需要再看别的。</p>
+      <p class="small muted">表里的 1 个百分点、80%、70%、50%、10% 都是起始阈值，用来启动讨论，不是行业标准。跑过几轮、有了自己的基线之后，再按任务分布调整；调整时把旧阈值一起写进实验记录，否则下一次没人知道为什么是 80。</p>
+    </section>
+
+    <!-- ========== 04 评测集 ========== -->
+    <section id="evalset">
+      <p class="sec-no">04 · 评测集设计</p>
+      <h2>先分层，再谈样本量</h2>
+      <p>上下文策略的效果高度依赖任务形态。把所有任务混在一起算一个平均值，等于把“短任务上压缩是净亏”和“长任务上压缩是救命”平均掉，最后得到一个谁也不适用的数字。</p>
+
+      <h3 id="layers">4.1 六个任务层</h3>
+      <ul>
+        <li><strong>T1 短任务</strong>：10 轮以内、单文件、目标明确。用来观察“压缩是否过早”“缓存是否稳定”。</li>
+        <li><strong>T2 中任务</strong>：10–30 轮、3–5 个文件、需要读代码再改。最接近日常使用，应占样本的最大比例。</li>
+        <li><strong>T3 长任务</strong>：30 轮以上、跨模块、需要多次测试。压缩的主要战场。</li>
+        <li><strong>T4 易溢出</strong>：刻意构造接近窗口的任务，比如一次读入大日志、连续跑多次全量测试。用来测恢复路径，不要求全部成功，要求“失败得可预期”。</li>
+        <li><strong>T5 约束保持</strong>：在第 1–3 轮给一条硬约束（“不要改 public API”“必须保留 <code>x</code> 字段”），最后检查是否遵守。专测压缩是否丢关键信息。</li>
+        <li><strong>T6 干扰</strong>：包含大量无关工具输出、失败命令、重复文件读取。测“噪声下的有效上下文”。</li>
+      </ul>
+      <p>分层不是越细越好。六层已经够覆盖“长度、溢出、约束、噪声”四个维度；再细会把样本切碎，每层都不够统计。每层至少 20 个任务，做层内比较时建议 30 个以上；总量 120–200 个任务，能支撑一次中等规模的策略对比。</p>
+
+      <h3 id="unit">4.2 一个任务单元要固定什么</h3>
+      <p>评测集的最小单位不是“一句话”，而是一个可复现的任务单元。至少固定八项：</p>
+      <ol>
+        <li><strong>仓库与提交</strong>：同一个 commit，必要时打包成镜像或压缩包。</li>
+        <li><strong>初始 workspace</strong>：干净工作区，不含上一次运行的残留文件。</li>
+        <li><strong>工具权限</strong>：允许读哪些目录、能不能联网、能不能装依赖。</li>
+        <li><strong>模型与版本</strong>：模型 ID、温度、最大输出；两臂必须一致，除非你研究的就是模型。</li>
+        <li><strong>预算上限</strong>：最大轮数、最大 token、最大墙钟时间，超了记为失败。</li>
+        <li><strong>验收脚本</strong>：可自动执行的测试或断言，退出码即结果。</li>
+        <li><strong>探针问题</strong>：3–5 个，答案只能来自任务过程中出现过的信息。</li>
+        <li><strong>初始提示</strong>：一字不差地固定，避免提示改写引入差异。</li>
+      </ol>
+      <p>这八项里，最容易被忽略的是“初始 workspace”和“工具权限”。前者不干净，上一臂的文件会污染下一臂；后者不一致，一臂能联网、一臂不能，成本与成功率都不可比。</p>
+
+      <h3 id="samplesize">4.3 样本量：先算最小可检测效应</h3>
+      <p>配对实验看的是“同一任务在两臂上是否一个成功、一个失败”。用 McNemar 检验的近似公式，可以估算需要的配对数。下表是示意，假设两臂不一致的比例（discordant rate）约 25%–30%：</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">想检测的成功率差异</th>
+              <th scope="col">大致需要的配对数</th>
+              <th scope="col">说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">20 个百分点</th>
+              <td>约 50–70 对</td>
+              <td>策略差异很大时，小样本也能看出来；适合早期筛选。</td>
+            </tr>
+            <tr>
+              <th scope="row">10 个百分点</th>
+              <td>约 150–230 对</td>
+              <td>大多数“阈值调整”落在这一档，需要上百个任务。</td>
+            </tr>
+            <tr>
+              <th scope="row">5 个百分点</th>
+              <td>约 600–800 对</td>
+              <td>接近噪声，通常不值得为这点差异增加复杂度。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">示意值，按 McNemar 近似、α = 0.05、power = 0.8、不一致率 25%–30% 估算；实际样本量随基线成功率与不一致率变化，正式实验前应重算。<sup class="fn-ref"><a href="#fn-main-16-2" id="fnref-main-16-2">2</a></sup></p>
+
+      <p>这张表最重要的用途是“劝退”：如果你只有 20 个任务，却想证明 5 个百分点的提升，结论一定是噪声。与其硬跑，不如把任务分层做粗一点，只看 20 个百分点级别的大差异，或者把实验周期拉长、积累更多任务。</p>
+
+      <h3 id="probe">4.4 信息保留率怎么测</h3>
+      <p><code>IRR</code> 是压缩策略最直接的质量指标，但很容易测错<sup class="fn-ref"><a href="#fn-main-16-4" id="fnref-main-16-4">4</a></sup>。三个要点：</p>
+      <ul>
+        <li><strong>问题只能来自被压缩段</strong>：如果答案在保留段里，测的是“模型会不会读”，不是“摘要保没保住”。</li>
+        <li><strong>答案要可判定</strong>：用“是/否”“具体路径”“具体数字”，不要用“你觉得这个方案怎么样”。</li>
+        <li><strong>别污染主任务</strong>：探针可以放在任务结束后另开会话，或作为最后一步插入；不要把探针塞进任务中间，改变任务本身的走向。</li>
+      </ul>
+      <p>一个实用的探针组合：一条早期约束（“不要改哪个文件”）、一个具体路径（“上次改的配置文件在哪”）、一个决策理由（“为什么选方案 B”）、一个验收命令（“跑哪个测试”）。四个问题覆盖“约束、位置、意图、验证”，正好对应压缩最容易丢的四类信息。</p>
+    </section>
+
+    <!-- ========== 05 A/B ========== -->
+    <section id="ab">
+      <p class="sec-no">05 · A/B 分流</p>
+      <h2>配对，配对，还是配对</h2>
+      <p>A/B 的目标不是“跑两套配置”，而是“让两套配置的差异只来自策略本身”。做到这一点，靠三件事：同一任务、同一初始状态、随机顺序。</p>
+
+      <figure class="fig" id="fig-ab-design">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-ab-title fig-ab-desc">
+          <title id="fig-ab-title">配对 A/B 的执行流程</title>
+          <desc id="fig-ab-desc">任务池先分层，再按任务配对，随机分到 A 臂与 B 臂，两臂各自在独立 workspace 执行，采集指标后按层分析，最后做上线决策。旁边标注：同一任务不能只跑一个臂。</desc>
+          <defs>
+            <marker id="ab-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="ab-arrow" d="M0 0 L10 5 L0 10 z"/>
+            </marker>
+          </defs>
+
+          <rect class="ab-box ab-box--key" x="16" y="30" width="96" height="48" rx="7"/>
+          <text class="ab-title" x="64" y="51" text-anchor="middle">任务池</text>
+          <text class="ab-sub" x="64" y="68" text-anchor="middle">120–200 个</text>
+
+          <rect class="ab-box" x="132" y="30" width="96" height="48" rx="7"/>
+          <text class="ab-title" x="180" y="51" text-anchor="middle">分层</text>
+          <text class="ab-sub" x="180" y="68" text-anchor="middle">T1–T6</text>
+
+          <rect class="ab-box" x="248" y="30" width="96" height="48" rx="7"/>
+          <text class="ab-title" x="296" y="51" text-anchor="middle">配对</text>
+          <text class="ab-sub" x="296" y="68" text-anchor="middle">同任务同 commit</text>
+
+          <rect class="ab-box ab-box--warn" x="364" y="30" width="110" height="48" rx="7"/>
+          <text class="ab-title" x="419" y="51" text-anchor="middle">随机分臂</text>
+          <text class="ab-sub" x="419" y="68" text-anchor="middle">A / B，顺序随机</text>
+
+          <rect class="ab-box" x="494" y="30" width="130" height="48" rx="7"/>
+          <text class="ab-title" x="559" y="51" text-anchor="middle">独立执行</text>
+          <text class="ab-sub" x="559" y="68" text-anchor="middle">各自干净 workspace</text>
+
+          <rect class="ab-box" x="494" y="150" width="130" height="48" rx="7"/>
+          <text class="ab-title" x="559" y="171" text-anchor="middle">采集</text>
+          <text class="ab-sub" x="559" y="188" text-anchor="middle">成功 / 成本 / 延迟</text>
+
+          <rect class="ab-box ab-box--key" x="340" y="150" width="130" height="48" rx="7"/>
+          <text class="ab-title" x="405" y="171" text-anchor="middle">分层分析</text>
+          <text class="ab-sub" x="405" y="188" text-anchor="middle">差值 + 置信区间</text>
+
+          <rect class="ab-box ab-box--key" x="186" y="150" width="130" height="48" rx="7"/>
+          <text class="ab-title" x="251" y="171" text-anchor="middle">决策</text>
+          <text class="ab-sub" x="251" y="188" text-anchor="middle">护栏优先</text>
+
+          <line class="ab-line" x1="112" y1="54" x2="128" y2="54" marker-end="url(#ab-a)"/>
+          <line class="ab-line" x1="228" y1="54" x2="244" y2="54" marker-end="url(#ab-a)"/>
+          <line class="ab-line" x1="344" y1="54" x2="360" y2="54" marker-end="url(#ab-a)"/>
+          <line class="ab-line" x1="474" y1="54" x2="490" y2="54" marker-end="url(#ab-a)"/>
+          <line class="ab-line" x1="559" y1="78" x2="559" y2="146" marker-end="url(#ab-a)"/>
+          <line class="ab-line" x1="494" y1="174" x2="474" y2="174" marker-end="url(#ab-a)"/>
+          <line class="ab-line" x1="340" y1="174" x2="320" y2="174" marker-end="url(#ab-a)"/>
+
+          <text class="ab-note" x="16" y="126">同一任务不能只跑一个臂：</text>
+          <text class="ab-sub" x="16" y="144">差异会混入任务难度，</text>
+          <text class="ab-sub" x="16" y="161">再大的样本也补不回来。</text>
+          <text class="ab-sub" x="16" y="196">两臂共用一套评测集，</text>
+          <text class="ab-sub" x="16" y="213">但各自使用独立的缓存键</text>
+          <text class="ab-sub" x="16" y="230">与工作区，避免互相预热。</text>
+        </svg>
+        <figcaption>图 16-1　配对 A/B 的流程。关键在“分层 → 配对 → 随机分臂 → 独立执行”四步；缺任何一步，差异都可能来自任务难度、顺序或缓存残留，而不是策略。</figcaption>
+      </figure>
+
+      <h3 id="ab-unit">5.1 分流单位：任务，不是请求</h3>
+      <p>上下文策略是<strong>有状态</strong>的：同一会话里前面的压缩会影响后面的请求。按请求随机分流，会让同一会话一半用 A、一半用 B，历史被两套策略交替改写，最后两臂都不是干净的策略。正确做法是按“会话 / 任务”整体分流：一个任务从头到尾只用一个变体。</p>
+
+      <h3 id="ab-pair">5.2 配对：同任务、同初始状态、随机顺序</h3>
+      <p>配对的意思是：任务 X 在 A 臂跑一次，也在 B 臂跑一次，两边初始仓库、初始提示、模型版本完全一致。这样任务难度被抵消，差异只剩策略。顺序要随机：如果总是 A 先跑，磁盘缓存、依赖安装、甚至机器的热状态都会偏向 A。</p>
+      <p>如果任务本身有副作用（改文件、装依赖），两臂必须用独立 workspace；否则 B 臂会看到 A 臂改过的代码，测的就不是同一个任务了。这一点在“重构类”任务上尤其致命。</p>
+
+      <h3 id="ab-cache">5.3 缓存混杂：最隐蔽的偏差</h3>
+      <p>A/B 和缓存放在一起，很容易互相污染。假设 A 臂先跑，把系统提示与工具定义写进了缓存；B 臂随后跑，可能直接命中 A 留下的缓存，成本被低估。反过来，如果两臂用同一个缓存键交替跑，每次切换都会让对方的前缀失效，两臂都被高估。</p>
+      <p>做法是：<strong>两臂使用独立的缓存键</strong>（或独立的会话 ID），并在每臂开始前做一次冷启动；如果无法冷启动，就记录“是否命中”，在分析时把首次请求单独剔除。不要在报告里把“缓存命中带来的便宜”算成策略的功劳。</p>
+
+      <h3 id="ab-cost">5.4 成本口径：把压缩本身算进去</h3>
+      <p>压缩不是免费的：它要再发一遍历史、要生成摘要、可能还要重试。评估时必须把这几笔算进成本：</p>
+      <ul>
+        <li>压缩请求的输入与输出（按实际单价）。</li>
+        <li>压缩失败后的重试成本，包括被丢弃但仍然计费的后台压缩。</li>
+        <li>压缩后重附文件、技能、工具增量的成本。</li>
+        <li>因为压缩导致的额外轮次（模型重新读文件、重新跑测试）。</li>
+      </ul>
+      <p>只算“主请求”的成本，会系统性低估压缩策略的开销，尤其是那些“压缩很便宜、但压缩后要重读五个文件”的实现。</p>
+
+      <h3 id="ab-decision">5.5 决策规则：护栏优先</h3>
+      <p>上线前先定规则，不要等结果出来再解释。一个可用的规则是：</p>
+      <ol>
+        <li><strong>护栏</strong>：<code>SR</code> 下降不超过 1 个百分点，<code>OR</code> 不上升，<code>IRR</code> 不低于基线的 95% 且绝对值不低于 80%。任一不满足，直接不通过。</li>
+        <li><strong>主指标</strong>：<code>CPS</code> 下降至少 10%，且置信区间不跨 0。</li>
+        <li><strong>分层</strong>：至少 4 个任务层方向一致；如果只有长任务变好、短任务变差，要么缩小适用范围，要么放弃。</li>
+        <li><strong>可运维性</strong>：新增的配置项、失败模式、监控项是否可接受；这一条不进入统计，但能否决。</li>
+      </ol>
+      <p>规则写在实验开始之前，能防止“结果出来再挑指标”。这也是 <code>C6</code> 的实践含义：先算样本量，再定决策阈值，最后才跑。</p>
+    </section>
+
+    <!-- ========== 06 工具弹窗 ========== -->
+    <section id="tools">
+      <p class="sec-no">06 · 七个工具</p>
+      <h2>有人给账本，有人给遥测，有人给评测</h2>
+      <p>Codex 已经在主线里拆过：它给 rollout、usage、OTEL，不给结论。剩下七个工具可以按“最值钱的那份数据”分四派：<strong>记账派</strong>（pi、opencode v1/v2）把每一步的 token 与成本记准；<strong>遥测派</strong>（Claude Code、Grok Build）把压缩与缓存失效做成事件；<strong>投影派</strong>（dsh）在请求发出前就给出压力预估；<strong>评测派</strong>（pi、omp）自带一套离线评测设施。四派都不提供“上下文策略 A/B”的开箱能力。</p>
+      <div class="tool-grid">
+        <button class="tool-btn" type="button" data-modal="claude-code">
+          <span class="tool-btn__name">Claude Code</span>
+          <span class="tool-btn__id">claude-code</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="pi">
+          <span class="tool-btn__name">pi</span>
+          <span class="tool-btn__id">pi</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="omp">
+          <span class="tool-btn__name">oh-my-pi</span>
+          <span class="tool-btn__id">omp</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v1">
+          <span class="tool-btn__name">opencode v1</span>
+          <span class="tool-btn__id">opencode-v1</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v2">
+          <span class="tool-btn__name">opencode v2</span>
+          <span class="tool-btn__id">opencode-v2</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="grok-build">
+          <span class="tool-btn__name">Grok Build</span>
+          <span class="tool-btn__id">grok-build</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="dsh">
+          <span class="tool-btn__name">DeepSeek Harness</span>
+          <span class="tool-btn__id">dsh</span>
+        </button>
+      </div>
+      <p class="small muted">键盘：<kbd>Esc</kbd> 关闭；<kbd>Tab</kbd> 在弹窗内循环。Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本。</p>
+    </section>
+
+    <!-- ========== 07 对比表 ========== -->
+    <section id="matrix">
+      <p class="sec-no">07 · 八工具对比</p>
+      <h2>把“能采到什么”排成一张表</h2>
+      <p>看表时先看第二列：它决定你能否算 <code>CPS</code> 与 <code>CHR</code>。第三列是压缩相关的遥测，决定你能否算 <code>CRR</code> 与压缩耗时。第四列是评测设施，决定你能不能直接做配对实验。最后一列是“没有内置能力时，外部从哪里接”。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">自带可观测数据</th>
+              <th scope="col">压缩遥测</th>
+              <th scope="col">评测框架</th>
+              <th scope="col">外部怎么接</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex<span>codex</span></th>
+              <td>rollout JSONL、<code>TokenUsage</code>（未缓存/读/写）、analytics、OTEL。<span class="tag tag--ok">已核实</span></td>
+              <td>可从 <code>CompactedItem</code> 检查点与 usage 反推<span class="tag tag--ok">已核实</span>；未见压缩专项遥测事件<span class="tag tag--guess">推断</span>。</td>
+              <td>无评测框架、无 A/B 开关。<span class="tag tag--ok">已核实</span></td>
+              <td>读 rollout 离线重放；按会话聚合 token 与工具调用。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td><code>/context</code> 分类占用、<code>/cost</code>、cache break 归因、OTEL。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>可从日志与错误分支观察压缩边界<span class="tag tag--src">源码 v2.1.88</span>；未见统一压缩事件字段<span class="tag tag--guess">推断</span>。</td>
+              <td>无评测集、无 A/B。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>解析会话 JSONL；用 cache break 归因做失效分析。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>footer 累计 input / output / cacheRead / cacheWrite、命中率、成本；cache-stats。<span class="tag tag--ok">已核实</span></td>
+              <td>无压缩专项指标；可从检查点与 turn 记录反推。<span class="tag tag--ok">已核实</span></td>
+              <td><code>packages/evals</code>（vitest-evals），支持 docs-lift 两臂配对。<span class="tag tag--ok">已核实</span></td>
+              <td>复用 evals 运行器；上下文策略需自建 case 与指标。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>stats 面板：Tokens/s、Cache Rate、Cache Savings、Error Rate、Latency、TTFT、API 等价成本。<span class="tag tag--ok">已核实</span></td>
+              <td>snapcompact 研究评测（SQuAD recall / F1 + 计费 token）。<span class="tag tag--ok">已核实</span></td>
+              <td><code>if-bench</code>、<code>eval</code> 子代理；无上下文策略 A/B。<span class="tag tag--ok">已核实</span></td>
+              <td>解析会话 JSONL 落 SQLite；用 stats 看趋势，用 eval 跑任务。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>per-step tokens + cost + snapshot；<code>Session.Event.Error</code>。<span class="tag tag--ok">已核实</span></td>
+              <td><code>Session.Compacted</code> 事件；无耗时/回收率字段。<span class="tag tag--ok">已核实</span></td>
+              <td>未在源码中找到评测集或 A/B。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-16-1" id="fnref-main-16-1">1</a></sup></td>
+              <td>读 SQLite 或订阅事件流，自行统计压缩频率与 token 曲线。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td><code>SessionUsage.record</code>：input / output / reasoning / cache.read / cache.write + cost。<span class="tag tag--ok">已核实</span></td>
+              <td>压缩单独记账（<code>source:"compaction"</code>），失败与中断也计费。<span class="tag tag--ok">已核实</span></td>
+              <td>未在源码中找到评测集或 A/B。<span class="tag tag--guess">推断</span></td>
+              <td>订阅 <code>Step.Ended</code> / <code>Compaction.*</code>；按任务聚合。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td><code>signals.json</code>、<code>grok usage</code> 逐轮 JSON、OTEL、context snapshot 真实分词。<span class="tag tag--ok">已核实</span></td>
+              <td><code>AutoCompactFired</code> / <code>CompactionTriggered</code> / <code>CompactionCompleted</code>（含前后 token、耗时、重试）。<span class="tag tag--ok">已核实</span></td>
+              <td>无评测框架、无 A/B。<span class="tag tag--ok">已核实</span></td>
+              <td>消费遥测事件，直接算回收率、耗时、退化重试率。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td><code>tokenUsage</code>、<code>contextPressure</code>、<code>contextBreakdown</code> 三个投影键。<span class="tag tag--guess">推断</span></td>
+              <td>无压缩专项事件；可从 <code>deriveTurnTokenUsage</code> 与压缩记录折叠。<span class="tag tag--guess">推断</span></td>
+              <td><code>BENCHMARK.md</code> 只给运行方式，无指标与对照。<span class="tag tag--guess">推断</span></td>
+              <td>订阅投影；比较压力、压缩次数、溢出恢复次数与成功率。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗与事实卡片里。</p>
+    </section>
+
+    <!-- ========== 08 取舍 ========== -->
+    <section id="tradeoffs">
+      <p class="sec-no">08 · 设计取舍</p>
+      <h2>为什么“有数据”不等于“有结论”</h2>
+      <p>评测设计的分歧，往往不在统计方法，而在“愿意为因果付多少成本”。下面五组取舍，对应五种常见的妥协。</p>
+
+      <h3>取舍一：离线评测，还是在线观测</h3>
+      <p><strong>离线派</strong>：固定任务集、固定初始仓库、两臂各跑一遍，结论可复现，适合回答“这个改动有没有用”。<strong>在线派</strong>：直接看真实流量的成功率、成本、延迟，分布真实，适合回答“上线后有没有变坏”。</p>
+      <p><strong>代价</strong>：离线可控但离真实分布有距离，评测集选得不好会得出“实验室有效、线上无效”；在线真实但不可复现，任务在变、用户群体在变、模型也在变，很难把差异归给策略。成熟做法是两者配合：离线做筛选，在线做护栏。</p>
+
+      <h3>取舍二：单臂绝对指标，还是配对 A/B</h3>
+      <p><strong>单臂派</strong>：只跑新策略，和历史基线比。成本低、上手快，适合早期探索。<strong>配对派</strong>：同一任务两臂都跑，差异只来自策略，适合下结论。</p>
+      <p><strong>代价</strong>：单臂便宜，但“历史基线”受模型版本、任务分布、机器负载影响，差异很难归因；配对可信，但要双倍算力与时间，而且要求任务可重复执行。只改了阈值这种小改动，如果只用单臂，几乎必然把噪声当效果。</p>
+
+      <h3>取舍三：自动验收，还是人工评审</h3>
+      <p><strong>自动派</strong>：用测试、构建、断言判定成功，规模大、成本低、可重复。<strong>人工派</strong>：让人看 diff、看解释、看是否“真的解决了问题”，能覆盖自动脚本测不到的语义质量。</p>
+      <p><strong>代价</strong>：自动验收快，但容易被“通过测试但改错语义”骗过；人工评审准，但贵、慢、评分者间不一致。可行的折中是“自动做全量、人工做抽样”：自动跑 100%，人工只抽 10%–20%，并让两位评审独立打分，分歧大的样本再看一遍。</p>
+
+      <h3>取舍四：总体均值，还是分层与分位数</h3>
+      <p><strong>均值派</strong>：一个数字，好汇报、好比较。<strong>分层派</strong>：按任务类型、长度、难度分组，再看每组的差值；延迟与成本再看 p50 / p95。</p>
+      <p><strong>代价</strong>：均值简洁，但会被长尾和任务构成掩盖，辛普森悖论就是这么来的；分层更真实，但每层样本变少，置信区间变宽，汇报成本也更高。折中是“总体看方向、分层下结论”：总体只用来发现异常，决策必须落到层。</p>
+
+      <h3>取舍五：成本优先，还是成功率优先</h3>
+      <p><strong>成本派</strong>：先压 <code>CPS</code>，把成功率当护栏。适合预算敏感、任务可重试的场景。<strong>成功率派</strong>：先保 <code>SR</code>，成本只要不失控即可。适合返工代价高、用户等待敏感的场景。</p>
+      <p><strong>代价</strong>：成本优先容易滑向“少做事”，尤其是压缩阈值调低、工具输出截短这类改动；成功率优先容易过度保留、上下文膨胀、单任务成本上升。真正的目标函数应该是“每成功任务成本”，它同时包含两者；但它也有盲点——不衡量延迟和用户体验，需要额外护栏。</p>
+
+      <p>还有一组横切的取舍：<strong>大样本慢实验，还是小样本快迭代</strong>。大样本能检出小差异，但一轮要跑几周，期间模型和任务都变了；小样本反馈快，但只能看大差异。可行的节奏是“小样本筛方向、大样本确认关键决策”，不要把每个小改动都做成大实验。</p>
+    </section>
+
+    <!-- ========== 09 陷阱 ========== -->
+    <section id="pitfalls">
+      <p class="sec-no">09 · 常见陷阱</p>
+      <h2>五个坑，外加一个附加项</h2>
+
+      <h3>陷阱一：辛普森悖论</h3>
+      <p>总体看 A 更好，分层看每一层都是 B 更好。原因通常是两臂的任务构成不同：A 臂恰好分到了更多简单任务。解决办法只有一个——配对，或至少按层报告，不要只报总体均值。</p>
+
+      <h3>陷阱二：幸存者偏差</h3>
+      <p>只统计“完成的任务”，会漏掉失败任务已经花掉的成本。一个策略让 30% 的任务提前失败，剩下的 70% 看起来很便宜，<code>CPS</code> 可能反而更低。解决办法是把失败任务的成本计入分子（<code>CPS</code> 的分母是成功任务数，失败越多，<code>CPS</code> 越高），并单独报告成功率。</p>
+
+      <h3>陷阱三：均值掩盖长尾</h3>
+      <p>平均延迟 8 秒，听起来可以接受；p95 是 90 秒，用户早就取消了。成本和延迟都要看 p50 与 p95，尤其是压缩、重试这类“少数请求特别慢”的操作。均值适合做预算，分位数适合看体验。</p>
+
+      <h3>陷阱四：指标泄漏与过拟合</h3>
+      <p>用同一批任务调阈值、又用这批任务证明阈值好，等于把答案背下来。评测集要留出“开发集”和“保留集”：前者用来调参，后者只在最后跑一次。保留集被看过一次，就脏了。</p>
+
+      <h3>陷阱五：把相关当因果</h3>
+      <p>“压缩次数多的任务成功率也高”不代表压缩让任务成功。更可能是长任务本来就更容易成功（因为用户愿意投入），而长任务压缩次数自然多。只有对照实验能回答因果；观察数据只能提出假设。</p>
+
+      <h3>陷阱六（附加）：任务提前结束的“假省钱”</h3>
+      <p>压缩让模型更早放弃，轮次变少、成本变低，但任务没做完。这类“省钱”在总成本上很好看，在 <code>CPS</code> 上会暴露：分母（成功任务数）变小，分子（总成本）没怎么变，<code>CPS</code> 反而上升。看成本时永远同时看分母。</p>
+    </section>
+
+    <!-- ========== 07 模板 ========== -->
+    <section id="template">
+      <p class="sec-no">10 · 实验记录模板</p>
+      <h2>一张表，让实验可复现</h2>
+      <p>下面这张表可以直接复制到你的实验文档里。每一行都是一个必填字段；填不满，说明这次实验还不具备可复现性。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">字段</th>
+              <th scope="col">填写说明</th>
+              <th scope="col">示例</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">实验 ID</th>
+              <td>日期 + 序号，全团队唯一。</td>
+              <td><code>2026-10-19-01</code></td>
+            </tr>
+            <tr>
+              <th scope="row">假设</th>
+              <td>一句话，可证伪；写清“改什么、期望什么方向、为什么”。</td>
+              <td>阈值 90%→75% 可降 CPS 10%，SR 不降。</td>
+            </tr>
+            <tr>
+              <th scope="row">变体</th>
+              <td>A 为基线，B 为改动；只允许一个变量不同。</td>
+              <td>A：阈值 90%；B：阈值 75%</td>
+            </tr>
+            <tr>
+              <th scope="row">模型与版本</th>
+              <td>模型 ID、温度、最大输出；两臂一致。</td>
+              <td><code>model-x</code>，temp 0，max 8k</td>
+            </tr>
+            <tr>
+              <th scope="row">代码与配置提交</th>
+              <td>Agent 版本、配置文件的 commit 或哈希。</td>
+              <td><code>76ed3b4</code>，config <code>a1b2c3</code></td>
+            </tr>
+            <tr>
+              <th scope="row">评测集版本</th>
+              <td>任务集名称、版本、分层与每层样本数。</td>
+              <td><code>ctx-eval-v3</code>，T1–T6 各 25</td>
+            </tr>
+            <tr>
+              <th scope="row">执行环境</th>
+              <td>机器规格、是否联网、依赖缓存状态。</td>
+              <td>4C8G，离线，依赖预装</td>
+            </tr>
+            <tr>
+              <th scope="row">随机化与配对</th>
+              <td>如何配对、如何决定先跑哪一臂、每任务重复几次。</td>
+              <td>同任务配对，顺序随机，重复 1 次</td>
+            </tr>
+            <tr>
+              <th scope="row">主指标</th>
+              <td>一个，事先定好；写清公式与口径。</td>
+              <td><code>CPS</code> = 总成本 ÷ 成功任务数</td>
+            </tr>
+            <tr>
+              <th scope="row">护栏指标</th>
+              <td>不允许退化的指标与阈值。</td>
+              <td><code>SR</code> −1pp 内，<code>IRR</code> ≥ 基线 95% 且 ≥80%</td>
+            </tr>
+            <tr>
+              <th scope="row">结果</th>
+              <td>A / B 的均值、差值、置信区间、p 值。</td>
+              <td>A 1.00，B 0.86，差 −14%，CI [−20,−8]</td>
+            </tr>
+            <tr>
+              <th scope="row">分层结果</th>
+              <td>每层的方向与幅度；标注样本量。</td>
+              <td>T3 −18%，T5 +2%（n=25）</td>
+            </tr>
+            <tr>
+              <th scope="row">成本口径</th>
+              <td>是否含压缩、重试、重附；单价来源。</td>
+              <td>含压缩与重试，按 10 月账单</td>
+            </tr>
+            <tr>
+              <th scope="row">异常与剔除</th>
+              <td>哪些任务被剔除、为什么；剔除前后是否一致。</td>
+              <td>剔除 2 个环境失败，结论不变</td>
+            </tr>
+            <tr>
+              <th scope="row">结论与决策</th>
+              <td>通过 / 不通过 / 仅限某层；下一步动作。</td>
+              <td>仅长任务通过，短任务回退</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">这张表是模板，不是规范；字段可以增减，但“假设、变体、主指标、护栏、结果、分层”六项不能省。省了任何一项，实验就只能算一次试跑。</p>
+
+      <p class="small muted">下面是一份可以整段复制的空白记录。填完再跑实验，不要等结果出来再补字段。</p>
+      <div class="codeblock" data-lang="text">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">实验记录 · 空白模板</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">实验 ID：</span>
+<span class="code__line">假设（可证伪）：</span>
+<span class="code__line">变体 A（基线）：</span>
+<span class="code__line">变体 B（只改一个变量）：</span>
+<span class="code__line">模型与版本（温度 / 最大输出）：</span>
+<span class="code__line">代码与配置提交：</span>
+<span class="code__line">评测集版本与分层样本（T1–T6 各多少）：</span>
+<span class="code__line">执行环境（机器 / 联网 / 依赖）：</span>
+<span class="code__line">随机化与配对（顺序 / 重复次数）：</span>
+<span class="code__line">主指标（公式与口径）：</span>
+<span class="code__line">护栏指标（阈值）：</span>
+<span class="code__line">结果（A / B / 差值 / 置信区间）：</span>
+<span class="code__line">分层结果（每层方向与样本量）：</span>
+<span class="code__line">成本口径（是否含压缩 / 重试 / 重附）：</span>
+<span class="code__line">异常与剔除（原因 / 剔除前后是否一致）：</span>
+<span class="code__line">结论与决策（通过 / 不通过 / 仅限某层）：</span>
+</code></pre>
+      </div>
+    </section>
+
+    <!-- ========== 08 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">11 · 小测验</p>
+      <h2>三道题，检验你会不会读结论</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">一次实验：成本降 18%，成功率从 72% 降到 66%，失败任务的成本已计入。这个策略能上线吗？还需要什么信息？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>不能。成功率掉了 6 个百分点，远超 1pp 的护栏；成本降 18% 很可能来自“少做任务”。先算 <code>CPS</code>：如果成功任务数下降 8%，总成本只降 18%，<code>CPS</code> 可能只降 10%，甚至不降。还需要看分层（是长任务变好、短任务变差，还是全面退化）、<code>IRR</code>（摘要是否丢约束）、<code>OR</code>（溢出是否增加）。见<a href="#metrics">第 03 节指标清单</a>与<a href="#ab-decision">5.5 决策规则</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">为什么不能把“缓存命中率越高越好”当成目标？举一个命中率更高、但结果更差的例子。</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>因为命中率可以通过“不改前缀”来刷高：一直不压缩、不裁剪、不更新规则，命中率当然高，但窗口里塞满过期内容，模型更容易被旧信息带偏，成功率下降。压缩会主动制造一次失效，换来之后每次更小的输入；这时命中率下降是设计的一部分。正确用法是把它当诊断：突然下降时查失效原因，而不是设成 KPI。见 <a href="#metrics">C2</a> 与第 13 章。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">10 个任务跑 A/B：A 成功 7 个，B 成功 6 个。能否得出“A 更好”的结论？为什么？应该怎么做？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>不能。样本太小，1 个任务的差异完全可能是噪声；而且这 10 个任务如果没分层，可能全落在短任务上，结论不能外推到长任务。做法：先按分层补样本（检测 20pp 差异约需 50–70 对，10pp 约需 150–230 对），用配对设计（同任务两臂都跑），报告差值或置信区间而不是两个孤立的成功数。见<a href="#samplesize">4.3 样本量</a>与<a href="#ab-pair">5.2 配对</a>。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-main-16-1">
+          事实卡片把 opencode v1/v2 的“无评测能力”标为【推断】：已检索 <code>packages/</code> 下的命令与事件定义，只找到 per-step / per-compaction 的记账与 <code>Step.Ended</code>、<code>Compaction.*</code> 事件，没有找到评测集、指标定义或 A/B 分流。缺少对全部子命令的穷举，因此正文按“未提供开箱评测”表述，不外推为“永远不会有”。
+          <a class="footnotes__back" href="#fnref-main-16-1">↩</a>
+        </li>
+        <li id="fn-main-16-2">
+          样本量表按 McNemar 检验的正态近似估算，取 α = 0.05、power = 0.8、两臂不一致率 25%–30%；实际所需样本随基线成功率、不一致率与是否单侧检验变化。已用公式复算 20pp / 10pp / 5pp 三档，未做模拟验证。正式实验前应用自己的基线重算，不要直接照抄数字。
+          <a class="footnotes__back" href="#fnref-main-16-2">↩</a>
+        </li>
+        <li id="fn-main-16-3">
+          “缓存命中率跨工具不可比”是推断：Codex 的 <code>cached_tokens</code>、opencode v2 的 <code>cache.read</code>、pi footer 的 cacheRead 在分母口径上是否包含缓存写，源码与文档没有统一说明；已核对三家的 usage 字段定义，缺少跨 provider 的对照测试。因此本章要求先统一口径再比较，不给出跨工具的“标准命中率”。
+          <a class="footnotes__back" href="#fnref-main-16-3">↩</a>
+        </li>
+        <li id="fn-main-16-4">
+          “探针法测信息保留率”是本章建议的评测方法，不是任何工具的内置指标；事实卡片里没有任何一家提供 <code>IRR</code> 这类字段。已核对 8 份卡片的第 16 节，确认只有记账、事件与遥测。探针问题的设计、评分口径需要自行制定并在实验记录里写明。
+          <a class="footnotes__back" href="#fnref-main-16-4">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">主线到此结束。下一步：<a href="adv-01.html">第三部分「进阶」：设计取舍专题</a>。</p>
+
+  </article>
+</main>
+
+<!-- ========== 弹窗 ========== -->
+<div class="modal" id="modal-claude-code" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">没有面向用户的评测框架，可观测性由三部分组成：<code>/context</code> 的分类占用、<code>/cost</code> 与 cost-tracker 的成本统计、内部 analytics 事件。其中最有价值的是缓存失效检测：它对比系统提示词哈希、工具哈希、TTL/scope 变化，判断“本可命中却没命中”的原因。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>可观测：<code>/context</code>、<code>/cost</code>、cache break 事件、OTEL；归因维度：系统提示变化、工具变化、TTL/scope 变化、压缩；无评测集、无 A/B 开关。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“缓存为什么失效”做成产品内诊断，而不是让用户自己猜。代价是它只解释缓存，不解释任务成功率；要做策略对比，仍需外接评测集。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/promptCacheBreakDetection.ts#L31">promptCacheBreakDetection.ts#L31</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/promptCacheBreakDetection.ts#L270-L290">#L270-L290</a></dd>
+      </dl>
+      <p class="modal__note">“无内置评测”是反证式结论：<code>src/</code> 下没有 eval / benchmark 目录；官方文档也未承诺评测能力。<span class="tag tag--both">两者一致</span></p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pi" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · pi</p>
+        <h2 class="modal__title" id="modal-pi-title">pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">pi 是八家里少数自带评测设施的工具：<code>packages/evals</code> 用 <code>vitest-evals</code> 跑行为评测，支持“文档增益”对照——同一 case 分别在 <code>without_docs</code> 与 <code>with_docs</code> 容器里跑，报告 lift；运行器按 <code>(case, variant, repetition)</code> 展开并配对两臂。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>评测框架 <code>vitest-evals</code>；两臂目录 <code>without_docs</code> / <code>with_docs</code>；footer 显示累计 input / output / cacheRead / cacheWrite、缓存命中率、成本；<code>cache-stats</code> 噪声下限 1024 token。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“文档有没有用”做成可配对的对照实验，而不是凭感觉。代价是它偏 agent 行为与文档增益，没有“压缩前后任务成功率”这类上下文专项指标，上下文策略仍需自建。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/evals/README.md#L1-L40">packages/evals/README.md#L1-L40</a>、<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/modes/interactive/components/footer.ts#L120-L197">footer.ts#L120-L197</a></dd>
+      </dl>
+      <p class="modal__note">“无上下文专项指标”是根据 README 与目录结构推断的；评测集与 case 需要自己准备。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-omp" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · omp</p>
+        <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">两套现成设施。第一，<code>snapcompact</code> 的研究评测：一组可复现的 Python 实验，以 SQuAD 抽取式 QA 的 recall / F1 为指标，比较不同帧形状、布局、字体、颜色在真实 provider 计费下的“每 token 保留信息量”。第二，<code>packages/stats</code> 本地观测面板：解析会话 JSONL，落 SQLite，按小时 rollup。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>snapcompact 指标：SQuAD recall / F1 + provider 计费 token；stats 指标：Tokens/s、Cache Rate、Cache Savings、Error Rate、Latency、TTFT、API-equivalent cost；另有 <code>if-bench</code> / <code>eval</code> 子代理。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“历史渲成图片”这件事本身当成可评测对象，用信息保留率而不是“看起来像不像”来判断。代价是评测对象偏多模态压缩，不覆盖阈值、裁剪、子代理等其他策略。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/snapcompact/research/exp03_numhard.py#L1-L20">exp03_numhard.py#L1-L20</a>、<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/stats/README.md#L1-L25">packages/stats/README.md#L1-L25</a></dd>
+      </dl>
+      <p class="modal__note">“无上下文策略 A/B”是根据目录与 README 推断的；stats 面板可作为外部 A/B 的数据源，但不提供分流。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v1" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">可观测性限于“记账 + 事件”：每条 assistant 消息带 <code>tokens</code>（含 cache 读写）与 <code>cost</code>，<code>step-finish</code> 写一条带 tokens / cost / snapshot 的 part；会话级错误通过 <code>Session.Event.Error</code> 发到事件总线；压缩成功发 <code>Session.Compacted</code>。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>记账粒度 per-step（tokens + cost + snapshot）；事件 <code>Session.Event.Error</code>、<code>Session.Compacted</code>；无评测集、无指标定义、无 A/B 分流。<span class="tag tag--guess">推断</span></dd>
+        <dt>设计意图</dt>
+        <dd>先把“每一步花了多少”记准，再让外部工具消费。代价是它不告诉你“为什么”，压缩前后的轮次、token 曲线、失败率都要自己从 SQLite 或事件流统计。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/processor.ts#L452-L470">session/processor.ts#L452-L470</a>、<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L552-L556">session/compaction.ts#L552-L556</a></dd>
+      </dl>
+      <p class="modal__note">“无评测能力”是未在源码中找到，属【推断】；不要把“没有内置”理解为“无法评估”，外部采集完全可行。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v2" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><code>SessionUsage.record</code> 把 provider usage 换算成 <code>{input, output, reasoning, cache.read, cache.write}</code> 与 <code>cost</code>，支持按上下文长度分档计价；<code>Step.Ended</code> 事件带 finish / usage / snapshot / files；压缩自身也记账（<code>UsageRecorded source:"compaction"</code>），失败与中断也计费。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>记账粒度 per-step + per-compaction；事件 <code>Step.Ended</code>、<code>Compaction.Started/Ended/Failed</code>、<code>UsageRecorded</code>、<code>RetryScheduled</code>；无评测集、无 A/B。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把压缩成本单独记账，避免“压缩看起来免费”。代价是只有账，没有归因；要评估策略，得自己订阅事件、读 SQLite、按任务聚合。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/usage.ts#L1-L40">session/usage.ts#L1-L40</a>、<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L610-L621">session/compaction.ts#L610-L621</a></dd>
+      </dl>
+      <p class="modal__note">v2 是 beta（<code>v2.0.29</code>），字段与事件可能在下个版本调整；评估脚本要做向后兼容。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-grok-build" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">遥测把压缩当成一等事件：<code>AutoCompactFired</code> 带 tokens_before 与 percentage；<code>CompactionTriggered</code> 带 trigger、tokens_used、context_window、model_id、compaction_id、compaction_mode、two_pass_enabled、is_subagent；<code>CompactionCompleted</code> 带 duration_ms、tokens_before/after、degenerate_retries、input_overflow_retries、segments_queued、model_wait_ms、pre/post_compaction_ms、two_pass。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>成本单位 <code>1e10 ticks = 1 USD</code>；每轮用量 <code>grok usage &lt;session-id&gt; &lt;turn&gt;</code>（JSON）；<code>signals.json</code> 记 token 用量、工具/轮次计数、压缩次数；OTEL 走 OTLP。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>字段足以直接算压缩回收率、压缩耗时、退化重试率，是最接近“可做压缩 A/B”的遥测设计。代价是没有评测框架与分流开关，仍要外部脚本消费。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-telemetry/src/events/compaction.rs#L30-L60">events/compaction.rs#L30-L60</a>、<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/17-sessions.md#L283-L300">17-sessions.md#L283-L300</a></dd>
+      </dl>
+      <p class="modal__note">仓库里没有 eval harness、A/B 开关或对照实验基础设施；session-start 的 context snapshot 会用官方分词接口对系统提示、工具、技能、MCP、AGENTS.md、workflow 分别计数，可作为口径校准。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-dsh" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">可观测靠会话投影而不是事后日志解析：<code>tokenUsage</code>（未缓存输入、输出、缓存读、缓存写）、<code>contextPressure</code>（最新上报 prompt、下一请求预估、窗口）、<code>contextBreakdown</code>（system / tools / messages 的启发式构成）三个投影键，客户端直接订阅；卸载插件时三个键一起消失。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>逐轮用量由 <code>deriveTurnTokenUsage(events)</code> 折叠出“每次尝试 + 整轮”的精确值；缺证据或计数冲突时返回空而不是猜；OTEL 只在用户显式反馈后导出，<code>DISABLED</code> 模式不建传输。<span class="tag tag--guess">推断</span></dd>
+        <dt>设计意图</dt>
+        <dd><code>contextPressure.projectedTokens</code> 能在请求发出前就给出“下一请求会不会超”的预估，适合做阈值实验。代价是没有评测框架与指标定义，<code>BENCHMARK.md</code> 只给运行方式（每个任务独立 workspace 与 session id），不给对照与显著性。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/llm/token-meter/README.md#L34-L44">token-meter/README.md#L34-L44</a>、<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/BENCHMARK.md#L1-L3">BENCHMARK.md#L1-L3</a></dd>
+      </dl>
+      <p class="modal__note">这些结论来自文档与包 README，不是逐行源码；要做 A/B，只能自己消费投影 + 日志，比较压力、压缩次数、溢出恢复次数与成功率。</p>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

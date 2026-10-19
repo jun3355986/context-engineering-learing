@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>设计取舍专题：没有最优解，只有代价清单 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本页专用：取舍矩阵与六个小图的配色。选择器都带章节前缀。 */
+  body[data-chapter="adv-01"] .ad-box {
+    fill: var(--surface-2);
+    stroke: var(--border);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-01"] .ad-cold {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-01"] .ad-hot {
+    fill: var(--orange-soft);
+    stroke: var(--orange);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-01"] .ad-risk {
+    fill: var(--red-soft);
+    stroke: var(--red);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-01"] .ad-keep {
+    fill: var(--green-soft);
+    stroke: var(--green);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-01"] .ad-line {
+    fill: none;
+    stroke: var(--border-strong);
+    stroke-width: 1.4;
+  }
+  body[data-chapter="adv-01"] .ad-dash {
+    fill: none;
+    stroke: var(--red);
+    stroke-dasharray: 4 4;
+    stroke-width: 1.4;
+  }
+  body[data-chapter="adv-01"] .ad-axis {
+    fill: none;
+    stroke: var(--border-strong);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-01"] .ad-tag {
+    fill: var(--muted);
+    font-size: 10.5px;
+  }
+  body[data-chapter="adv-01"] .ad-tag--a { fill: var(--accent-strong); }
+  body[data-chapter="adv-01"] .ad-tag--b { fill: var(--orange); }
+  body[data-chapter="adv-01"] .ad-quad {
+    fill: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  body[data-chapter="adv-01"] .ad-table-check {
+    margin-top: 10px;
+  }
+  @media (max-width: 760px) {
+    body[data-chapter="adv-01"] .ad-tag { font-size: 12px; }
+  }
+</style>
+</head>
+<body data-chapter="adv-01">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第三部分 · 进阶</b><span>·</span><span>第 01 章</span></p>
+      <h1>取舍：没有最优解，只有代价清单</h1>
+      <p class="lede">同一个模型、同一套工具，两个团队可以做出完全相反的选择，而且都能跑通。区别不在谁更先进，而在谁更清楚自己在为什么付费。这一页只讲六组选择的运行方式与代价。</p>
+      <ul class="meta">
+        <li>约 24 分钟</li>
+        <li>7 张图</li>
+        <li>L4</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>对六组取舍，分别说出两种做法怎么跑、省什么、丢什么。</li>
+          <li>给定任务长度、工具密度、预算与合规约束，选出一组组合，并写出它的代价。</li>
+          <li>识别三种常见的错误组合，判断应该改配置、改流程，还是改代码。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 ========== -->
+    <section id="why-tradeoffs">
+      <p class="sec-no">01 · 先把“取舍”与“优劣”分开</p>
+      <h2>两个团队，同一套工具，相反的答案</h2>
+      <p>周一上午，A 团队把压缩阈值调到 70%。他们的任务常常跑一整夜，宁可早一点压，也不愿在凌晨两点看到“上下文溢出”。B 团队把阈值留到 92%。他们每单任务只有二三十轮，压一次就丢一次细节，不如少压。</p>
+      <p>两家都没错。A 买“确定性”，B 买“保真度”。只问“哪个阈值更好”就问错了。该问：<strong>这个任务更怕丢细节，还是更怕跑不完？</strong></p>
+      <p class="lead-in">取舍不是“好与坏”的选择，是“哪一种代价你现在付得起”的选择。</p>
+      <p>六组取舍都按四段写：怎么跑；省什么、丢什么；什么场景选哪边；代价一句话。</p>
+      <p>本页以第 1 级（文字）和第 2 级（图表）为主；第 3 级交互在<a href="adv-02.html">第 02 章</a>；第 4 级视频只在附录分镜里。</p>
+
+      <p>下面这张矩阵把六组选择放到同一张图上。横轴是“每次请求的平均上下文成本”，纵轴是“任务连续性”，也就是模型还能不能接着前面的细节干。位置是示意，不是实测；先判断自己站在哪个象限，再去看对应那一节。</p>
+
+      <figure class="fig" id="fig-tradeoff-map">
+        <svg viewBox="0 0 640 360" role="img" aria-labelledby="fig-map-title fig-map-desc">
+          <title id="fig-map-title">六组上下文取舍在成本与连续性上的位置</title>
+          <desc id="fig-map-desc">横轴从左到右是上下文成本由低到高，纵轴从下到上是任务连续性由低到高。左上角是低成本高连续性的理想区，右上角是高成本高连续性，左下角是低成本低连续性，右下角是高成本低连续性。六组取舍各用一条虚线连接两个端点。</desc>
+          <rect class="ad-box" x="64" y="28" width="548" height="284" rx="8"/>
+          <line class="ad-axis" x1="64" y1="170" x2="612" y2="170"/>
+          <line class="ad-axis" x1="338" y1="28" x2="338" y2="312"/>
+          <text class="ad-quad" x="74" y="46">低成本 · 高连续</text>
+          <text class="ad-quad" x="470" y="46">高成本 · 高连续</text>
+          <text class="ad-quad" x="74" y="300">低成本 · 低连续</text>
+          <text class="ad-quad" x="470" y="300">高成本 · 低连续</text>
+          <text class="ad-tag" x="64" y="332">上下文成本 →</text>
+          <text class="ad-tag" x="16" y="176">连续性 →</text>
+
+          <line class="ad-dash" x1="150" y1="258" x2="486" y2="76"/>
+          <circle class="ad-cold" cx="150" cy="258" r="5"/>
+          <circle class="ad-hot" cx="486" cy="76" r="5"/>
+          <text class="ad-tag ad-tag--a" x="104" y="276">压缩早</text>
+          <text class="ad-tag ad-tag--b" x="494" y="70">压缩晚</text>
+
+          <line class="ad-dash" x1="120" y1="214" x2="326" y2="166"/>
+          <circle class="ad-cold" cx="120" cy="214" r="5"/>
+          <circle class="ad-hot" cx="326" cy="166" r="5"/>
+          <text class="ad-tag ad-tag--a" x="76" y="232">裁剪</text>
+          <text class="ad-tag ad-tag--b" x="340" y="184">摘要</text>
+
+          <line class="ad-dash" x1="470" y1="126" x2="170" y2="278"/>
+          <circle class="ad-hot" cx="470" cy="126" r="5"/>
+          <circle class="ad-cold" cx="170" cy="278" r="5"/>
+          <text class="ad-tag ad-tag--b" x="478" y="120">预加载</text>
+          <text class="ad-tag ad-tag--a" x="124" y="296">按需</text>
+
+          <line class="ad-dash" x1="252" y1="196" x2="524" y2="88"/>
+          <circle class="ad-cold" cx="252" cy="196" r="5"/>
+          <circle class="ad-hot" cx="524" cy="88" r="5"/>
+          <text class="ad-tag ad-tag--a" x="206" y="214">子代理</text>
+          <text class="ad-tag ad-tag--b" x="532" y="82">单会话</text>
+
+          <line class="ad-dash" x1="300" y1="112" x2="190" y2="66"/>
+          <circle class="ad-hot" cx="300" cy="112" r="5"/>
+          <circle class="ad-cold" cx="190" cy="66" r="5"/>
+          <text class="ad-tag ad-tag--b" x="308" y="106">记忆</text>
+          <text class="ad-tag ad-tag--a" x="144" y="60">规则</text>
+
+          <line class="ad-dash" x1="402" y1="236" x2="318" y2="146"/>
+          <circle class="ad-risk" cx="402" cy="236" r="5"/>
+          <circle class="ad-cold" cx="318" cy="146" r="5"/>
+          <text class="ad-tag ad-tag--b" x="410" y="230">服务端压缩</text>
+          <text class="ad-tag ad-tag--a" x="246" y="132">本地压缩</text>
+        </svg>
+        <figcaption>图 01-1　六组取舍的“成本—连续性”位置：压缩早晚、裁剪摘要、预加载按需、子代理单会话、记忆规则、服务端本地。虚线两端是同一组选择的两种做法；位置为示意。越靠右上，越依赖大上下文；越靠左下，越依赖重新获取。</figcaption>
+      </figure>
+    </section>
+
+    <!-- ========== 02 ========== -->
+    <section id="early-late">
+      <p class="sec-no">02 · 取舍一</p>
+      <h2>压缩早，还是压缩晚</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（时间线图）。</p>
+
+      <h3>怎么跑</h3>
+      <p><strong>早压</strong>在窗口用到 70%–85% 时就动手。DeepSeek Harness 的默认阈值是 <code>thresholdRatio 0.8</code>；Grok Build 用 <code>85</code> 常量、grok-4.6 目录用 <code>80</code>；Codex 的范围线默认取 <code>min(模型声明上限, 窗口 × 90%)</code>。<a href="main-08.html#codex-trigger">主线第 8 章 2.1</a> 这些数字不完全相同，但都在“还留得下一轮工具调用”的位置。</p>
+      <p><strong>晚压</strong>把阈值推到 90%–95%。Codex 的整段硬线是窗口 × 95%；Claude Code 的自动压缩线是“有效窗口减 13k”，200k 窗口、20k 输出上限时约为 167k，也就是 83.5%。<a href="main-08.html#codex-trigger">主线第 8 章 2.1</a> 真正的“晚”不是某个固定百分比，而是“尽量拖到任务快结束”。</p>
+
+      <h3>省什么、丢什么</h3>
+      <p><strong>早压省的是失败概率。</strong>压缩请求本身也要装下待压缩的历史。越早压，待压缩的历史越短，压缩请求自己超窗的概率越低；压完之后，剩下的路还长，这一次前缀失效的成本可以被更多轮摊薄。</p>
+      <p><strong>早压丢的是细节寿命。</strong>一段对话本来还能再活十轮，你提前把它换成摘要，后面十轮都只能看摘要。文件里的精确行号、测试输出的具体断言、你当时那句“别动 public API”，都可能提前消失。</p>
+      <p><strong>晚压省的是摘要次数。</strong>每压一次，都要重发一段历史、生成一次摘要、制造一次前缀失效。晚压把次数压到最少，也让最近的工作状态保留得更久。</p>
+      <p><strong>晚压丢的是退路。</strong>压缩请求自己可能先撞墙。Codex 的处理是删掉最旧一条再重试；只剩一条时只能报错。<a href="main-08.html#codex-failure">主线第 8 章 2.5</a> 这时损失的不是钱，是历史。</p>
+
+      <p>粗算一下。设摘要请求重发 <code>H</code> 个 token，压缩后第一次请求要重算 <code>P</code> 个 token。压 <code>k</code> 次，账面成本约 <code>k × (H + P)</code>。晚压让 <code>k</code> 变小，却让“压缩请求超窗、被迫删历史”的概率变大。公式只是示意：<strong>压缩次数不是免费的，压得晚也不是免费的。</strong></p>
+
+      <figure class="fig" id="fig-early-late">
+        <svg viewBox="0 0 640 150" role="img" aria-labelledby="fig-el-title fig-el-desc">
+          <title id="fig-el-title">早压与晚压的时间线对比</title>
+          <desc id="fig-el-desc">两条各十二格的时间线。早压在第四格后切分，后面八格都看摘要，但压缩请求有充足余量。晚压在第九格后切分，保留更多原文，但第十一格出现溢出风险。</desc>
+          <text class="svg-note" x="12" y="24">早压 · 70%–85%</text>
+          <rect class="ad-keep" x="120" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="158" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="196" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-hot" x="234" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="272" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="310" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="348" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="386" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="424" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="462" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="500" y="12" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="538" y="12" width="34" height="24" rx="3"/>
+          <text class="ad-tag" x="582" y="30">余量</text>
+
+          <text class="svg-note" x="12" y="84">晚压 · 90%–95%</text>
+          <rect class="ad-keep" x="120" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="158" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="196" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="234" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="272" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="310" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="348" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-keep" x="386" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-hot" x="424" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="462" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-risk" x="500" y="72" width="34" height="24" rx="3"/>
+          <rect class="ad-box" x="538" y="72" width="34" height="24" rx="3"/>
+          <text class="ad-tag ad-tag--b" x="582" y="90">超窗</text>
+
+          <line class="ad-line" x1="120" y1="48" x2="572" y2="48"/>
+          <text class="ad-tag" x="120" y="64">橙色 = 压缩点；绿色 = 原文可见；灰色 = 只看摘要</text>
+          <text class="ad-tag" x="120" y="124">晚压多保留五格原文，也把压缩请求推到更靠近上限的位置</text>
+        </svg>
+        <figcaption>图 01-2　早压与晚压的时间线。橙色是压缩点，绿色是仍能看到原文的消息，灰色是只能看摘要的消息。晚压保留了更多原文，但压缩请求离上限更近。格数与位置为示意。</figcaption>
+      </figure>
+
+      <h3>什么场景选哪边</h3>
+      <ul>
+        <li><strong>早压</strong>：任务很长；工具输出很大；压缩请求曾超窗。</li>
+        <li><strong>晚压</strong>：只剩几轮；最近内容很贵；缓存节省大于多压一次。</li>
+        <li><strong>不压</strong>：只剩一两轮，且窗口装得下。</li>
+      </ul>
+      <p>先估剩余轮数 <code>R</code>：<code>R</code> 小且窗口还有 15% 余量，就不压；<code>R</code> 大，或待压缩历史里有 50k 以上的工具输出，就早压。</p>
+
+      <p><strong>代价一句话：</strong>早压用细节换确定性，晚压用确定性换细节。</p>
+    </section>
+
+    <!-- ========== 03 ========== -->
+    <section id="trim-summary">
+      <p class="sec-no">03 · 取舍二</p>
+      <h2>裁剪，还是摘要</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（可逆性对照图）。</p>
+
+      <h3>怎么跑</h3>
+      <p><strong>裁剪</strong>不调用模型。它只改“模型能看到的投影”：把旧工具结果换成占位符，把过期文件读取删掉，把空搜索折叠。原文还在会话日志里，需要时可以按路径重新读回。Claude Code 的 <code>microcompact</code> 有一条时间触发路径，<code>gapThresholdMinutes</code> 默认 60 分钟、<code>keepRecent</code> 默认 5 条，但整条路径默认 <code>disabled</code>；oh-my-pi 保护最近 40k、只有能省下 20k 才动；Grok Build 在超过 50% 窗口时做软裁剪，每次保留头尾各 1,500 字符，10 轮后硬清。<a href="main-07.html#tradeoffs">主线第 7 章</a></p>
+      <p><strong>摘要</strong>调用模型。它把一段历史交给另一个请求，生成一份交接笔记，再用笔记替换原文。摘要可以跨语义压缩：把“读了 20 个文件、跑了 3 次测试”写成一句“已完成依赖梳理，测试仍有两个失败”。代价是原文里的精确字符串、数字和行号通常不再回来。<a href="main-08.html#why-compaction">主线第 8 章</a></p>
+
+      <h3>省什么、丢什么</h3>
+      <p><strong>裁剪省 token，不省语义。</strong>它最适合“体积大、价值低、可重新获取”的内容：整份 lockfile、一次 80k 的测试日志、已经读过的文件全文。它不改变模型的理解，只让模型暂时看不见细节；需要时可再读一次。</p>
+      <p><strong>摘要省得更多，但不可逆。</strong>它能把 100k 的历史压到 2k，也能把散落在 40 轮里的决策收成一段。代价是“哪一句是原话”消失了。摘要模型可能把“不要改 public API”写成“保持 API 稳定”，意思接近，约束强度不同。</p>
+      <p><strong>先裁后压</strong>是常见的第三条路。DeepSeek Harness 在溢出恢复时先跑 pruner，再压缩；Claude Code 的文档也描述“先清旧工具输出、再摘要”，但源码里这条路径在外部构建默认不生效。<a href="main-07.html#tradeoffs">主线第 7 章</a> 先裁后压的好处是：压缩请求的输入更小，超窗概率更低；坏处是裁剪已经丢掉的东西，摘要也救不回来。</p>
+
+      <figure class="fig" id="fig-trim-summary">
+        <svg viewBox="0 0 640 160" role="img" aria-labelledby="fig-ts-title fig-ts-desc">
+          <title id="fig-ts-title">裁剪与摘要的体积和可逆性对比</title>
+          <desc id="fig-ts-desc">三行条形图。原文最长且完全可逆；裁剪后体积中等，原文仍在日志里；摘要后体积最小，但原文不再进入模型可见历史，只能从存档找回。</desc>
+          <text class="svg-note" x="12" y="28">原文</text>
+          <rect class="ad-keep" x="92" y="14" width="500" height="24" rx="4"/>
+          <text class="ad-tag" x="602" y="31">可逆</text>
+
+          <text class="svg-note" x="12" y="76">裁剪</text>
+          <rect class="ad-cold" x="92" y="62" width="300" height="24" rx="4"/>
+          <rect class="ad-box" x="396" y="62" width="196" height="24" rx="4"/>
+          <text class="ad-tag" x="602" y="79">可逆</text>
+
+          <text class="svg-note" x="12" y="124">摘要</text>
+          <rect class="ad-hot" x="92" y="110" width="120" height="24" rx="4"/>
+          <rect class="ad-box" x="216" y="110" width="376" height="24" rx="4"/>
+          <text class="ad-tag ad-tag--b" x="602" y="127">不可逆</text>
+
+          <text class="ad-tag" x="92" y="150">实色 = 模型可见；空心 = 已移出可见历史；长度示意</text>
+        </svg>
+        <figcaption>图 01-3　裁剪与摘要的体积、可逆性对比。裁剪只是把内容移出“模型可见的投影”，原文仍可读回；摘要用模型生成的文本替换原文，细节不可逆。长度仅示意。</figcaption>
+      </figure>
+
+      <h3>什么场景选哪边</h3>
+      <ul>
+        <li><strong>裁剪</strong>：重复读文件；日志长但只看结论；需要保留原文回读。</li>
+        <li><strong>摘要</strong>：决策散在很多轮；阶段已切换；可以接受“知道结论、不知道原话”。</li>
+        <li><strong>先裁后压</strong>：既有大块输出，又有大量决策；压缩请求经常接近上限。</li>
+      </ul>
+      <p>判断标准：<strong>这段内容以后还会被逐字引用吗？</strong> 会，就先裁剪；不会，就摘要。</p>
+
+      <p><strong>代价一句话：</strong>裁剪省的是体积，摘要省的是体积加语义；前者可逆，后者不可逆。</p>
+    </section>
+
+    <!-- ========== 04 ========== -->
+    <section id="preload-ondemand">
+      <p class="sec-no">04 · 取舍三</p>
+      <h2>预加载，还是按需加载</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（请求流对比图）。</p>
+
+      <h3>怎么跑</h3>
+      <p><strong>预加载</strong>把规则、技能正文、MCP 工具定义一次性放进请求。模型第一轮就能看到全部能力，不需要“先找工具、再调用”。代价是这些 token 每一轮都要付，而且工具表越大，模型越容易在无关工具上分心。</p>
+      <p><strong>按需加载</strong>先给目录，再给正文。Claude Code 的技能列表只放“名称 + 描述 + 何时使用”，每条描述硬截断 250 字符；MCP 工具默认延迟（<code>tst</code> 模式），另有按窗口 10% 触发的 <code>auto</code> 模式。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/SkillTool/prompt.ts#L20-L50">SkillTool/prompt.ts#L20-L50</a> <span class="tag tag--src">源码 v2.1.88</span> Codex 在模型支持 <code>supports_search_tool</code> 时，把 MCP 工具注册为延迟暴露，由 <code>tool_search</code> 拉取；Grok Build 则让 MCP 工具不进 <code>tools</code>，先 <code>search_tool</code> 再 <code>use_tool</code>。<a href="main-03.html#tradeoffs">主线第 3 章</a></p>
+
+      <h3>省什么、丢什么</h3>
+      <p><strong>预加载省一次往返。</strong>模型不用先检索、再读正文，首轮就能行动；工具定义稳定时，它还是缓存友好的，因为前缀不变。它丢的是“注意力预算”：工具越多，模型越可能选错，或者在系统提示里迷路。</p>
+      <p><strong>按需加载省常驻 token。</strong>一个 40 个工具的 MCP 服务器，完整 schema 可能占几万 token；目录只占几百。它丢的是“发现确定性”：模型可能不知道某个能力存在，也可能先花一轮检索。多一次检索，就多一次延迟、多一次失败点。<sup class="fn-ref"><a href="#fn-adv-01-1" id="fnref-adv-01-1">1</a></sup> 目录本身也要维护：描述太短，模型不知道何时用；太长，又回到预加载的体积。</p>
+
+      <figure class="fig" id="fig-preload">
+        <svg viewBox="0 0 640 156" role="img" aria-labelledby="fig-pl-title fig-pl-desc">
+          <title id="fig-pl-title">预加载与按需加载的请求流对比</title>
+          <desc id="fig-pl-desc">左侧预加载：一次请求里包含全部工具定义，首轮即可调用，但每轮都携带大工具表。右侧按需加载：首轮只带目录，模型先检索，再拉取完整定义，最后调用。</desc>
+          <text class="svg-note" x="12" y="22">预加载</text>
+          <rect class="ad-hot" x="12" y="32" width="270" height="26" rx="4"/>
+          <text class="ad-tag" x="24" y="50">系统提示 + 全部工具 schema + 技能正文</text>
+          <rect class="ad-keep" x="12" y="66" width="270" height="26" rx="4"/>
+          <text class="ad-tag" x="24" y="84">模型直接调用</text>
+          <text class="ad-tag" x="12" y="116">每轮都付这份体积；首轮无额外往返</text>
+
+          <text class="svg-note" x="330" y="22">按需加载</text>
+          <rect class="ad-cold" x="330" y="32" width="130" height="26" rx="4"/>
+          <text class="ad-tag" x="340" y="50">目录 / 描述</text>
+          <rect class="ad-box" x="468" y="32" width="72" height="26" rx="4"/>
+          <text class="ad-tag" x="478" y="50">检索</text>
+          <rect class="ad-keep" x="548" y="32" width="72" height="26" rx="4"/>
+          <text class="ad-tag" x="558" y="50">调用</text>
+          <line class="ad-line" x1="460" y1="45" x2="466" y2="45"/>
+          <line class="ad-line" x1="540" y1="45" x2="546" y2="45"/>
+          <text class="ad-tag" x="330" y="82">首轮只带目录；用到时再拉全文</text>
+          <text class="ad-tag" x="330" y="116">多一次往返；目录写不好就会漏能力</text>
+        </svg>
+        <figcaption>图 01-4　预加载与按需加载的请求流。左边把全部 schema 放进每一轮，右边先给目录再拉正文。体积与往返次数此消彼长，位置与宽度为示意。</figcaption>
+      </figure>
+
+      <h3>什么场景选哪边</h3>
+      <ul>
+        <li><strong>选预加载</strong>：工具少于 10 个且稳定；任务短、延迟敏感；模型经常需要在一个回合内连续调用多个工具。</li>
+        <li><strong>选按需</strong>：MCP 服务器多；技能库大；会话很长；工具使用频率低且集中。</li>
+        <li><strong>选混合</strong>：核心工具预加载，长尾工具延迟；规则文件预加载，技能正文按需。多数生产工具最后都会走到这里。</li>
+      </ul>
+      <p>判断标准：<strong>一份工具定义在 90% 的轮次里不调用，就延迟；每三轮调用一次，就预加载。</strong></p>
+
+      <p><strong>代价一句话：</strong>预加载把成本摊到每一轮，按需把成本集中到第一次使用。</p>
+    </section>
+
+    <!-- ========== 05 ========== -->
+    <section id="subagent-single">
+      <p class="sec-no">05 · 取舍四</p>
+      <h2>子代理，还是单会话</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（上下文边界图）。</p>
+
+      <h3>怎么跑</h3>
+      <p><strong>子代理</strong>开一份独立上下文。它有自己的系统提示、工具池、文件状态和预算；父会话只把任务描述送进去，子代理只把最终结果送回来。Claude Code 默认 <code>contextMessages = []</code>，也就是全新上下文；只读的 Explore / Plan 代理默认不注入 <code>CLAUDE.md</code>，也不注入 <code>gitStatus</code>。oh-my-pi 的 <code>task</code> 子会话默认深度 2，并要求 schema 校验返回；opencode v1/v2 默认深度 1；Grok Build 默认后台执行，可选 worktree 隔离。<a href="main-10.html#tradeoffs">主线第 10 章</a></p>
+      <p><strong>单会话</strong>把一切留在同一份历史里。模型能看到你前面说过的每一句约束、每一次失败、每一个被否决的方案。没有交接，也没有“子代理不知道上下文”的问题。</p>
+
+      <h3>省什么、丢什么</h3>
+      <p><strong>子代理省父上下文。</strong>120 个文件的搜索结果、7 次工具调用、3 个失败分支，都留在子会话里；父会话只多出“任务描述”和“最终返回”两段。它还能隔离错误：一个子代理跑偏，不会把父会话的推理链带歪。</p>
+      <p><strong>子代理丢共享语境。</strong>它不知道你十分钟前改过的约束，也不知道另一个子代理已经否决了某个方案。它要重新发现项目结构、重读规则、重踩坑；每一次“重新”都是 token 和时间。</p>
+      <p><strong>单会话省交接。</strong>约束、决策、失败原因都在眼前，模型不需要猜。它丢的是预算：上下文线性增长，压缩更早发生。另一个风险是“错误传染”：一次错误推理留在历史里，后续每一轮都可能被它带偏。</p>
+
+      <figure class="fig" id="fig-subagent-single">
+        <svg viewBox="0 0 640 156" role="img" aria-labelledby="fig-ss-title fig-ss-desc">
+          <title id="fig-ss-title">子代理与单会话的上下文边界</title>
+          <desc id="fig-ss-desc">左侧单会话：十二格历史全部留在父上下文，父上下文条很长。右侧子代理：父上下文只保留任务描述与最终返回两格，中间十格留在子会话的虚线框内。</desc>
+          <text class="svg-note" x="12" y="22">单会话</text>
+          <rect class="ad-hot" x="12" y="32" width="280" height="28" rx="4"/>
+          <text class="ad-tag" x="22" y="51">约束 + 20 次工具调用 + 3 次失败 + 决策</text>
+          <text class="ad-tag" x="12" y="84">父上下文持续增长；没有交接损失</text>
+
+          <text class="svg-note" x="330" y="22">子代理</text>
+          <rect class="ad-cold" x="330" y="32" width="60" height="28" rx="4"/>
+          <text class="ad-tag" x="338" y="51">任务</text>
+          <rect class="ad-box" x="396" y="32" width="150" height="28" rx="4"/>
+          <text class="ad-tag" x="404" y="51">子会话 10 格（父不可见）</text>
+          <rect class="ad-keep" x="552" y="32" width="66" height="28" rx="4"/>
+          <text class="ad-tag" x="560" y="51">返回</text>
+          <line class="ad-line" x1="390" y1="46" x2="396" y2="46"/>
+          <line class="ad-line" x1="546" y1="46" x2="552" y2="46"/>
+          <text class="ad-tag" x="330" y="84">父只多两段；子要重新发现语境</text>
+          <text class="ad-tag" x="330" y="116">返回过长时，父上下文会被“结果”撑爆</text>
+        </svg>
+        <figcaption>图 01-5　子代理与单会话的上下文边界。单会话把所有细节留在父上下文；子代理把中间过程关在虚线框里，只让任务与结果穿过边界。格数为示意。</figcaption>
+      </figure>
+
+      <h3>什么场景选哪边</h3>
+      <ul>
+        <li><strong>子代理</strong>：大范围搜索；独立审查；并行验证互斥假设；worktree 隔离。</li>
+        <li><strong>单会话</strong>：修改高度耦合；约束多且分散；需要频繁回看失败。</li>
+        <li><strong>混合</strong>：主会话负责实现，子代理负责查资料、跑验证；父会话只收结论与文件指针。</li>
+      </ul>
+      <p>判断标准：<strong>子任务需不需要知道主线的全部约束？</strong> 需要，就别拆；不需要，就拆，并且把“返回什么”写清楚。</p>
+
+      <p><strong>代价一句话：</strong>隔离买的是注意力，付的是重新发现。</p>
+    </section>
+
+    <!-- ========== 06 ========== -->
+    <section id="memory-rules">
+      <p class="sec-no">06 · 取舍五</p>
+      <h2>记忆，还是规则</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（分流图）。</p>
+
+      <h3>怎么跑</h3>
+      <p><strong>规则</strong>是确定性的文件。它按固定路径发现、按固定顺序合并、每次会话都注入。Codex 的 <code>AGENTS.md</code> 从项目根到 cwd 逐级拼接，总量受 <code>project_doc_max_bytes</code> 默认 32 KiB 约束，超出从尾部截断；DeepSeek Harness 的整条基线消息默认上限 64 KiB；Claude Code 的 <code>MEMORY.md</code> 入口限制 200 行 / 25,000 字节。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>记忆</strong>是学习出来的。它由模型或后台管线写入，按项目隔离，按相关性检索，允许不完整、允许过期。Claude Code 有 auto memory 与 session memory；Grok Build 用 <code>/flush</code> 在压缩前抢救、<code>/dream</code> 定期整理，session 记忆按 30 天半衰期衰减；oh-my-pi 有 5 个后端但默认关闭。<a href="main-12.html#tradeoffs">主线第 12 章</a></p>
+      <p><strong>只留会话</strong>是第三条基线：什么都不持久化，只让这一次对话知道。它最干净，也最健忘。</p>
+
+      <h3>省什么、丢什么</h3>
+      <p><strong>规则省重复发现，付每轮 token。</strong>“不要改 public API”“测试命令是 <code>pnpm test:unit</code>”写进规则文件，就不依赖模型记不记得。代价是规则一直在上下文里，占用预算；规则太细会变成没人维护的长文档，规则太粗又挡不住具体错误。</p>
+      <p><strong>记忆省上下文，付可信度。</strong>它只在相关时被检索进来，体积小、适应性强。代价是它可能错，而且错误会跨会话复利：一次错误的“这个项目用 Jest”会被写进记忆，下一次会话一进门就被注入。<sup class="fn-ref"><a href="#fn-adv-01-2" id="fnref-adv-01-2">2</a></sup></p>
+      <p><strong>只留会话最省，付重复成本。</strong>同类问题第二次出现时，模型要从头再发现一遍。它适合一次性任务，不适合长期项目。</p>
+
+      <figure class="fig" id="fig-memory-rules">
+        <svg viewBox="0 0 640 160" role="img" aria-labelledby="fig-mr-title fig-mr-desc">
+          <title id="fig-mr-title">一条事实的三条去向：规则、记忆、会话</title>
+          <desc id="fig-mr-desc">一条新事实从左侧进入判断。若错了后果不可接受，进入规则文件；若跨会话有用且可纠正，进入记忆；若只对本次有效，留在会话。</desc>
+          <rect class="ad-box" x="12" y="58" width="120" height="36" rx="5"/>
+          <text class="svg-label" x="72" y="81" text-anchor="middle">一条新事实</text>
+
+          <line class="ad-line" x1="132" y1="76" x2="186" y2="34"/>
+          <line class="ad-line" x1="132" y1="76" x2="186" y2="76"/>
+          <line class="ad-line" x1="132" y1="76" x2="186" y2="118"/>
+
+          <rect class="ad-cold" x="190" y="16" width="180" height="36" rx="5"/>
+          <text class="svg-label" x="280" y="39" text-anchor="middle">规则文件</text>
+          <text class="ad-tag" x="380" y="31">错了不可接受</text>
+          <text class="ad-tag" x="380" y="47">要 review、要版本</text>
+
+          <rect class="ad-hot" x="190" y="58" width="180" height="36" rx="5"/>
+          <text class="svg-label" x="280" y="81" text-anchor="middle">跨会话记忆</text>
+          <text class="ad-tag" x="380" y="73">有用、可纠正</text>
+          <text class="ad-tag" x="380" y="89">允许过期与衰减</text>
+
+          <rect class="ad-keep" x="190" y="100" width="180" height="36" rx="5"/>
+          <text class="svg-label" x="280" y="123" text-anchor="middle">只留本次会话</text>
+          <text class="ad-tag" x="380" y="115">一次性</text>
+          <text class="ad-tag" x="380" y="131">不复用</text>
+
+          <text class="ad-tag" x="12" y="150">判断顺序：先问后果，再问复用，最后问审计</text>
+        </svg>
+        <figcaption>图 01-6　一条事实的三条去向。先问“错了会不会不可接受”，再问“跨会话有没有用”，最后问“需不需要审计与版本”。三条路都要占上下文，只是占的方式不同。</figcaption>
+      </figure>
+
+      <h3>什么场景选哪边</h3>
+      <ul>
+        <li><strong>规则</strong>：安全边界；public API；测试命令；目录结构。</li>
+        <li><strong>记忆</strong>：风格偏好；常见坑；模块的历史原因。</li>
+        <li><strong>会话</strong>：一次性排查；临时分支；只对今天有效的决定。</li>
+      </ul>
+      <p>判断标准是一句话：<strong>这条信息错了，会不会造成不可接受的后果？</strong> 会，就写规则；不会，但跨会话有用，就写记忆；只对这一次有效，就留在会话。</p>
+
+      <p><strong>代价一句话：</strong>规则买确定性，记忆买适应性，两者都用上下文付费。</p>
+    </section>
+
+    <!-- ========== 07 ========== -->
+    <section id="server-local">
+      <p class="sec-no">07 · 取舍六</p>
+      <h2>服务端压缩，还是本地压缩</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（边界图）。</p>
+
+      <h3>怎么跑</h3>
+      <p><strong>服务端压缩</strong>把“压什么、怎么压”交给 provider。客户端只发请求，拿回一段替换后的历史，或者一个 provider 自己维护的加密窗口。Codex 的远端 v2 压缩保留消息共享 64k 预算、单条上限 10k、流重试 2 次，并要求响应里的 <code>compaction_count</code> 恰好为 1；opencode v2 在模型元数据声明 <code>compaction.type === "native"</code> 时走原生压缩，拿回加密窗口；oh-my-pi 的默认方法链第一项就是 <code>remote</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L87-L91">compact_remote_v2.rs#L87-L91</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>本地压缩</strong>由客户端自己选候选、写模板、拼摘要、决定重附什么。Codex 本地只把真实用户消息纳入候选，预算 20k；Claude Code 压缩后按固定清单重附最近 5 个文件（每个 5k、总 50k）和本会话用过的技能（每个 5k、总 25k）；pi 保留 20k；DeepSeek Harness 保留窗口的 16%。<a href="main-08.html#codex-candidates">主线第 8 章 2.2</a></p>
+
+      <h3>省什么、丢什么</h3>
+      <p><strong>服务端省维护。</strong>不用自己处理切点、工具配对、超窗重试、模板版本；provider 升级，客户端跟着受益。它丢的是控制权：你看不到候选选择，改不了摘要模板，也很难要求“这三条约束必须逐字保留”。<sup class="fn-ref"><a href="#fn-adv-01-3" id="fnref-adv-01-3">3</a></sup></p>
+      <p><strong>本地省控制权。</strong>你可以把领域约束写进摘要提示词，可以在压缩后重附文件，可以把摘要写进自己的日志，可以换模型、换 provider。它丢的是维护成本：切点算法、配对校验、失败兜底、模板回归，都要自己写。</p>
+      <p><strong>混合路线</strong>先试服务端，失败再走本地。oh-my-pi 的方法链就是这个结构：<code>remote</code> 不可用就逐级回退。它把“省维护”和“有退路”放在一起，代价是两条链都要测。</p>
+
+      <figure class="fig" id="fig-server-local">
+        <svg viewBox="0 0 640 150" role="img" aria-labelledby="fig-sl-title fig-sl-desc">
+          <title id="fig-sl-title">服务端压缩与本地压缩的可见边界</title>
+          <desc id="fig-sl-desc">一条竖线把客户端与服务端分开。本地压缩在客户端内完成候选选择、摘要、重附；服务端压缩只把请求发过去，拿回替换历史，中间过程不可见。</desc>
+          <rect class="ad-box" x="12" y="16" width="250" height="116" rx="6"/>
+          <text class="svg-note" x="24" y="36">客户端</text>
+          <rect class="ad-cold" x="24" y="48" width="100" height="26" rx="4"/>
+          <text class="ad-tag" x="34" y="66">选候选</text>
+          <rect class="ad-cold" x="132" y="48" width="112" height="26" rx="4"/>
+          <text class="ad-tag" x="142" y="66">写摘要 / 重附</text>
+          <text class="ad-tag" x="24" y="100">本地：全过程可见、可改</text>
+
+          <line class="ad-axis" x1="286" y1="16" x2="286" y2="132"/>
+
+          <rect class="ad-box" x="310" y="16" width="318" height="116" rx="6"/>
+          <text class="svg-note" x="322" y="36">服务端</text>
+          <rect class="ad-risk" x="322" y="48" width="286" height="26" rx="4"/>
+          <text class="ad-tag" x="332" y="66">候选、模板、切点、重试（不可见）</text>
+          <text class="ad-tag" x="322" y="100">返回替换历史 / 加密窗口；客户端只认结果</text>
+          <text class="ad-tag" x="322" y="120">控制权少，维护成本也少</text>
+        </svg>
+        <figcaption>图 01-7　服务端压缩与本地压缩的可见边界。左边客户端自己完成候选、摘要与重附；右边客户端只发请求、收结果。边界位置为示意。</figcaption>
+      </figure>
+
+      <h3>什么场景选哪边</h3>
+      <ul>
+        <li><strong>服务端</strong>：单一 provider；任务通用；没有人力维护压缩链路。</li>
+        <li><strong>本地</strong>：合规或审计；必须保留领域约束；多 provider 可移植。</li>
+        <li><strong>混合</strong>：服务端为主、本地兜底；或反过来。</li>
+      </ul>
+      <p>判断标准：<strong>能不能接受“摘要少了哪一句，你看不见”？</strong> 能，服务端更省；不能，本地更稳。</p>
+
+      <p><strong>代价一句话：</strong>服务端压缩用控制权换维护成本，本地压缩反过来。</p>
+    </section>
+
+    <!-- ========== 08 ========== -->
+    <section id="compose">
+      <p class="sec-no">08 · 把六个选择拼起来</p>
+      <h2>先定约束，再定顺序</h2>
+      <p>六组取舍会互相抵消：早压加“只留摘要、不重附”，细节丢得更快；子代理加自由文本长返回，父上下文会被“结果”撑爆。策略是一组互相匹配的选择。</p>
+
+      <p>下面这个顺序，把“不可协商的约束”放在最前面：</p>
+      <ol>
+        <li><strong>先写规则</strong>：安全、API、测试命令、目录结构。它们不参与压缩，也不该靠记忆。</li>
+        <li><strong>再定隔离</strong>：任务耦合度高就单会话；需要大范围搜索或独立验证就子代理。</li>
+        <li><strong>再定加载</strong>：核心工具预加载，长尾工具按需；规则预加载，技能正文按需。</li>
+        <li><strong>再定预算</strong>：任务长、工具输出大就早压；任务短、最近细节贵就晚压或不压。</li>
+        <li><strong>再定减量顺序</strong>：先裁剪可重取的旧结果，再摘要不可重取的决策。</li>
+        <li><strong>最后定压缩位置</strong>：单 provider 先服务端；有合规或多 provider 需求就本地。</li>
+      </ol>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">你的情况</th>
+              <th scope="col">先选</th>
+              <th scope="col">代价</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">整夜批处理，工具输出大</th>
+              <td>早压 + 先裁后压 + 规则文件固化约束</td>
+              <td>细节寿命短；要维护两条减量链路。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">二三十轮就结束，最近细节贵</th>
+              <td>晚压或不压 + 缓存友好前缀</td>
+              <td>压缩请求可能超窗；一旦超窗要删历史。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">MCP 服务器很多，工具很少用</th>
+              <td>按需加载 + 核心工具预加载</td>
+              <td>多一次往返；描述决定命中率。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">修改高度耦合，约束分散</th>
+              <td>单会话 + 规则文件 + 晚压</td>
+              <td>增长快；压缩后易丢约束，要做校验。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">大范围搜索、独立审查</th>
+              <td>子代理 + 结构化返回 + 父端限额</td>
+              <td>子代理要重新发现；返回过长会撑爆父上下文。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">多 provider、合规审计</th>
+              <td>本地压缩 + 规则文件 + 自建指标</td>
+              <td>切点、配对、兜底、模板回归都要自维护。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：每行是一组组合，不是单一开关；代价列写最常见账单。</p>
+
+      <h3>三种常见的错误组合</h3>
+      <p><strong>组合一：早压 + 只留摘要 + 不重附。</strong> 三件事都在省 token，叠加起来就把细节省没了。症状是模型记得目标，忘了约束。修法不是关掉压缩，而是把约束移进规则文件，并在压缩后做校验。</p>
+      <p><strong>组合二：晚压 + 大工具输出。</strong> 两件事都在把上下文推向极限。压缩请求可能先超窗，工具只能删最旧历史。修法是先裁大块结果，再压缩；或者把阈值提前。</p>
+      <p><strong>组合三：子代理 + 自由文本长返回。</strong> 子代理省下的父上下文，被返回一次性还回去。三个各返回 10k 字，父上下文就多 30k。修法是定 schema 与上限，全文落盘，只回结论与文件指针。</p>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">一张代价清单</p>
+        <p>选完任何一组，问五个问题：一，丢了什么还能重新获取？二，丢了什么不能？三，多花的 token 花在哪一轮？四，失败时有没有退路？五，这个选择在任务变长时会变坏吗？五个问题里有两个答不上来，就说明你选的不是策略，是习惯。</p>
+      </div>
+    </section>
+
+    <!-- ========== 09 ========== -->
+    <section id="recap">
+      <p class="sec-no">09 · 小结</p>
+      <h2>把“为什么”留在纸面上</h2>
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>压缩早晚看“剩余轮数”和“压缩请求余量”，不看单一百分比。</li>
+            <li>裁剪可逆、摘要不可逆；先裁后压能降低超窗概率。</li>
+            <li>子代理买隔离，付重新发现；返回上限决定它是帮手还是负担。</li>
+            <li>规则买确定性，记忆买适应性；硬约束不进规则，就会在压缩里裸奔。</li>
+            <li>服务端压缩省维护，本地压缩省控制权。</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="footer-note">下一章：<a href="adv-02.html">失败案例分析</a>。那一页把取舍放进五个事故，并用交互演示放大“多次压缩”的累积损失。</p>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-adv-01-1">
+          本条为【推断】。已核对 Claude Code 技能列表的 250 字符描述、Codex 的 <code>supports_search_tool</code>、Grok Build 的 <code>search_tool</code> / <code>use_tool</code>；没有找到“多一次检索往返”的延迟或失败率统计，缺端到端时延数据；正文只写“多一次往返、多一个失败点”。
+          <a class="footnotes__back" href="#fnref-adv-01-1">↩</a>
+        </li>
+        <li id="fn-adv-01-2">
+          本条为【推断】。已核对 Claude Code 的 auto memory 入口上限、Grok Build 的 <code>/flush</code> 与 <code>/dream</code>、session 记忆的 30 天半衰期；没有找到错误记忆造成任务失败率的公开评测，缺长期 A/B 数据。正文只写“错误会跨会话复利”。
+          <a class="footnotes__back" href="#fnref-adv-01-2">↩</a>
+        </li>
+        <li id="fn-adv-01-3">
+          本条为【推断】。已核对 Codex 远端 v2 压缩、opencode v2 的 <code>native</code> 分支、oh-my-pi 的 <code>remote</code> 方法；三处都只描述“返回替换历史或加密窗口”，没有找到“可注入自定义约束模板”的接口，缺 provider 侧文档与实测。因此正文只写“控制权较少”。
+          <a class="footnotes__back" href="#fnref-adv-01-3">↩</a>
+        </li>
+      </ol>
+    </div>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

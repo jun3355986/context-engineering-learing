@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>窗口装得下，不等于模型用得好 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+</head>
+<body data-chapter="intro-04">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第一部分 · 入门</b><span>·</span><span>第 04 章</span></p>
+      <h1>窗口装得下，不等于模型用得好</h1>
+      <p class="lede">容量是一回事，注意力是另一回事。塞满窗口，只是把问题从“放不下”换成了“找不到”。</p>
+      <ul class="meta">
+        <li>约 13 分钟</li>
+        <li>前置：intro-01</li>
+        <li>L1 → L2</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>区分名义窗口与有效上下文，各举一个例子。</li>
+          <li>解释位置效应与 context rot，并判断哪类信息会被“看见却没用上”。</li>
+          <li>用“少而准”替换“多而全”，说出三种具体做法。</li>
+        </ol>
+      </div>
+    </header>
+
+    <section>
+      <p class="sec-no">01 · 材料都给了，它偏偏漏掉第二条</p>
+      <h2>“测试环境没有外网”</h2>
+      <p>你把两千行网关日志、三个相关文件、外加五条历史约束，一起粘贴进去，问：「这个请求为什么超时？」</p>
+      <p>它给了一段很像样的分析：连接池、重试次数、DNS 缓存。你等着它说“测试环境没有外网，所以这个探活注定失败”，它没说。那条约束就在你消息的第二条，白纸黑字。</p>
+      <p>你把那句话单独再发一遍。它立刻道歉，改口，答案就对了。整段材料一个字没多、一个字没少，变的只是那句话的位置。</p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 装进去，不等于被看见</p>
+        <p>模型这一次确实“读到了”全部材料——它没有超窗，也没有报错。但它把注意力分给了那些更像“典型超时原因”的段落，漏掉了你写的那句例外。这类失败不会报错，只会给你一个看起来合理、实际不对的答案。</p>
+      </div>
+
+      <p class="lead-in">说白了，窗口是桌子的大小，不是屋里所有人的注意力。</p>
+      <p>前两章都在算“装不装得下”。这一章算另一笔账：装进去之后，还有多少真的被用上。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">02 · 两个词要分开</p>
+      <h2>名义窗口与有效上下文</h2>
+      <p><strong>上下文窗口（context window）</strong>是名义容量：模型一次最多能接收多少 token。它是一个硬数字，写在模型规格里。</p>
+      <p><strong>有效上下文（effective context）</strong>是另一回事：在这堆材料里，模型实际能稳定用上的那部分。它没有官方数字，只能靠任务表现去测。</p>
+      <p>开会打比方：会议室能坐五十人，这是容量；但真正能形成结论的，往往是前十分钟的发言和最后拍板那几句。坐满五十人，不等于五十个人都参与了决策。</p>
+      <p>这也是为什么 <code>/context</code> 这类命令解决不了这个问题。它按类别列出系统提示、工具、规则、消息各占多少<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/analyzeContext.ts#L918-L1000">analyzeContext.ts#L918-L1000</a>），量的是容量；它不会告诉你“这段材料里有多少真的会被用上”。
+      <p>所以“我有 100 万 token 窗口”回答的是容量问题；它不回答“放进去 80 万，模型还能不能找到第 2 条约束”。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">03 · 位置效应：中段最容易被跳过</p>
+      <h2>同样的材料，放在不同位置，结果不一样</h2>
+      <p>研究者做过一类很直接的实验：把一段关键信息放在长文档的开头、中间、结尾，其他内容不变，看模型能不能用上它。结论形状很稳定——<strong>两头好，中间差</strong>。这个现象有个形象的名字：<strong>lost in the middle（中段遗失）</strong>。<span class="tag tag--todo">待核实</span><sup class="fn-ref"><a href="#fn-intro-04-1" id="fnref-intro-04-1">1</a></sup></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 260" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">关键信息所在位置与它被用上的概率</title>
+          <desc id="fig-1-desc">一条 U 形曲线：关键信息放在材料最开头时概率最高，越往中间越低，到中段最低，接近结尾又开始回升。纵轴只标高低，不标具体数值。</desc>
+          <line class="svg-rule" x1="56" y1="20" x2="56" y2="210"/>
+          <line class="svg-rule" x1="56" y1="210" x2="608" y2="210"/>
+          <text class="svg-note" x="20" y="34">高</text>
+          <text class="svg-note" x="20" y="206">低</text>
+          <text class="svg-note" x="52" y="230" text-anchor="middle">开头</text>
+          <text class="svg-note" x="332" y="230" text-anchor="middle">中间</text>
+          <text class="svg-note" x="604" y="230" text-anchor="end">结尾</text>
+
+          <path d="M56 42 C160 60 230 150 332 168 C430 184 520 96 608 66" fill="none" stroke="var(--accent)" stroke-width="3"/>
+          <circle cx="56" cy="42" r="5" fill="var(--accent)"/>
+          <circle cx="332" cy="168" r="5" fill="var(--orange)"/>
+          <circle cx="608" cy="66" r="5" fill="var(--accent)"/>
+
+          <text class="svg-note" x="66" y="34">放开头，最容易用上</text>
+          <text class="svg-note" x="332" y="192" text-anchor="middle">放中间，最容易被跳过</text>
+          <text class="svg-note" x="600" y="56" text-anchor="end">放结尾，又回升</text>
+          <text class="svg-note" x="56" y="252">曲线形状为示意，不代表任何具体模型的实测数值。</text>
+        </svg>
+        <figcaption>图 1　位置效应的典型形状（示意）：同样一句话，放在开头或结尾，比放在中间更容易被用上。所以“写在前面”不只是礼貌，是有效性问题。</figcaption>
+      </figure>
+
+      <p>这解释了很多“它明明看到了”的争论。模型确实读到了那段文字，但在生成答案时，中间位置的信息分到的权重更低。你越往后堆，越容易把关键约束埋进中段。</p>
+      <p>在多轮会话里，“中间”还有第二层含义：不只是某份文档的中段，也是整段会话的中段。第 3 轮到第 15 轮的讨论，既不在最新几条消息里，也不在你开头写的那段背景里，正好落在两头之间。这就是为什么聊得越久，中间那些“说好过”的决定越容易失效。</p>
+
+      <div class="hf hf--think">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <div class="hf__body">
+          <p>同样一句“不要改数据库 schema”，一次放在任务开头，一次夹在两段日志中间。哪次更容易被遵守？</p>
+          <p class="small muted">提示：想想图 1 的曲线，再想想你平时把约束写在哪。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <p class="sec-no">04 · 变长本身就会掉分</p>
+      <h2>context rot：不是找不到，是用不好</h2>
+      <p>位置效应说的是“放在哪”。还有一层更麻烦的：<strong>只要材料变长，即使任务没变、干扰不多，整体表现也会下降</strong>。社区给这个现象起了个名字，叫 context rot（上下文腐化）。<span class="tag tag--todo">待核实</span><sup class="fn-ref"><a href="#fn-intro-04-2" id="fnref-intro-04-2">2</a></sup></p>
+      <p>原因是多重的：注意力被摊薄；长材料里更容易出现相互矛盾的说法；模型倾向于复用最近看到的模式，而不是最早写下的规则。结果就是那句熟悉的抱怨——“前面说得好好的，怎么到后面就变了”。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 240" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">同一个信号在短上下文与长上下文里的占比</title>
+          <desc id="fig-2-desc">上排是短上下文，一条关键信息占较大比例；下排是长上下文，同一条信息只占很小一段，其余被日志和无关文件填满，信号被稀释。</desc>
+          <text class="svg-note" x="0" y="40">短上下文</text>
+          <rect class="svg-track" x="110" y="22" width="210" height="30" rx="6"/>
+          <rect class="svg-seg--b" x="111" y="23" width="42" height="28" rx="4"/>
+          <text class="svg-note" x="336" y="42">关键信息占 20%</text>
+
+          <text class="svg-note" x="0" y="112">长上下文</text>
+          <rect class="svg-track" x="110" y="94" width="480" height="30" rx="6"/>
+          <rect class="svg-seg--b" x="111" y="95" width="42" height="28" rx="4"/>
+          <text class="svg-note" x="170" y="116" font-size="15" fill="var(--orange)">同一句话只占 8% 左右</text>
+
+          <text class="svg-note" x="110" y="150">灰格＝日志、旧工具结果、无关文件；绿格＝那条关键约束。</text>
+          <path class="svg-rule" d="M590 94v30" fill="none"/>
+          <text class="svg-note" x="110" y="188">模型不是没读到绿格，是它周围的灰格太多，</text>
+          <text class="svg-note" x="110" y="212">生成答案时更可能顺着灰格的模式走。</text>
+        </svg>
+        <figcaption>图 2　同一个信号，在短上下文里占 20%，塞进长上下文后只剩 8% 左右（示意）。信号没变，稀释它的噪声变了。</figcaption>
+      </figure>
+
+      <p>噪声不只是“无关”，还包括<strong>冲突</strong>。规则文件说“用 pnpm”，历史里某条报错说“npm install 失败”，模型就得在这两条里选一个。冲突越多，选错的概率越高——哪怕两条都写得清清楚楚。</p>
+      <p>冲突还分显性和隐性。显性的是两条规则互相打脸；隐性的是同一条规则在不同层级各写了一遍，措辞略不同。后者更麻烦，因为你会以为它们在表达同一件事，模型却可能读成两个约束。维护规则文件时，删掉重复比补充新条目更有价值。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">05 · 所以，少而准</p>
+      <h2>把“多给点总没坏处”改成“只给这一轮要用的”</h2>
+      <p>承认了有效上下文这回事，做法就变了。三个立刻能用的动作：</p>
+      <ul>
+        <li><strong>只贴相关片段</strong>：不要整份日志，给报错前后三十行；不要整个目录，给命中的文件。</li>
+        <li><strong>把约束放在两头</strong>：开头说一次，任务快结束时再说一次。不是啰嗦，是绕开中段。</li>
+        <li><strong>把探索丢给子代理</strong>：让它去翻十个文件，只把结论带回来，别把十份原文带回主会话。</li>
+      </ul>
+      <p>贴材料前，先过三个问题：这段内容这一轮真的会被引用吗？它有没有可能和已有规则冲突？如果它只是“以后可能有用”，那就别贴，等要用时再读。第三个问题的答案通常是“不贴”——因为“以后”真的到了，你可以再读一次。</p>
+      <p>工具自己也在这么做。Claude Code 的只读子代理默认不注入 <code>CLAUDE.md</code>，源码注释给出的理由是每周能省下 5–15 Gtok<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L370-L410">runAgent.ts#L370-L410</a>）。Codex 的压缩摘要模板里专门留了“约束与偏好”一节，就是为了让这类容易被埋掉的信息在压缩后还活着<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/prompts/templates/compact/prompt.md#L1-L9">prompt.md#L1-L9</a>）。</p>
+      <p>对团队来说，这条结论还有一个不客气的推论：<strong>规则文件不是越长越好。</strong>每加一条“以防万一”，都在稀释真正重要的那几条。定期删掉已经失效、重复、和代码里已能看出来的规矩，比继续追加更有收益。</p>
+
+      <div class="hf hf--qa">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <div class="hf__body">
+          <p class="hf__q">问：那我把所有重要内容都放开头，不就行了？</p>
+          <p class="hf__a">答：开头的位置也有限，而且它会挤掉历史。更划算的做法是“重复关键约束”，而不是“把所有材料前移”。一句话重复两次的成本，远低于把两万 token 的日志搬来搬去。真正的目标是提高信噪比，不是调整搬运顺序。</p>
+        </div>
+      </div>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>名义窗口是容量，有效上下文是实际用得上的部分，两者不是一回事。</li>
+            <li>位置效应：开头和结尾的信息更容易被用上，中段最容易被跳过。</li>
+            <li>context rot：材料变长，即使任务不变，整体表现也会下降。</li>
+            <li>噪声和冲突都会稀释信号；两条都写清楚的矛盾规则，比一条模糊规则更危险。</li>
+            <li>少而准：只贴相关片段、关键约束放两头、探索交给子代理。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note">下一章：Prompt cache 与成本（第 5 章）——“少而准”省的是注意力，接下来算一笔更直接的钱。</p>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-intro-04-1">
+          事实卡片未收录 lost in the middle 的实验数据，本章按公开研究的定性结论表述。已核对的是：位置效应的方向（两头优于中段）在多组长上下文实验中反复出现；缺的是本次未重新抓取原论文，因此不引用具体降幅、模型名单与实验设置，图 1 的曲线只表示形状。若要写进评测章节，需补原始论文的表格数据。
+          <a class="footnotes__back" href="#fnref-intro-04-1">↩</a>
+        </li>
+        <li id="fn-intro-04-2">
+          context rot 目前是行业报告与工程观察里的说法，不是模型规格里的官方指标。已核对的是：长输入下任务表现下降这一现象被多家工具的设计间接承认（如只读子代理省略 CLAUDE.md、压缩模板单列“约束与偏好”）；缺的是统一的测量口径与跨模型对照数据，所以正文只写趋势，不写百分比。
+          <a class="footnotes__back" href="#fnref-intro-04-2">↩</a>
+        </li>
+      </ol>
+    </div>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

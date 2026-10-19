@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>16 类 × 8 工具总表 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  body[data-chapter="appendix-matrix"] #appendix-matrix .data-table {
+    min-width: 1660px;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  body[data-chapter="appendix-matrix"] #appendix-matrix .data-table th[scope="row"] {
+    min-width: 104px;
+    max-width: 118px;
+    white-space: normal;
+  }
+  body[data-chapter="appendix-matrix"] #appendix-matrix .data-table td {
+    min-width: 176px;
+  }
+  body[data-chapter="appendix-matrix"] #appendix-matrix .data-table td .tag {
+    margin-right: 2px;
+  }
+  body[data-chapter="appendix-matrix"] #appendix-matrix .data-table td .small {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+  body[data-chapter="appendix-matrix"] #appendix-matrix .data-table thead th {
+    white-space: normal;
+    min-width: 96px;
+  }
+</style>
+</head>
+<body data-chapter="appendix-matrix">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>附录</b><span>·</span><span>速查</span></p>
+      <h1>16 类 × 8 工具总表</h1>
+      <p class="lede">这张表是整本教程的压缩版：行是 16 类上下文能力，列是 8 个工具，每格一句话结论加可信度与来源缩写。它不替代正文，只帮你快速定位「谁做了什么、这个结论有多硬」。</p>
+      <ul class="meta">
+        <li>128 格</li>
+        <li>16 类 · 8 工具</li>
+        <li>10 格推断</li>
+        <li>1 格待核实</li>
+      </ul>
+      <div class="callout callout--quiet">
+        <p class="callout__title">读法</p>
+        <p>每格格式是<strong>一句话结论【可信度 · 来源】</strong>。来源缩写：<code>c</code>=Codex、<code>cc</code>=Claude Code、<code>p</code>=pi、<code>o</code>=oh-my-pi、<code>v1</code>=opencode v1、<code>v2</code>=opencode v2、<code>g</code>=Grok Build、<code>d</code>=DeepSeek Harness；<code>§n</code> 指该工具事实卡片的第 n 节。</p>
+        <p>Claude Code 的「已核实」均指 <strong>v2.1.88 源码</strong>；需要与官方文档交叉核对时，正文另标来源类型。「无此能力」是结论，不是「没查到」。整格空白只出现在确实没有该机制的 5 处；半空白（只覆盖一部分场景）按部分能力写，不写成有。</p>
+      </div>
+    </header>
+
+    <div id="appendix-matrix">
+
+      <section id="matrix-table">
+        <p class="sec-no">01 · 总表</p>
+        <h2>横向滚动，首列固定</h2>
+        <p>表格较宽：在手机上左右滑动，首列「类别」会固定。点击浏览器页内搜索可以按工具名或能力名直接定位；每一格的 permalink 在对应主线章与事实卡片里，本页只保留来源缩写。</p>
+
+        <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">类别</th>
+                <th scope="col">Codex</th>
+                <th scope="col">Claude Code</th>
+                <th scope="col">pi</th>
+                <th scope="col">oh-my-pi</th>
+                <th scope="col">opencode v1</th>
+                <th scope="col">opencode v2</th>
+                <th scope="col">Grok Build</th>
+                <th scope="col">DeepSeek Harness</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" class="cell-tool">请求组装<span>01</span></th>
+                <td>Prompt 四块；增量工具时置空 tools<span class="tag tag--ok">已核实</span> <span class="small muted">c§1</span></td>
+                <td>系统提示静态 7 段+边界+动态段<span class="tag tag--ok">已核实</span> <span class="small muted">cc§1</span></td>
+                <td>树投影成请求；system 按具名 section 拼<span class="tag tag--ok">已核实</span> <span class="small muted">p§1</span></td>
+                <td>叶到根重建：摘要+保留段+后续<span class="tag tag--ok">已核实</span> <span class="small muted">o§1</span></td>
+                <td>四类 system 块折成一条 system 串<span class="tag tag--ok">已核实</span> <span class="small muted">v1§1</span></td>
+                <td>至多两段 system：agent.system+基线<span class="tag tag--ok">已核实</span> <span class="small muted">v2§1</span></td>
+                <td>模板渲染提示词；首条用户消息塞规则清单<span class="tag tag--ok">已核实</span> <span class="small muted">g§1</span></td>
+                <td>system 作为会话事件；section 按 order 拼<span class="tag tag--guess">推断</span> <span class="small muted">d§1</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">规则文件发现与合并<span>02</span></th>
+                <td>AGENTS.md 根→cwd 逐级拼接，32 KiB 截断<span class="tag tag--ok">已核实</span> <span class="small muted">c§2</span></td>
+                <td>Managed→User→逐级目录→Local，拼接不覆盖<span class="tag tag--ok">已核实</span> <span class="small muted">cc§2</span></td>
+                <td>5 个候选名取首个；全局+祖先链<span class="tag tag--ok">已核实</span> <span class="small muted">p§2</span></td>
+                <td>6 类 provider+depth 排序+包含去重<span class="tag tag--ok">已核实</span> <span class="small muted">o§2</span></td>
+                <td>AGENTS/CLAUDE/CONTEXT 首个命中类型生效<span class="tag tag--ok">已核实</span> <span class="small muted">v1§2</span></td>
+                <td>只有 AGENTS.md；全局+祖先链+热更新<span class="tag tag--ok">已核实</span> <span class="small muted">v2§2</span></td>
+                <td>6 个候选全加载+三套 rules 目录<span class="tag tag--ok">已核实</span> <span class="small muted">g§2</span></td>
+                <td>AGENTS/CLAUDE 链，64 KiB 预算<span class="tag tag--ok">已核实</span> <span class="small muted">d§2</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">按需加载与渐进披露<span>03</span></th>
+                <td>Skills 描述先行；MCP 按模型开关延迟<span class="tag tag--ok">已核实</span> <span class="small muted">c§3</span></td>
+                <td>技能描述 250 字符；MCP 默认延迟，阈值 10%<span class="tag tag--ok">已核实</span> <span class="small muted">cc§3</span></td>
+                <td>技能只给名+描述+路径，正文用 read 取<span class="tag tag--ok">已核实</span> <span class="small muted">p§3</span></td>
+                <td>技能/规则走 URL 按需读；MCP 目录化<span class="tag tag--ok">已核实</span> <span class="small muted">o§3</span></td>
+                <td>技能三段式；MCP 默认全量下发<span class="tag tag--ok">已核实</span> <span class="small muted">v1§3</span></td>
+                <td>Code Mode：MCP 不进工具定义，靠 execute<span class="tag tag--ok">已核实</span> <span class="small muted">v2§3</span></td>
+                <td>MCP 不进 tools；search_tool 检索后调用<span class="tag tag--ok">已核实</span> <span class="small muted">g§3</span></td>
+                <td>技能目录 user 消息；MCP 直接注册不延迟<span class="tag tag--guess">推断</span> <span class="small muted">d§3</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">动态注入<span>04</span></th>
+                <td>WorldState 按 section 差分，只发变化<span class="tag tag--ok">已核实</span> <span class="small muted">c§4</span></td>
+                <td>37 个附件源；三类 delta 只注入增量<span class="tag tag--ok">已核实</span> <span class="small muted">cc§4</span></td>
+                <td>section 级 patch 消息，只发变化 section<span class="tag tag--ok">已核实</span> <span class="small muted">p§4</span></td>
+                <td>日期/cwd 提醒插首个用户轮；TTSR 去重<span class="tag tag--ok">已核实</span> <span class="small muted">o§4</span></td>
+                <td>计划模式提醒追加到最后一条 user 消息<span class="tag tag--ok">已核实</span> <span class="small muted">v1§4</span></td>
+                <td>指令 diff 冻结进事件；后台 shell 用通知<span class="tag tag--ok">已核实</span> <span class="small muted">v2§4</span></td>
+                <td>逐轮 reminder 序列；日期滚动不改 user_info<span class="tag tag--ok">已核实</span> <span class="small muted">g§4</span></td>
+                <td>pre-step 瀑布注入；时间插件默认 10 分钟<span class="tag tag--guess">推断</span> <span class="small muted">d§4</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">Token 计量与可视化<span>05</span></th>
+                <td>95% 硬线+90% 软线，无 /context<span class="tag tag--ok">已核实</span> <span class="small muted">c§5</span></td>
+                <td>末次 usage+chars/4；/context 分类计数<span class="tag tag--ok">已核实</span> <span class="small muted">cc§5</span></td>
+                <td>末次 usage+尾随估算；70%/90% 变色<span class="tag tag--ok">已核实</span> <span class="small muted">p§5</span></td>
+                <td>阈值默认 window−max(15%, 16384)<span class="tag tag--ok">已核实</span> <span class="small muted">o§5</span></td>
+                <td>实测 usage 触发；无 /context 视图<span class="tag tag--todo">待核实</span> <span class="small muted">v1§5</span></td>
+                <td>锚点+之后逐条估算；预留 max(10%,16k)<span class="tag tag--ok">已核实</span> <span class="small muted">v2§5</span></td>
+                <td>/context 四段；阈值常量 85、目录 80<span class="tag tag--ok">已核实</span> <span class="small muted">g§5</span></td>
+                <td>重放日志计价；阈值 min(80%W, W−O−B)<span class="tag tag--ok">已核实</span> <span class="small muted">d§5</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">单次工具输出控制<span>06</span></th>
+                <td>头尾保留+中间标记；原文留 rollout<span class="tag tag--ok">已核实</span> <span class="small muted">c§6</span></td>
+                <td>默认 50k 字符落盘，留 2k 预览<span class="tag tag--ok">已核实</span> <span class="small muted">cc§6</span></td>
+                <td>2000 行/50KB 先到者；bash 落临时文件<span class="tag tag--ok">已核实</span> <span class="small muted">p§6</span></td>
+                <td>3000 行/50KiB；artifact 上限 16MiB<span class="tag tag--ok">已核实</span> <span class="small muted">o§6</span></td>
+                <td>2000 行/50KiB 落盘，保留 7 天<span class="tag tag--ok">已核实</span> <span class="small muted">v1§6</span></td>
+                <td>同上但只保头；压缩期再限 1250 字符<span class="tag tag--ok">已核实</span> <span class="small muted">v2§6</span></td>
+                <td>通用 40KB、bash 20k 字符；全文落日志<span class="tag tag--ok">已核实</span> <span class="small muted">g§6</span></td>
+                <td>spill 头尾各半+落盘路径；失败保留原文<span class="tag tag--guess">推断</span> <span class="small muted">d§6</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">历史裁剪<span>07</span></th>
+                <td>无定期清理；只有规范化丢弃与删最旧<span class="tag tag--ok">已核实</span> <span class="small muted">c§7</span></td>
+                <td>时间触发默认关；cache_edits 仅主线程<span class="tag tag--ok">已核实</span> <span class="small muted">cc§7</span></td>
+                <td>无自动裁剪；只有 context_edit 手动省略<span class="tag tag--ok">已核实</span> <span class="small muted">p§7</span></td>
+                <td>保护 40k、省 20k 才动；两档陈旧省略<span class="tag tag--ok">已核实</span> <span class="small muted">o§7</span></td>
+                <td>prune 默认关；保护 40k，可擦&gt;20k 才落地<span class="tag tag--ok">已核实</span> <span class="small muted">v1§7</span></td>
+                <td>无 prune；仅压缩前文本化丢最旧 exchange<span class="tag tag--ok">已核实</span> <span class="small muted">v2§7</span></td>
+                <td>&gt;50% 窗口触发；软裁剪 1500+1500，10 轮硬清<span class="tag tag--ok">已核实</span> <span class="small muted">g§7</span></td>
+                <td>pruner 8192/4096/1024，仅压缩触发后跑<span class="tag tag--ok">已核实</span> <span class="small muted">d§7</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">压缩<span>08</span></th>
+                <td>本地 20k 候选预算；远端 64k/10k/重试 2<span class="tag tag--ok">已核实</span> <span class="small muted">c§8</span></td>
+                <td>有效窗口−13k 触发；重附 5 文件/25k 技能<span class="tag tag--ok">已核实</span> <span class="small muted">cc§8</span></td>
+                <td>保留 20k；不切 toolResult，超长拆两摘要<span class="tag tag--ok">已核实</span> <span class="small muted">p§8</span></td>
+                <td>五方法链，remote 优先，逐级回退<span class="tag tag--ok">已核实</span> <span class="small muted">o§8</span></td>
+                <td>保留 clamp(25%,2k,15k)；切点落 user<span class="tag tag--ok">已核实</span> <span class="small muted">v1§8</span></td>
+                <td>keep 默认 15k；切点必须落 user 消息<span class="tag tag--ok">已核实</span> <span class="small muted">v2§8</span></td>
+                <td>full-replace；摘要 9 段并继承上次摘要<span class="tag tag--ok">已核实</span> <span class="small muted">g§8</span></td>
+                <td>保留 16% 窗口；选区对齐工具配对<span class="tag tag--ok">已核实</span> <span class="small muted">d§8</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">多模态上下文<span>09</span></th>
+                <td>图片直通；缩放只发提示；无历史转图<span class="tag tag--ok">已核实</span> <span class="small muted">c§9</span></td>
+                <td>2000px/5MB；压缩前剥图；无历史转图<span class="tag tag--ok">已核实</span> <span class="small muted">cc§9</span></td>
+                <td>只按 4800 字符估算；无图片驱逐<span class="tag tag--ok">已核实</span> <span class="small muted">p§9</span></td>
+                <td>snapcompact 渲成 PNG；按预算裁图<span class="tag tag--ok">已核实</span> <span class="small muted">o§9</span></td>
+                <td>图片直通；仅 overflow 重放时换成文本<span class="tag tag--ok">已核实</span> <span class="small muted">v1§9</span></td>
+                <td>25MiB 触发→15MiB，从最旧图片删起<span class="tag tag--ok">已核实</span> <span class="small muted">v2§9</span></td>
+                <td>请求体−3MiB 触发驱逐，回收到一半<span class="tag tag--ok">已核实</span> <span class="small muted">g§9</span></td>
+                <td>路由拒图时永久 offload 最早 N 张<span class="tag tag--guess">推断</span> <span class="small muted">d§9</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">子代理隔离<span>10</span></th>
+                <td>独立 Config/历史；完成消息作为输入项回父<span class="tag tag--ok">已核实</span> <span class="small muted">c§10</span></td>
+                <td>默认全新上下文；只读代理省 CLAUDE.md<span class="tag tag--ok">已核实</span> <span class="small muted">cc§10</span></td>
+                <td>无此能力：README 明示跳过子代理<span class="tag tag--ok">已核实</span> <span class="small muted">p§10</span></td>
+                <td>task 独立子会话；schema 校验返回，深度 2<span class="tag tag--ok">已核实</span> <span class="small muted">o§10</span></td>
+                <td>task 子会话；深度默认 1，XML 信封装自由文本<span class="tag tag--ok">已核实</span> <span class="small muted">v1§10</span></td>
+                <td>subagent 工具；支持后台，深度默认 1<span class="tag tag--ok">已核实</span> <span class="small muted">v2§10</span></td>
+                <td>task 三型；深度 1；默认后台；可选 worktree<span class="tag tag--ok">已核实</span> <span class="small muted">g§10</span></td>
+                <td>异步返回 childId，完成通知回传父会话<span class="tag tag--guess">推断</span> <span class="small muted">d§10</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">会话时间线<span>11</span></th>
+                <td>rollout 追加日志+checkpoint+后缀回放<span class="tag tag--ok">已核实</span> <span class="small muted">c§11</span></td>
+                <td>JSONL 树；/rewind 走文件快照<span class="tag tag--ok">已核实</span> <span class="small muted">cc§11</span></td>
+                <td>JSONL 树；/tree 换叶，fork 复制新文件<span class="tag tag--ok">已核实</span> <span class="small muted">p§11</span></td>
+                <td>树+/clear 边界；checkpoint 用报告换探索段<span class="tag tag--ok">已核实</span> <span class="small muted">o§11</span></td>
+                <td>事件溯源；filterCompacted 重排历史<span class="tag tag--ok">已核实</span> <span class="small muted">v1§11</span></td>
+                <td>seq 边界读历史；检查点是一条消息<span class="tag tag--ok">已核实</span> <span class="small muted">v2§11</span></td>
+                <td>日志只追加；RewindMarker 逻辑截断<span class="tag tag--ok">已核实</span> <span class="small muted">g§11</span></td>
+                <td>日志+surface replace；无 rewind<span class="tag tag--ok">已核实</span> <span class="small muted">d§11</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">跨会话记忆<span>12</span></th>
+                <td>根会话后台两阶段管线；读路径注入<span class="tag tag--ok">已核实</span> <span class="small muted">c§12</span></td>
+                <td>记忆 200 行/25KB + 会话内记忆<span class="tag tag--ok">已核实</span> <span class="small muted">cc§12</span></td>
+                <td>无此能力：无独立记忆子系统<span class="tag tag--ok">已核实</span> <span class="small muted">p§12</span></td>
+                <td>5 后端默认 off；注入上限 5000 token<span class="tag tag--ok">已核实</span> <span class="small muted">o§12</span></td>
+                <td>无此能力<span class="tag tag--ok">已核实</span> <span class="small muted">v1§12</span></td>
+                <td>无此能力<span class="tag tag--ok">已核实</span> <span class="small muted">v2§12</span></td>
+                <td>默认关；/flush 写入、/dream 整理、压缩后重检索<span class="tag tag--ok">已核实</span> <span class="small muted">g§12</span></td>
+                <td>无此能力：跨会话只能靠 AGENTS.md<span class="tag tag--ok">已核实</span> <span class="small muted">d§12</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">缓存友好设计<span>13</span></th>
+                <td>发 prompt_cache_key；TTL 由服务端定<span class="tag tag--ok">已核实</span> <span class="small muted">c§13</span></td>
+                <td>消息层恰好 1 个标记；系统最多 4 块<span class="tag tag--ok">已核实</span> <span class="small muted">cc§13</span></td>
+                <td>section patch 保前缀；摘要请求不写缓存<span class="tag tag--ok">已核实</span> <span class="small muted">p§13</span></td>
+                <td>易变内容移出前缀；裁剪也有缓存守卫<span class="tag tag--ok">已核实</span> <span class="small muted">o§13</span></td>
+                <td>前 2 system+后 2 消息打点；无压缩调度<span class="tag tag--ok">已核实</span> <span class="small muted">v1§13</span></td>
+                <td>自动断点上限 4；压缩后 epoch 推基线<span class="tag tag--ok">已核实</span> <span class="small muted">v2§13</span></td>
+                <td>3 处显式断点+1 槽留网关；日期固定<span class="tag tag--ok">已核实</span> <span class="small muted">g§13</span></td>
+                <td>系统提示可 in-history 追加以保前缀<span class="tag tag--guess">推断</span> <span class="small muted">d§13</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">失败恢复<span>14</span></th>
+                <td>压缩自身超窗删最旧重试；后台压缩默认关<span class="tag tag--ok">已核实</span> <span class="small muted">c§14</span></td>
+                <td>被动压缩一次；连续 3 次失败熔断<span class="tag tag--ok">已核实</span> <span class="small muted">cc§14</span></td>
+                <td>溢出只允许一次 compact-and-retry<span class="tag tag--ok">已核实</span> <span class="small muted">p§14</span></td>
+                <td>先升级模型再压缩；进度守卫 80%<span class="tag tag--ok">已核实</span> <span class="small muted">o§14</span></td>
+                <td>压缩失败无二次兜底，直接 stop<span class="tag tag--ok">已核实</span> <span class="small muted">v1§14</span></td>
+                <td>压缩按 70/50/35 三级收缩后失败<span class="tag tag--ok">已核实</span> <span class="small muted">v2§14</span></td>
+                <td>先 preflight 压缩；失败按 5 类抑制<span class="tag tag--ok">已核实</span> <span class="small muted">g§14</span></td>
+                <td>先 pruner 再压缩；增量前进才重试<span class="tag tag--ok">已核实</span> <span class="small muted">d§14</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">扩展点<span>15</span></th>
+                <td>hooks/插件/MCP；压缩不可替换<span class="tag tag--ok">已核实</span> <span class="small muted">c§15</span></td>
+                <td>多事件 hooks；PreCompact 可改写压缩指令<span class="tag tag--ok">已核实</span> <span class="small muted">cc§15</span></td>
+                <td>session_before_compact 可整段替换产物<span class="tag tag--ok">已核实</span> <span class="small muted">p§15</span></td>
+                <td>methodOrder 可排序；压缩钩子改提示词<span class="tag tag--ok">已核实</span> <span class="small muted">o§15</span></td>
+                <td>插件可改消息；压缩钩子只改提示词<span class="tag tag--ok">已核实</span> <span class="small muted">v1§15</span></td>
+                <td>压缩钩子可直接给摘要，跳过模型<span class="tag tag--ok">已核实</span> <span class="small muted">v2§15</span></td>
+                <td>15 个 hook；压缩前后钩子只能观察<span class="tag tag--ok">已核实</span> <span class="small muted">g§15</span></td>
+                <td>Cordis 全插件；继承引擎接口换后端<span class="tag tag--ok">已核实</span> <span class="small muted">d§15</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="cell-tool">评估与可观测<span>16</span></th>
+                <td>无评测框架；只有 rollout/OTEL 原始数据<span class="tag tag--ok">已核实</span> <span class="small muted">c§16</span></td>
+                <td>无评测；/context、/cost、缓存失效归因<span class="tag tag--ok">已核实</span> <span class="small muted">cc§16</span></td>
+                <td>自带 evals 做 docs-lift 对照；无上下文指标<span class="tag tag--ok">已核实</span> <span class="small muted">p§16</span></td>
+                <td>snapcompact 用 SQuAD 评测<span class="tag tag--ok">已核实</span> <span class="small muted">o§16</span></td>
+                <td>无评测；per-step tokens/cost 记账<span class="tag tag--guess">推断</span> <span class="small muted">v1§16</span></td>
+                <td>无评测；Step.Ended 与压缩事件记账<span class="tag tag--guess">推断</span> <span class="small muted">v2§16</span></td>
+                <td>无评测；压缩遥测可算回收率与耗时<span class="tag tag--ok">已核实</span> <span class="small muted">g§16</span></td>
+                <td>无评测；三个投影键供外部 A/B<span class="tag tag--guess">推断</span> <span class="small muted">d§16</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-caption">版本口径：Codex <code>76ed3b4</code>（main）；Claude Code 非官方源码 v2.1.88（<code>988438a</code>）；pi <code>b45e0eb</code>；oh-my-pi <code>f979f46</code>；opencode v1 <code>v1.19.0</code>（<code>733b2c6</code>）；opencode v2 <code>v2.0.29</code> beta（<code>042d083</code>）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。核实日期均为 2026-10-18。</p>
+      </section>
+
+      <section id="matrix-reminders">
+        <p class="sec-no">02 · 读矩阵的三个提醒</p>
+        <h2>别把「一行」当成「一个结论」</h2>
+
+        <h3>一、哪些格子是推断</h3>
+        <p>标【推断】的 10 格集中在 dsh（第 1、3、4、6、9、10、13、16 类）和 opencode v1/v2 的评估（第 16 类）。dsh 的推断来自同仓 <code>docs/subsystems</code> 与各包 README，不是逐行源码；它能说明「设计意图与开关」，但不能当作「运行时一定如此」。opencode 两版的评估格是「没找到评测框架」的否定式判断，属于推断而非已核实。<sup class="fn-ref"><a href="#fn-appendix-matrix-1" id="fnref-appendix-matrix-1">1</a></sup></p>
+        <p>另有 1 格【待核实】：opencode v1 是否有 <code>/context</code> 类视图，卡片只检索了出货 <code>packages/opencode/src</code>，没有穷举前端命令表。其余 8 份卡片内部共 22 条【待核实】细节（如 Codex worktree 隔离、pi/omp 单文件字节上限、Grok Build 官方记忆文档 404）没有升格成整格待核实，写章节时要带进脚注。<sup class="fn-ref"><a href="#fn-appendix-matrix-2" id="fnref-appendix-matrix-2">2</a></sup></p>
+
+        <h3>二、哪些工具在某类上是空白</h3>
+        <p>整格「无此能力」的有 5 处：pi 的子代理（第 10 类）与跨会话记忆（第 12 类）；opencode v1 的记忆（第 12 类）；opencode v2 的记忆（第 12 类）；dsh 的记忆（第 12 类）。</p>
+        <p>半空白要按「部分能力」写，不能写成有：Codex 没有独立的历史裁剪通道、没有历史转图、没有内置评测（第 7、9、16 类）；opencode v1/v2 没有树状多分支和 rewind（第 11 类）；dsh 没有 rewind/undo（第 11 类）；pi 没有自动裁剪（第 7 类）、没有图片驱逐（第 9 类）。同一类里「有机制」与「默认开启」是两件事：Claude Code 的 microcompact 默认关闭、omp 的记忆默认 off、Grok Build 的记忆默认 off，矩阵写的是机制存在，不是默认生效。</p>
+
+        <h3>三、跨版本对比要注意什么</h3>
+        <ul>
+          <li>opencode v1 与 v2 是同一仓库的两个 tag，<strong>不能互相外推</strong>：v1 引 <code>733b2c6</code>，v2 引 <code>042d083</code>；v2 是 beta，字段与默认值可能在下个版本变化。</li>
+          <li>omp 是 pi 的 fork。同源代码不等于同默认值：阈值从「固定 16384 预留」改成「窗口 15% 下限」，压缩从单函数改成五方法链，记忆/子代理/checkpoint 是新增而非改进。</li>
+          <li>Claude Code 全部结论只代表非官方源码 v2.1.88，且函数名可能来自 source map 还原；与官方文档冲突的 4 处见下表，正文必须标【可能已变化】。</li>
+          <li>Grok Build 没有语义化版本号，只有仓库提交与 <code>SOURCE_REV</code>（monorepo SHA）；矩阵里的「Grok Build」指本快照，不指线上最新版。</li>
+          <li>Codex 与 dsh 用的是滚动 <code>main</code>/<code>master</code> 快照，不是发布版；引用时必须带提交号。</li>
+        </ul>
+      </section>
+
+      <section id="matrix-caliber">
+        <p class="sec-no">03 · 口径裁决</p>
+        <h2>源码与文档冲突时，本教程怎么取</h2>
+        <p>裁决原则：<strong>以源码为准</strong>；官方文档的说法保留在正文，标注版本差与【可能已变化】。</p>
+
+        <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">项目</th>
+                <th scope="col">源码 v2.1.88 说法</th>
+                <th scope="col">官方文档说法</th>
+                <th scope="col">裁决</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">1</th>
+                <td>CLAUDE.md <code>@include</code> 跳数</td>
+                <td><code>MAX_INCLUDE_DEPTH = 5</code>（<code>utils/claudemd.ts</code>）</td>
+                <td>递归最多 4 跳</td>
+                <td>采用 <strong>5 跳</strong>；正文写「源码为 5，文档为 4，属版本差」。</td>
+              </tr>
+              <tr>
+                <th scope="row">2</th>
+                <td>技能列表单条描述长度</td>
+                <td><code>MAX_LISTING_DESC_CHARS = 250</code>（<code>tools/SkillTool/prompt.ts</code>）</td>
+                <td>1,536 字符处截断</td>
+                <td>采用 <strong>250 字符</strong>；正文标注【可能已变化】。</td>
+              </tr>
+              <tr>
+                <th scope="row">3</th>
+                <td>通用工具结果落盘阈值</td>
+                <td><code>DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000</code>（<code>constants/toolLimits.ts</code>）</td>
+                <td>通用 10,000 字符落盘（Bash 30,000 一致）</td>
+                <td>采用 <strong>50,000 字符</strong>；Bash 的 30,000 与文档一致，可并列写。</td>
+              </tr>
+              <tr>
+                <th scope="row">4</th>
+                <td>图片体积限制</td>
+                <td>2000×2000、base64 5 MB、目标 3.75 MB（<code>constants/apiLimits.ts</code>）</td>
+                <td>重缩放后超 500 KB 转 JPEG</td>
+                <td>采用 <strong>2000px / 5 MB / 3.75 MB</strong>；正文标注【可能已变化】。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-caption">补充确认：<strong>Codex 也有 MCP 延迟加载</strong>，由模型元数据 <code>supports_search_tool</code> 驱动（<code>core/src/mcp_tool_exposure.rs</code>、<code>core/src/tools/spec_plan.rs</code>），为 false 时退回 Direct。矩阵第 3 类已按「Codex 和 Claude Code 都有延迟加载」写，不得再把 MCP 延迟加载写成 Claude Code 独有能力。Grok Build 走的是另一条路（MCP 不进 function tools，靠 <code>search_tool</code> + <code>use_tool</code>），三者机制不同，不能混为一谈。</p>
+      </section>
+
+      <div class="footnotes">
+        <p class="footnotes__title">脚注</p>
+        <ol>
+          <li id="fn-appendix-matrix-1">
+            推断格的证据边界：dsh 的 8 格依据同仓 <code>docs/subsystems/*</code> 与各包 README，这些文档与源码同仓但不是逐行实现；opencode 两版第 16 类的「无评测」是目录与 README 层面的反证（未找到 eval/benchmark 模块），不是官方声明。因此这些格只能支持「设计意图」与「未发现」两类判断，不能支持「运行时一定如此」。
+            <a class="footnotes__back" href="#fnref-appendix-matrix-1">↩</a>
+          </li>
+          <li id="fn-appendix-matrix-2">
+            22 条卡片内【待核实】的具体缺口分布：Codex（worktree 隔离、并发上限）、Claude Code（4 MiB 单文件跳过、rewind UI 截断）、pi/omp（单文件字节上限、技能描述上限）、Grok Build（发布版本号、Responses 缓存、<code>/compact &lt;text&gt;</code> 入口）、opencode v1（<code>/context</code> 视图）、dsh（<code>/context</code> 命令、<code>systemTokens</code> 归类、hooks 事件表、第三方插件挂载点）。这些不改变整格结论，但写具体章节时要逐条带脚注。
+            <a class="footnotes__back" href="#fnref-appendix-matrix-2">↩</a>
+          </li>
+        </ol>
+      </div>
+
+    </div>
+
+    <p class="footer-note">下一份附录：<a href="appendix-reading.html">推荐阅读</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

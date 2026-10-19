@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>oh-my-pi · snapcompact 把历史渲成图 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-omp-03 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-omp-03 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-omp-03 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-omp-03 .path-card code,
+  #src-omp-03 .callout code,
+  #src-omp-03 .quiz__q code,
+  #src-omp-03 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-omp-03">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-omp-03">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>oh-my-pi</span><span>·</span><span>第 03 节</span></p>
+      <h1>snapcompact 把历史渲成图</h1>
+      <p class="lede">如果模型读一张密集排版的图，比读同样长度的文字更省 token，那么「压缩」这件事就不一定要写成摘要。snapcompact 把被丢弃的历史渲染成位图帧，让视觉模型直接读图，全程不调用 LLM。它激进、可测量、也只对能读图的模型成立。</p>
+      <ul class="meta">
+        <li>约 15 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L4</li>
+        <li>源码 <code>f979f46</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>画出 snapcompact 的六步管线，并说出哪一步决定「渲几帧」。</li>
+          <li>解释 <code>resolveShape()</code> 如何按模型选帧形状，以及为什么还要做可读性回退。</li>
+          <li>算出 80 帧、每帧 5 024 token 的上界，并说出这个常量为什么偏保守。</li>
+          <li>说明帧如何「每次重建上下文都重新挂回」，以及多次压缩时归档为什么会被重渲。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>这一节讨论的是「历史 → 图片」这一条极端路线，不是「图片进上下文」的常规用法。它成立的前提有两个：模型能读图，且图片计价比等价文字便宜。两个前提任一不成立，方法链会自动跳过它（第 1 节的闸门）。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>把「摘要」换成「一叠扫描件」</h2>
+
+      <p>snapcompact 的输入是被丢弃的历史消息，输出是一份 <code>CompactionResult</code>：一段很短的摘要文本、若干 PNG 帧、以及一个 <code>preserveData.snapcompact</code> 归档对象。<span class="tag tag--ok">已核实</span>它不调用任何模型，纯本地渲染，所以属于方法链里的「便宜且快」的一档。</p>
+
+      <p class="lead-in">它没有「理解」历史，只是把历史排版、光栅化、附上一句「这是归档的第 N 帧」。理解发生在之后——模型读图的时候。</p>
+
+      <p>管线可以拆成六步：</p>
+
+      <p><b>① 序列化。</b><code>serializeConversation()</code> 把消息转成纯文本，工具结果截到固定长度，思考块按选项省略。目的不是压缩，而是把结构化消息变成「可以排版的一篇文章」。</p>
+
+      <p><b>② 接上旧归档。</b>如果上一次压缩也是 snapcompact，会把旧归档保留的源文本取出来，拼在新历史前面，作为一篇连续的稿子。<span class="tag tag--ok">已核实</span>所以多次压缩不是「在图片上再压一层」，而是「把旧稿和新稿合并后重新排版」。</p>
+
+      <p><b>③ 选形状。</b><code>resolveShapeForText()</code> 先按模型 id 选变体，再做可读性检测；如果默认字体渲不全（缺字），退到 <code>silver</code> 网格；如果文本以中日韩宽字符为主，也优先 <code>silver</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>④ 分页。</b><code>planArchive()</code> 把长文切成「头部文本 + 若干帧 + 尾部文本」，中间区域做 foveation：靠近两端用高质量帧，中间用更密的低质量帧。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>⑤ 渲染。</b>每个计划页调用 <code>renderSnapcompactPng()</code>（Rust 原生实现），返回 base64 PNG 与行列数。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>⑥ 生成摘要文本。</b>用模板把帧数、列数、行数、是否截断、文件清单填进去，得到一条很短的「归档说明」。<span class="tag tag--ok">已核实</span>这条说明才是普通文本；真正的历史在帧里。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 268" role="img" aria-labelledby="omp3-f1-title omp3-f1-desc">
+          <title id="omp3-f1-title">snapcompact 的六步管线</title>
+          <desc id="omp3-f1-desc">从序列化、接上旧归档、选形状、分页、渲染到生成摘要文本的六步流程；分页一步分成头部文本、高质量帧、低质量帧、尾部文本四段。</desc>
+          <rect class="svg-track" x="8" y="20" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="56" y="45" text-anchor="middle">1 序列化</text>
+          <rect class="svg-track" x="112" y="20" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="160" y="45" text-anchor="middle">2 接旧归档</text>
+          <rect class="svg-track" x="216" y="20" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="264" y="45" text-anchor="middle">3 选形状</text>
+          <rect class="svg-seg--c" x="320" y="20" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--s" x="368" y="45" text-anchor="middle">4 分页</text>
+          <rect class="svg-track" x="424" y="20" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="472" y="45" text-anchor="middle">5 渲 PNG</text>
+          <rect class="svg-seg--a" x="528" y="20" width="104" height="40" rx="7"/>
+          <text class="svg-label svg-label--s" x="580" y="45" text-anchor="middle">6 摘要文本</text>
+
+          <line class="svg-rule" x1="368" y1="60" x2="368" y2="88"/>
+          <rect class="svg-track" x="8" y="88" width="110" height="40" rx="6"/>
+          <text class="svg-note" x="63" y="113" text-anchor="middle">textHead</text>
+          <rect class="svg-seg--a" x="126" y="88" width="110" height="40" rx="6"/>
+          <text class="svg-note" x="181" y="113" text-anchor="middle">HQ 帧 ×3</text>
+          <rect class="svg-seg--b" x="244" y="88" width="150" height="40" rx="6"/>
+          <text class="svg-note" x="319" y="113" text-anchor="middle">LQ 帧（更密）</text>
+          <rect class="svg-seg--a" x="402" y="88" width="110" height="40" rx="6"/>
+          <text class="svg-note" x="457" y="113" text-anchor="middle">HQ 帧 ×3</text>
+          <rect class="svg-track" x="520" y="88" width="112" height="40" rx="6"/>
+          <text class="svg-note" x="576" y="113" text-anchor="middle">textTail</text>
+
+          <text class="svg-note" x="8" y="162">头部与尾部保留纯文本：最容易读，也最便宜。</text>
+          <text class="svg-note" x="8" y="186">中间越长，低质量帧占比越高——这就是 foveation：两端清晰，中间密。</text>
+          <text class="svg-note" x="8" y="210">超过 MAX_FRAMES_DEFAULT（80）时从最旧的帧开始丢。</text>
+          <text class="svg-note" x="8" y="234">丢掉的字符数记进 truncatedChars，摘要模板会说明「有截断」。</text>
+        </svg>
+        <figcaption>图 1　六步管线与分页布局。第 4 步决定帧数，第 5 步决定每帧的字节与像素，两者共同决定这次压缩的 token 成本。</figcaption>
+      </figure>
+
+      <p>这套设计的核心赌注是「每 token 能装多少信息」。普通摘要用自然语言重写历史，信息密度取决于模型写得好不好；图片把原始字符直接印上去，密度取决于字号与网格。snapcompact 的 <code>packages/snapcompact/research/</code> 里有一组可复现实验，用 SQuAD 抽取式 QA 的 recall / F1 衡量「读图后还能答对多少」，并把这个指标除以 provider 的计费 token。<span class="tag tag--ok">已核实</span>帧形状表就是这些实验的结论，不是拍脑袋。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五条链接：形状、常量、主函数、落盘、重挂</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 选形状：按模型 id 挑变体</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/snapcompact/src/snapcompact.ts#L447-L458">snapcompact.ts#L447-L458</a><br>
+          <code>resolveShape()</code>：显式变体优先，否则按模型行选，最后按 API 家族兜底。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 常量：帧上限与计价回退</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/snapcompact/src/snapcompact.ts#L499-L535">snapcompact.ts#L499-L535</a><br>
+          <code>MAX_FRAMES_DEFAULT = 80</code>、<code>FRAME_TOKEN_ESTIMATE = 5024</code>、单帧约 170 KB。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 主函数：拼稿、选形、分页、渲染</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/snapcompact/src/snapcompact.ts#L2349-L2502">snapcompact.ts#L2349-L2502</a><br>
+          <code>compact()</code>：本地完成，返回 <code>summary</code> + <code>preserveData</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 落盘形态：归档对象</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/snapcompact/src/snapcompact.ts#L2484-L2501">snapcompact.ts#L2484-L2501</a><br>
+          <code>Archive</code> 里放 <code>frames</code>、<code>totalChars</code>、<code>truncatedChars</code>、<code>text</code>、<code>textHead</code>、<code>textTail</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 重挂：每次重建都附回摘要消息</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-context.ts#L524-L545">session-context.ts#L524-L545</a><br>
+          <code>snapcompactHistoryBlocksForContext()</code> 把帧变成 content blocks，塞进摘要消息。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：形状变体表与模型行映射见 <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/snapcompact/src/snapcompact.ts#L383-L424">snapcompact.ts#L383-L424</a>；可读性检测与 CJK 回退见同文件 L460-L493；帧数据预算见 L537-L545。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】「默认 80 帧」是代码常量，不是文档推导</p>
+        <p>事实卡片把 80 帧的来源标为 <code>docs/compaction.md</code>；代码里 <code>MAX_FRAMES_DEFAULT = 80</code> 就在 <code>snapcompact.ts#L510</code>，注释还算了一笔账：高分辨率 Anthropic 帧约 5 000 billed token，80 帧约 400k token，同时低于单请求约 100 张图片的上限。<span class="tag tag--ok">已核实</span>文档与代码一致，但引用时优先给代码行。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：主函数的骨架，与形状选择</h2>
+
+      <p>第一段从「接旧归档」到「分页」，39 行；省略了工具结果序列化的细节与数据 URL 清洗的实现，保留全部控制流。第二段是形状选择，12 行完整保留。合计 54 行。</p>
+
+      <p class="small muted">文件：<code>packages/snapcompact/src/snapcompact.ts</code>　行号：L2360-L2415（节选 45 行，省略 5 行解释性注释与 6 行空行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 取旧归档：优先完整源文本；只有 textHead/textTail 的老归档也能拼</span>
+<span class="code__line">const previousArchive = getPreservedArchive(previousPreserveData);</span>
+<span class="code__line">const excludeThinking = options?.includeThinking === false;</span>
+<span class="code__line">const previousTextRaw =</span>
+<span class="code__line">    excludeThinking &amp;&amp; previousArchive</span>
+<span class="code__line">        ? sourceForReaderWithoutThinking(previousArchive)</span>
+<span class="code__line">        : (previousArchive?.text ??</span>
+<span class="code__line">            [previousArchive?.textHead, previousArchive?.textTail]</span>
+<span class="code__line">                .filter((part): part is string =&gt; typeof part === "string" &amp;&amp; part.length &gt; 0)</span>
+<span class="code__line">                .join(NEWLINE_GLYPH));</span>
+<span class="code__line code__line--cmt">// 旧归档可能带 data URL 或旧的推理段，先清洗再合并</span>
+<span class="code__line">const previousTextHealed = elideDataUrls(previousTextRaw, "archive");</span>
+<span class="code__line">const previousText =</span>
+<span class="code__line">    excludeThinking &amp;&amp; previousTextHealed.length &gt; 0 ? textWithoutThinking(previousTextHealed) : previousTextHealed;</span>
+<span class="code__line">const hasPreviousText = previousText.length &gt; 0;</span>
+<span class="code__line">const includedPreviousSummary = !hasPreviousText &amp;&amp; !!previousSummary;</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 用「新历史 + 旧归档 + 旧摘要」一起探测字体可读性</span>
+<span class="code__line">const shapeProbeText = renderabilityProbeText(serialized, previousPreserveData, previousSummary);</span>
+<span class="code__line">const baseShape = options?.shape ?? resolveShapeForText(shapeProbeText, options?.model);</span>
+<span class="code__line">const frameSize = options?.frameSize ?? baseShape.frameSize;</span>
+<span class="code__line">const high = frameSize === baseShape.frameSize ? baseShape : { ...baseShape, frameSize };</span>
+<span class="code__line">const low = denseCompanion(high, options?.model?.api); <span class="cmt">// 中间区的更密变体</span></span>
+<span class="code__line">const geo = geometry(high);</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 调用方可以调低上限，但不能超过默认的 80</span>
+<span class="code__line">const maxFrames = Math.max(1, Math.min(options?.maxFrames ?? MAX_FRAMES_DEFAULT, MAX_FRAMES_DEFAULT));</span>
+<span class="code__line"> </span>
+<span class="code__line">let archiveText = normalize(serialized, { shape: high });</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 旧的是文字摘要（不是图片归档）：把它印在归档开头，别丢连续性</span>
+<span class="code__line">if (includedPreviousSummary &amp;&amp; previousSummary) {</span>
+<span class="code__line">    const lead = excludeThinking ? textWithoutThinking(previousSummary) : previousSummary;</span>
+<span class="code__line">    const head = `${PREVIOUS_SUMMARY_HEAD} ${normalize(lead, { shape: high })}`;</span>
+<span class="code__line">    archiveText = archiveText.length &gt; 0 ? `${head} [Recent conversation] ${archiveText}` : head;</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 旧归档的源文本排在新历史前面，然后整体重排、重渲</span>
+<span class="code__line">if (hasPreviousText) {</span>
+<span class="code__line">    archiveText = archiveText.length &gt; 0 ? `${previousText}${NEWLINE_GLYPH}${archiveText}` : previousText;</span>
+<span class="code__line">}</span>
+<span class="code__line">archiveText = elideDataUrls(archiveText); <span class="cmt">// data URL 绝不能进分页边界</span></span>
+<span class="code__line"> </span>
+<span class="code__line">const layout = planArchive(archiveText, high, low, maxFrames); <span class="cmt">// 决定几帧、谁清晰</span></span>
+<span class="code__line">truncatedChars += layout.truncatedChars;</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/snapcompact/src/snapcompact.ts</code>　行号：L447-L453（9 行，完整）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 显式指定变体：直接用，但仍要按宿主支持的最大边收缩</span>
+<span class="code__line">export function resolveShape(model?: ShapeTarget, variant?: ShapeVariantName | "auto"): Shape {</span>
+<span class="code__line">    if (variant &amp;&amp; variant !== "auto") return priceShape(fitHostImageEdge(SHAPE_VARIANTS[variant], model), model);</span>
+<span class="code__line">    <span class="cmt">// 否则按模型 id 选「评测赢家」，没测过的模型按 API 家族兜底</span></span>
+<span class="code__line">    const ideal = model?.id ? idealShapeVariant(model.id) : undefined;</span>
+<span class="code__line">    const base = SHAPE_VARIANTS[ideal?.variant ?? FAMILY_VARIANT[apiFamily(model?.api)]];</span>
+<span class="code__line">    <span class="cmt">// 有些模型行能读更大的帧且不加价，就覆盖 frameSize</span></span>
+<span class="code__line">    return priceShape(fitHostImageEdge(ideal?.frameSize ? { ...base, frameSize: ideal.frameSize } : base, model), model);</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段省略了 L2369-L2374 的 5 行英文解释注释（data URL 与推理段清洗的原因）与若干空行，逻辑语句一行未删；L2416 之后的逐帧渲染循环不在摘录内，因为它属于渲染实现，不影响「选形状 / 分页 / 截断」的主线。第二段没有省略。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四个决定：多大、几帧、给谁看、怎么挂回去</h2>
+
+      <h3>第 1 段　形状：为什么不能所有模型用同一张图</h3>
+
+      <p>图片的计费方式因 provider 而异。Anthropic 按视觉 patch 数计费，有 4 784 的上限；Gemini 3.x 对每张图收固定 1 120 token，与像素无关；OpenAI 的 patch 计费按面积比例。<span class="tag tag--ok">已核实</span>同一张 2 048 px 的图，在 Gemini 上「加量不加价」，在按面积计费的模型上就贵得多。</p>
+
+      <p>所以 <code>MODEL_VARIANTS</code> 是一张「模型行 → 变体」的表：Claude 用 <code>11on16-bw</code>（Opus 4.7+ 与 Fable/Mythos 用 1 932 px 高分辨率），Gemini 用 <code>8on22-bw</code> 加 2 048 px，GPT/Codex 用 <code>8on22-bw</code> 的 1 568 px，Kimi 与 GLM 各有自己的选择。<span class="tag tag--ok">已核实</span>这些不是「兼容性配置」，而是评测得出的「每美元能读回多少信息」。</p>
+
+      <p>还有一道 <code>fitHostImageEdge()</code>：如果宿主目录声明的 <code>image-max-edge</code> 比变体的 <code>frameSize</code> 小，就缩到上限。<span class="tag tag--ok">已核实</span>否则一张超出边长的图会被 provider 静默缩放，字变小、可读性反而下降。</p>
+
+      <p><code>resolveShapeForText()</code> 在此之上加了两条回退：默认字体渲不全所有字符 → 换 <code>silver</code>；CJK 宽字符占比 ≥ 25% 且至少 8 个 → 也换 <code>silver</code>。<span class="tag tag--ok">已核实</span>第二条对中文用户很关键：等宽点阵字体渲染中文会缺字或糊成一团，必须先换字体再渲。</p>
+
+      <h3>第 2 段　帧数与截断：80 是一个上界，不是目标</h3>
+
+      <p><code>planArchive()</code> 按形状算出每帧能装多少字符，再把文本切成「头部 + 帧 + 尾部」。<code>maxFrames</code> 先取调用方给的值，再与 <code>MAX_FRAMES_DEFAULT</code> 取小——调用方只能调低，不能调高。<span class="tag tag--ok">已核实</span></p>
+
+      <p>为什么要封顶？三个约束叠在一起：单请求图片数量上限（约 100 张）、每帧的视觉 token（高分辨率约 5 000）、以及请求体的 base64 字节预算（<code>DEFAULT_FRAME_DATA_BYTES_BUDGET = 3 MB</code>）。<span class="tag tag--ok">已核实</span>80 帧 × 5 024 token ≈ 402k，已经是一个 200k 窗口的两倍；再多的帧，模型也放不下。</p>
+
+      <p>超过预算时从<b>最旧</b>的帧开始丢，丢掉的字符数记进 <code>truncatedChars</code>，摘要模板里会写「有多少字符被截断」。<span class="tag tag--ok">已核实</span>这与文本摘要的「渐进遗忘」是同一个方向：越旧越先丢。</p>
+
+      <h3>第 3 段　多次压缩：重渲，而不是叠图</h3>
+
+      <p>第二次 snapcompact 不会「在旧图上再盖一层」。它把旧归档的 <code>text</code>（完整源文本）取出来，拼在新序列化文本前面，然后<b>整体重新分页、重新渲染</b>。<span class="tag tag--ok">已核实</span>所以帧的数量与内容每次都会变，旧帧被新帧取代。</p>
+
+      <p>如果上一次是文本摘要（不是图片归档），就把摘要印在归档开头，标成 <code>[Summary of earlier history]</code>，再放新内容。<span class="tag tag--ok">已核实</span>这保证了「从 soft 切到 snapcompact」不会丢历史。</p>
+
+      <p>代价是：每次压缩都要重渲全部历史。归档越长，渲染越慢、字节越多。源码里对「帧归档本身成为超预算成本」有专门的救援路径（<code>#rescueSnapcompactFrameOverflow</code>），会把归档按阈值重新渲成更少的帧。<span class="tag tag--ok">已核实</span></p>
+
+      <h3>第 4 段　重挂：为什么每次重建都要塞回去</h3>
+
+      <p>帧不是「一次性附件」。它们存在 <code>CompactionEntry.preserveData.snapcompact</code> 里，每次 <code>buildSessionContext()</code> 重建上下文时，由 <code>snapcompactHistoryBlocksForContext()</code> 转成 content blocks，塞进那条摘要消息。<span class="tag tag--ok">已核实</span>这样做的原因很直接：模型每次请求都要重新看一遍归档，帧必须每次都在。</p>
+
+      <p>这也解释了为什么摘要文本里要写清「共几帧、每帧几列几行」：模型需要知道图里是什么布局，才能定位信息。文本是图的说明书。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="omp3-f2-title omp3-f2-desc">
+          <title id="omp3-f2-title">压缩条目、归档与每次请求的关系</title>
+          <desc id="omp3-f2-desc">压缩条目里保存摘要文本与 preserveData 归档；每次重建上下文时，归档被转换成图片块并挂回摘要消息，模型每次请求都重新读到这些帧。</desc>
+          <rect class="svg-seg--c" x="8" y="24" width="240" height="86" rx="8"/>
+          <text class="svg-label" x="128" y="48" text-anchor="middle">CompactionEntry</text>
+          <text class="svg-note" x="24" y="72">summary：归档说明文本</text>
+          <text class="svg-note" x="24" y="94">preserveData.snapcompact：</text>
+
+          <rect class="svg-track" x="272" y="24" width="200" height="86" rx="8"/>
+          <text class="svg-label svg-label--dark" x="372" y="48" text-anchor="middle">Archive</text>
+          <text class="svg-note" x="286" y="72">frames[] · text · textHead</text>
+          <text class="svg-note" x="286" y="94">textTail · truncatedChars</text>
+
+          <line class="svg-rule" x1="476" y1="66" x2="512" y2="66"/>
+          <text class="svg-note" x="494" y="56" text-anchor="middle">重建</text>
+
+          <rect class="svg-seg--a" x="512" y="24" width="120" height="86" rx="8"/>
+          <text class="svg-label" x="572" y="48" text-anchor="middle">摘要消息</text>
+          <text class="svg-note" x="524" y="72">文本 + 图片块</text>
+          <text class="svg-note" x="524" y="94">（同一角色）</text>
+
+          <line class="svg-rule" x1="320" y1="128" x2="320" y2="158"/>
+          <text class="svg-note" x="330" y="150">请求</text>
+
+          <rect class="svg-seg--b" x="8" y="164" width="200" height="40" rx="7"/>
+          <text class="svg-label" x="108" y="189" text-anchor="middle">system + tools</text>
+          <rect class="svg-seg--c" x="216" y="164" width="200" height="40" rx="7"/>
+          <text class="svg-label" x="316" y="189" text-anchor="middle">摘要 + 帧</text>
+          <rect class="svg-seg--b" x="424" y="164" width="208" height="40" rx="7"/>
+          <text class="svg-label" x="528" y="189" text-anchor="middle">保留段 + 新消息</text>
+
+          <text class="svg-note" x="8" y="232">帧在请求里是图片块，不是文件路径；provider 看到的是 base64。</text>
+        </svg>
+        <figcaption>图 2　归档的生命周期。帧只存一份，但每次重建都会重新挂到摘要消息上；模型看到的是「一段说明 + 一叠图」，而不是一段纯文本摘要。</figcaption>
+      </figure>
+
+      <h3>第 5 段　三种计价，三种帧策略</h3>
+
+      <p>「每帧 5 024 token」是一个保守上界，不是所有模型的真实账单。三种主流计价方式差别很大：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">读者</th>
+              <th scope="col">计价方式</th>
+              <th scope="col">所选形状</th>
+              <th scope="col">80 帧的近似账单</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">Claude<span>anthropic</span></th><td>视觉 patch，封顶 4 784</td><td><code>11on16-bw</code>，高配 1 932 px</td><td>≈ 400 000 token（按上界）</td></tr>
+            <tr><th scope="row" class="cell-tool">Gemini 3.x<span>google</span></th><td>每图固定 1 120</td><td><code>8on22-bw</code>，2 048 px</td><td>≈ 89 600 token</td></tr>
+            <tr><th scope="row" class="cell-tool">GPT / Codex<span>openai</span></th><td>按面积比例</td><td><code>8on22-bw</code>，1 568 px</td><td>取决于 patch 面积</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：形状与尺寸来自 <code>MODEL_VARIANTS</code>（<code>snapcompact.ts#L383-L401</code>）；Gemini 固定计费的注释在同文件 L394；账单列是按公开计费方式做的估算，不是源码常量。</p>
+
+      <p>这张表解释了两个设计选择。第一，为什么 Gemini 用 2 048 px：固定计费下，同样的钱塞进更多字符是纯赚。第二，为什么 <code>FRAME_TOKEN_ESTIMATE</code> 取 5 024 而不是平均值：它要覆盖最贵的形状，否则溢出守卫会低估归档大小。<span class="tag tag--ok">已核实</span>对 Gemini 来说，这个上界高估了约 4.5 倍——保守，但不会让请求超窗。</p>
+
+      <p>还有一个容易忽略的成本：base64。80 帧 × 约 170 KB ≈ 13.6 MB，超过 <code>DEFAULT_FRAME_DATA_BYTES_BUDGET = 3 MB</code> 四倍多。<span class="tag tag--ok">已核实</span>所以真正发出去时，帧会被字节预算裁掉一大半；<code>MAX_FRAMES_DEFAULT</code> 只是「归档能存多少」，不是「一次能发多少」。两个上限必须分开看，否则会得出「80 帧都能进请求」的错误结论。</p>
+
+      <h3>第 6 段　五类失败模式</h3>
+
+      <p>snapcompact 的失败不是「报个错」那么简单，每一类都要有对应的兜底：</p>
+
+      <p><b>模型不能读图。</b>闸门直接判不可用，方法链跳到下一个。这是最干净的一类，因为发生在执行前。</p>
+
+      <p><b>字体渲不全。</b><code>resolveShapeForText()</code> 先做 <code>scanRenderability()</code>，不安全就换 <code>silver</code>；<code>silver</code> 也不安全就只能用默认形状硬渲，字符会变成占位方块。<span class="tag tag--ok">已核实</span>这是「能跑但质量下降」，不会报错。</p>
+
+      <p><b>归档自己超预算。</b>每次压缩都重渲全部历史，帧数增长可能超过恢复带；omp 用 <code>#rescueSnapcompactFrameOverflow()</code> 按阈值重算帧预算再渲一遍。<span class="tag tag--ok">已核实</span>这是方法链里少见的「同一方法内部再试一次」。</p>
+
+      <p><b>请求体字节超限。</b>413 错误会设置 <code>excludeMediaMethods</code>，后续压缩排除 snapcompact，避免「用更多图片救图片超限」。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>provider 图片数量上限。</b>发送前的图片预算裁剪会按 provider 的数量限制移除超出部分，替换成 <code>[image omitted: provider image limit]</code>（<code>session/provider-image-budget.ts</code>）。<span class="tag tag--ok">已核实</span>这意味着模型可能看到「摘要说有 40 帧，实际只有 20 帧」——摘要文本里的帧数是生成时的，不是发送时的。</p>
+
+      <p>最后一类最值得警惕：它不会失败，只会让模型「以为自己在读完整归档」。评估 snapcompact 的效果时，必须把「发送时裁剪」算进去，否则测的是「归档质量」，不是「模型实际看到的质量」。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>snapcompact 把被丢弃的历史渲成 PNG 帧，全程不调用 LLM；前提是模型能读图。</li>
+            <li>形状按模型行选择（Claude 11on16、Gemini 8on22@2048、GPT 8on22@1568），再做字体可读性与 CJK 回退。</li>
+            <li>帧上限 80，每帧保守按 5 024 token 估；超限从最旧丢，记 <code>truncatedChars</code>。</li>
+            <li>多次压缩是「合并源文本后整体重渲」，不是叠图。</li>
+            <li>帧存在 <code>preserveData</code>，每次重建上下文都重新挂回摘要消息。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>图片在四家里的四种命运</h2>
+
+      <p>大多数工具把图片当「输入的一种」，只在预算紧张时驱逐；snapcompact 反过来，把图片当「历史的存储格式」。这个方向差异，决定了四家在多模态上的策略完全不同。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">历史转图</th>
+              <th scope="col">图片预算</th>
+              <th scope="col">压缩时图片怎么处理</th>
+              <th scope="col">能读回原文吗</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>有（snapcompact）</td>
+              <td>按 provider 图片数量预算裁剪</td>
+              <td>渲成帧，帧随摘要每次重挂</td>
+              <td>能，归档 <code>text</code> 可重渲</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>无</td>
+              <td>仅估算：每图 4 800 字符</td>
+              <td>图片随消息被摘要覆盖，无驱逐</td>
+              <td>能，原文在 JSONL</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>无</td>
+              <td>未找到字节预算</td>
+              <td>序列化成一行 <code>[Attached mime: name]</code></td>
+              <td>能，SQLite 保留</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>无</td>
+              <td>25 MiB 触发，降到 15 MiB</td>
+              <td>图片压成 <code>[Attached mime: name]</code></td>
+              <td>能，SQLite 保留</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：omp <code>f979f46</code>；pi <code>b45e0eb</code>；opencode v1 <code>733b2c6</code>；opencode v2 <code>042d083</code>（beta）。「能读回原文」指数据仍在本地存储里，不代表模型有工具入口。</p>
+
+      <p>三点对照：</p>
+
+      <p>一是<b>方向</b>。pi 与两家 opencode 都在「减少图片」：估算、驱逐、序列化成占位文本。snapcompact 在「增加图片」，用图片替换文字。前者假设文字更便宜，后者假设在特定模型上图片更便宜。两个假设都成立，只是适用面不同。</p>
+
+      <p>二是<b>可逆性</b>。snapcompact 的归档里保留了完整源文本 <code>text</code>，所以每次压缩都能重渲；但它占的存储不小（一张 PNG 约 170 KB，80 帧约 13 MB）。opencode 的做法只留一行占位，存储几乎为零，代价是模型永远看不到图。</p>
+
+      <p>三是<b>失败模式</b>。snapcompact 最怕两件事：模型不支持图片（闸门直接跳过），以及帧归档本身超预算（需要 <code>#rescueSnapcompactFrameOverflow</code> 重渲更少帧）。文本摘要没有这两类失败，但它有另一类：摘要写丢了关键约束。没有哪种方法在所有维度上占优。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从算账到判断适用性</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">80 帧、每帧按 5 024 token 估，总共多少 token？如果窗口是 200 000，这份归档能整份放进请求吗？为什么代码还要留 <code>maxFrames</code> 参数？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>80 × 5 024 = 401 920。这已经超过 200k 窗口。</p>
+          <p><code>MAX_FRAMES_DEFAULT</code> 是「归档能存多少」，不是「一次请求能带多少」。真正的裁剪发生在发送时的字节预算与调用方的 <code>maxFrames</code>。</p>
+          <p>再想 <code>FRAME_TOKEN_ESTIMATE</code> 的注释：它是「未计费验证时的保守上界」，不是平均值。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">同一个会话先做了一次 <code>soft</code> 摘要，再做 <code>snapcompact</code>。第二次的归档开头会是什么？如果反过来，先 snapcompact 再 soft，soft 能看到图片吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>看 <code>includedPreviousSummary = !hasPreviousText &amp;&amp; !!previousSummary</code>：没有旧归档源文本、但有旧摘要时，把摘要印在 <code>[Summary of earlier history]</code> 后面。</p>
+          <p>反过来，<code>soft</code> 的摘要请求是纯文本序列化；图片在 <code>serializeConversation()</code> 里通常变成占位文本。所以「图上摘要」不会再被读成图，除非新方法显式解码。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你的模型每张图收固定 1 120 token，且能读 2 048 px。你会把帧调大还是调小？如果模型按面积计费呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>固定计费时，同一价格下塞进更多字符是纯赚——这正是 Gemini 用 <code>8on22-bw</code> + 2 048 的理由。</p>
+          <p>按面积计费时，像素翻倍价格也大致翻倍，收益取决于「每像素能读回多少字」。这就是 <code>packages/snapcompact/research/</code> 里 recall / F1 ÷ 计费 token 那组实验要回答的问题。</p>
+          <p>别忘了宿主上限：<code>fitHostImageEdge()</code> 会把超过 <code>image-max-edge</code> 的帧缩回去。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：opencode v1 · 切点：整轮边界与预算。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

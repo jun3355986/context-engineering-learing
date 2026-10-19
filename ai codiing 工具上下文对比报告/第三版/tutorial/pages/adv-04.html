@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>设计你自己的上下文策略 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本章专属：只作用于 adv-04 */
+  body[data-chapter="adv-04"] .prose :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="adv-04"] .kv {
+    grid-template-columns: 96px 1fr;
+  }
+  body[data-chapter="adv-04"] .kv dt {
+    white-space: nowrap;
+  }
+  body[data-chapter="adv-04"] .k-lvl {
+    margin-left: 10px;
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+  #fig-tree .a4-box {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+  }
+  #fig-tree .a4-box--q {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  #fig-tree .a4-box--end {
+    fill: var(--green-soft);
+    stroke: var(--green-line);
+  }
+  #fig-tree .a4-t {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 650;
+  }
+  #fig-tree .a4-s {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 11px;
+  }
+  #fig-tree .a4-line {
+    stroke: var(--border-strong);
+    stroke-width: 1.2;
+    fill: none;
+  }
+  #fig-tree .a4-arrow {
+    fill: var(--border-strong);
+  }
+  #fig-tree .a4-yes {
+    fill: var(--orange);
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+  }
+  #fig-ladder .a4-step {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+  }
+  #fig-ladder .a4-step--soft {
+    fill: var(--green-soft);
+    stroke: var(--green-line);
+  }
+  #fig-ladder .a4-step--hard {
+    fill: var(--orange-soft);
+    stroke: var(--orange-line);
+  }
+  #fig-ladder .a4-t {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 650;
+  }
+  #fig-ladder .a4-s {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+  }
+  #fig-ladder .a4-line {
+    stroke: var(--border-strong);
+    stroke-width: 1.2;
+  }
+  #fig-ladder .a4-arrow {
+    fill: var(--border-strong);
+  }
+  #fig-ladder .a4-axis {
+    stroke: var(--muted);
+    stroke-width: 1;
+    stroke-dasharray: 3 4;
+  }
+  body[data-chapter="adv-04"] .strategy-table {
+    min-width: 700px;
+  }
+  @media print {
+    body[data-chapter="adv-04"] .table-wrap {
+      overflow: visible;
+    }
+    body[data-chapter="adv-04"] .strategy-table {
+      min-width: 0;
+      font-size: 10pt;
+    }
+  }
+</style>
+</head>
+<body data-chapter="adv-04">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第三部分 · 进阶</b><span>·</span><span>第 04 章</span></p>
+      <h1>设计你自己的上下文策略</h1>
+      <p class="lede">策略不是一组抄来的参数。它是一串有顺序的决定：先看清任务长什么样，再分预算。接着定减量的先后，最后才做隔离、延续和验收。顺序颠倒，参数越调越乱。</p>
+      <ul class="meta">
+        <li>约 30 分钟</li>
+        <li>2 个练习</li>
+        <li>L4</li>
+        <li>前置：主线第 16 章</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>用五个维度描述一个任务，并从约束推出预算与减量顺序，而不是先选工具。</li>
+          <li>给出一个可执行、可验收的策略，写清每一步的触发条件与代价。</li>
+          <li>用评分点检查自己或别人的策略，指出哪一步缺了依据。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 ========== -->
+    <section id="three-plans">
+      <p class="sec-no">01 · 三个方案，都缺前提<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>“调成 70% 就好了”</h2>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 周一上午的三份方案</p>
+        <p>团队要给内部代码助手定上下文策略。A 说：把压缩阈值从 90% 调到 70%，省得总是爆。B 说：上子代理，把所有探索都丢出去。C 说：换个 1M 窗口的模型，问题就没了。三个人都没说：任务多长、工具输出多大、几个人同时用、代码能不能出内网。三份方案都不算错，但都没法验收。</p>
+      </div>
+
+      <p>问题不在结论，在顺序。A 先选了参数，B 先选了机制，C 先选了模型。三个人都跳过了同一个问题：<strong>这个任务的压力从哪里来</strong>。压力来源不同，解法完全不同：</p>
+      <ul>
+        <li>压力来自工具输出（一次测试 20k token）——先做截断与落盘，压缩是后面的事。</li>
+        <li>压力来自历史长度（80 轮对话）——压缩和裁剪都要用，且切点要对齐任务阶段。</li>
+        <li>压力来自并发的探索（读了 60 个文件才找到一处）——子代理隔离比压缩更省。</li>
+        <li>压力来自合规（历史不能出网）——先把架构限死，再谈参数。</li>
+      </ul>
+      <p class="lead-in">所以策略的第一步不是“选什么”，是“量什么”。</p>
+    </section>
+
+    <!-- ========== 02 框架 ========== -->
+    <section id="frame">
+      <p class="sec-no">02 · 五步框架<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>从任务特征推到验收指标</h2>
+      <p>下面五步是有顺序的。前一步的输出，是后一步的输入。任何一步跳过，后面的决定就没有依据。</p>
+      <ol>
+        <li><strong>任务特征</strong>：长度、工具密度、并发、合规、可分解性。回答“压力从哪来”。</li>
+        <li><strong>预算分配</strong>：窗口减去固定开销，得到可用历史；再定阈值与保留段。</li>
+        <li><strong>减量顺序</strong>：先做不改历史的，再做可还原的，最后才做不可逆的。</li>
+        <li><strong>隔离与延续</strong>：哪些历史该留在主会话，哪些该丢给子代理，哪些该写进记忆。</li>
+        <li><strong>验收指标</strong>：一个主指标、两个护栏、三到五个探针问题。</li>
+      </ol>
+      <p>第五步会回头改第一步和第二步。验收发现“短任务变差”，说明阈值定早了。发现“约束丢失”，说明保留段或摘要模板有问题。这个回边是正常的，不代表框架错了。</p>
+      <p>为什么是五步，不是七步？因为这五步各自产出一个可以直接写进策略表的东西。它是一组约束、一组数字、一个顺序、一套隔离方案、一组指标。再多一步，就会和已有步骤重叠。再少一步，策略表就会缺一行。</p>
+      <p>五步不是瀑布。做到第三步发现预算不够，要回到第二步重分。做到第五步发现指标不动，要回到第一步重新量任务。把它当成一个循环，而不是一张一次性填完的表。</p>
+      <p>框架还有三个反直觉的地方。第一，预算要在选减量之前算，因为“还剩多少”决定了能不能用压缩之外的办法。第二，减量顺序按可逆性排，不按成本排，最便宜的那一步不一定该先做。第三，验收要在写策略时定，不能等跑完再挑指标。跑完再挑的指标，一定支持你已经做的决定。</p>
+
+      <figure class="fig" id="fig-tree">
+        <svg viewBox="0 0 640 352" role="img" aria-labelledby="fig-tree-title fig-tree-desc">
+          <title id="fig-tree-title">从四个问题选上下文架构的决策树</title>
+          <desc id="fig-tree-desc">从“单任务会超过窗口吗”开始，四个是／否问题依次指向不同架构：只做截断裁剪、树加投影或日志加 surface、本地压缩、服务端压缩、记忆增强。每个终点都标注了适用条件。</desc>
+          <defs>
+            <marker id="a4-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="a4-arrow" d="M0 0 L10 5 L0 10 z"/>
+            </marker>
+          </defs>
+
+          <rect class="a4-box a4-box--q" x="210" y="14" width="220" height="46" rx="7"/>
+          <text class="a4-t" x="320" y="34" text-anchor="middle">① 单任务会超过窗口吗</text>
+          <text class="a4-s" x="320" y="50" text-anchor="middle">看最长任务，不看平均</text>
+
+          <rect class="a4-box a4-box--end" x="470" y="14" width="162" height="46" rx="7"/>
+          <text class="a4-t" x="551" y="34" text-anchor="middle">只做截断与裁剪</text>
+          <text class="a4-s" x="551" y="50" text-anchor="middle">不引入摘要</text>
+
+          <rect class="a4-box a4-box--q" x="210" y="100" width="220" height="46" rx="7"/>
+          <text class="a4-t" x="320" y="120" text-anchor="middle">② 需要回退或逐条审计吗</text>
+          <text class="a4-s" x="320" y="136" text-anchor="middle">谁能看到原文</text>
+
+          <rect class="a4-box a4-box--end" x="470" y="100" width="162" height="46" rx="7"/>
+          <text class="a4-t" x="551" y="114" text-anchor="middle">树 / 日志</text>
+          <text class="a4-t" x="551" y="132" text-anchor="middle">＋投影 / surface</text>
+
+          <rect class="a4-box a4-box--q" x="210" y="186" width="220" height="46" rx="7"/>
+          <text class="a4-t" x="320" y="206" text-anchor="middle">③ 历史能出本机吗</text>
+          <text class="a4-s" x="320" y="222" text-anchor="middle">合规先于成本</text>
+
+          <rect class="a4-box a4-box--end" x="8" y="186" width="182" height="46" rx="7"/>
+          <text class="a4-t" x="99" y="206" text-anchor="middle">本地压缩</text>
+          <text class="a4-s" x="99" y="222" text-anchor="middle">A 单会话 / B 树</text>
+
+          <rect class="a4-box a4-box--q" x="210" y="272" width="220" height="46" rx="7"/>
+          <text class="a4-t" x="320" y="292" text-anchor="middle">④ 要跨会话复用结论吗</text>
+          <text class="a4-s" x="320" y="308" text-anchor="middle">规范 / 偏好 / 踩过的坑</text>
+
+          <rect class="a4-box a4-box--end" x="470" y="272" width="162" height="46" rx="7"/>
+          <text class="a4-t" x="551" y="292" text-anchor="middle">记忆＋服务端压缩</text>
+          <text class="a4-s" x="551" y="308" text-anchor="middle">补回跨会话知识</text>
+
+          <rect class="a4-box a4-box--end" x="8" y="272" width="182" height="46" rx="7"/>
+          <text class="a4-t" x="99" y="292" text-anchor="middle">服务端压缩</text>
+          <text class="a4-s" x="99" y="308" text-anchor="middle">接受黑盒与出网</text>
+
+          <line class="a4-line" x1="430" y1="37" x2="466" y2="37" marker-end="url(#a4-arr)"/>
+          <text class="a4-yes" x="448" y="30" text-anchor="middle">否</text>
+
+          <line class="a4-line" x1="320" y1="60" x2="320" y2="96" marker-end="url(#a4-arr)"/>
+          <text class="a4-yes" x="330" y="82">是</text>
+
+          <line class="a4-line" x1="430" y1="123" x2="466" y2="123" marker-end="url(#a4-arr)"/>
+          <text class="a4-yes" x="448" y="116" text-anchor="middle">是</text>
+
+          <line class="a4-line" x1="320" y1="146" x2="320" y2="182" marker-end="url(#a4-arr)"/>
+          <text class="a4-yes" x="330" y="168">否</text>
+
+          <line class="a4-line" x1="210" y1="209" x2="194" y2="209" marker-end="url(#a4-arr)"/>
+          <text class="a4-yes" x="202" y="202" text-anchor="middle">否</text>
+
+          <line class="a4-line" x1="320" y1="232" x2="320" y2="268" marker-end="url(#a4-arr)"/>
+          <text class="a4-yes" x="330" y="254">是</text>
+
+          <line class="a4-line" x1="430" y1="295" x2="466" y2="295" marker-end="url(#a4-arr)"/>
+          <text class="a4-yes" x="448" y="288" text-anchor="middle">是</text>
+
+          <line class="a4-line" x1="210" y1="295" x2="194" y2="295" marker-end="url(#a4-arr)"/>
+          <text class="a4-yes" x="202" y="288" text-anchor="middle">否</text>
+        </svg>
+        <figcaption>图 04-1　四个问题定架构。①问长度：不超过窗口就不必压缩。②问审计：要回退或逐条查原文，就选树或日志，别选覆盖。③问合规：历史不能出本机，直接排除服务端。④问记忆：要跨会话复用，才加记忆层。任何一条落到“树 / 日志”，都可以再叠记忆。</figcaption>
+      </figure>
+
+      <p>这棵树只定架构，不定参数。参数在下面五节里算。另外，树上的“否”不是“永远不需要”，是“当前不需要”。任务变长、合规变严，要重新走一遍。</p>
+    </section>
+
+    <!-- ========== 03 任务特征 ========== -->
+    <section id="task">
+      <p class="sec-no">03 · 第一步：量任务<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>五个维度，三种档位</h2>
+      <p>不要给任务打分，打分会产生假的精确感。用“低 / 中 / 高”三档描述即可，重要的是每一项都能指向一个后续决定。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">维度</th>
+              <th scope="col">怎么量</th>
+              <th scope="col">它决定什么</th>
+              <th scope="col">高档位的样子</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">长度</th>
+              <td>一次任务的轮次、工具调用次数、最长一次连续不中断的时长。</td>
+              <td>压缩会不会触发、阈值定多早、要不要按阶段切会话。</td>
+              <td>超过 30 轮，或单次任务跑满一小时。</td>
+            </tr>
+            <tr>
+              <th scope="row">工具密度</th>
+              <td>平均每轮工具结果占多少 token；最大一次工具输出多大。</td>
+              <td>先做截断还是先做压缩；要不要落盘回读；保留段留多少。</td>
+              <td>每轮都有工具，单次输出常超 10k token。</td>
+            </tr>
+            <tr>
+              <th scope="row">并发</th>
+              <td>同时运行的会话数、每个会话的子代理数、是否需要 worktree 隔离。</td>
+              <td>隔离方式、存储与日志的写入压力、缓存是否互相污染。</td>
+              <td>多人同时用，或一个任务并行改多个模块。</td>
+            </tr>
+            <tr>
+              <th scope="row">合规</th>
+              <td>历史能否离开本机；能否被第三方留存；是否需要逐条审计与删除。</td>
+              <td>服务端压缩能不能用；日志要留多久；记忆能不能写。</td>
+              <td>代码不出内网，或对话内容受监管。</td>
+            </tr>
+            <tr>
+              <th scope="row">可分解性</th>
+              <td>子任务能否独立验收；子任务之间要不要共享文件状态。</td>
+              <td>能不能用子代理隔离；要不要 worktree；返回什么结构。</td>
+              <td>能拆成“扫描 / 改 / 验证”三段，各自有明确产出。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">五个维度里，合规是唯一“一票否决”的：它不参与权衡，只排除选项。其余四个可以互相补偿，比如长度高但工具密度低，未必要压缩。</p>
+
+      <p>没有历史数据时，怎么快速量？挑三个真实任务。从日志里数四个数：总轮次、工具调用次数。再数单次工具输出的 p95 token、任务结束时的窗口占用。四个数不用精确，量级对就够。比如“20 轮、60 次工具、p95 是 8k、结束时 120k”。这组数已经能判断压力主要来自工具输出，而不是对话长度。先量三个，比先调十个参数有用。</p>
+      <p>工具密度还有一个间接影响：它决定“压缩后模型要不要重读”。工具输出多的任务，压缩后往往要重新跑测试、重新读文件。这部分成本要算进 <code>CPS</code>。工具输出少的任务，压缩后靠摘要就能继续。同一个阈值，在两类任务上的实际收益可能相反。</p>
+
+      <div class="hf hf--think">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <div class="hf__body">
+          <p>一个任务只有 12 轮，但每轮都读一个 3,000 行的文件。它算“短任务”还是“长任务”？该先做什么？</p>
+          <p class="small muted">提示：长度看轮次，压力看 token。12 轮也可能塞满窗口。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 04 预算 ========== -->
+    <section id="budget">
+      <p class="sec-no">04 · 第二步：分预算<span class="k-lvl">文字＋算例 · Karpathy L1</span></p>
+      <h2>先减固定开销，再谈历史</h2>
+      <p>预算不是“窗口有多大”，是“历史能用多少”。固定开销先扣掉，剩下的才是可分配的历史。</p>
+
+      <div class="codeblock" data-lang="text">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">预算公式</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">可用历史 = 窗口 − 系统提示 − 工具定义 − 规则文件 − 输出预留 − 安全余量</span>
+<span class="code__line"> </span>
+<span class="code__line">触发阈值 = 可用历史 × 阈值比例</span>
+<span class="code__line">压缩后占用 ≈ 摘要 + 保留段 + 固定开销</span>
+</code></pre>
+      </div>
+
+      <p>以 200k 窗口为例，一套可以落地的数字：</p>
+      <ul>
+        <li>系统提示 + 工具定义：12k（工具越多越大，MCP 全量下发时会明显上涨）。</li>
+        <li>规则文件：8k（多级拼接后的总量，不是单文件）。</li>
+        <li>输出预留：16k。注意它不只是“最大输出”，还要覆盖工具调用的参数。一次写文件、一次大 patch 都算输出。</li>
+        <li>安全余量：10k。给估算误差、图片、临时附件留的位置。</li>
+        <li>可用历史：200 − 12 − 8 − 16 − 10 = <strong>154k</strong>。</li>
+        <li>阈值：154 × 70% ≈ <strong>108k</strong>；保留段：<strong>20k</strong>。</li>
+        <li>压缩后一次请求约 12 + 8 + 摘要（约 3k）+ 20 = <strong>43k</strong>。这已经回到阈值以下，留出继续跑的空间。</li>
+      </ul>
+      <p class="small muted">这些比例是示例，不是任何工具的默认值<sup class="fn-ref"><a href="#fn-adv-04-1" id="fnref-adv-04-1">1</a></sup>。真实值要按你的工具表大小、规则体积和输出上限重算。算完写进策略表，别留在脑子里。</p>
+
+      <p>三个容易算错的地方：</p>
+      <ol>
+        <li><strong>把“窗口”当“可用历史”</strong>：直接按 90% 触发，结果压缩请求自己就超窗。压缩要再发一遍历史，它比正常请求更大。</li>
+        <li><strong>输出预留只按文本算</strong>。工具调用的 JSON 参数、思考内容、并行工具的多份参数，都会吃输出预算。</li>
+        <li><strong>忘了压缩后的固定开销</strong>：压缩只减历史，不减系统提示和工具表。工具表很大时，“压完还是很满”是正常的。</li>
+      </ol>
+    </section>
+
+    <!-- ========== 05 减量顺序 ========== -->
+    <section id="reduce">
+      <p class="sec-no">05 · 第三步：排减量<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>按可逆性排，不按成本排</h2>
+      <p>很多人按“哪个便宜”排减量：截断最便宜，压缩最贵。这个排法在工程上会出事，因为它忽略了另一件事：<strong>做完还能不能回去</strong>。</p>
+
+      <figure class="fig" id="fig-ladder">
+        <svg viewBox="0 0 640 190" role="img" aria-labelledby="fig-ladder-title fig-ladder-desc">
+          <title id="fig-ladder-title">减量手段按可逆性排列的四级阶梯</title>
+          <desc id="fig-ladder-desc">四级从可逆到不可逆：截断工具输出可回读，裁剪历史可还原，压缩摘要不可逆，新开会话丢掉控制权。箭头表示信息损失逐级增加，下方虚线标出“调用模型”的分界，压缩与新会话要调模型。</desc>
+          <defs>
+            <marker id="a4-larr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="a4-arrow" d="M0 0 L10 5 L0 10 z"/>
+            </marker>
+          </defs>
+
+          <line class="a4-axis" x1="20" y1="150" x2="620" y2="150"/>
+          <text class="a4-s" x="20" y="172">可逆</text>
+          <text class="a4-s" x="620" y="172" text-anchor="end">不可逆</text>
+
+          <rect class="a4-step a4-step--soft" x="20" y="40" width="136" height="78" rx="7"/>
+          <text class="a4-t" x="88" y="68" text-anchor="middle">1 截断</text>
+          <text class="a4-s" x="88" y="88" text-anchor="middle">原文在存档，可回读</text>
+          <text class="a4-s" x="88" y="105" text-anchor="middle">不调模型</text>
+
+          <rect class="a4-step a4-step--soft" x="176" y="40" width="136" height="78" rx="7"/>
+          <text class="a4-t" x="244" y="68" text-anchor="middle">2 裁剪</text>
+          <text class="a4-s" x="244" y="88" text-anchor="middle">只换占位符，可还原</text>
+          <text class="a4-s" x="244" y="105" text-anchor="middle">不调模型</text>
+
+          <rect class="a4-step a4-step--hard" x="332" y="40" width="136" height="78" rx="7"/>
+          <text class="a4-t" x="400" y="68" text-anchor="middle">3 压缩</text>
+          <text class="a4-s" x="400" y="88" text-anchor="middle">摘要替代原文，不可逆</text>
+          <text class="a4-s" x="400" y="105" text-anchor="middle">调模型</text>
+
+          <rect class="a4-step a4-step--hard" x="488" y="40" width="132" height="78" rx="7"/>
+          <text class="a4-t" x="554" y="68" text-anchor="middle">4 新会话</text>
+          <text class="a4-s" x="554" y="88" text-anchor="middle">丢掉控制权与细节</text>
+          <text class="a4-s" x="554" y="105" text-anchor="middle">调模型＋人工</text>
+
+          <line class="a4-line" x1="156" y1="79" x2="172" y2="79" marker-end="url(#a4-larr)"/>
+          <line class="a4-line" x1="312" y1="79" x2="328" y2="79" marker-end="url(#a4-larr)"/>
+          <line class="a4-line" x1="468" y1="79" x2="484" y2="79" marker-end="url(#a4-larr)"/>
+
+          <line class="a4-axis" x1="332" y1="20" x2="332" y2="140"/>
+          <text class="a4-s" x="340" y="32">从这里开始要调模型</text>
+        </svg>
+        <figcaption>图 04-2　减量按可逆性排成四级。前两级不动历史原文，出问题能退回去；后两级会把信息压成一个新的东西，退不回去。排序规则：能回读的先做，能还原的后做，不可逆的最后做，换会话只在前三步都不够时用。</figcaption>
+      </figure>
+
+      <p>四级各自的触发条件不一样，不要用同一个阈值串起来：</p>
+      <ul>
+        <li><strong>截断</strong>：单次工具输出超过上限时立刻做，和窗口无关。上限按“模型需要多少才能判断”定，不按“窗口还剩多少”定。</li>
+        <li><strong>裁剪</strong>：旧工具结果已经过期（文件被改过、测试已重跑）时做。判据是“还能不能用”，不是“有多旧”。</li>
+        <li><strong>压缩</strong>：历史总量到阈值时做。粒度要落在任务边界：按模块、按工单、按阶段，而不是按 token 数硬切。</li>
+        <li><strong>新会话</strong>：前三步做完仍然装不下，或任务目标已经变了。切之前写一份交接摘要，否则等于重新开始。</li>
+      </ul>
+      <p><strong>顺序错了会怎样？</strong>先压缩再截断，等于把“本可以直接丢掉的工具输出”也写进了摘要。既花了摘要的 token，又把噪声留在了摘要里。先新会话再裁剪，等于丢掉了本可以还原的原文。这两种都很常见，因为“压缩”听起来最像解决方案。</p>
+
+      <p>“不可逆”不等于“不能用”。有些信息本来就不需要精确回读。比如三轮前的测试输出、已经合并的 diff、被否决的方案。对这些内容，压缩往往比裁剪更彻底。裁剪把一段内容换成占位符，省下的是那一段。压缩把整段改写成几句话，省得更多，代价是细节也没了。判断标准不是“可不可逆”，是“后面还需不需要逐字回读”。</p>
+
+      <p>还有一条实践规则：减量的每一级都要有“关闭开关”。不是为了上线后关，而是为了做消融时能单独关掉。没有开关的策略，无法回答“是哪一级在起作用”。它只能整体比较。</p>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">一次只动一层</p>
+        <p>调策略时，一次只改一级。同时开截断、裁剪、压缩，指标变好你不知道是谁的功劳。变坏也不知道该回退哪一个。这条在主线第 16 章的 A/B 里叫“只允许一个变量不同”。</p>
+      </div>
+    </section>
+
+    <!-- ========== 06 隔离 ========== -->
+    <section id="isolate">
+      <p class="sec-no">06 · 第四步：隔离与延续<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>该留下的留下，该丢出去的丢出去</h2>
+      <p>减量解决“装不下”，隔离解决“不该装”。判断标准只有一句话：<strong>这段历史后面还要被继续改写吗？</strong></p>
+      <ul>
+        <li><strong>还要改写</strong>：留在主会话。比如正在改的那个文件、正在调的接口。</li>
+        <li><strong>只要结论</strong>：丢给子代理或工具，只回结果。比如“这个函数在哪些地方被调用”。你要的是列表，不是 60 个文件的原文。</li>
+        <li><strong>跨任务复用</strong>：写进记忆或规则。比如“这个仓库的测试必须先起 Docker”。</li>
+        <li><strong>已经结束</strong>：封存成交接摘要，开新会话。</li>
+      </ul>
+
+      <p>子代理不是越多越好。它适合“读得多、写得少、结论短”的子任务。它不适合需要频繁回改的编辑任务。因为父会话看不到中间过程，一旦方向错了，只能整段重来<sup class="fn-ref"><a href="#fn-adv-04-2" id="fnref-adv-04-2">2</a></sup>。一个实用的分工：</p>
+      <ul>
+        <li>扫描 / 定位 / 调研 → 子代理，返回结构化列表（路径 + 行号 + 一句话）。</li>
+        <li>改代码 / 跑测试 → 主会话，因为要连续看 diff 和失败输出。</li>
+        <li>并行改不同模块 → 每个模块一个 worktree 加一个子代理。父会话只收“改了哪些文件 + 测试结果”。</li>
+      </ul>
+
+      <p>延续的关键是<strong>交接摘要的格式</strong>。不要写“上面聊了很多，继续”。要写五行：目标、已完成、未完成、约束、验收命令。这五行足够让一个新会话接着干，而且比整段历史短一个数量级。</p>
+      <p>一份能用的交接摘要长这样。目标——把 order 包的日期库迁到 date-fns。已完成——3 个文件、测试绿。未完成——checkout 包的 12 个调用点。约束——不改 public API、不改导出签名。验收——<code>pnpm test order &amp;&amp; pnpm lint</code>。一百多字，比原始历史短两个数量级，但足够接着干。</p>
+    </section>
+
+    <!-- ========== 07 验收 ========== -->
+    <section id="accept">
+      <p class="sec-no">07 · 第五步：定验收<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>写策略的时候就把验收写进去</h2>
+      <p>验收不是最后补的。策略里每一条“我们这样做”，都要能对应一个“怎么知道它有用”。指标定义见主线第 16 章，这里只讲怎么选。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">你改了什么</th>
+              <th scope="col">主指标</th>
+              <th scope="col">护栏</th>
+              <th scope="col">探针问题</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">调压缩阈值</th>
+              <td><code>CPS</code>（每成功任务成本）</td>
+              <td><code>SR</code>、<code>IRR</code></td>
+              <td>早期约束、验收命令</td>
+            </tr>
+            <tr>
+              <th scope="row">加子代理</th>
+              <td>父会话 token 增量</td>
+              <td><code>SR</code>、子代理返回长度</td>
+              <td>子代理结论是否被父会话采用</td>
+            </tr>
+            <tr>
+              <th scope="row">开记忆</th>
+              <td>跨会话任务的 <code>SR</code></td>
+              <td>污染率、记忆命中率</td>
+              <td>上次的决策理由、偏好</td>
+            </tr>
+            <tr>
+              <th scope="row">换服务端压缩</th>
+              <td><code>CPS</code></td>
+              <td><code>IRR</code>、审计可回放率</td>
+              <td>被删段里的路径与决策</td>
+            </tr>
+            <tr>
+              <th scope="row">改截断上限</th>
+              <td>重复读取率 <code>RRR</code></td>
+              <td><code>SR</code></td>
+              <td>工具输出里被截掉的关键行</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">只选一个主指标。两个主指标等于没有主指标——冲突时无法裁决。护栏的作用是“一票否决”，不是“再看好不好”。</p>
+
+      <p>护栏阈值不要拍脑袋。成功率护栏通常取“下降不超过 1 个百分点”，因为它接近评测噪声的下限。<code>IRR</code> 护栏取“不低于基线 95% 且绝对值不低于 80%”。前者防止相对退化，后者防止基线本来就很低。阈值写进策略表，跑完不改。</p>
+    </section>
+
+    <!-- ========== 08 模板 ========== -->
+    <section id="template">
+      <p class="sec-no">08 · 策略模板<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>六行填完，才叫策略</h2>
+      <p>下面这张表可以直接打印。每一行都配一个“检查问题”。填完之后，用问题自查一遍，答不上来就是还没想清。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table strategy-table">
+          <thead>
+            <tr>
+              <th scope="col">字段</th>
+              <th scope="col">填什么</th>
+              <th scope="col">示例</th>
+              <th scope="col">检查问题</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">约束</th>
+              <td>长度 / 工具密度 / 并发 / 合规 / 可分解性，各用低中高描述。</td>
+              <td>长任务；工具密度高；2 人并发；代码不出内网。</td>
+              <td>哪一条是一票否决？</td>
+            </tr>
+            <tr>
+              <th scope="row">预算</th>
+              <td>窗口、固定开销、输出预留、安全余量、可用历史、阈值、保留段。</td>
+              <td>200k；20k；16k；10k；154k；70%；20k。</td>
+              <td>压缩请求自己装得下吗？</td>
+            </tr>
+            <tr>
+              <th scope="row">减量顺序</th>
+              <td>第一级到第四级各做什么、触发条件、由谁执行。</td>
+              <td>截断 8k；过期结果换占位符；到 108k 按模块压缩；最后换会话。</td>
+              <td>每一级能不能单独关掉？</td>
+            </tr>
+            <tr>
+              <th scope="row">隔离</th>
+              <td>哪些子任务给子代理、返回什么结构、是否 worktree。</td>
+              <td>扫描给子代理，回路径清单；改码留主会话；按包开 worktree。</td>
+              <td>子代理失败时主会话知道吗？</td>
+            </tr>
+            <tr>
+              <th scope="row">记忆</th>
+              <td>写什么、何时写、何时删、按什么隔离。</td>
+              <td>只写仓库约定；任务结束写；90 天过期；按项目隔离。</td>
+              <td>写错了怎么删？</td>
+            </tr>
+            <tr>
+              <th scope="row">验收</th>
+              <td>一个主指标、两个护栏、三到五个探针。</td>
+              <td><code>CPS</code>；<code>SR</code> −1pp、<code>IRR</code> ≥80%；4 个探针。</td>
+              <td>不达标时回退哪一步？</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">打印建议：A4 横向，一行一项。手写填完后拍照存档，比存在文档里更容易在评审时被真正使用。</p>
+    </section>
+
+    <!-- ========== 09 练习一 ========== -->
+    <section id="ex-one">
+      <p class="sec-no">09 · 练习一<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>10 万行 monorepo 的重构任务</h2>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">已知条件</p>
+        <p>仓库 10 万行，40 个包，pnpm monorepo，TypeScript。任务：把 3 个包里的日期库从 moment 迁到 date-fns。涉及约 180 个文件。约束：不能改 public API。CI 必须全绿。两名工程师并行改不同包。代码不能出内网。工具密度高：每改完一批就跑测试，单次输出 2k–20k token。</p>
+      </div>
+
+      <p><strong>先别往下读。</strong>拿一张纸，用第 08 节的六行模板写一版。写完再对照下面的参考策略。</p>
+
+      <h3 id="ex-one-ref">参考策略</h3>
+      <dl class="kv">
+        <dt>约束</dt>
+        <dd>长度高（跨包、多轮）；工具密度高；并发 2；合规硬约束（不出内网）；可分解性高（按包拆）。</dd>
+        <dt>预算</dt>
+        <dd>200k 窗口；系统与工具 14k、规则 6k、输出预留 16k、余量 10k；可用历史 154k；阈值 70%（约 108k）；保留段 20k。</dd>
+        <dt>减量顺序</dt>
+        <dd>① 测试输出只留“失败用例 + 首尾各 20 行”，其余落盘；② 已改过的文件读取换占位符（路径 + 改动摘要）；③ 到阈值时<strong>按包压缩</strong>，不按全局压；④ 单包结束后封存交接摘要，开下一个包的新会话。</dd>
+        <dt>隔离</dt>
+        <dd>“扫描 moment 调用点”交给子代理，只回“文件 + 行号 + 用法类型”三列；改码与跑测试留在主会话；两个包各开一个 worktree，父会话只收每个包的改动文件列表与测试结果。</dd>
+        <dt>记忆</dt>
+        <dd>只写两条：迁移映射表（moment API → date-fns API）、public API 白名单。任务结束写入，按仓库隔离。</dd>
+        <dt>验收</dt>
+        <dd>主指标 <code>CPS</code>；护栏 <code>SR</code>（CI 绿且 public API 无 diff）、<code>IRR</code>（4 个探针：白名单、映射表、验收命令、禁止修改的导出）。</dd>
+      </dl>
+
+      <p>为什么按包压缩，而不是全局压缩？因为包是天然的验收边界。一个包改完、测试绿了，它的历史就可以整段换成“改了什么 + 测试结果”。全局压缩会把三个包的细节混进同一份摘要。后面要查“这个包为什么改了这行”就查不到了。</p>
+      <p>还有一个容易忽略的点：迁移任务的<strong>映射表</strong>本身占预算。180 个文件涉及十几种用法，映射表可能有 2k–4k token。放规则还是放记忆，取决于它是否跨会话复用。只服务这一次迁移，放记忆；长期都要遵守，放规则文件。</p>
+
+      <h3 id="ex-one-score">评分点（每项 2 分，共 10 分）</h3>
+      <ol>
+        <li><strong>预算里有没有输出预留</strong>：只写“窗口 200k、阈值 80%”得 0 分。算出可用历史并给压缩后占用估值得 2 分。</li>
+        <li><strong>压缩粒度是否对齐任务边界</strong>：按包/按阶段得 2 分。只说“到阈值就压”得 1 分。按固定 token 硬切得 0 分。</li>
+        <li><strong>有没有用隔离处理“读得多”的子任务</strong>：扫描给子代理、回结构化列表得 2 分。只把子代理当“并行改码”用得 1 分。</li>
+        <li><strong>有没有守住不可逆约束</strong>：public API 白名单进入探针或护栏得 2 分。只在提示词里写一句“不要改”得 0 分。</li>
+        <li><strong>验收是否可执行</strong>：给出命令、阈值、探针问题得 2 分。只写“看效果”得 0 分。</li>
+      </ol>
+      <p class="small muted">最常见的失分点是第 1 项和第 4 项。前者把窗口当可用历史，后者把约束交给模型自觉。</p>
+      <p>评分点不是考试，是自查。写完策略后，逐条问自己“这一项我有没有写”，比问“这一项我写得对不对”更有用。对错要靠实验回答，有没有写只靠自己。</p>
+    </section>
+
+    <!-- ========== 10 练习二 ========== -->
+    <section id="ex-two">
+      <p class="sec-no">10 · 练习二<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>客服工单里的长对话</h2>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">已知条件</p>
+        <p>每个工单 40–120 轮，中英混杂，客户会在中途改需求。坐席用 Agent 查订单、发邮件、查知识库，工具密度低但调用频繁。50 个坐席同时在线。合规要求：对话要保留 6 个月、可逐条审计。客户个人信息不能进第三方服务。需要跨工单记住客户偏好，但不能记住无关的隐私。</p>
+      </div>
+
+      <p><strong>先写一版再对照。</strong>这一题的陷阱是：它看起来像“长对话摘要”，其实一半是“结构化抽取”。</p>
+
+      <h3 id="ex-two-ref">参考策略</h3>
+      <dl class="kv">
+        <dt>约束</dt>
+        <dd>长度高（轮次多但每轮短）；工具密度中；并发高（50 坐席）；合规硬约束（可审计 + 不出网）；可分解性低（一个工单必须一个上下文）。</dd>
+        <dt>预算</dt>
+        <dd>32k 小窗口；系统 3k、工具 2k、输出预留 3k、余量 2k；可用历史 22k；阈值 80%（约 17.6k）；保留段 6k。</dd>
+        <dt>减量顺序</dt>
+        <dd>① 订单/物流查询只保留字段（订单号、状态、金额、时间），不保留原始 JSON；② 每 10 轮把对话折叠成<strong>结构化事实卡</strong>（诉求、承诺、订单号、金额、情绪、待办）；③ 到阈值时再生成叙事摘要，事实卡作为附件保留；④ 工单结束封存，不新开会话。</dd>
+        <dt>隔离</dt>
+        <dd>一个工单一个会话；知识库检索交给工具，只回命中的三条与摘要；跨工单只写结构化 CRM 字段，不写自由文本。</dd>
+        <dt>记忆</dt>
+        <dd>白名单字段：语言偏好、联系方式偏好、历史投诉类型。写入前脱敏，30 天过期，可按客户删除。</dd>
+        <dt>验收</dt>
+        <dd>主指标一次解决率；护栏 <code>IRR</code>（承诺事项、订单号、退款金额）、审计可回放率 100%；探针 4 个，答案只能来自被折叠的段落。</dd>
+      </dl>
+
+      <p>这一题的关键决定是<strong>把“事实”和“叙述”分开</strong>。事实卡是结构化的，字段固定，压缩不会丢。叙述摘要可以写得很顺，但容易漏掉金额和承诺。先抽事实、再写摘要，等于给摘要加了一层校验。摘要与事实卡冲突时，以事实卡为准。</p>
+      <p>第二个关键决定是<strong>记忆只写白名单</strong>。客服场景里，“客户上次说喜欢电话回访”有用。“客户上次提到家里有事”不该被记住。白名单不是技术限制，是合规边界。</p>
+
+      <h3 id="ex-two-score">评分点（每项 2 分，共 10 分）</h3>
+      <ol>
+        <li><strong>有没有结构化的中间层</strong>：事实卡/槽位得 2 分。直接叙事摘要得 1 分。只做截断得 0 分。</li>
+        <li><strong>合规是否落到机制</strong>：脱敏、白名单、可删除、审计日志，至少三项得 2 分。只写“注意隐私”得 0 分。</li>
+        <li><strong>并发是否影响选型</strong>：考虑多租户存储与日志写入得 2 分。完全没提得 0 分。</li>
+        <li><strong>指标是否对业务有意义</strong>：一次解决率/审计可回放率得 2 分。只写 token 成本得 0 分。</li>
+        <li><strong>保留段是否覆盖“承诺”</strong>：明确保留最近承诺与订单信息得 2 分。只按轮数保留得 1 分。</li>
+      </ol>
+      <p class="small muted">这一题最常见的失分点是“只做摘要、不做结构化”。叙事摘要读起来顺。但金额、订单号、承诺时间这类字段一旦写错，后面每一轮都会沿用错误值。第二个失分点是记忆写成自由文本，导致无法按客户删除。</p>
+    </section>
+
+    <!-- ========== 11 自检 ========== -->
+    <section id="checklist">
+      <p class="sec-no">11 · 交卷前自检<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>五问，答不上来就还没写完</h2>
+      <ol>
+        <li><strong>压力从哪来？</strong>说得出是工具输出、历史长度、并发探索，还是合规，而不是“感觉不够用”。</li>
+        <li><strong>预算是算出来的还是抄来的？</strong>每一项固定开销都有数字，且加起来不超过窗口。</li>
+        <li><strong>减量顺序能不能单独回退？</strong>四级各自有开关，关掉一级不影响另外三级。</li>
+        <li><strong>隔离后父会话知道结果吗？</strong>子代理返回结构化结果，失败时有明确信号，不是静默消失。</li>
+        <li><strong>不达标时回退哪一步？</strong>写清“先回退阈值，再回退压缩粒度”，而不是“整体重做”。</li>
+      </ol>
+      <p>这五问对应五步框架，也对应策略模板的六行。写完策略后隔一天再读一遍，通常能发现至少一处“当时觉得显然、现在说不清”的地方。</p>
+      <p>评审时，把这张表和策略一起发出去，比只发结论有效。评审人通常不会从头读你的推理，但会直接看“约束”和“验收”两行。约束是否覆盖了真正的硬限制，验收是否能被第三方执行。这两行过了，中间的预算与减量才有讨论的基础。</p>
+      <p>最后一件事：策略是活的。任务从“改一个包”变成“迁三个包”，长度和并发都变了，阈值就该重算。团队从“能出网”变成“不能出网”，架构可能整段作废。把它当成一份会过期的文档，而不是一次性作业。每次改完，在模板底部写一行“本次变更与原因”，下次评审时能省很多解释。</p>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-adv-04-1">
+          200k 窗口下的 12k / 8k / 16k / 10k / 70% / 20k 是一组示例参数，来自主线第 5、8 章的常见量级，不是任何工具的实际默认值。已核对 Codex 的 95% 与 90% 两条线、Claude Code 的有效窗口减 13k、opencode v1 的保留预算 <code>clamp(25%, 2k, 15k)</code>，各家口径不同，不能直接套用。正式使用时按自己的工具表与规则体积重算。
+          <a class="footnotes__back" href="#fnref-adv-04-1">↩</a>
+        </li>
+        <li id="fn-adv-04-2">
+          “子代理适合读多写少”是工程经验，不是对照实验结论：本章没有比较“子代理改码”与“主会话改码”的成功率。依据是子代理只回最终结果、父会话看不到中间 diff 这一结构事实（见主线第 10 章），以及回退需要整段重来的代价。把它当启发式，不要当定律。
+          <a class="footnotes__back" href="#fnref-adv-04-2">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：<a href="adv-05.html">评估方法：L5 入门</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

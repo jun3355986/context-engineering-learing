@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>视频分镜脚本 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  body[data-chapter="appendix-video"] #appendix-video .data-table {
+    font-size: 13px;
+  }
+  body[data-chapter="appendix-video"] #appendix-video .data-table th[scope="row"] {
+    min-width: 118px;
+  }
+  body[data-chapter="appendix-video"] #appendix-video .data-table td:nth-child(2),
+  body[data-chapter="appendix-video"] #appendix-video .data-table td:nth-child(3),
+  body[data-chapter="appendix-video"] #appendix-video .data-table td:nth-child(4) {
+    min-width: 84px;
+    white-space: nowrap;
+  }
+  body[data-chapter="appendix-video"] #appendix-video .data-table td:nth-child(5) {
+    min-width: 190px;
+  }
+  body[data-chapter="appendix-video"] #appendix-video .data-table td:nth-child(6) {
+    min-width: 150px;
+  }
+</style>
+</head>
+<body data-chapter="appendix-video">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>附录</b><span>·</span><span>视频</span></p>
+      <h1>视频分镜脚本</h1>
+      <p class="lede">五个主题，五份可以直接开拍的分镜：每份都有镜头表、逐字旁白、画面元素清单与数字来源。它们不是正文的朗读版，而是把正文里最难用文字讲清的那一层，先画成几何直觉。</p>
+      <ul class="meta">
+        <li>5 个主题</li>
+        <li>40 个镜头</li>
+        <li>15 分 35 秒</li>
+        <li>3Blue1Brown 风格</li>
+      </ul>
+      <div class="callout callout--quiet">
+        <p class="callout__title">怎么用</p>
+        <p>每份脚本都是独立的 Markdown 文件，链接在下面的总表里；可以直接用编辑器打开、复制旁白去录音。页面本身只做索引与选型建议，不重复整篇旁白——否则改一处就要改两处。</p>
+      </div>
+    </header>
+
+    <div id="appendix-video">
+
+      <!-- ========== 选型 ========== -->
+      <section id="video-choose">
+        <p class="sec-no">01 · 五个主题各解决什么</p>
+        <h2>先选一个「说不清」的瞬间</h2>
+        <p>五个主题不是按章节顺序排的，而是按「读者最容易被卡住的地方」排的。每一段都先给一个能看见的形状，再上符号；如果你只拍一支，拍第一支。</p>
+
+        <div>
+          <h3>01 压缩：为什么历史必须被换掉</h3>
+          <p>解决「我第一句话就说过了，它怎么忘了」：把不断变长的历史条、被撞红的窗口线、以及「摘要 + 保留尾巴」的替换过程画出来。适合所有用过 <code>/compact</code> 但不知道它丢了什么的人。对应主线第 8 章与源码 · Codex 第 1 节。</p>
+        </div>
+
+        <div>
+          <h3>02 缓存：前缀为什么值钱</h3>
+          <p>解决「为什么改一个字，账单翻倍」：把前缀画成一段已经铺好的轨道，第一个不同字节是道岔，之后全部重铺。适合关心成本、但还没建立「前缀」直觉的人。对应入门第 5 章与主线第 13 章。</p>
+        </div>
+
+        <div>
+          <h3>03 子代理：把噪声关在另一间屋子</h3>
+          <p>解决「为什么子代理能省 token，但父会话还是会变长」：两间屋子、一扇小窗、一张纸条。适合已经开始用 <code>task</code> / <code>subagent</code>、但说不清收益来自哪里的人。对应主线第 10 章。</p>
+        </div>
+
+        <div>
+          <h3>04 会话树：日志不删，只换叶子</h3>
+          <p>解决「回退是不是把历史删了」：树干不长回去，年轮只增不减；回退只是把尺子插在某一圈。适合用过 <code>/rewind</code>、<code>/tree</code>、<code>--fork</code> 的人。对应主线第 11 章与源码 · Grok Build 第 3 节。</p>
+        </div>
+
+        <div>
+          <h3>05 评估：怎么证明这套策略更好</h3>
+          <p>解决「感觉快了，但说不出好在哪」：同一道题、同一张草稿纸，换一种做法再考一次；看配对差值的分布，而不是两组均值。适合要写方案、要做取舍的 L4–L5 读者。对应主线第 16 章与进阶第 5 章。</p>
+        </div>
+      </section>
+
+      <!-- ========== 总表 ========== -->
+      <section id="video-table">
+        <p class="sec-no">02 · 总表</p>
+        <h2>时长、镜头数、比喻与章节</h2>
+        <p>时长按「旁白每秒约 4.2 个汉字」估算，已留出停顿；镜头数指分镜表里的独立镜号，不含片头片尾的字卡。<sup class="fn-ref"><a href="#fn-appendix-video-1" id="fnref-appendix-video-1">1</a></sup></p>
+
+        <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">主题</th>
+                <th scope="col">时长</th>
+                <th scope="col">镜头数</th>
+                <th scope="col">核心比喻</th>
+                <th scope="col">对应章节</th>
+                <th scope="col">脚本</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">01 压缩</th>
+                <td>3:10</td>
+                <td>8</td>
+                <td>一整面墙的便签，换成一张索引卡加一小段没读完的原文</td>
+                <td><a href="main-08.html">主线第 8 章</a> · <a href="src-codex-01.html">源码 · Codex 第 1 节</a></td>
+                <td><a href="../../video/01-compaction.md"><code>01-compaction.md</code></a></td>
+              </tr>
+              <tr>
+                <th scope="row">02 缓存</th>
+                <td>3:05</td>
+                <td>8</td>
+                <td>已经铺好的铁轨：第一个不同字节是道岔，之后全部重铺</td>
+                <td><a href="intro-05.html">入门第 5 章</a> · <a href="main-13.html">主线第 13 章</a></td>
+                <td><a href="../../video/02-cache.md"><code>02-cache.md</code></a></td>
+              </tr>
+              <tr>
+                <th scope="row">03 子代理</th>
+                <td>3:05</td>
+                <td>7</td>
+                <td>两间屋子，中间一扇小窗；噪声留在隔壁，只递回一张纸条</td>
+                <td><a href="main-10.html">主线第 10 章</a></td>
+                <td><a href="../../video/03-subagent.md"><code>03-subagent.md</code></a></td>
+              </tr>
+              <tr>
+                <th scope="row">04 会话树</th>
+                <td>3:05</td>
+                <td>8</td>
+                <td>树干不长回去，年轮只增不减；回退只是把尺子插在某一圈</td>
+                <td><a href="main-11.html">主线第 11 章</a> · <a href="src-grok-build-03.html">源码 · Grok Build 第 3 节</a></td>
+                <td><a href="../../video/04-session-tree.md"><code>04-session-tree.md</code></a></td>
+              </tr>
+              <tr>
+                <th scope="row">05 评估</th>
+                <td>3:10</td>
+                <td>9</td>
+                <td>同一道题、同一张草稿纸，换一种做法再考一次</td>
+                <td><a href="main-16.html">主线第 16 章</a> · <a href="adv-05.html">进阶第 5 章</a></td>
+                <td><a href="../../video/05-eval.md"><code>05-eval.md</code></a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="table-caption">五份脚本合计 15 分 35 秒、40 个镜头。链接指向项目根目录下的 <code>video/</code>，在 <code>file://</code> 下会用浏览器或编辑器直接打开 Markdown 源文件。</p>
+      </section>
+
+      <!-- ========== 关键帧 ========== -->
+      <section id="video-keyframe">
+        <p class="sec-no">03 · 关键帧示意</p>
+        <h2>五条时间轴，一个共同形状</h2>
+        <p>五支片子讲的是不同机制，但画面语言是同一套：<strong>一条从左到右的时间轴</strong>，蓝色是保留下来的部分，橙色是被替换或丢弃的部分，青色是新产生的内容。颜色一旦定下，全片不再改。</p>
+
+        <figure class="fig">
+          <svg viewBox="0 0 640 268" role="img" aria-labelledby="fig-video-title fig-video-desc">
+            <title id="fig-video-title">五支视频的时间轴长度与镜头分布</title>
+            <desc id="fig-video-desc">五行横条，分别代表压缩、缓存、子代理、会话树、评估五支视频；条长按时长等比，右侧标注时长与镜头数。</desc>
+            <text class="svg-label" x="8" y="26">01 压缩</text>
+            <rect class="svg-track" x="150" y="12" width="330" height="20" rx="6"/>
+            <rect class="svg-seg--a" x="150" y="12" width="294" height="20" rx="6"/>
+            <text class="svg-note" x="490" y="27">3:10 · 8 镜</text>
+
+            <text class="svg-label" x="8" y="66">02 缓存</text>
+            <rect class="svg-track" x="150" y="52" width="330" height="20" rx="6"/>
+            <rect class="svg-seg--a" x="150" y="52" width="287" height="20" rx="6"/>
+            <text class="svg-note" x="490" y="67">3:05 · 8 镜</text>
+
+            <text class="svg-label" x="8" y="106">03 子代理</text>
+            <rect class="svg-track" x="150" y="92" width="330" height="20" rx="6"/>
+            <rect class="svg-seg--b" x="150" y="92" width="287" height="20" rx="6"/>
+            <text class="svg-note" x="490" y="107">3:05 · 7 镜</text>
+
+            <text class="svg-label" x="8" y="146">04 会话树</text>
+            <rect class="svg-track" x="150" y="132" width="330" height="20" rx="6"/>
+            <rect class="svg-seg--a" x="150" y="132" width="287" height="20" rx="6"/>
+            <text class="svg-note" x="490" y="147">3:05 · 8 镜</text>
+
+            <text class="svg-label" x="8" y="186">05 评估</text>
+            <rect class="svg-track" x="150" y="172" width="330" height="20" rx="6"/>
+            <rect class="svg-seg--c" x="150" y="172" width="294" height="20" rx="6"/>
+            <text class="svg-note" x="490" y="187">3:10 · 9 镜</text>
+
+            <line class="svg-rule" x1="8" y1="212" x2="632" y2="212"/>
+            <text class="svg-note" x="8" y="236">蓝 = 保留 / 稳定前缀　青 = 新产生的结果　橙 = 被替换或需要付代价的部分</text>
+            <text class="svg-note" x="8" y="256">条长按时长等比，示意，非真实帧率或预算比例。</text>
+          </svg>
+          <figcaption>图 1　五支片子共享同一条时间轴语法；选哪个主题，取决于你想让观众先看见哪种「变短」或「变贵」。</figcaption>
+        </figure>
+      </section>
+
+      <!-- ========== 制作规范 ========== -->
+      <section id="video-rules">
+        <p class="sec-no">04 · 统一制作规范</p>
+        <h2>三条硬规则，五份脚本都遵守</h2>
+
+        <div class="callout callout--info">
+          <p class="callout__title">规则一 · 先几何，后符号</p>
+          <p>每个概念的第一个镜头只出现形状、长度、位置和运动，不出现参数名。参数与数字放在第二个或第三个镜头，并且必须同时出现在字幕里——观众听不懂时可以看。</p>
+        </div>
+
+        <div class="callout callout--info">
+          <p class="callout__title">规则二 · 颜色有语义，全片一致</p>
+          <p>蓝＝保留/稳定，橙＝丢弃/代价，青＝新产生/摘要，灰＝不进模型的存档，红＝失败/溢出。五支片子共用这套色板，观众看第二支时不需要重新学习。</p>
+        </div>
+
+        <div class="callout callout--warn">
+          <p class="callout__title">规则三 · 每个数字都要能指回来源</p>
+          <p>旁白里出现的每个具体数值，在制作备注里都有一行「数字 → 事实卡片 → 小节」。没有来源的数字，要么删掉，要么改成「示意值」并在画面角落标注。不要把不同工具的数字混在同一句里比较。</p>
+        </div>
+
+        <p>五份脚本的结构相同：标题与目标观众 → 核心比喻 → 分镜表（镜号 / 时长 / 画面 / 旁白 / 字幕） → 旁白完整版 → 制作备注。分镜表里的旁白与完整版逐字一致，不写两套说法；改动时以分镜表为准，再同步完整版。</p>
+      </section>
+
+      <div class="footnotes">
+        <p class="footnotes__title">脚注</p>
+        <ol>
+          <li id="fn-appendix-video-1">
+            时长估算方法：按旁白汉字数除以 4.2 字/秒，再加每镜 0.6–1.0 秒的入出场停顿；这是配音节奏的经验值，不是任何工具的官方口径。实际录制时以旁白完整版的时间码为准，必要时删句而不是加速。
+            <a class="footnotes__back" href="#fnref-appendix-video-1">↩</a>
+          </li>
+        </ol>
+      </div>
+
+    </div>
+
+    <p class="footer-note">附录到此结束。回到 <a href="../index.html">导读</a>，或从 <a href="appendix-glossary.html">术语表</a> 重新查词。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

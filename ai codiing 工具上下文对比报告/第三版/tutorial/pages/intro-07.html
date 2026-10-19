@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>总流程图 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+/* 本章图示在深色下的对比度：色块变浅，文字改用页面底色。 */
+body[data-chapter="intro-07"] .fig .svg-label:not(.svg-label--dark) {
+  fill: var(--bg);
+}
+</style>
+</head>
+<body data-chapter="intro-07">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第一部分 · 入门</b><span>·</span><span>第 07 章</span></p>
+      <h1>总流程图</h1>
+      <p class="lede">六章拆下来的碎片，在这一张图里各就各位。以后每读一章主线，回来找一个格子。</p>
+      <ul class="meta">
+        <li>约 12 分钟</li>
+        <li>前置：intro-02…06</li>
+        <li>L2</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>用五个阶段复述一次请求从组装到回收的全链路。</li>
+          <li>把 16 类能力放进对应阶段，说出每类解决什么问题。</li>
+          <li>指出哪些环节会调用模型，哪些只是一次本地改写。</li>
+        </ol>
+      </div>
+    </header>
+
+    <section>
+      <p class="sec-no">01 · 六个碎片，拼不成一句话</p>
+      <h2>“你都懂，但你说不清”</h2>
+      <p>面试官问你：「你怎么理解 Agent 的上下文管理？」你脑子里冒出窗口、token、context rot、缓存、压缩、子代理，六个词各说两句，说完自己都觉得散。</p>
+      <p>问题不在知识量，在缺一张把它们串起来的图。串不起来的知识，用的时候调不出来。</p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 缺的不是概念，是顺序</p>
+        <p>上下文管理不是六个并列的技巧，是一条有先后顺序的流水线：先决定<strong>装什么</strong>，再算<strong>装了多少</strong>，装不下就<strong>减</strong>，减不动就<strong>隔离</strong>，最后用<strong>缓存、恢复、扩展、评估</strong>保证它长期跑得稳。顺序错了，技巧就互相打架。</p>
+      </div>
+
+      <p class="lead-in">说白了，一次请求有它的一生：组装、计量、减量、隔离、质量兜底。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">02 · 主图：五段流水线</p>
+      <h2>16 个格子，一条主链</h2>
+      <p>图里的编号就是本教程主线 16 章的顺序。蓝色是不发起模型调用的环节，橙色是主链路上会发起模型调用的环节。虚线是回边——失败时往回走。</p>
+      <p>读这张图有个顺序：先看左边五段的名字，再看每段里的编号，最后看右边那条虚线。别一上来就盯 16 个格子，那样还是碎片。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 470" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">上下文管理全链路与 16 类能力落点</title>
+          <desc id="fig-1-desc">五段从上到下：组装含第 1 到 4 类，计量含第 5 类，减量含第 6 到 9 类，隔离与延续含第 10 到 12 类，质量含第 13 到 16 类。右侧有一条虚线从减量回到计量，表示溢出后压缩重试。</desc>
+
+          <text class="svg-note" x="0" y="22" font-size="13">装什么</text>
+          <rect class="svg-seg--a" x="72" y="34" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="139" y="60" text-anchor="middle" font-size="14">1 请求组装</text>
+          <rect class="svg-seg--a" x="212" y="34" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="279" y="60" text-anchor="middle" font-size="14">2 规则合并</text>
+          <rect class="svg-seg--a" x="352" y="34" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="419" y="60" text-anchor="middle" font-size="14">3 按需加载</text>
+          <rect class="svg-seg--a" x="492" y="34" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="559" y="60" text-anchor="middle" font-size="14">4 动态注入</text>
+
+          <path class="svg-rule" d="M40 92v16" fill="none"/><path d="M40 114l-4-6h8z" fill="var(--border-strong)"/>
+          <text class="svg-note" x="0" y="120" font-size="13">量多少</text>
+          <rect class="svg-seg--b" x="72" y="106" width="274" height="46" rx="7"/>
+          <text class="svg-label" x="209" y="135" text-anchor="middle" font-size="14">5 计量与可视化</text>
+
+          <path class="svg-rule" d="M40 152v16" fill="none"/><path d="M40 174l-4-6h8z" fill="var(--border-strong)"/>
+          <text class="svg-note" x="0" y="190" font-size="13">怎么减</text>
+          <rect class="svg-seg--a" x="72" y="176" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="139" y="202" text-anchor="middle" font-size="14">6 工具输出</text>
+          <rect class="svg-seg--a" x="212" y="176" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="279" y="202" text-anchor="middle" font-size="14">7 历史裁剪</text>
+          <rect class="svg-seg--c" x="352" y="176" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="419" y="202" text-anchor="middle" font-size="14">8 压缩</text>
+          <rect class="svg-seg--a" x="492" y="176" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="559" y="202" text-anchor="middle" font-size="14">9 多模态</text>
+
+          <path class="svg-rule" d="M40 234v16" fill="none"/><path d="M40 256l-4-6h8z" fill="var(--border-strong)"/>
+          <text class="svg-note" x="0" y="290" font-size="13">怎么隔离</text>
+          <text class="svg-note" x="0" y="306" font-size="13">怎么延续</text>
+          <rect class="svg-seg--c" x="72" y="266" width="176" height="58" rx="7"/>
+          <text class="svg-label" x="160" y="292" text-anchor="middle" font-size="14">10 子代理</text>
+          <rect class="svg-seg--a" x="254" y="266" width="176" height="58" rx="7"/>
+          <text class="svg-label" x="342" y="292" text-anchor="middle" font-size="14">11 会话时间线</text>
+          <rect class="svg-seg--a" x="436" y="266" width="176" height="58" rx="7"/>
+          <text class="svg-label" x="524" y="292" text-anchor="middle" font-size="14">12 跨会话记忆</text>
+
+          <path class="svg-rule" d="M40 324v16" fill="none"/><path d="M40 346l-4-6h8z" fill="var(--border-strong)"/>
+          <text class="svg-note" x="0" y="380" font-size="13">怎么保证</text>
+          <rect class="svg-seg--a" x="72" y="356" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="139" y="382" text-anchor="middle" font-size="14">13 缓存友好</text>
+          <rect class="svg-seg--a" x="212" y="356" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="279" y="382" text-anchor="middle" font-size="14">14 失败恢复</text>
+          <rect class="svg-seg--a" x="352" y="356" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="419" y="382" text-anchor="middle" font-size="14">15 扩展点</text>
+          <rect class="svg-seg--a" x="492" y="356" width="134" height="58" rx="7"/>
+          <text class="svg-label" x="559" y="382" text-anchor="middle" font-size="14">16 评估</text>
+
+          <path class="svg-rule" d="M628 205h8v-70h-8" fill="none" stroke-dasharray="5 4"/>
+          <text class="svg-note" x="634" y="128" text-anchor="end" font-size="12">溢出就回边</text>
+          <path d="M628 131l-8 4 8 4z" fill="var(--border-strong)"/>
+          <text class="svg-note" x="0" y="440" font-size="13">蓝＝本地改写或读取，不发起模型调用；橙＝主链路上会调模型；虚线＝失败后的回边。</text>
+          <text class="svg-note" x="0" y="460" font-size="13">编号对应第二部分主线第 1–16 章，一章一类。</text>
+        </svg>
+        <figcaption>图 1　五段流水线与 16 类落点：组装（1–4）→ 计量（5）→ 减量（6–9）→ 隔离与延续（10–12）→ 质量（13–16）。实线向下是主链，虚线回边是“溢出→压缩→重试”。橙色的 8 与 10 会真的再发一次模型请求。</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <p class="sec-no">03 · 五段各自在干什么</p>
+      <h2>每段只回答一个问题</h2>
+      <p><strong>组装：装什么。</strong>决定这次请求里放哪些材料、按什么顺序放。第 1 到第 4 类都在这一段：请求骨架、规则合并、按需加载、动态注入。这一段决定了前缀长什么样，也就决定了第 5 章那笔缓存账。</p>
+      <p>这也是第 2 章要花一整章拆骨架的原因：第一段拼错了，后面每一段都在替它擦屁股。</p>
+      <p><strong>计量：装了多少。</strong>第 5 类。用服务端 <code>usage</code> 加本地增量算占用，再和阈值比。它本身不改内容，只负责“报数”和“报警”。</p>
+      <p><strong>减量：装不下怎么办。</strong>第 6 到第 9 类，按代价从低到高排：先控制单次工具输出，再裁剪历史，再压缩，最后才动多模态。这个顺序不是随意排的——越靠前越便宜，也越不容易丢关键信息。</p>
+      <p><strong>隔离与延续：怎么不让它互相污染。</strong>第 10 到 12 类。子代理把探索关在另一个上下文里；会话时间线让历史可恢复、可分叉；跨会话记忆决定哪些东西值得带到下一次。</p>
+      <p><strong>质量：怎么长期跑得稳。</strong>第 13 到 16 类。缓存友好让重复的部分不变贵；失败恢复处理溢出和压缩失败；扩展点让你在不改核心的情况下介入；评估回答“这套策略到底有没有变好”。</p>
+      <p>五段不是五个独立模块，是一条链：组装出问题，计量看得见；计量报警，减量才启动；减量失手，失败恢复兜底；兜底之后，缓存又成了新的约束。</p>
+      <p>拿一次普通请求走一遍：组装把系统提示、工具、规则、环境、历史拼成四万 token 的前缀；计量算出四万一千，离软线还远，于是这一段直接跳过；没有需要隔离的探索，子代理不启动；缓存因为前缀没变而命中大半。整条链上真正“动手”的只有第一个格子和最后一个格子，中间三段都在待命。</p>
+      <p>只有出问题时，中间三段才登场。这也是为什么很多人对它们没感觉——平时它们确实什么都不做。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">04 · 哪些环节调模型</p>
+      <h2>大多数环节是“改写文本”，不是“再问一次”</h2>
+      <p>这张图最实用的一层信息，是分清“花钱的环节”。</p>
+      <ul>
+        <li><strong>不调模型</strong>：规则合并、按需加载、注入、计量、工具输出截断、历史裁剪、缓存打点、评估统计。它们是本地计算，快，也便宜。</li>
+        <li><strong>调模型</strong>：压缩、子代理、以及失败恢复里的压缩重试。它们要再发一次请求，慢，也贵。</li>
+        <li><strong>看实现</strong>：跨会话记忆的写入通常是一次后台调用，读路径只是注入；多模态的“转文字描述”如果由模型生成，也算一次调用，但 Codex 与 Claude Code 目前都没有这条路径。</li>
+      </ul>
+      <p>分清这一点，你就能预判动作的代价：裁剪旧工具结果是“改投影”，几乎瞬间完成；压缩是“再跑一遍模型”，要等，要钱，还可能丢细节。第 3 章那条增长曲线上的每次回落，背后都是一次真实的模型调用。</p>
+      <p>还有一层容易被忽略：压缩产出的不只是摘要。Claude Code 压缩完会按固定清单重新附带最近修改的最多 5 个文件（每个不超过 5,000 token，总预算 50,000）、plan 文件、本会话调用过的技能正文<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L122-L131">compact.ts#L122-L131</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L517-L585">#L517-L585</a>）。所以压缩后的上下文不是“只剩一段摘要”，而是“摘要 + 一批必需品”。这也解释了为什么压缩省下的空间，往往比你估的少。</p>
+
+      <div class="hf hf--think">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <div class="hf__body">
+          <p>图里哪个环节会让第 5 章讲的缓存立刻失效？能说出两个就算过关。</p>
+          <p class="small muted">提示：看“什么变了”和“变在第几位”。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <p class="sec-no">05 · 回边：失败不是终点</p>
+      <h2>溢出之后，流程会往回走</h2>
+      <p>主链是向下的，但真实运行里有一条向上的虚线：请求溢出或压缩失败时，流程回到减量，重新选切点、重新压缩，再试一次。</p>
+      <p>这条回边有两个现实约束。第一，<strong>重试有次数上限</strong>：Claude Code 连续 3 次自动压缩失败就熔断，本会话不再尝试，避免每轮都打一次注定失败的请求<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L241-L351">autoCompact.ts#L241-L351</a>）。第二，<strong>压缩请求自己也可能超窗</strong>：Codex 的做法是删掉最旧一条再重试，只剩一条还超，就只能报错<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L345-L380">compact.rs#L345-L380</a>）。</p>
+      <p>所以“回边”不是万能补救。到了某一步，系统只能承认失败，把错误交给你——这也是为什么第 6 章那几个动作仍然需要人来选。</p>
+      <p>回边还分主动和被动。主动的是“快到线了就压缩”，由计量触发；被动的是“服务端已经拒绝，再压缩一次重试”。Claude Code 的被动路径每轮只允许尝试一次，成功后用专门的状态重跑本轮<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/query.ts#L1150-L1183">query.ts#L1150-L1183</a>）。被动压缩的代价更高：你已经付了一次被拒绝的请求。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">06 · 收口：入门结束</p>
+      <h2>你现在有一张地图了</h2>
+      <p>七章下来，你应该能回答四个问题：窗口是什么、里面装了什么、它怎么变多、怎么才能既装得下又用得好。剩下的，是把这张图上的每一格拆开，看八个工具各自怎么做。</p>
+      <p>这张图也可以当复习工具用。合上教程，自己画一遍五段；画不出来，说明某一段你还没真的理解。画出来之后，再把 16 个编号填进去；填错的那一格，就是下一章该精读的地方。</p>
+      <p>第二部分每一章开头，你都可以回到图 1 找一个编号：那一章讲的就是那个格子。第 13 类讲缓存，你会想起第 5 章的失效点；第 8 类讲压缩，你会想起第 3 章的曲线和第 6 章的取舍。</p>
+
+      <div class="hf hf--qa">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <div class="hf__body">
+          <p class="hf__q">问：如果我要自己写一个 Agent，这 16 类要全做吗？</p>
+          <p class="hf__a">答：不用。最小可用版本只需要三样：组装（第 1 类）、计量（第 5 类）、单次工具输出控制（第 6 类）。这三样能让你看见上下文、并且不让它瞬间爆掉。压缩、子代理、记忆这些，等你真的遇到“一轮任务跑几十步”的场景再加——先加复杂度，往往会先得到一堆难查的 bug。</p>
+        </div>
+      </div>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>五段主链：组装 → 计量 → 减量 → 隔离与延续 → 质量。</li>
+            <li>16 类各归其位；减量内部按代价从低到高排：输出 → 裁剪 → 压缩 → 多模态。</li>
+            <li>会再发模型请求的是压缩、子代理和压缩重试；跨会话记忆的写入多在后台另算。</li>
+            <li>失败有一条向上的回边，但受重试次数限制，不是万能兜底。</li>
+            <li>最小可用版本：组装 + 计量 + 单次输出控制，其余按需加。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note">入门部分到此结束。下一章进入第二部分主线：<a href="main-01.html">请求组装——系统提示词与工具定义（main-01）</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

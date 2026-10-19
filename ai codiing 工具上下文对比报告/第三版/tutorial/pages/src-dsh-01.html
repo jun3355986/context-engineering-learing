@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>DeepSeek Harness · 日志与 surface 两层结构 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-dsh-01 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-dsh-01 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-dsh-01 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-dsh-01 .path-card code,
+  #src-dsh-01 .callout code,
+  #src-dsh-01 .quiz__q code,
+  #src-dsh-01 details code {
+    overflow-wrap: anywhere;
+  }
+  /* 行内代码里的长路径/长哈希允许断行，避免 375px 横向溢出 */
+  #src-dsh-01 code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-dsh-01">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-dsh-01">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>DeepSeek Harness</span><span>·</span><span>第 01 节</span></p>
+      <h1>日志与 surface 两层结构</h1>
+      <p class="lede">DeepSeek Harness 把「发生过什么」和「模型看到什么」拆成了两层：底下一份只追加的日志，上面一层由日志派生出来的可见视图。压缩、裁剪、图片移出，全都不是「改历史」，而是「往视图上追加一条替换」。这一节读这层结构怎么建、怎么算、代价是什么。</p>
+      <ul class="meta">
+        <li>约 18 分钟</li>
+        <li>2 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>5719020</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说清日志、surface、派生消息三者的关系，并指出哪一个是唯一真相。</li>
+          <li>解释 <code>surfaceOp</code> 的两种取值，以及 <code>replace</code> 的三个约束。</li>
+          <li>说明 <code>deriveMessages()</code> 为什么能在纯追加时只算新增节点，而替换时必须重建。</li>
+          <li>对比 Grok Build、pi、opencode v2 的会话结构，指出「两层」换来了什么、付出了什么。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>本节读 TypeScript 源码，路径在 <code>packages/core/session/src/</code>。所有行号对应提交 <code>571902028a75c64c1d767f4ae5fd099485f0ddf0</code>。这套代码用「事件类型联合 + 类型收窄」代替运行时校验，读的时候注意 <code>surfaceOp</code> 只允许出现在五种消息事件上。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>日志是唯一真相，surface 只是投影</h2>
+
+      <p>DeepSeek Harness 的会话由一条只追加的事件日志构成，每个事件有一个单调递增的 <code>seq</code>。日志里什么都有：消息、轮次开始与结束、失败的尝试、压缩的锁与摘要、裁剪的计价。但模型只看得到其中五种：<code>system/message</code>、<code>developer/message</code>、<code>user/message</code>、<code>assistant/message</code>、<code>tool/result</code>。</p>
+
+      <p class="lead-in">这五种事件组成一个有序视图，叫 surface。它不复制日志，只记录「哪些 seq 当前可见、按什么顺序」。历史从来没有被修改过，被修改的只是这张索引。</p>
+
+      <p>为什么要多这一层？因为压缩和裁剪都需要「让一段历史不再可见」，但同时又需要「原始内容永远可查」。如果直接在日志上删行，前者做到了、后者丢了；如果只追加一条「摘要消息」而不遮蔽原文，原文还在模型的历史里，压缩等于没做。两层结构让两件事同时成立：日志保留一切，surface 决定可见性。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 356" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">日志与 surface 两层结构</title>
+          <desc id="fig-1-desc">左列是完整事件日志，含消息、轮次边界、失败尝试、压缩记录；右列是 surface，只保留五种消息事件。一条替换事件在左列追加，在右列把旧区间折叠成一个节点。</desc>
+          <text class="svg-note" x="8" y="16">日志（全部事件，只追加）</text>
+          <text class="svg-note" x="400" y="16">surface（模型可见，可替换）</text>
+
+          <rect class="svg-track" x="8" y="26" width="240" height="30" rx="5"/>
+          <text class="svg-note" x="20" y="46">seq 0　system/message</text>
+          <rect class="svg-track" x="8" y="60" width="240" height="30" rx="5"/>
+          <text class="svg-note" x="20" y="80">seq 1　user/message</text>
+          <rect class="svg-track" x="8" y="94" width="240" height="30" rx="5"/>
+          <text class="svg-note" x="20" y="114">seq 2　step/start</text>
+          <rect class="svg-track" x="8" y="128" width="240" height="30" rx="5"/>
+          <text class="svg-note" x="20" y="148">seq 3　assistant/message</text>
+          <rect class="svg-track" x="8" y="162" width="240" height="30" rx="5"/>
+          <text class="svg-note" x="20" y="182">seq 4　tool/result</text>
+          <rect class="svg-track" x="8" y="196" width="240" height="30" rx="5"/>
+          <text class="svg-note" x="20" y="216">seq 5　agent/attempt（失败）</text>
+          <rect class="svg-seg--c" x="8" y="230" width="240" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="20" y="250">seq 6　compaction</text>
+          <rect class="svg-seg--a" x="8" y="264" width="240" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="20" y="284">seq 7　user（replace）</text>
+          <rect class="svg-track" x="8" y="298" width="240" height="30" rx="5"/>
+          <text class="svg-note" x="20" y="318">seq 8　turn/end</text>
+
+          <rect class="svg-seg--a" x="400" y="26" width="232" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="412" y="46">seq 0　system</text>
+          <rect class="svg-track" x="400" y="60" width="232" height="30" rx="5"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="412" y="80">seq 1　user</text>
+          <rect class="svg-track" x="400" y="94" width="232" height="30" rx="5"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="412" y="114">seq 3　assistant</text>
+          <rect class="svg-track" x="400" y="128" width="232" height="30" rx="5"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="412" y="148">seq 4　tool/result</text>
+          <rect class="svg-seg--c" x="400" y="162" width="232" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="412" y="182">seq 7　摘要（遮蔽 1–4）</text>
+
+          <line class="svg-rule" x1="8" y1="340" x2="632" y2="340"/>
+          <text class="svg-note" x="8" y="352">seq 2、5、6、8 留在日志里，但永远不进 surface。</text>
+        </svg>
+        <figcaption>图 1　两层结构。左列的事件一个不少，包括轮次边界、失败尝试与压缩记录；右列只有五种消息事件。seq 7 是一条「替换节点」：它出现在日志的末尾，但在 surface 上占据了 seq 1 到 seq 4 的位置。</figcaption>
+      </figure>
+
+      <p>这张图里有三个容易混淆的点。第一，surface 上的顺序不等于 seq 的大小顺序：替换节点 seq 更大，却排在前面。第二，被遮蔽的节点仍在日志里，只是不再出现在 <code>nodes</code> 数组中。第三，替换发生时，surface 的节点数变少，但日志的长度只增不减。</p>
+
+      <p>正因为有这层结构，dsh 的所有上下文机制都能用同一种动作表达：压缩是「追加一条摘要 user 消息，替换一个区间」；裁剪是「追加一条内容更短的 tool/result，替换它自己」；图片移出是「追加一条 offload 决策，投影时把图换成占位文本」。三者共享同一套替换语义，也共享同一套缓存失效规则。</p>
+
+      <p>举个最小的例子。用户问一句、模型调一次工具、工具返回、模型回答，日志大概会新增六行：<code>user/message</code>、<code>turn/start</code>、<code>assistant/message</code>（带 tool-call）、<code>tool/result</code>、<code>assistant/message</code>（最终回答）、<code>turn/end</code>。surface 只新增四个节点——两个边界事件被排除。第二天回退或重放时，边界事件仍然在，但它们从来不影响模型看到什么。<b>日志是「发生了什么」，surface 是「模型看到了什么」，两者的差集就是全部的过程性信息。</b></p>
+
+      <p>这个差集不是浪费。它正是审计、调试、计价的原料：一次失败的 <code>agent/attempt</code> 不进历史，但它是「为什么重试了三次」的唯一证据；一条 <code>compaction/start</code> 不进历史，但它是压缩锁的持有凭证。把过程性事件留在日志里、挡在 surface 外，是「可观测」与「上下文干净」能同时成立的原因。</p>
+
+      <p>代价也要说清楚：日志会比「模型实际看过的内容」大得多。一个跑了五十轮工具的长会话，surface 可能只有一百多个节点，日志却可能有上千条事件。这些事件不能删（删了就破坏 append-only），只能在恢复时跳过。所以「日志是唯一真相」的另一面是「日志会一直长」——这是第 3 节会提到的分页与检查点的由来。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四处位置：类型、应用、派生、重放</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① <code>surfaceOp</code> 的定义与约束</h3>
+          <p><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/types.ts#L450-L465">packages/core/session/src/types.ts#L450-L465</a><br>
+          <code>append</code> 与 <code>{ op: 'replace', startSeq, endSeq }</code>；注释写明两端都必须是当前 surface 节点，且被遮蔽的 seq 必须全部出现在 <code>sourceEventSeqs</code> 里。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 一次替换如何改变视图</h3>
+          <p><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/surface.ts#L562-L585">…/core/session/src/surface.ts#L562-L585</a><br>
+          <code>applySurfacePlan()</code>：<code>append</code> 就 <code>push</code>；<code>replace</code> 就 <code>splice</code>，并且两个 generation 各加一。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 从 surface 派生消息</h3>
+          <p><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/index.ts#L966-L1005">…/core/session/src/index.ts#L966-L1005</a><br>
+          <code>deriveMessages()</code>：按 <code>contentGeneration</code> 判断增量还是重建，再逐节点投影成 <code>Message</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 重放：从零折出同一个 surface</h3>
+          <p><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/surface.ts#L587-L609">…/core/session/src/surface.ts#L587-L609</a><br>
+          <code>foldSurface()</code>：把整份日志从头过一遍，得到节点数组与替换历史，用于恢复与分叉。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：系统提示词是 surface 节点 0，只有它自己能被替换——校验在 <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/surface.ts#L493-L507">surface.ts#L493-L507</a>；空内容节点仍占位、但不产生 wire 消息，见 <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/surface.ts#L120-L152">surface.ts#L120-L152</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】大纲的行号略偏，且「replace 的起止」有一个反直觉点</p>
+        <p>大纲把 <code>surfaceOp</code> 标在 <code>surface.ts:49</code>，L49 实际是 <code>SURFACE_EVENT_TYPES</code> 常量；<code>SurfaceOp</code> 的类型定义在 <code>types.ts#L463-L465</code>，<code>surface.ts</code> 里是使用它的校验逻辑。另外，<code>startSeq</code> 与 <code>endSeq</code> 是<b>位置区间</b>，不是数值区间：如果一个高 seq 的替换节点落在旧区间的位置上，后来的替换会出现 <code>startSeq &gt; endSeq</code> 的情况。但「数值可以倒挂」不等于「随便写」——<code>replacementRange()</code> 仍然要求前者在 <code>nodes</code> 里的<b>下标</b>小于等于后者，否则直接抛错；判断「哪些节点被遮蔽」也要以 <code>shadowedSeqs</code> 为准，不要自己按数值比大小。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段代码：怎么改视图，怎么读视图</h2>
+
+      <p>第一段是 surface 的唯一变更点，三种 plan（追加、替换、投影）各一个分支。第二段是派生消息的缓存逻辑，关键在开头那三行 generation 比较。</p>
+
+      <p class="small muted">文件：<code>packages/core/session/src/surface.ts</code>　行号：L562-L585（24 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 唯一改动 nodes 的地方：一个已校验的 plan 落地</span>
+<span class="code__line">function applySurfacePlan(</span>
+<span class="code__line">  state: SurfaceFoldState,</span>
+<span class="code__line">  plan: SurfacePlan | undefined,</span>
+<span class="code__line">): SurfaceFoldReplacement | undefined {</span>
+<span class="code__line">  if (plan?.kind === 'append') {</span>
+<span class="code__line">    state.nodes.push(plan.seq) <span class="cmt">// 普通追加：只在尾部加一个节点</span></span>
+<span class="code__line">  } else if (plan?.kind === 'replace') {</span>
+<span class="code__line">    state.nodes.splice( <span class="cmt">// 把 startIdx..endIdx 换成这一个新节点</span></span>
+<span class="code__line">      plan.startIdx, plan.endIdx - plan.startIdx + 1, plan.seq)</span>
+<span class="code__line">    state.replaceGeneration += 1 <span class="cmt">// 位置结构变了：工具配对缓存要重建</span></span>
+<span class="code__line">    state.contentGeneration += 1 <span class="cmt">// 可见内容变了：派生历史要重建</span></span>
+<span class="code__line">  } else if (plan?.kind === 'project') {</span>
+<span class="code__line">    for (const [seq, message] of plan.messages) {</span>
+<span class="code__line">      state.projectedMessages.set(seq, message) <span class="cmt">// 插件改写既有消息，不增删节点</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    state.projections.add(plan.projection)</span>
+<span class="code__line">    state.contentGeneration += 1 <span class="cmt">// 内容变了，但位置没变</span></span>
+<span class="code__line">  }</span>
+<span class="code__line">  if (plan?.kind !== 'replace') return <span class="cmt">// 只有替换要向上报告被遮蔽的节点</span></span>
+<span class="code__line">  return {</span>
+<span class="code__line">    seq: plan.seq, start: plan.start, end: plan.end,</span>
+<span class="code__line">    shadowedSeqs: plan.shadowedSeqs, <span class="cmt">// 审计与计价都用这份清单</span></span>
+<span class="code__line">  }</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/core/session/src/index.ts</code>　行号：L984-L1005（22 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 派生模型可见历史：只读 surface 的节点数组，不读原始日志顺序</span>
+<span class="code__line">deriveMessages(): Message[] {</span>
+<span class="code__line">  const surface = this.surface</span>
+<span class="code__line">  const nodes = surface.nodes</span>
+<span class="code__line">  const generation = surface.contentGeneration</span>
+<span class="code__line">  if (generation !== this.derivedGeneration) {</span>
+<span class="code__line">    this.derived = [] <span class="cmt">// 发生过替换或投影：缓存整体作废</span></span>
+<span class="code__line">    this.derivedNodes = 0</span>
+<span class="code__line">    this.derivedGeneration = generation</span>
+<span class="code__line">  }</span>
+<span class="code__line">  for (const seq of nodes.slice(this.derivedNodes)) { <span class="cmt">// 只处理没见过的新节点</span></span>
+<span class="code__line">    const msg = this.deriveEventMessage(this.log[seq]!)</span>
+<span class="code__line">    if (msg) this.derived.push(msg) <span class="cmt">// 空内容的 system/assistant 投影为 null</span></span>
+<span class="code__line">  }</span>
+<span class="code__line">  this.derivedNodes = nodes.length</span>
+<span class="code__line">  return [...this.derived] <span class="cmt">// 每次返回新数组，元素是共享且深冻结的</span></span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">两段合计 42 行（25 + 17），在 60 行以内。删去的是 <code>planSurfaceEvent</code> 的校验过程（约 35 行）与 <code>SurfaceManager</code> 的增量折叠（约 30 行），正文在下一节用文字说明。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>五个决定，从「谁能进视图」到「缓存怎么失效」</h2>
+
+      <h3>第 1 段　五种事件才能进 surface，其他一律留在日志里</h3>
+
+      <p><code>SURFACE_EVENT_TYPES</code> 是一个五元素的集合，<code>isSurfaceEligibleType()</code> 只判断类型是否在其中。<span class="tag tag--ok">已核实</span>这条规则把事件分成了两类：消息事件必须带 <code>surfaceOp</code>，非消息事件禁止带。类型系统用条件类型把这条约束写进了 <code>SessionEvent</code>：<code>K extends SurfaceEventType</code> 时有 <code>surfaceOp</code>，否则是 <code>never</code>。</p>
+
+      <p>运行时还有一道校验：一个类型不在集合里、却带了 <code>surfaceOp</code>，直接抛错。反过来，一个消息事件不带 <code>surfaceOp</code>，也抛错。<span class="tag tag--ok">已核实</span>这不是防御性冗余，而是「surface 的完整性」依赖每一个消息事件都明确声明自己怎么进来——漏一个，派生历史就会少一条，而且不会有任何报错。</p>
+
+      <p>被排除在外的类型里，最重要的是 <code>agent/attempt</code>。一次失败的模型调用也是一条日志，但它不产生消息；重试成功之后，只有成功那一次进 surface。这解释了 dsh 为什么「没有把思考过程换成占位符」的机制：思考内容不在 surface 上，它根本不会进入模型可见历史。<span class="tag tag--ok">已核实</span></p>
+
+      <h3>第 2 段　<code>replace</code> 的三个约束</h3>
+
+      <p>替换不是随便指一个区间就行。落地前有三道校验，任何一道不过都抛错。</p>
+
+      <p><b>约束一：两端必须是当前 surface 上的节点。</b><code>replacementRange()</code> 用 <code>startSeq</code> 与 <code>endSeq</code> 在当前 <code>nodes</code> 数组里找下标，找不到就报错。这防止「替换一个已经被别人替换掉的范围」——那种操作在位置语义下没有意义，只会让视图错乱。</p>
+
+      <p><b>约束二：被遮蔽的 seq 必须全部出现在 <code>sourceEventSeqs</code> 里。</b>这一条是审计要求：一条替换节点必须能说清「我替代了谁」。压缩的替换会带上摘要事件的 seq 与被遮蔽的全部节点 seq；裁剪的替换会带上它自己那一个 seq。<span class="tag tag--ok">已核实</span>没有这份清单，重放时无法验证替换是否完整，也无法计算「这次替换省了多少 token」。</p>
+
+      <p><b>约束三：节点 0 的系统提示词只能被它自己替换。</b><code>assertSystemHeadRewrite()</code> 的判断很窄：只有当 <code>startIdx === 0</code>、原节点是 <code>system/message</code>、新事件也是 <code>system/message</code>、且只遮蔽一个节点时，才允许。<span class="tag tag--ok">已核实</span>这保证了「第一条永远是系统提示词」，任何压缩都不能把它吞掉；同时也允许「重写系统提示词」这一种合法操作——比如换模型后重新渲染。注意保护范围只到节点 0：源码注释明确写着，后面的 system 节点没有这层保护，压缩区间可以遮蔽它们。<span class="tag tag--ok">已核实</span></p>
+
+      <p>还有一道只针对 <code>tool/result</code> 的校验：替换只能改 <code>content</code>，其余字段（调用 id、来源、错误标记、元数据）必须与原文深度相等。<code>assertToolResultRewrite()</code> 的做法很巧——把两边的 <code>message.content</code> 置为 <code>null</code>，再对整个 <code>data</code> 做结构化比较，不等就抛错。<span class="tag tag--ok">已核实</span>这条约束保证了裁剪器不可能顺手改掉「这条结果属于哪个调用」，也就保证了工具配对关系不会因为裁剪而断掉。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 268" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">replace 把一段连续节点折叠成一个新节点</title>
+          <desc id="fig-2-desc">上方是替换前的五个节点，中间标出 startSeq 到 endSeq 的区间；下方是替换后的三个节点，中间是一个高 seq 的新节点，两个 generation 各加一。</desc>
+          <text class="svg-note" x="8" y="16">替换前：surface 有 5 个节点</text>
+          <rect class="svg-seg--a" x="8" y="26" width="112" height="36" rx="6"/>
+          <text class="svg-label" x="64" y="50" text-anchor="middle">n1</text>
+          <rect class="svg-track" x="126" y="26" width="112" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="182" y="50" text-anchor="middle">n2</text>
+          <rect class="svg-track" x="244" y="26" width="112" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="300" y="50" text-anchor="middle">n3</text>
+          <rect class="svg-track" x="362" y="26" width="112" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="418" y="50" text-anchor="middle">n4</text>
+          <rect class="svg-seg--a" x="480" y="26" width="112" height="36" rx="6"/>
+          <text class="svg-label" x="536" y="50" text-anchor="middle">n5</text>
+
+          <text class="svg-note" x="182" y="82">↑ startSeq</text>
+          <text class="svg-note" x="418" y="82" text-anchor="end">endSeq ↑</text>
+          <text class="svg-note" x="300" y="82" text-anchor="middle">被遮蔽：n2、n3、n4</text>
+
+          <text class="svg-note" x="8" y="118">替换后：3 个节点，新节点 seq 最大却排在中间</text>
+          <rect class="svg-seg--a" x="8" y="130" width="112" height="36" rx="6"/>
+          <text class="svg-label" x="64" y="154" text-anchor="middle">n1</text>
+          <rect class="svg-seg--c" x="126" y="130" width="336" height="36" rx="6"/>
+          <text class="svg-label" x="294" y="154" text-anchor="middle">seq 99（摘要，replace n2–n4）</text>
+          <rect class="svg-seg--a" x="480" y="130" width="112" height="36" rx="6"/>
+          <text class="svg-label" x="536" y="154" text-anchor="middle">n5</text>
+
+          <line class="svg-rule" x1="8" y1="192" x2="632" y2="192"/>
+          <text class="svg-note" x="8" y="216">replaceGeneration +1：位置结构变了，工具配对缓存作废。</text>
+          <text class="svg-note" x="8" y="238">contentGeneration +1：可见内容变了，派生历史重建。</text>
+          <text class="svg-note" x="8" y="260">日志长度不变，只是多了 seq 99 这一行。</text>
+        </svg>
+        <figcaption>图 2　<code>replace</code> 的效果。三个旧节点被一个新节点顶替，新节点的 seq 最大但在数组里排第二。两个计数器同时加一，分别服务两种缓存。</figcaption>
+      </figure>
+
+      <h3>第 3 段　两个 generation：为什么不是一个</h3>
+
+      <p><code>replaceGeneration</code> 只统计「位置结构变化」，<code>contentGeneration</code> 统计「位置变化或内容变化」。<span class="tag tag--ok">已核实</span>分开的原因是两个消费者的敏感度不同。</p>
+
+      <p>派生历史只关心「模型看到的消息变没变」，所以用 <code>contentGeneration</code>：替换会变，插件改写某条消息的内容也会变，两者都要重建。工具配对缓存关心的是「节点顺序」，它只需要 <code>replaceGeneration</code>：插件改写一条消息的正文，不影响哪个 tool/result 跟着哪个 tool/call，缓存可以继续用。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这是一个很实用的模式：不要用一个「脏标记」服务所有缓存，按「缓存依赖什么」拆成多个。拆多了管理成本高，拆少了会过度失效；两个通常是够用的——一个管结构，一个管内容。</p>
+
+      <p>看一个具体消费者：工具配对缓存（<code>tool-pairing.ts</code>）就是按 <code>replaceGeneration</code> 判断是否重建的。它缓存的是「每个切点是否平衡」这个布尔数组，一旦 <code>nodes</code> 被替换，下标与内容都会变，整个缓存作废；而插件只改某条消息的正文时，节点顺序没变，配对关系也不可能变，缓存继续有效。<span class="tag tag--ok">已核实</span>如果只用一个 generation，要么每次内容改动都重建配对缓存（浪费），要么替换后不重建（错误）。</p>
+
+      <h3>第 4 段　派生：纯追加 O(新增)，替换 O(全部)</h3>
+
+      <p><code>deriveMessages()</code> 的缓存有三个字段：<code>derived</code>（消息数组）、<code>derivedNodes</code>（已投影的节点数）、<code>derivedGeneration</code>（建缓存时的 generation）。每次调用先比 generation：不同就清空重建；相同就只处理 <code>nodes.slice(derivedNodes)</code> 这部分新节点。<span class="tag tag--ok">已核实</span></p>
+
+      <p>所以普通对话的成本是「新增几条消息就投影几条」，一次工具往返通常是一到两条，可以忽略。压缩之后成本是「整段历史重新投影」——这也解释了为什么压缩的代价不只是那次摘要调用，还包括之后第一次派生历史的全量遍历。</p>
+
+      <p>返回值的处理也值得注意：<code>return [...this.derived]</code> 每次给一个新数组，但数组里的 <code>Message</code> 对象是共享且深冻结的。<span class="tag tag--ok">已核实</span>这样调用方可以随意排序、截取数组，却不可能改到日志里的原始消息。用「新容器 + 冻结元素」代替「深拷贝」，是这类高频读接口的常见写法。</p>
+
+      <p>还有一个小分支：<code>if (msg) this.derived.push(msg)</code>。空内容的 <code>system</code>、<code>developer</code>、<code>assistant</code> 消息会投影成 <code>null</code>，不进入历史，但它们在 surface 上仍然占一个位置。<span class="tag tag--ok">已核实</span>为什么保留位置？因为位置是后续替换的锚点：一条空的 assistant 消息可能承载一次 max-tokens 步骤的用量，删掉它会让后面的 <code>startSeq</code> 失效。</p>
+
+      <p>把成本量化一下。假设 surface 有 100 个节点、一次工具往返新增 2 条消息：纯追加时，<code>slice(derivedNodes)</code> 只切出 2 个节点，投影两次，O(1)；压缩把 60 个节点折成 1 个之后，generation 变了，缓存清空，下一次派生要投影 41 个节点，O(n)。所以「压缩的代价」不只是那次摘要请求的 token，还包括之后第一次读历史时的一次全量遍历。对长会话来说，后者通常可以忽略（毫秒级），但它确实存在，而且随历史长度线性增长。</p>
+
+      <h3>第 5 段　重放：同一份日志，同一份 surface</h3>
+
+      <p><code>foldSurface()</code> 是一个纯函数：从空状态开始，按 <code>seq</code> 顺序把每个事件喂给 <code>applySurfaceEvent()</code>，最后返回 <code>nodes</code>、替换历史与投影消息。<span class="tag tag--ok">已核实</span>只要日志完整，重放出来的 surface 就与崩溃前一致——这是「日志是唯一真相」的技术含义。</p>
+
+      <p>为了保证这一点，代码对 <code>seq</code> 的连续性做了强制检查：<code>planSurfaceEvent()</code> 第一行就是「<code>event.seq</code> 必须等于期望值，否则抛错」。<span class="tag tag--ok">已核实</span>不允许空洞，也不允许乱序。这让「按数组下标读日志」成为合法假设，省掉了大量查找。</p>
+
+      <p>重放也解释了分叉的实现：<code>buildForkSeed(events, boundary)</code> 复制到边界的前缀，追加一条 <code>session/end-seed</code>，再用合成 closer 补齐未闭合的 turn 与 step。新会话的日志从零开始，但它的 surface 与父会话在边界处一致。<span class="tag tag--ok">已核实</span>和 Grok Build 的「同一文件多时间线」相比，这是另一种分支模型：分叉即复制，之后互不影响。</p>
+
+      <p>重放还有一个工程细节：<code>SurfaceManager</code> 不是每次都从 seq 0 开始。它接收一段「事件窗口」和一个 <code>baseSeq</code>，只折这一段，并把 <code>_lastProcessedSeq</code> 初始化成 <code>baseSeq - 1</code>。<span class="tag tag--ok">已核实</span>这让「打开一个很长的会话」不需要把整份日志读进内存——读一个窗口、折一个窗口，剩下的靠持久化检查点衔接。代价是窗口边界必须完整：如果切在一个替换的中间，<code>startSeq</code> 就找不到了。所以分页的单位不是「随便 N 条」，而是「到某个已提交的边界」。</p>
+
+      <h3>第 6 段　缓存失效：为什么收敛到一个变量</h3>
+
+      <p>前缀缓存（prompt cache）的要求是「前缀逐字节一致」。在 dsh 的模型里，这句话可以精确翻译成：<b>只要 <code>nodes</code> 数组的前 k 个节点及其内容没变，前 k 条消息的 token 序列就没变，缓存就能命中。</b>于是「什么时候缓存失效」不再是散落在各处的判断，而是一个变量：<code>contentGeneration</code> 变了，派生历史就要重建，缓存从第一个变化的节点开始失效。</p>
+
+      <p>普通追加为什么不清缓存？因为 <code>append</code> 只往 <code>nodes</code> 尾部 push，前面的节点一个没动，<code>contentGeneration</code> 也不加一；缓存前缀保持有效，只有新增的尾部要计费。这也解释了 dsh 为什么把所有「改变历史」的操作都做成 <code>replace</code> 而不是「插入」：插入会让后面的节点整体位移，虽然内容没变，但位置变了，派生数组的顺序可能变；替换只影响被遮蔽的那一段，后面的节点下标变化但内容顺序不变。</p>
+
+      <p>不过要诚实地说：<code>replace</code> 仍然会让缓存从被替换处失效。压缩把中间的 60 个节点换成 1 个，从那个位置往后的所有 token 都变了，缓存只能命中前缀（系统提示词 + 节点 0 之前的内容）。dsh 的缓解办法是让<b>摘要请求本身</b>复用被遮蔽区间的逐字节前缀，先暖一次缓存，再让替换后的下一次请求去命中它——这是第 2 节要讲的「暖前缀」。</p>
+
+      <p>把这段和 Grok Build 对比会更清楚：Grok Build 的装配是「重新拼七个插槽」，前缀从第三个插槽就分叉；dsh 的替换是「原地折叠一段」，前缀能保留到被折叠的位置。同样是压缩，一个把缓存收益让给了「结构简单」，一个把结构复杂度换成了「缓存多命中一段」。没有免费的午餐，只有你把成本放在哪一步。理解了这一点，再去看两家的压缩代码，就不会觉得它们只是「写法不同」。</p>
+
+      <div class="hf hf--takeaway">        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>日志只追加、什么都有；surface 只收录五种消息事件，决定模型看到什么。</li>
+            <li><code>surfaceOp</code> 只有两种：<code>append</code> 与 <code>replace</code>；替换必须指向现存节点、必须列出被遮蔽的 seq、不能动系统节点 0。</li>
+            <li>替换用 <code>splice</code> 把一段节点折叠成一个；两个 generation 分别服务「结构缓存」与「内容缓存」。</li>
+            <li>纯追加的派生是 O(新增)，替换后是 O(全部)；空内容节点占位但不产生消息。</li>
+            <li>重放是纯函数，seq 必须连续；分叉是「复制前缀 + 合成收尾」。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>四种「日志与视图」的关系</h2>
+
+      <p>把会话存储拆成「日志 + 视图」不是 dsh 独有的想法，但每家的切法不同：有的把视图做成数组，有的做成游标，有的干脆不显式建视图。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">日志</th>
+              <th scope="col">视图机制</th>
+              <th scope="col">压缩如何表达</th>
+              <th scope="col">回退如何表达</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>只追加 <code>SessionEvent</code></td>
+              <td><code>surfaceOp</code> + <code>deriveMessages()</code></td>
+              <td>一条 <code>user/message</code> 替换区间</td>
+              <td>无（只能分叉）</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td><code>updates.jsonl</code> 只追加</td>
+              <td>重放时按 <code>RewindMarker</code> 过滤</td>
+              <td>替换内存历史 + 写检查点</td>
+              <td>追加 marker，重放截断</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>只追加条目 + <code>parentId</code> 树</td>
+              <td>按 <code>firstKeptEntryId</code> 重建</td>
+              <td>追加 <code>CompactionEntry</code></td>
+              <td>树导航 + 分支摘要</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>消息 + <code>seq</code> 边界</td>
+              <td>按 seq 取连续段</td>
+              <td>检查点消息 + <code>seq</code> 区间</td>
+              <td>检查点即回退点</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：dsh 见本节 permalink；Grok Build 见源码解读第 3 节；pi 见 <code>research/pi.md</code> 第 11 节（<code>buildContextEntries</code>）；opencode v2 见 <code>research/opencode-v2.md</code> 第 11 节（<code>latestCompaction</code> 与 <code>entriesForRunner</code>）。</p>
+
+      <p><b>对照一：显式视图 vs 隐式过滤。</b>dsh 把「哪些节点可见」变成一个真实存在的数据结构 <code>nodes</code>，替换时直接改它；Grok Build 不维护这个数组，而是在每次重放时用标记当场算出来。前者的好处是读取快、语义集中；后者的好处是磁盘格式极简、不需要把视图持久化。代价也对称：dsh 要在内存里维护两份（日志与节点数组），Grok Build 要在每个读路径上重复过滤。</p>
+
+      <p><b>对照二：替换 vs 追加。</b>dsh 的压缩会把被遮蔽的区间从视图里「折叠掉」，所以压缩后 <code>deriveMessages()</code> 返回的历史真的变短了；pi 的做法是追加一条 <code>CompactionEntry</code>，重建时从 <code>firstKeptEntryId</code> 开始拼「摘要 + 尾巴」，旧条目仍在文件里但不会被读到。两者殊途同归，区别在「折叠」发生在写入时（dsh）还是读取时（pi）。写入时折叠的读取成本低，读取时折叠的写入成本低。</p>
+
+      <p><b>对照三：分叉 vs 回退。</b>dsh 没有回退，只有 <code>buildForkSeed</code> 复制前缀；Grok Build 有回退，没有原生分叉（只能手动复制会话目录）。这是一组互补的能力：回退要求「同一份日志能表达多条时间线」，分叉要求「每条时间线有独立日志」。dsh 选了后者，于是它的日志永远是线性的、seq 永远连续，替换语义也更简单。</p>
+
+      <p>最后说这套结构的代价。<b>一是认知成本</b>：读代码的人必须同时记住「日志顺序」与「surface 顺序」两套坐标，一旦混用就会写出「按 seq 排序」这种看似合理、实际错误的代码。<b>二是重放成本</b>：日志越长，<code>foldSurface</code> 越慢，所以它必须配合检查点或分页；dsh 的做法是「加载事件窗口 + <code>baseSeq</code>」，把重放限制在一个窗口内。<b>三是约束成本</b>：每条消息事件都必须声明 <code>surfaceOp</code>，漏写就抛错。这三项加起来，换来的是一句很值钱的性质：<b>任何时刻，模型看到的历史都能从日志精确重建，且原始内容永不丢失。</b></p>
+
+      <p>顺带说一句「为什么缓存失效能收敛」。别家的缓存失效通常是隐式的：改了一个字段、换了一个工具定义、重排了一条消息，缓存就在没人注意的时候失效了，只能靠事后看命中率下降来发现。dsh 把「可见内容变了」变成一个显式的计数器，任何改动都必须经过 <code>applySurfacePlan</code> 并让它加一，于是「缓存该不该失效」有了唯一答案。这个做法不能阻止失效，但能让失效变得<b>可归因</b>——这对排查「为什么这次请求这么贵」极其有用。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从推演到设计</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">surface 当前是 <code>[0, 99, 7]</code>（99 是一次早期替换产生的节点）。现在追加 <code>replace { startSeq: 99, endSeq: 7 }</code>，合法吗？替换后 <code>nodes</code> 是什么？如果 surface 是 <code>[0, 3, 4, 7]</code>，同样的参数还合法吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先找下标：99 在位置 1，7 在位置 2。校验要求的是「start 的下标不大于 end 的下标」，不是「start 的数值小于 end 的数值」。</p>
+          <p>所以第一种合法，被遮蔽的是位置 1 到 2（99 与 7），替换后只剩 <code>[0, 新节点]</code>。第二种里 7 在位置 3、4 在位置 2，<code>startIdx &gt; endIdx</code>，直接抛错。</p>
+          <p>再想一层：为什么数值会倒挂？因为 99 是一次替换产生的新节点，它的 seq 比 7 大，却排在 7 前面。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">如果把 <code>deriveMessages()</code> 里的 generation 比较去掉，功能还正确吗？会退化成什么复杂度？如果只保留 <code>replaceGeneration</code> 呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>去掉比较，每次调用都会从头遍历全部节点。功能仍然正确——只是每次读历史都要 O(n) 投影，而工具循环里每步都要读一次。</p>
+          <p>只保留 <code>replaceGeneration</code>：插件改写某条消息内容（<code>project</code> 分支）时 generation 不变，缓存不会失效，于是模型继续看到旧内容。这是「缓存漏更新」，比慢更严重。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你要给一个已有系统加「压缩后还能审计原文」的能力。会选「日志 + 视图」还是「日志 + 回退标记」？请说出你的选择和两个必须付的代价。</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先明确需求差异：审计要的是「原始内容可查」，压缩要的是「模型看不见」。日志 + 视图能同时满足；日志 + 标记只能满足「时间线可回退」，压缩后的原文仍然要靠别的手段保留。</p>
+          <p>代价一：多一份内存结构（节点数组），且必须与日志严格同步。代价二：每个写消息的地方都要声明 <code>surfaceOp</code>，漏写即抛错；迁移旧代码时这是最大工作量。</p>
+          <p>再想一个反向问题：如果团队里有人写了一个「直接按 seq 读最近 N 条」的函数，会发生什么？</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-dsh-02.html">DeepSeek Harness · 压缩选区的三个约束</a></p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Claude Code · 压缩后重附清单 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-claude-code-03 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-claude-code-03 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-claude-code-03 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-claude-code-03 code {
+    overflow-wrap: anywhere;
+  }
+  #src-claude-code-03 .path-card code,
+  #src-claude-code-03 .callout code,
+  #src-claude-code-03 .quiz__q code,
+  #src-claude-code-03 details code {
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+<body data-chapter="src-claude-code-03">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-claude-code-03">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Claude Code</span><span>·</span><span>第 03 节</span></p>
+      <h1>压缩后重附清单</h1>
+      <p class="lede">压缩把几万 token 的历史换成一段摘要。但摘要不会记得你正在改哪几个文件、正在用哪个技能、plan 文件里写了什么。Claude Code 的解法不是「让摘要更详细」，而是压缩完按一张固定清单，把文件、技能、plan、delta、钩子输出重新附上。这一节读这张清单。<span class="tag tag--src">源码 v2.1.88</span></p>
+      <ul class="meta">
+        <li>约 16 分钟</li>
+        <li>3 张流程图</li>
+        <li>L4</li>
+        <li>源码 <code>v2.1.88</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>按顺序列出压缩后重附的六类内容，并说出各自的预算。</li>
+          <li>解释为什么先清 <code>readFileState</code> 再生成附件，以及为什么不清 <code>sentSkillNames</code>。</li>
+          <li>说明「空历史重放 delta」为什么能得到全量声明。</li>
+          <li>估算一次压缩后上下文的最小与最大增量，并判断何时会立刻再次触发压缩。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--warn">
+      <p class="callout__title">声明 · 非官方源码</p>
+      <p>本节基于 Claude Code <b>v2.1.88 的非官方泄露源码</b>分析，仅供学习参考，不代表 Anthropic 的官方实现或当前版本。函数名可能由 source map 还原。分析根目录为 <code>02-claude-code-source-research/src/</code>，提交 <code>988438af9293b198b03b8c01f97ee5556d2c74e2</code>。</p>
+    </div>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">来源类型对照</p>
+      <p><span class="tag tag--src">源码 v2.1.88</span> 重附清单：最近 5 个文件（50k 预算）、技能正文（5k/25k）、plan 文件、三类 delta 全量重播。</p>
+      <p><span class="tag tag--doc">官方文档</span> 说「压缩后重载 CLAUDE.md、技能与最近 5 个文件」，与源码<span class="tag tag--both">部分一致</span>；CLAUDE.md 在这里由嵌套记忆附件承担，不在重附清单的字面项里。</p>
+      <p><b>注意：</b>文档说的「先清理旧工具输出再摘要」，在外部构建里默认关闭（microcompact），见主线第 7 章。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>压缩不是「恢复历史」，是「重新派生附件」</h2>
+
+      <p><code>compactConversation()</code> 在拿到摘要之后，并不试图把旧消息搬回来。它做的是：先把「当前文件状态」快照下来，清空读文件缓存，然后按一张固定清单重新生成附件——最近读过的文件、plan 文件、plan 模式指令、本会话调用过的技能、三类 delta 的全量重播、SessionStart 钩子的输出。最后把边界标记和摘要消息放在这些附件之前。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p class="lead-in">摘要是「过去发生了什么」，附件是「现在继续工作还需要什么」。两者职责不同，所以分开生成。</p>
+
+      <p>这个区分很重要。如果让摘要负责记住文件内容，模型拿到的会是「用户改过 auth.ts」这种概括，而不是文件当前的真实内容；如果让附件负责记住历史，又会把几万 token 的旧消息搬回来，压缩就白做了。Claude Code 的选择是：历史交给摘要，工作现场交给附件。<span class="tag tag--guess">推断</span></p>
+
+      <p>整条链路可以分成六步：触发压缩 → 发摘要请求 → 清缓存并生成附件 → 拼边界与摘要 → 写回历史 → 下一轮请求。本节讲第 3 到第 4 步；触发与摘要请求在主线第 8 章，这里只交代必要的上下文。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 282" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">压缩的六个步骤，本节讲第三和第四步</title>
+          <desc id="fig-1-desc">六条横向长条：触发压缩、发摘要请求、清缓存并生成附件、拼边界与摘要、写回历史、下一轮请求。第三和第四条橙色高亮。</desc>
+          <rect class="svg-track" x="8" y="14" width="624" height="36" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="38" text-anchor="middle">1</text>
+          <text class="svg-label svg-label--dark" x="48" y="38">触发压缩</text>
+          <text class="svg-note" x="620" y="38" text-anchor="end">阈值 / 溢出 / 手动</text>
+
+          <rect class="svg-track" x="8" y="58" width="624" height="36" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="82" text-anchor="middle">2</text>
+          <text class="svg-label svg-label--dark" x="48" y="82">发摘要请求</text>
+          <text class="svg-note" x="620" y="82" text-anchor="end">剥图片、独立请求</text>
+
+          <rect class="svg-seg--c" x="8" y="102" width="624" height="36" rx="8"/>
+          <text class="svg-label" x="26" y="126" text-anchor="middle">3</text>
+          <text class="svg-label" x="48" y="126">清缓存 + 生成附件</text>
+          <text class="svg-label" x="620" y="126" text-anchor="end">← 本节</text>
+
+          <rect class="svg-seg--c" x="8" y="146" width="624" height="36" rx="8"/>
+          <text class="svg-label" x="26" y="170" text-anchor="middle">4</text>
+          <text class="svg-label" x="48" y="170">拼边界 + 摘要</text>
+          <text class="svg-label" x="620" y="170" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="190" width="624" height="36" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="214" text-anchor="middle">5</text>
+          <text class="svg-label svg-label--dark" x="48" y="214">写回历史</text>
+          <text class="svg-note" x="620" y="214" text-anchor="end">追加式，不删旧消息</text>
+
+          <rect class="svg-track" x="8" y="234" width="624" height="36" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="258" text-anchor="middle">6</text>
+          <text class="svg-label svg-label--dark" x="48" y="258">下一轮请求</text>
+          <text class="svg-note" x="620" y="258" text-anchor="end">带着附件继续工作</text>
+        </svg>
+        <figcaption>图 1　压缩的六个步骤。本节讲第 3–4 步：附件怎么生成、和边界/摘要怎么排序。</figcaption>
+      </figure>
+
+      <p>先给一个直觉上的量级：文件附件最多 5 个、每个最多 5 000 token、总预算 50 000；技能附件每个最多 5 000 token、总预算 25 000。两项加起来最多 75 000 token。压缩本来是为了腾空间，却又立刻塞回最多 75 000，这看起来矛盾，但注释给出了理由：这些是「继续工作必需的现场」，不是「历史」；没有它们，模型会重复读文件、重复加载技能，反而更贵。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>还有一个容易被忽略的前提：摘要请求本身是独立请求，发出去之前会剥掉图片与文档，只留文本标记（<code>stripImagesFromMessages</code>）。原因是摘要不需要图片，而图片很容易让压缩请求自己触发 prompt-too-long。也就是说，压缩链路里有两套上下文：一套是「给摘要模型看的」，一套是「压缩后给主模型看的」；前者尽量小，后者尽量全。两者的预算与内容都不一样。<span class="tag tag--src">源码 v2.1.88</span></p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>六条链接，覆盖清单与顺序</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 重附清单本体</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L517-L585">services/compact/compact.ts#L517-L585</a><br>
+          清缓存、并行生成文件与子代理附件、追加 plan / plan mode / skill、重播三类 delta。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 预算常量</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L122-L131">services/compact/compact.ts#L122-L131</a><br>
+          <code>5</code> 个文件、<code>50_000</code> 总预算、<code>5_000</code> 单文件、<code>5_000</code> 单技能、<code>25_000</code> 技能总预算。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 文件选择与预算扣减</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L1415-L1462">services/compact/compact.ts#L1415-L1462</a><br>
+          按时间倒序取前 5 个，排除特定路径，逐个生成，超出总预算就整份丢弃。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 技能选择与预算扣减</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L1494-L1533">services/compact/compact.ts#L1494-L1533</a><br>
+          本会话调用过的技能，按最近调用排序，单技能截到 5 000，总预算 25 000。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 边界与摘要消息</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L596-L624">services/compact/compact.ts#L596-L624</a><br>
+          边界记录 trigger 与 preTokens，并带上已发现的延迟工具名；摘要消息标记为 <code>isCompactSummary</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑥ 固定顺序：边界 → 摘要 → 保留段 → 附件 → 钩子</h3>
+          <p><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L325-L338">services/compact/compact.ts#L325-L338</a><br>
+          <code>buildPostCompactMessages()</code> 把五段按固定顺序拼成新历史，所有压缩路径共用。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：SessionStart 钩子在 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L587-L594">compact.ts#L587-L594</a>；「不重置 <code>sentSkillNames</code>」的理由在 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L524-L529">compact.ts#L524-L529</a>。</p>
+
+      <p>这六条链接之外，还有一个不在链接里的前提：压缩请求发出前会调用 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L133-L165">stripImagesFromMessages()</a>，把图片与文档替换成 <code>[image]</code> / <code>[document]</code> 文本标记。它不改变重附清单，但决定了「摘要能看到什么」——摘要看不到图片，所以重附清单里也不需要为图片做特殊安排。这是两个独立但相关的裁剪。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】「最近修改的 5 个文件」应改为「最近读过的 5 个文件」</p>
+        <p>事实卡片写「最近修改的最多 5 个文件」。源码的输入是 <code>preCompactReadFileState</code>，也就是 <code>context.readFileState</code> 的快照；它记录的是本会话读过或写过的文件状态，按 <code>timestamp</code> 倒序，不区分「读」与「改」。一张只读过、没改过的文件也会被重附。把它说成「修改」会让人误以为只有编辑过的文件才进清单。<span class="tag tag--src">源码 v2.1.88</span></p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>四段，五十行</h2>
+
+      <p>四段按执行顺序排列：文件与子代理、plan / plan mode / 技能、两类 delta、MCP delta。每段都不超过 20 行，省略处已标注。</p>
+
+      <p class="small muted">文件：<code>services/compact/compact.ts</code>　行号：L532-L544（13 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">    const [fileAttachments, asyncAgentAttachments] = await Promise.all([</span>
+<span class="code__line">      createPostCompactFileAttachments(</span>
+<span class="code__line">        preCompactReadFileState, <span class="cmt">// 清空前的文件状态快照</span></span>
+<span class="code__line">        context,</span>
+<span class="code__line">        POST_COMPACT_MAX_FILES_TO_RESTORE, <span class="cmt">// 5</span></span>
+<span class="code__line">      ),</span>
+<span class="code__line">      createAsyncAgentAttachmentsIfNeeded(context),</span>
+<span class="code__line">    ])</span>
+<span class="code__line"> </span>
+<span class="code__line">    const postCompactFileAttachments: AttachmentMessage[] = [</span>
+<span class="code__line">      ...fileAttachments,</span>
+<span class="code__line">      ...asyncAgentAttachments,</span>
+<span class="code__line">    ]</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>services/compact/compact.ts</code>　行号：L545-L561（17 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">    const planAttachment = createPlanAttachmentIfNeeded(context.agentId)</span>
+<span class="code__line">    if (planAttachment) {</span>
+<span class="code__line">      postCompactFileAttachments.push(planAttachment) <span class="cmt">// plan 文件正文</span></span>
+<span class="code__line">    }</span>
+<span class="code__line"> </span>
+<span class="code__line">    // 在 plan 模式里压缩，要保住「继续规划」的行为约束</span>
+<span class="code__line">    const planModeAttachment = await createPlanModeAttachmentIfNeeded(context)</span>
+<span class="code__line">    if (planModeAttachment) {</span>
+<span class="code__line">      postCompactFileAttachments.push(planModeAttachment)</span>
+<span class="code__line">    }</span>
+<span class="code__line"> </span>
+<span class="code__line">    // 本会话调用过的技能，压缩后正文会丢，需要重附</span>
+<span class="code__line">    const skillAttachment = createSkillAttachmentIfNeeded(context.agentId)</span>
+<span class="code__line">    if (skillAttachment) {</span>
+<span class="code__line">      postCompactFileAttachments.push(skillAttachment)</span>
+<span class="code__line">    }</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>services/compact/compact.ts</code>　行号：L563-L577（15 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">    // 压缩吃掉了之前的 delta，按当前状态重新公告一遍</span>
+<span class="code__line">    // 空历史 → 与「无」比较 → 得到全量集合</span>
+<span class="code__line">    for (const att of getDeferredToolsDeltaAttachment(</span>
+<span class="code__line">      context.options.tools,</span>
+<span class="code__line">      context.options.mainLoopModel,</span>
+<span class="code__line">      [], <span class="cmt">// ← 关键：传空数组</span></span>
+<span class="code__line">      { callSite: 'compact_full' },</span>
+<span class="code__line">    )) {</span>
+<span class="code__line">      postCompactFileAttachments.push(createAttachmentMessage(att))</span>
+<span class="code__line">    }</span>
+<span class="code__line">    for (const att of getAgentListingDeltaAttachment(context, [])) {</span>
+<span class="code__line">      postCompactFileAttachments.push(createAttachmentMessage(att))</span>
+<span class="code__line">    }</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>services/compact/compact.ts</code>　行号：L578-L585（8 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">    for (const att of getMcpInstructionsDeltaAttachment(</span>
+<span class="code__line">      context.options.mcpClients,</span>
+<span class="code__line">      context.options.tools,</span>
+<span class="code__line">      context.options.mainLoopModel,</span>
+<span class="code__line">      [], <span class="cmt">// 同样传空历史</span></span>
+<span class="code__line">    )) {</span>
+<span class="code__line">      postCompactFileAttachments.push(createAttachmentMessage(att))</span>
+<span class="code__line">    }</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">四段合计 50 行（13 + 16 + 13 + 8），每段都不超过 20 行。省略了 <code>Promise.all</code> 之间的空行与部分注释，代码语义未改。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>清单上的六类东西，按什么顺序回来</h2>
+
+      <h3>第 1 段　顺序：边界最前，摘要第二，附件在后</h3>
+
+      <p><code>buildPostCompactMessages()</code> 的顺序是：<code>boundaryMarker</code> → <code>summaryMessages</code> → <code>messagesToKeep</code> → <code>attachments</code> → <code>hookResults</code>。所有压缩路径共用这个函数，保证「不管自动还是手动、不管有没有保留段，顺序一致」。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>为什么边界必须在最前？因为它是「压缩发生在这里」的锚点，后续的历史读取、回退、诊断都靠它定位。为什么摘要第二？因为摘要描述的是「边界之前的历史」，紧贴边界才不会被误读成一条普通用户消息。为什么附件在摘要之后？因为附件是「当前工作现场」，属于「压缩之后」的上下文；放在摘要之前，会让模型以为它们也是被摘要的历史。<span class="tag tag--guess">推断</span></p>
+
+      <p><code>messagesToKeep</code> 是部分压缩（partial compact）或 reactive compact 保留的消息段，可能为空。它在摘要之后、附件之前，语义是「摘要没覆盖到、但需要保留的近期消息」。钩子输出最后，因为它是外部系统对「压缩完成」这件事的响应，适合放在最尾部。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">压缩后历史的五段顺序</title>
+          <desc id="fig-2-desc">从上到下五段：边界标记、摘要消息、保留消息段、附件、钩子输出。附件展开为文件、plan、plan 模式、技能、三类 delta。</desc>
+          <rect class="svg-seg--c" x="8" y="14" width="624" height="34" rx="7"/>
+          <text class="svg-label" x="24" y="36">① 边界标记：trigger、preTokens、已发现工具</text>
+          <rect class="svg-seg--a" x="8" y="54" width="624" height="34" rx="7"/>
+          <text class="svg-label" x="24" y="76">② 摘要消息：isCompactSummary，只保留 summary 正文</text>
+          <rect class="svg-track" x="8" y="94" width="624" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark" x="24" y="116">③ 保留消息段：部分压缩 / reactive 时可能非空</text>
+          <rect class="svg-seg--b" x="8" y="134" width="624" height="34" rx="7"/>
+          <text class="svg-label" x="24" y="156">④ 附件：文件 → plan → plan 模式 → 技能 → delta ×3</text>
+          <rect class="svg-track" x="8" y="174" width="624" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark" x="24" y="196">⑤ 钩子输出：SessionStart('compact')</text>
+
+          <text class="svg-note" x="8" y="234">顺序固定，所有压缩路径共用 buildPostCompactMessages()</text>
+        </svg>
+        <figcaption>图 2　压缩后历史的五段顺序。附件在摘要之后，表示「压缩之后还要继续用的现场」，而不是「被摘要的历史」。</figcaption>
+      </figure>
+
+      <h3>第 2 段　先清再附：为什么要清 <code>readFileState</code></h3>
+
+      <p>代码在生成附件之前做了三件事：把 <code>context.readFileState</code> 拷成 <code>preCompactReadFileState</code>；清空 <code>readFileState</code>；清空 <code>loadedNestedMemoryPaths</code>。然后用那份快照去生成文件附件。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>顺序不能反。如果先清空再拷贝，快照就是空的，附件生成不出来；如果先拷贝、生成完再清空，生成过程中可能又把文件重新写进状态，清不干净。先拷贝、立刻清空、再用快照生成，保证「附件只反映压缩前的现场」，「压缩后的读文件状态从零开始」。<span class="tag tag--guess">推断</span></p>
+
+      <p>为什么要清空 <code>readFileState</code>？它记录「这个文件已经读过、内容是什么」，用于避免重复读、支持编辑前校验。压缩之后，历史里的「读过」记录已经不存在了，如果状态还留着，下一次 Read 可能被判定为「已读」而跳过，模型就看不到内容。清空是让状态和历史对齐。<span class="tag tag--guess">推断</span></p>
+
+      <p>但 <code>sentSkillNames</code> 故意<b>不</b>重置。注释解释：重新注入整份 <code>skill_listing</code>（约 4K token）是纯粹的缓存写入，收益很小；模型仍然有 SkillTool，已用技能的正文由 <code>invoked_skills</code> 附件保住。也就是说，技能列表不重发，技能正文单独重附。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这里体现了一个原则：<b>压缩后要恢复的是「能力」，不是「能力的目录」。</b>技能列表（有哪些技能可用）是目录，模型不需要在每一轮都看到完整目录；技能正文（某个技能怎么用）是能力，正在用的技能必须能看到。文件也一样：目录树不需要重附，正在改的文件正文需要。<span class="tag tag--guess">推断</span></p>
+
+      <p>这个原则也解释了为什么文件重附有「数量上限」而技能有「总量上限」：文件是并列的现场，5 个足够覆盖当前工作集；技能是分层的说明，单个技能可能很长，需要先截单份再控总量。两种预算形状不同，但目的相同：在「够用」与「不撑爆」之间取一个可解释的边界。<span class="tag tag--guess">推断</span></p>
+
+      <p>再看一个细节：文件附件的预算是「整条附件消息」的估算，不是文件正文字数。路径、JSON 包装、元数据都算在内。这意味着一个 4 900 token 的文件，加上包装可能就超过 5 000，被截到更短；而一个 4 500 token 的文件可能刚好通过。预算越接近上限，包装开销越不可忽略。<span class="tag tag--guess">推断</span></p>
+
+      <p>技能附件也一样：<code>truncateToTokens()</code> 先按 token 截正文，<code>roughTokenCountEstimation()</code> 再估算整条消息。两道处理的目的不同：前者保证单个技能不超限，后者保证总量不超限。截断与预算分离，是这类「先裁剪、再装箱」逻辑的常见结构。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这个结构也解释了为什么「单文件 5k + 总 50k」看起来浪费：真正的约束是「最多 5 个文件」，总预算只是兜底。如果未来把文件数上限调到 10，总预算就会开始起作用；现在它更像一个安全阀，而不是日常约束。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 3 段　文件：5 个、每个 5k、总共 50k</h3>
+
+      <p><code>createPostCompactFileAttachments()</code> 的输入是那份快照。它先收集已经保留在 <code>preservedMessages</code> 里的文件路径，避免重复；再按 <code>shouldExcludeFromPostCompactRestore()</code> 排除特定路径；然后按 <code>timestamp</code> 倒序，取前 <code>maxFiles</code> 个。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>每个文件用 <code>generateFileAttachment()</code> 生成，限制 <code>maxTokens: POST_COMPACT_MAX_TOKENS_PER_FILE</code>（5 000）。生成后用 <code>roughTokenCountEstimation()</code> 估算整个附件消息的 token，累加到 <code>usedTokens</code>；如果加上这一份会超过 50 000，就整份丢弃（<code>return false</code>），而不是截断到剩余额度。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>为什么整份丢弃而不是截断？因为文件附件的目的，是让模型看到「当前文件的真实内容」。截断到剩几百 token，只留下文件头，既不能编辑也不能理解，反而占了一个附件位。丢弃至少让模型知道「这个文件没有被恢复」，可以选择重新读。<span class="tag tag--guess">推断</span></p>
+
+      <p><code>preservedMessages</code> 这个参数也值得注意。它只在部分压缩（partial compact）时非空，用来告诉文件附件「这些文件已经由保留段覆盖了，不要再附一遍」。没有它，同一个文件会在保留段和附件里各出现一次，浪费预算，还可能让模型看到两个版本的同一文件。去重是压缩附件的基本要求，不只是省 token，更是避免歧义。<span class="tag tag--guess">推断</span></p>
+
+      <p>5 个、5k、50k 三个数字的关系是：5 × 5 000 = 25 000，理论上总预算有一倍余量。50 000 真正的作用，是给附件消息的 JSON 包装、路径、元数据，以及未来调整单文件上限留出空间；估算的是整条消息而不是纯正文，所以实际占用会高于 25 000，但通常仍到不了 50 000。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 4 段　plan 与技能：行为约束也属于现场</h3>
+
+      <p>plan 附件有两个：<code>createPlanAttachmentIfNeeded()</code> 附上 plan 文件的正文，<code>createPlanModeAttachmentIfNeeded()</code> 附上 plan 模式的行为指令。前者回答「计划是什么」，后者回答「现在还在 plan 模式，不要直接改代码」。只附正文不附模式，模型可能把计划当成已批准，直接开始执行。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>技能附件只包含「本会话调用过、且属于当前 agent」的技能。它按 <code>invokedAt</code> 倒序，每个技能先截到 5 000 token，再累加总预算 25 000；超出预算的技能整份丢弃，而不是继续截断。注释解释：技能文件通常「开头的安装/使用说明最重要」，所以单技能截断保留头部，比整份丢掉好；但总预算满了之后，再截断后面的技能只会得到无用的碎片，不如丢掉。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这里也能看出「最近优先」的一致策略：文件按时间倒序，技能按调用时间倒序。压缩后最可能继续用的，是最近读的文件、最近调用的技能；更早的现场，交给摘要概括。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 5 段　delta 重播：空历史 = 全量</h3>
+
+      <p>三类 delta 都传了空数组 <code>[]</code> 作为 <code>messages</code>。上一节讲过，delta 函数会从历史里的旧 delta 重建「已公告集合」；历史为空，集合就是空，当前所有条目都会被算成「新增」，于是输出全量。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这是一个很巧的复用：同一个函数，正常轮次做增量，压缩后做全量，不需要两套代码。代价是「全量」的语义依赖「空历史」这个约定；如果某天有人传了非空历史，重播就会变成增量，压缩后的第一轮可能缺少声明。所以调用点专门写了 <code>callSite: 'compact_full'</code>，并在注释里说明「compaction ate prior delta attachments」。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>三类 delta 分别是：延迟工具（<code>deferred_tools_delta</code>）、agent 列表（<code>agent_listing_delta</code>）、MCP 指令（<code>mcp_instructions_delta</code>）。它们共同的特点是「之前以增量形式存在于历史里，压缩会把它们删掉」。不重播，模型就不知道哪些工具已加载、哪些 agent 可用、哪些 MCP 指令生效。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>为什么不在压缩请求里让摘要顺便记住这些？因为摘要的职责是「概括对话」，不是「保存状态」。工具是否加载、agent 是否可用，是布尔/列表状态，不是叙事；让模型用自然语言复述这些状态，既容易漏，也浪费摘要预算。用结构化的 delta 重播，准确且可验证。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 6 段　边界元数据：为什么要带已发现工具</h3>
+
+      <p>边界标记除了 trigger 与 preTokens，还带一个 <code>preCompactDiscoveredTools</code>：压缩前从历史里提取的、已经加载过的延迟工具名。原因是摘要不会保留 <code>tool_reference</code> 块，而压缩后的 schema 过滤需要知道「哪些延迟工具已经加载过」，否则会把它们的完整定义重新发一遍，或者干脆不发。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>这是一个「状态不能只存在消息里」的例子。延迟工具的「已加载」状态，平时由消息里的 <code>tool_reference</code> 承载；压缩把消息换掉，状态就丢了。边界标记是另一个载体，专门在压缩这个断点上保存它。类似的还有 <code>readFileState</code>、<code>sentSkillNames</code>、delta 的已公告集合——它们都是「消息之外的状态」，压缩时必须逐个处理。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 7 段　代价：压缩完可能立刻再压</h3>
+
+      <p>源码在估算压缩后上下文时，专门加了一句注释：下一轮的 <code>shouldAutoCompact</code> 看到的不只是这批附件，还要加上约 20–40K 的系统提示、工具与 userContext。也就是说，附件预算 75K 只是「消息层」的增量，真实上下文还要再加上固定开销。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>如果压缩前接近窗口上限，压缩后摘要 + 75K 附件 + 20–40K 固定开销，很可能又回到阈值附近。源码用 <code>willRetriggerNextTurn</code> 这个指标显式记录这种情况：当压缩后估算值仍然大于等于自动压缩阈值时，标记为「下一轮还会触发」。这不是 bug，而是「重附太多」的必然结果。<span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <p>取舍很清楚：少附一点，可能失去工作现场，模型要重新读文件、重新加载技能，多花几轮；多附一点，可能立刻再压一次，陷入「压缩—重附—再压缩」的循环。Claude Code 用预算上限（5 个文件、25K 技能）来限制最坏情况，但没有保证「一定不再触发」；它把这个风险暴露成指标，让上层决定要不要调阈值。<span class="tag tag--guess">推断</span></p>
+
+      <p>实际调参时，可以把「压缩后估算」拆成三项：摘要长度、附件长度、固定开销。前两项可控，第三项基本固定。如果压缩后仍然接近阈值，优先减附件，而不是把摘要压得更短；摘要太短会丢约束，附件太多只是多占空间。源码的 <code>willRetriggerNextTurn</code> 指标，就是给这个判断用的。<span class="tag tag--guess">推断</span></p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>压缩后重附六类：文件、plan、plan 模式、技能、三类 delta、SessionStart 钩子。</li>
+            <li>顺序固定：边界 → 摘要 → 保留段 → 附件 → 钩子。</li>
+            <li>先快照 <code>readFileState</code> 再清空；<code>sentSkillNames</code> 故意不清。</li>
+            <li>文件 5 个 / 单文件 5k / 总 50k；技能单 5k / 总 25k，超预算整份丢弃。</li>
+            <li>delta 传空历史得到全量重播；边界额外保存已发现的延迟工具。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>压缩后留什么：消息、文件、还是摘要里的清单</h2>
+
+      <p>五家工具都做压缩，但「压缩后还记得什么」差别很大。Claude Code 用独立附件重附现场；pi 与 omp 把文件清单写进摘要；Grok 重新注入规则与最后请求；dsh 只保留摘要与尾部消息。<span class="tag tag--guess">推断</span></p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">压缩后保留</th>
+              <th scope="col">文件内容</th>
+              <th scope="col">预算</th>
+              <th scope="col">来源</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>边界 + 摘要 + 附件 + 钩子</td>
+              <td>重附最近 5 个文件正文</td>
+              <td>文件 50k、技能 25k</td>
+              <td><span class="tag tag--src">源码 v2.1.88</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>摘要 + 切点后的连续尾部</td>
+              <td>只把读写文件清单写进摘要</td>
+              <td><code>keepRecentTokens 20k</code></td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>摘要 + 保留段（方法链决定）</td>
+              <td>文件清单折叠进摘要，最多 20 个</td>
+              <td>按方法链与 <code>keepRecentTokens</code></td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>摘要 + 系统提示 + AGENTS.md + 最后请求 + 最近消息</td>
+              <td>重新注入规则原文，不重附文件正文</td>
+              <td>摘要 3 次尝试、120s 超时</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>摘要 + 保留尾部</td>
+              <td>不重附文件正文</td>
+              <td><code>retainTokens</code> / <code>retainRatio</code></td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 8 节（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，Grok Build 源码，dsh 为同仓文档口径）。</p>
+
+      <p>第一个对照是<b>「文件内容是重附还是概述」</b>。Claude Code 重附正文，模型可以直接编辑；pi、omp 只在摘要里列文件名，模型需要重新读；Grok 与 dsh 不重附。重附正文的好处是「继续工作不用重新读」，坏处是「可能立刻再次触发压缩」。这是「上下文预算」与「工具调用轮次」之间的直接交换。<span class="tag tag--guess">推断</span></p>
+
+      <p>第二个对照是<b>「状态放在消息里还是消息外」</b>。Claude Code 的附件是独立消息，delta 是独立消息，边界元数据是边界消息的字段；pi 把文件清单塞进摘要文本；dsh 把状态放在 surface 事件里。消息外状态（边界字段、readFileState）更省 token，但恢复时需要额外的重建逻辑；消息内状态更自解释，但占上下文。<span class="tag tag--guess">推断</span></p>
+
+      <p>第三个对照是<b>「压缩后的第一轮是否完整」</b>。Claude Code 显式重播 delta、重附技能与文件，目标是「第一轮就能继续干活」；pi 与 dsh 依赖「保留段 + 摘要」，第一轮可能需要重新读文件；Grok 重新注入规则与最后请求，保证「约束与目标」不丢，但文件内容仍要重读。三种目标对应三种成本：Claude Code 付 token，pi/dsh 付工具轮次，Grok 付规则重发的 token。<span class="tag tag--guess">推断</span></p>
+
+      <p>第四个对照是<b>「压缩后的状态怎么校验」</b>。Claude Code 的边界消息带 <code>preCompactDiscoveredTools</code>、摘要消息带 <code>isCompactSummary</code>、附件带类型，恢复时可以逐项检查「该有的有没有」；pi 的 <code>CompactionEntry</code> 带 <code>firstKeptEntryId</code> 与文件清单，也能校验；Grok 用 7 段装配顺序，顺序本身就是校验；dsh 用 surface 的 replace 区间，可以用 seq 检查连续性。没有校验的系统，压缩后只能靠「模型有没有抱怨」来判断，问题会延迟暴露。<span class="tag tag--guess">推断</span></p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从清单到预算</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">压缩前读过 8 个文件，每个 6 000 token。压缩后会重附几个？每个多大？总 token 大约多少？如果每个文件是 12 000 token，结论会变吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先按时间倒序取前 5 个，所以最多 5 个。每个用 <code>maxTokens: 5_000</code> 生成，6 000 token 的文件会被截到 5 000。</p>
+          <p>5 × 5 000 = 25 000，低于 50 000 总预算，全部保留。如果是 12 000 token，仍然先截到 5 000，所以结论一样；总预算只有在「附件消息包装后超过 50k」时才会开始丢弃，通常 5 个 5k 的文件还到不了。</p>
+          <p>再注意顺序：文件是按「最近读/写时间」倒序取的，所以如果 8 个文件里最近读的 5 个包含大文件，它们会挤掉更早的小文件。不是「按大小取」，也不是「按重要性取」。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">为什么 delta 重播要传空数组，而不是传压缩后的消息数组？如果传了压缩后的数组，会发生什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>delta 函数从历史里的旧 delta 重建「已公告集合」。压缩后的数组里已经没有旧 delta（它们被摘要替换了），所以传空数组和传压缩后数组，结果可能一样——都是空集合。</p>
+          <p>但语义不同：空数组明确表达「与无比较，输出全量」；传压缩后数组则依赖「压缩一定删掉了所有 delta」这个假设。如果未来某种部分压缩保留了 delta，传数组就会变成增量，第一轮可能漏声明。显式空数组是更稳的契约。</p>
+          <p>还有一个实际差别：传空数组不依赖消息数组的构造顺序。压缩后的消息数组可能包含边界、摘要、附件、钩子，构造时机不同；空数组是常量，任何时候都不会传错。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你的会话每次压缩后都立刻再次触发压缩。请从「附件预算、摘要长度、固定开销」三个方向各给一个诊断问题，并说出最可能的元凶。</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>附件预算：文件与技能是否经常顶到 50k / 25k？如果每次都是 5 个满额文件 + 多个满额技能，重附本身就占了大头。</p>
+          <p>摘要长度：摘要是否包含大量原文摘录？摘要消息也是上下文的一部分，越长越容易回到阈值。固定开销：系统提示 + 工具 + userContext 约 20–40K，这部分不随压缩变小；如果窗口本身较小，压缩后的下限可能已经接近阈值。</p>
+          <p>最可能的元凶通常是「重附预算 + 固定开销」之和超过了「压缩腾出的空间」。先减附件数量或单文件上限，再考虑调高阈值；只调阈值会把问题推迟一轮，不解决循环。</p>
+          <p>还有一个检查项：压缩是否在同一轮里反复发生？如果 <code>willRetriggerNextTurn</code> 一直是真，说明压缩后的下限已经高于阈值，再压也不会更小。此时应该降低附件预算，或者换一个更大的窗口，而不是继续调压缩阈值。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-claude-code-04.html">Claude Code · 只注入变化的附件 delta</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

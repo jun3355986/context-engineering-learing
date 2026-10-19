@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Codex · 请求四块与增量工具 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本页专属：思考题提示折叠块（未新增 class，仅给 <details> 加页面内样式） */
+  #src-codex-02 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-codex-02 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-codex-02 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-codex-02 code {
+    overflow-wrap: anywhere;
+  }
+  #src-codex-02 .path-card code,
+  #src-codex-02 .callout code,
+  #src-codex-02 .quiz__q code,
+  #src-codex-02 details code {
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+<body data-chapter="src-codex-02">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-codex-02">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Codex CLI</span><span>·</span><span>第 02 节</span></p>
+      <h1>请求四块与增量工具</h1>
+      <p class="lede">每次采样前，Codex 都要拼一个 <code>Prompt</code>。它看起来只有四块，但真正发到线上的形状可能只有两块，甚至一块。这一节读 <code>build_prompt</code>，看清「四块」是逻辑分类，不是 JSON 字段；也看清增量工具到底省掉了什么。</p>
+      <ul class="meta">
+        <li>约 15 分钟</li>
+        <li>3 张流程图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>76ed3b4</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出 <code>Prompt</code> 的四个逻辑块，以及另外三个不影响「块数」的开关。</li>
+          <li>解释 <code>incremental_tools</code> 不是配置项，而是「模型能力 + 历史状态」推导出来的布尔值。</li>
+          <li>画出一次请求从 <code>build_prompt</code> 到线上 JSON 的形状变化，指出工具定义和岗位说明书被折叠到了哪里。</li>
+          <li>比较 Codex、pi、opencode v1、DeepSeek Harness 四家把「系统提示」放在哪一层。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>这一节读 Rust 源码，函数名是原始命名。所有行号对应提交 <code>76ed3b484d62ccceb9fa512ff4dd139f421814c3</code>。文中说的「线上形状」指 <code>ResponsesApiRequest</code> 序列化后的 JSON，不是 <code>Prompt</code> 结构体本身。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>四块是逻辑分类，不是四个 JSON 字段</h2>
+
+      <p>Codex 的请求体是 Responses API 形状，没有独立的 <code>system</code> 字段。它在代码里用一个 <code>Prompt</code> 结构体承载「这一轮要发给模型的东西」，字段很多，但真正决定上下文内容的只有四类：历史输入 <code>input</code>、工具定义 <code>tools</code>、岗位说明书 <code>base_instructions</code>、结构化输出约束 <code>output_schema</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p class="lead-in">四块是给人看的分类。到了线上，Codex 会把其中两块折进 <code>input</code>，把第三块整个省略。</p>
+
+      <p>这四类由 <code>build_prompt()</code> 一次拼好，再交给 <code>build_responses_request()</code> 序列化。序列化不是逐字段照搬：工具定义在支持 Responses Lite 的模型上会变成一个 <code>AdditionalTools</code> 开发者条目，岗位说明书会变成一个开发者条目（内部 kind 为 <code>model.base_instructions</code>），两者都被插到 <code>input</code> 的最前面；<code>output_schema</code> 则进入顶层的 <code>text</code> 控制参数。<span class="tag tag--ok">已核实</span></p>
+
+      <p>先把 Responses API 和 Chat Completions 的区别说清楚，后面才不会读错。Chat Completions 有 <code>messages</code> 数组，数组里第一条可以是 <code>system</code>；Responses API 的 <code>input</code> 也是数组，但角色只有 <code>user</code>、<code>assistant</code>、<code>developer</code>，指令类内容通常以 <code>developer</code> 条目出现。Codex 没有把「系统提示」放进一个专门的顶层字段，而是顺着这个形状，把它做成 <code>input</code> 里的一条开发者消息。<span class="tag tag--ok">已核实</span></p>
+
+      <p>「增量工具」是这条链路上的一个分支。它不是一个用户可配的开关，而是每轮由 <code>current_window_uses_incremental_tools()</code> 现算：模型必须支持 Responses Lite；如果历史还是空的，就看配置；如果历史已经有工具声明，就返回 <code>true</code>。为 <code>true</code> 时，<code>build_prompt</code> 把 <code>tools</code> 置为空数组、把 <code>base_instructions.text</code> 置为空串，让这次请求不再重复下发这两块。<span class="tag tag--ok">已核实</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 264" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">Codex 一次采样的五个步骤，本节讲第 2 到第 3 步</title>
+          <desc id="fig-1-desc">五条横向长条从上到下排列：取历史并规范化、build_prompt 拼四块、序列化成线上请求、流式请求模型、响应写回历史。第二和第三条是橙色高亮，标注为本节内容。</desc>
+          <rect class="svg-track" x="8" y="14" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="39" text-anchor="middle">1</text>
+          <text class="svg-label svg-label--dark" x="48" y="39">取历史 + 规范化</text>
+          <text class="svg-note" x="620" y="39" text-anchor="end">补齐/移除配对、剥模态</text>
+
+          <rect class="svg-seg--c" x="8" y="60" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="26" y="85" text-anchor="middle">2</text>
+          <text class="svg-label" x="48" y="85">build_prompt 拼四块</text>
+          <text class="svg-label" x="620" y="85" text-anchor="end">← 本节</text>
+
+          <rect class="svg-seg--c" x="8" y="106" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="26" y="131" text-anchor="middle">3</text>
+          <text class="svg-label" x="48" y="131">序列化成线上请求</text>
+          <text class="svg-label" x="620" y="131" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="152" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="177" text-anchor="middle">4</text>
+          <text class="svg-label svg-label--dark" x="48" y="177">流式请求模型</text>
+          <text class="svg-note" x="620" y="177" text-anchor="end">SSE 事件</text>
+
+          <rect class="svg-track" x="8" y="198" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="223" text-anchor="middle">5</text>
+          <text class="svg-label svg-label--dark" x="48" y="223">响应写回历史</text>
+          <text class="svg-note" x="620" y="223" text-anchor="end">工具调用与结果成对</text>
+        </svg>
+        <figcaption>图 1　一次采样的五个步骤。第 1 步在 <code>history.rs</code>，第 2 步是本节主线，第 3 步决定四块最终以什么形状出门，第 4–5 步不在本节范围。</figcaption>
+      </figure>
+
+      <p>为什么要先讲清「逻辑四块」和「线上形状」的区别？因为很多关于上下文管理的讨论会把「系统提示词」当成一个固定字段，然后据此推断缓存边界。Codex 不这么发：岗位说明书是一条开发者消息，工具定义在 Lite 模型上也是一条开发者消息。它们的位置、顺序、是否重复，都会直接改变前缀缓存的命中点。<span class="tag tag--guess">推断</span></p>
+
+      <p>还有一个阅读上的提醒：本节说的「折叠」不是压缩，也不是把两段文本合并成一段。它只是把同一份内容从「结构体字段」搬到「消息数组的某个位置」，字节数基本不变，变的是它在请求里的角色和顺序。<span class="tag tag--guess">推断</span></p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五条链接，覆盖「拼」与「发」</h2>
+
+      <p>前三条讲结构体与拼装，第四条讲序列化，第五条讲历史规范化。行号都按本提交逐条核对过。</p>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 四个逻辑块：<code>Prompt</code></h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client_common.rs#L23-L42">codex-rs/core/src/client_common.rs#L23-L42</a><br>
+          <code>input</code>、<code>tools</code>、<code>base_instructions</code>、<code>output_schema</code> 四个内容字段，外加 <code>parallel_tool_calls</code>、<code>output_schema_strict</code>、<code>cyber_access_program</code> 三个开关。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 拼装入口：<code>build_prompt</code></h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">codex-rs/core/src/session/turn.rs#L1666-L1695</a><br>
+          四块在这里被赋值；<code>incremental_tools</code> 同时控制 <code>tools</code> 与 <code>base_instructions.text</code> 是否为空。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 增量开关的来源</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/world_state.rs#L44-L56">codex-rs/core/src/session/world_state.rs#L44-L56</a><br>
+          <code>current_window_uses_incremental_tools()</code>：先看模型是否 <code>use_responses_lite</code>，再看历史里有没有工具声明。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 线上形状：工具与指令被折叠</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client.rs#L980-L1006">codex-rs/core/src/client.rs#L980-L1006</a><br>
+          Lite 模型：<code>tools</code> 变成 <code>AdditionalTools</code> 条目，顶层 <code>tools</code> 为 <code>None</code>；岗位说明书写成开发者片段插到 <code>input</code> 头部。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 历史规范化的四项不变量</h3>
+          <p><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L964-L982">codex-rs/core/src/context_manager/history.rs#L964-L982</a><br>
+          补输出、删孤立输出、剥不支持的图片、剥不支持的音频。它不改变四块的分类，但决定了 <code>input</code> 是否合法。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：<code>ResponsesApiRequest</code> 的字段表见 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/codex-api/src/common.rs#L278-L304">codex-api/src/common.rs#L278-L304</a>，里面没有 <code>instructions</code> 字段；岗位说明书确实走 <code>input</code>。<code>has_tool_declarations()</code> 只认 <code>ResponseItem::AdditionalTools</code> 的证据在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L626-L629">history.rs#L626-L629</a>；结构化输出进入 <code>text.format</code> 的证据在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/codex-api/src/common.rs#L392-L410">common.rs#L392-L410</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】事实卡片的三处表述</p>
+        <p>一、卡片说「<code>base_instructions</code>（<code>instructions</code>）」，暗示它对应请求的 <code>instructions</code> 字段；本提交的 <code>ResponsesApiRequest</code> 没有这个字段（common.rs#L278-L304），<code>base_instructions</code> 被包成开发者消息插进 <code>input</code>（client.rs#L996-L1005）。二、卡片说「<code>incremental_tools=true</code> 时把 <code>tools</code> 置空、<code>base_instructions</code> 置空文本」，方向正确，但漏了前置条件：只有 <code>use_responses_lite</code> 的模型才可能为真（world_state.rs#L48-L50）。三、卡片把「历史规范化」写成四项不变量，源码注释只列了三条，第三项同时包含图片与音频；函数体确实是四次调用，按四次讲更准确。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>三段，五十五行</h2>
+
+      <p>第一段是结构体，省略了字段文档注释与空行（已在注释里说明）；第二段是拼装函数全文；第三段是序列化里处理工具定义的那十几行。三段合计 52 行，都在 60 行以内。</p>
+
+      <p class="small muted">文件：<code>codex-rs/core/src/client_common.rs</code>　行号：L23-L42（节选 10 行，省略文档注释与空行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 四个内容块 + 三个开关；这是「逻辑形状」，不是线上 JSON</span>
+<span class="code__line">pub struct Prompt {</span>
+<span class="code__line">    pub input: Vec&lt;ResponseItem&gt;, <span class="cmt">// ① 历史输入</span></span>
+<span class="code__line">    pub(crate) tools: Arc&lt;[ToolSpec]&gt;, <span class="cmt">// ② 工具定义；为空表示由历史承担</span></span>
+<span class="code__line">    pub(crate) parallel_tool_calls: bool, <span class="cmt">// 开关，不是内容块</span></span>
+<span class="code__line">    pub base_instructions: BaseInstructions, <span class="cmt">// ③ 岗位说明书</span></span>
+<span class="code__line">    pub output_schema: Option&lt;Value&gt;, <span class="cmt">// ④ 结构化输出约束</span></span>
+<span class="code__line">    pub output_schema_strict: bool, <span class="cmt">// 开关：是否严格校验 schema</span></span>
+<span class="code__line">    pub(crate) cyber_access_program: Option&lt;codex_protocol::turn_input::CyberAccessProgram&gt;,</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>codex-rs/core/src/session/turn.rs</code>　行号：L1666-L1695（全文 30 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">pub(crate) fn build_prompt(</span>
+<span class="code__line">    input: Vec&lt;ResponseItem&gt;,</span>
+<span class="code__line">    step_context: &amp;StepContext,</span>
+<span class="code__line">    base_instructions: BaseInstructions,</span>
+<span class="code__line">    incremental_tools: bool, <span class="cmt">// 本轮是否走「声明已在历史里」</span></span>
+<span class="code__line">) -&gt; Prompt {</span>
+<span class="code__line">    let turn_context = &amp;step_context.turn;</span>
+<span class="code__line">    Prompt {</span>
+<span class="code__line">        input,</span>
+<span class="code__line">        tools: if incremental_tools {</span>
+<span class="code__line">            Arc::default() <span class="cmt">// 空数组：本次不再下发工具定义</span></span>
+<span class="code__line">        } else {</span>
+<span class="code__line">            step_context.tool_router.model_visible_specs()</span>
+<span class="code__line">        },</span>
+<span class="code__line">        parallel_tool_calls: true, <span class="cmt">// 结构体里恒为真，线上还要再与一次</span></span>
+<span class="code__line">        base_instructions: if incremental_tools {</span>
+<span class="code__line">            BaseInstructions {</span>
+<span class="code__line">                text: String::new(), <span class="cmt">// 空文本：指令也已写进历史</span></span>
+<span class="code__line">                provenance: None,</span>
+<span class="code__line">            }</span>
+<span class="code__line">        } else {</span>
+<span class="code__line">            base_instructions</span>
+<span class="code__line">        },</span>
+<span class="code__line">        output_schema: turn_context.final_output_json_schema.clone(),</span>
+<span class="code__line">        output_schema_strict: !crate::guardian::is_basic_session_source(</span>
+<span class="code__line">            &amp;turn_context.session_source,</span>
+<span class="code__line">        ), <span class="cmt">// guardian/basic 会话不严格校验</span></span>
+<span class="code__line">        cyber_access_program: turn_context.cyber_access_program,</span>
+<span class="code__line">    }</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>codex-rs/core/src/client.rs</code>　行号：L980-L992（节选 13 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">let tools = if model_info.use_responses_lite {</span>
+<span class="code__line">    if !prompt.tools.is_empty() {</span>
+<span class="code__line">        let tools = create_tools_json_for_responses_lite(&amp;prompt.tools)?;</span>
+<span class="code__line">        prefix.push(ResponseItem::AdditionalTools {</span>
+<span class="code__line">            id: Some(ResponseItemId::with_suffix(</span>
+<span class="code__line">                "at", Uuid::new_v5(&amp;prefix_namespace, &amp;serde_json::to_vec(&amp;tools)?),</span>
+<span class="code__line">            )), <span class="cmt">// 稳定 id：同一份定义每次哈希相同</span></span>
+<span class="code__line">            role: "developer".to_string(),</span>
+<span class="code__line">            tools,</span>
+<span class="code__line">        });</span>
+<span class="code__line">    }</span>
+<span class="code__line">    None <span class="cmt">// 顶层 tools 字段不出现</span></span>
+<span class="code__line">} else {</span>
+<span class="code__line">    Some(create_tools_raw_json_for_responses_api(&amp;prompt.tools)?.into())</span>
+<span class="code__line">};</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">三段合计 55 行（10 + 30 + 15）。第一段省略了 7 行文档注释与空行；第三段在摘录末尾截断了 <code>else</code> 分支之后的代码，语义完整。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>从结构体到线上请求，三次折叠</h2>
+
+      <h3>第 1 段　四个内容块与三个开关</h3>
+
+      <p><code>input</code> 是历史条目数组，类型是 <code>ResponseItem</code>，不是「消息字符串」。这意味着工具调用、推理、压缩摘要、环境片段都可能是数组里的一个元素，顺序就是模型读到的顺序。<code>tools</code> 是工具定义数组，注释写得非常直白：<em>empty when supplied by history</em>——为空不是「没有工具」，而是「工具已经写在历史里了」。<span class="tag tag--ok">已核实</span></p>
+
+      <p><code>base_instructions</code> 是岗位说明书，类型不是 <code>String</code>，而是带 <code>text</code> 与 <code>provenance</code> 的结构。这解释了一个常见疑问：为什么 Codex 能区分「模型自带的提示」和「用户自定义的提示」？答案在 <code>provenance</code> 上，而不在文本内容里。<code>output_schema</code> 是可选的结构化输出约束，配合 <code>output_schema_strict</code> 决定服务端是否严格校验。<span class="tag tag--ok">已核实</span></p>
+
+      <p>另外三个字段容易被误认为「块」：<code>parallel_tool_calls</code> 是布尔开关，<code>output_schema_strict</code> 是校验开关，<code>cyber_access_program</code> 是安全策略上下文。它们不增加上下文内容的分类，但会改变请求行为的边界。把它们算进「四块」会让后面的对比失真。<span class="tag tag--guess">推断</span></p>
+
+      <p class="lead-in">记住这个区分：块是「装什么」，开关是「怎么解释装进去的东西」。</p>
+
+      <h3>第 2 段　build_prompt：唯一的分叉点</h3>
+
+      <p>这个函数只有三十行，却做了三件事。第一，原样接收 <code>input</code>，不在这里做裁剪或规范化——那些在更早的历史层完成。第二，根据 <code>incremental_tools</code> 同时决定 <code>tools</code> 与 <code>base_instructions.text</code> 是否为空。第三，从 <code>turn_context</code> 取本轮的结构化输出约束与安全策略。<span class="tag tag--ok">已核实</span></p>
+
+      <p><code>parallel_tool_calls: true</code> 看起来是硬编码，但线上并不总是真。序列化时写的是 <code>prompt.parallel_tool_calls &amp;&amp; !model_info.use_responses_lite</code>（client.rs#L1083）：Lite 模型强制关闭并行工具调用。这是一个「结构体表达意图，序列化表达约束」的分层，读代码时不能只看一边。<span class="tag tag--ok">已核实</span></p>
+
+      <p><code>output_schema_strict</code> 对 guardian/basic 会话取反。源码没有解释原因，但从命名推断：guardian 是安全审查会话，输出结构可能由内部约定控制，不需要服务端严格校验；普通会话则默认严格。<span class="tag tag--guess">推断</span>这一处不影响上下文体积，但会影响请求被拒绝的概率。</p>
+
+      <p>还有一个容易忽略的点：<code>output_schema</code> 不进入 <code>input</code>。它是「输出契约」，不是「模型读到的历史」，所以无论 Lite 还是非 Lite，它都走顶层的 <code>text</code> 参数。把四块里前三块和第四块分开看，会发现前三块影响「模型看到什么」，第四块影响「模型必须怎么回答」。这也是为什么压缩、截断、增量这些机制只作用于前三块，从来不动 <code>output_schema</code>。<span class="tag tag--guess">推断</span></p>
+
+      <p>为什么增量分支要同时清空「工具」和「岗位说明书」？因为这两块在 Lite 模型上都以开发者条目的形式存在于历史里。只清工具、不清指令，会让模型收到两份指令；只清指令、不清工具，会让工具表在历史与顶层各出现一次。两者必须同进同退。<span class="tag tag--guess">推断</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">逻辑四块如何折叠成线上请求</title>
+          <desc id="fig-2-desc">左侧四个方块是 input、tools、base_instructions、output_schema。右侧是线上请求：input 数组里依次插入 AdditionalTools 与 base_instructions 两个开发者条目，顶层 tools 只在非 Lite 模型出现，output_schema 进入 text 参数。</desc>
+          <text class="svg-note" x="8" y="20">逻辑形状（Prompt）</text>
+          <rect class="svg-track" x="8" y="32" width="220" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="24" y="54">input 历史条目</text>
+          <rect class="svg-track" x="8" y="74" width="220" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="24" y="96">tools 工具定义</text>
+          <rect class="svg-track" x="8" y="116" width="220" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="24" y="138">base_instructions</text>
+          <rect class="svg-track" x="8" y="158" width="220" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="24" y="180">output_schema</text>
+
+          <text class="svg-note" x="296" y="20">线上形状（ResponsesApiRequest）</text>
+          <rect class="svg-seg--a" x="296" y="32" width="336" height="160" rx="8"/>
+          <text class="svg-label svg-label--s" x="312" y="56">input 数组</text>
+          <rect class="svg-seg--b" x="312" y="68" width="304" height="30" rx="6"/>
+          <text class="svg-label svg-label--s" x="324" y="88">① AdditionalTools（developer）</text>
+          <rect class="svg-seg--b" x="312" y="104" width="304" height="30" rx="6"/>
+          <text class="svg-label svg-label--s" x="324" y="124">② 岗位说明书（developer）</text>
+          <rect class="svg-track" x="312" y="140" width="304" height="30" rx="6"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="324" y="160">③ 原来的历史条目</text>
+
+          <rect class="svg-seg--c" x="296" y="206" width="336" height="34" rx="7"/>
+          <text class="svg-label svg-label--s" x="312" y="228">顶层 tools：仅非 Lite 模型出现</text>
+          <rect class="svg-seg--c" x="296" y="248" width="336" height="34" rx="7"/>
+          <text class="svg-label svg-label--s" x="312" y="270">text.format：output_schema</text>
+
+          <text class="svg-note" x="248" y="54" text-anchor="middle">→</text>
+          <text class="svg-note" x="248" y="96" text-anchor="middle">→</text>
+          <text class="svg-note" x="248" y="138" text-anchor="middle">→</text>
+          <text class="svg-note" x="248" y="180" text-anchor="middle">→</text>
+        </svg>
+        <figcaption>图 2　四块折叠成线上请求。Lite 模型下工具与岗位说明书都变成 <code>input</code> 头部的开发者条目；非 Lite 模型只折叠岗位说明书，工具仍走顶层 <code>tools</code>。</figcaption>
+      </figure>
+
+      <h3>第 3 段　增量开关：为什么不是配置项</h3>
+
+      <p><code>current_window_uses_incremental_tools()</code> 的判断顺序值得逐行读。第一步，模型不支持 <code>use_responses_lite</code> 就直接返回 <code>false</code>——这解释了为什么大多数模型仍然每轮收到完整工具表。第二步，历史为空时返回 <code>step_context.incremental_tools_enabled()</code>，也就是「首轮按配置决定」。第三步，历史非空时返回 <code>state.history.has_tool_declarations()</code>，也就是「历史里到底有没有声明过」。<span class="tag tag--ok">已核实</span></p>
+
+      <p>第三步是整段逻辑的核心。它不信任任何内存标志位，而是回到历史里找证据。这样做的好处是恢复、fork、压缩之后都不会出现「标志说已声明、历史里却没有」的错位。代价是每轮要扫一次历史，判断成本随历史长度增长；不过 <code>has_tool_declarations()</code> 的实现只需要找到第一个匹配项，通常是常数级。<span class="tag tag--guess">推断</span></p>
+
+      <p>首轮为什么还要看配置？因为首轮历史为空，没有证据可查。如果配置说「首轮就用增量模式」，那么 <code>build_prompt</code> 会把工具与指令都置空，而历史里还没有声明——这听起来会发出一个没有工具的请求。实际的保护在别处：<code>build_world_state_for_step</code> 在 <code>new_window</code> 时用同一个配置构建 <code>TopLevelToolsState</code> 与 <code>ModelInstructionsState</code>，把声明作为世界状态写入历史。也就是说，「首轮置空」只在同一轮已经把声明写进历史时成立。<span class="tag tag--guess">推断</span></p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">一句话理解</p>
+        <p>增量工具不是「少发一次」，而是「把工具表从每轮请求的头部，搬到会话历史的开头」。搬过去之后，每轮只发变化；没变化就一个字节都不发。</p>
+      </div>
+
+      <h3>第 4 段　线上折叠：谁被塞进了 input</h3>
+
+      <p>序列化段的第一个分支是 Lite 模型：如果 <code>prompt.tools</code> 非空，就把它转成 <code>ResponseItem::AdditionalTools</code>，带一个由「线程 id + 工具 JSON」算出的稳定 id，角色是 <code>developer</code>，然后 <code>prefix.push()</code>。最后 <code>tools</code> 变量是 <code>None</code>，顶层字段不出现。<span class="tag tag--ok">已核实</span></p>
+
+      <p>第二个动作在 L996-L1005：只要 <code>base_instructions.text</code> 非空，就包成 <code>BaseInstructionsFragment</code>，同样是稳定 id、同样是 <code>developer</code> 角色，然后 <code>prefix.push()</code>。最后 <code>input.splice(0..0, prefix)</code> 把这两条插到历史最前面。注意这个顺序：先工具、后指令，两者都在历史之前。<span class="tag tag--ok">已核实</span></p>
+
+      <p>稳定 id 是缓存友好的关键。id 由内容哈希生成，同样的工具表、同样的指令文本，每轮算出的 id 相同；如果 id 随机，哪怕内容一样，序列化后的字节也不同，前缀缓存会从第一条就失效。这一处没有注释解释，但从 <code>Uuid::new_v5</code> 的用法可以直接读出来。<span class="tag tag--guess">推断</span></p>
+
+      <p>顺序也有讲究。<code>prefix</code> 先 push 工具，再 push 指令，最后 <code>splice(0..0, prefix)</code> 整体插到历史之前。也就是说，模型读到的是「工具声明 → 指令 → 历史」，而不是「指令 → 工具 → 历史」。如果某次重构把这两个 push 的顺序调换，内容没变，但字节顺序变了，前缀缓存会从工具声明那一行开始失效。这类改动在代码评审里几乎看不出来，只能靠提交说明或缓存命中率监控发现。<span class="tag tag--guess">推断</span></p>
+
+      <p>非 Lite 模型走另一条路：工具仍然是顶层 <code>tools</code> 字段，但岗位说明书依旧被折叠成 <code>input</code> 里的开发者条目。这一点最反直觉——很多人以为 <code>base_instructions</code> 会对应请求的 <code>instructions</code> 字段。本提交的 <code>ResponsesApiRequest</code> 里根本没有 <code>instructions</code>（common.rs#L278-L304）。<span class="tag tag--ok">已核实</span></p>
+
+      <h3>第 5 段　历史规范化：四块之前的四道检查</h3>
+
+      <p><code>normalize_history()</code> 在 <code>build_prompt</code> 之前执行，做四次调用：给每个工具调用补上输出、删除没有对应调用的孤立输出、剥掉模型不支持的图片、剥掉模型不支持的音频。注释把它们概括成三条不变量，第三条同时覆盖图片与音频，函数体是四次独立调用。<span class="tag tag--ok">已核实</span></p>
+
+      <p>为什么这四道检查必须存在？因为 Responses API 对「调用与结果成对」有硬要求。历史里只要出现一个只有 <code>function_call</code> 没有 <code>function_call_output</code> 的条目，整个请求就可能被拒绝；反过来，孤立的输出也会让模型看到一个没有来由的结果。规范化把这两种情况都在客户端修好，避免把错误推到服务端。<span class="tag tag--ok">已核实</span></p>
+
+      <p>它和「四块」的关系是：<code>input</code> 不是原始历史的照搬，而是规范化后的投影。读 <code>build_prompt</code> 时如果只看函数体，会以为 <code>input</code> 就是磁盘上的历史；实际上它是「历史经过四道检查之后的版本」。<span class="tag tag--guess">推断</span></p>
+
+      <p>这个区别在调试时特别重要。模型报「工具调用没有结果」时，你去看磁盘上的 rollout，可能会发现调用与结果都在；但真正发给模型的 <code>input</code> 已经因为「孤立输出」或「配对缺失」被改过。反过来，模型报「图片无法读取」时，rollout 里图片可能完好，<code>input</code> 里却已经被替换成一段占位文本。只看存档、不看规范化后的投影，就会把问题归错地方。<span class="tag tag--guess">推断</span></p>
+
+      <h3>第 6 段　省了什么，代价是什么</h3>
+
+      <p>省下的是每轮重复下发的工具表与岗位说明书。工具表通常包含名称、描述、JSON Schema，MCP 工具多的时候可能有几十条；岗位说明书是整段系统提示。把它们从「每轮请求头部」搬到「历史开头」，后续轮次只需要在历史里保留一次，理论上每次采样都能省下这两块的序列化与传输。<span class="tag tag--guess">推断</span></p>
+
+      <p>代价有三类。第一，声明变成了历史的一部分，任何工具变更都必须以「增量声明」的形式追加，不能直接改头部；这就是 <code>TopLevelToolsState</code> 存在的理由。第二，历史被压缩或截断时，必须保证声明条目不被误删，否则模型会收到「没有工具」的请求。第三，恢复旧会话时，声明条目必须能被识别出来，否则会重复声明或漏声明。<span class="tag tag--guess">推断</span></p>
+
+      <p>这三类代价解释了为什么 <code>AdditionalTools</code> 要带稳定 id、为什么要单独的 <code>TopLevelToolsState</code>、为什么 <code>has_tool_declarations()</code> 要回历史里查。增量不是免费的省 token，它把「无状态请求」变成了「有状态会话」，所有恢复路径都要跟着变。<span class="tag tag--guess">推断</span></p>
+
+      <p>如果把账算得更细一点：省下的是每轮工具表与指令的「重复输入 token」，付出的是「历史多了一段声明」和「每次变化要发一条增量」。设工具表与指令合计 T 个 token，会话有 N 轮且工具集不变，全量模式大约付 N×T 的输入，增量模式大约付 1×T；但增量模式下这 T 个 token 仍然在历史里，每一轮请求都会作为上下文被重新读取。所以真实的节省不是 N×T，而是 (N−1)×T 的「传输与序列化」部分，计费上还要看服务端是否把历史前缀算进缓存读。这也是为什么增量工具必须和缓存友好设计一起看：只有前缀稳定，历史里的声明才会以缓存读的价格被复用，而不是每轮按全价重算。<span class="tag tag--guess">推断</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-3-title fig-3-desc">
+          <title id="fig-3-title">首轮与后续轮的工具声明位置</title>
+          <desc id="fig-3-desc">上半部分是首轮：顶层 tools 有完整工具表，input 头部插入 AdditionalTools 与 base_instructions。下半部分是后续轮：顶层 tools 为空，input 只追加一条增量声明或什么都不追加。</desc>
+          <text class="svg-note" x="8" y="20">首轮：完整声明</text>
+          <rect class="svg-track" x="8" y="30" width="624" height="30" rx="6"/>
+          <text class="svg-label svg-label--dark" x="20" y="50">顶层 tools = 完整工具表</text>
+          <rect class="svg-seg--a" x="8" y="66" width="624" height="30" rx="6"/>
+          <text class="svg-label" x="20" y="86">input[0] = AdditionalTools（完整）</text>
+          <rect class="svg-seg--b" x="8" y="102" width="624" height="30" rx="6"/>
+          <text class="svg-label" x="20" y="122">input[1] = base_instructions</text>
+          <rect class="svg-track" x="8" y="138" width="624" height="30" rx="6"/>
+          <text class="svg-label svg-label--dark" x="20" y="158">input[2..] = 历史</text>
+
+          <text class="svg-note" x="8" y="196">后续轮：只发变化</text>
+          <rect class="svg-seg--c" x="8" y="204" width="300" height="30" rx="6"/>
+          <text class="svg-label" x="20" y="224">顶层 tools = 空（不出现）</text>
+          <rect class="svg-seg--c" x="316" y="204" width="316" height="30" rx="6"/>
+          <text class="svg-label" x="328" y="224">input 末尾：有变化才追加 diff</text>
+        </svg>
+        <figcaption>图 3　首轮与后续轮。首轮把完整声明写进历史，后续轮顶层工具为空；只有工具集发生变化时，才在历史尾部追加一条增量声明。</figcaption>
+      </figure>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>四块是逻辑分类：<code>input</code>、<code>tools</code>、<code>base_instructions</code>、<code>output_schema</code>。</li>
+            <li><code>incremental_tools</code> 由「模型是否 Lite + 历史是否已有声明」推导，不是用户开关。</li>
+            <li>Lite 模型把工具与指令都折进 <code>input</code> 头部；非 Lite 只折指令，工具仍走顶层字段。</li>
+            <li><code>base_instructions</code> 在本提交不对应请求的 <code>instructions</code> 字段，而是一条开发者消息。</li>
+            <li>省 token 的代价是会话变成有状态：压缩、恢复、fork 都必须保护声明条目。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>同样是「系统提示」，四家放在四个不同的层</h2>
+
+      <p>把「系统提示放在哪」拆开看，会发现四家的分歧不在文案，而在承载它的数据结构：Codex 用开发者消息，pi 用具名 section 拼成文本，opencode v1 把四块压成一条 system 字符串，DeepSeek Harness 把系统提示本身当成一条会话事件。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">系统提示的载体</th>
+              <th scope="col">工具定义的位置</th>
+              <th scope="col">是否每轮重发</th>
+              <th scope="col">来源</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>开发者消息 <code>model.base_instructions</code>，插在 <code>input</code> 头部</td>
+              <td>非 Lite 走顶层 <code>tools</code>；Lite 走 <code>AdditionalTools</code> 条目</td>
+              <td>非增量每轮重发；增量只在变化时追加</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>具名 section 按顺序拼成一段文本，<code>preamble</code> 是裸文本</td>
+              <td>提示词里有 <code>tools</code> section；可执行实现另存于 <code>context.tools</code></td>
+              <td>section 级补丁，只发变化的 section</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>四类块 <code>env → instructions → mcp → skills</code> 合成一条 system 字符串</td>
+              <td>工具数组按名字排序后单独发送</td>
+              <td>每轮重建整条 system 字符串</td>
+              <td><span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>具名 section 按 <code>order</code> 拼装，作为一条 <code>system/message</code> 会话事件</td>
+              <td>由 <code>ctx.tools</code> 的 provider 给出本轮可见集</td>
+              <td>系统提示不重写；变化时替换节点或追加 update</td>
+              <td><span class="tag tag--guess">推断</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 1 节（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径）。</p>
+
+      <p>第一个对照是<b>「系统提示」是否是一个真实对象</b>。Codex 与 dsh 都把它变成历史里的一条消息/事件，因此它可以被重放、被替换、被增量更新；pi 与 opencode 则把它拼成字符串，字符串本身不参与历史，只在每次请求时重新生成。前者的好处是恢复与压缩有统一入口，坏处是历史里多了一条需要特殊识别的消息；后者实现简单，但每次改动都要重算整段。</p>
+
+      <p>第二个对照是<b>「工具定义」是否与提示词同层</b>。Codex 在 Lite 模型上把工具和指令都放进历史，等于让两者共享同一套增量机制；pi 把工具 section 留在提示词里，可执行实现另存，等于把「模型看到的声明」和「运行时能调用的实现」拆开；opencode 把工具数组单独发送、按名字排序，靠稳定排序保缓存。三种做法对应三种失败模式：Codex 怕历史被截断，pi 怕声明与实现不一致，opencode 怕某一块内容变化导致整条 system 字符串失效。</p>
+
+      <p>第三个对照是<b>「首轮是否特殊」</b>。Codex 的首轮必须把完整声明写进历史，后续轮才能省；pi 的首轮也要建立 section 基线；opencode 没有基线概念，每轮都是全量。这个差异决定了「恢复会话」的复杂度：有基线的系统必须把基线一起持久化，否则恢复后无法判断「哪些已经声明过」。Codex 用 <code>world_state_baseline</code>，pi 用 session 里的 sections，dsh 用 surface 事件；opencode 不需要，因为它每轮都重发。</p>
+
+      <p>第四个对照是<b>「变更如何表达」</b>。Codex 的增量工具是一条带稳定 id 的 <code>AdditionalTools</code> 条目，变更时追加新的声明，旧声明留在历史里，靠提示语告诉模型「后来的定义覆盖前面的」。pi 的 section patch 走的也是「只追加差异」这条路，但 patch 的语义是「这个 section 的新值」，不保留旧值；dsh 则把系统提示当成 surface 节点，变更时可以选择原地替换节点，或者在缓存历史之后追加一条 update。三种语义对应三种一致性模型：Codex 是「追加即覆盖」，pi 是「补丁即最新」，dsh 是「替换或追加由路由能力决定」。没有哪种绝对更好，关键看你的历史是否只追加、以及恢复时能不能重建基线。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从读赋值到改设计</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q"><code>build_prompt</code> 里写的是 <code>parallel_tool_calls: true</code>，但 Lite 模型线上收到的是 <code>false</code>。这两处矛盾吗？如果只在 <code>build_prompt</code> 里改成 <code>false</code>，会影响非 Lite 模型吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先看序列化那一行：<code>prompt.parallel_tool_calls &amp;&amp; !model_info.use_responses_lite</code>。结构体表达的是「意图」，序列化表达的是「约束」。再想：如果只改结构体，非 Lite 模型会收到什么？</p>
+          <p>最后想一层：为什么不在 <code>build_prompt</code> 里就按模型分支，而要留给序列化？提示：<code>build_prompt</code> 拿不到 <code>model_info</code> 吗？它其实能拿到 <code>step_context.settings.model_info</code>。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">用户在一个 Lite 模型会话里用了十轮，然后切到非 Lite 模型。下一轮 <code>current_window_uses_incremental_tools()</code> 返回什么？请求里会同时出现历史中的 <code>AdditionalTools</code> 和顶层 <code>tools</code> 吗？这样的请求合理吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>第一行判断是 <code>if !model_info.use_responses_lite { return false; }</code>，它在新模型上直接短路，不会再看历史。所以 <code>build_prompt</code> 会重新填入完整工具表。</p>
+          <p>历史里的 <code>AdditionalTools</code> 仍然存在，它会不会被当成普通历史条目发给新模型？看 <code>normalize_image_details</code> 的分支：<code>ResponseItem::AdditionalTools { .. } =&gt; {}</code>，规范化不会删它。那么新模型会同时看到两份声明。这合理吗？你需要查新模型是否支持 <code>AdditionalTools</code>，以及 <code>build_responses_request</code> 是否会在非 Lite 路径过滤它。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">假设你要给 Codex 加一条「压缩后保留工具声明」的规则。只改 <code>compact.rs</code> 的候选筛选够不够？还需要动哪些地方？代价是什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先分清两种「保留」：把声明条目当普通用户消息留下来，和把声明重新写进压缩后的历史。前者会被候选筛选挡掉（它不是 <code>UserMessage</code>），后者需要新的重建逻辑。</p>
+          <p>再看 <code>has_tool_declarations()</code>：它只认历史里的声明条目。如果压缩把声明弄丢，下一轮 <code>incremental_tools</code> 会返回 <code>false</code>，于是完整工具表被重新下发——这其实是自愈，但会多花一次全量 token。你要的「保留」是为了省这一次，还是为了正确性？</p>
+          <p>最后想代价：声明条目可能很大，压缩后立刻占用预算；而且它必须和当前工具表一致，否则模型会按旧声明调用已经不存在的工具。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-codex-03.html">Codex · 规则差分：只发变化</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

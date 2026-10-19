@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>pi · 压缩只改投影，不删历史 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-pi-02 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-pi-02 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-pi-02 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-pi-02 .path-card code,
+  #src-pi-02 .callout code,
+  #src-pi-02 .quiz__q code,
+  #src-pi-02 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-pi-02">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-pi-02">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>pi</span><span>·</span><span>第 02 节</span></p>
+      <h1>压缩只改投影，不删历史</h1>
+      <p class="lede">压缩之后，磁盘上的会话文件一条都没少。模型看到的上下文却短了一大截。这两个事实同时成立，靠的是一个很薄但很关键的中间层：投影（projection）。读懂它，你就理解了 pi 的会话模型，也理解了为什么「恢复会话」不需要重跑压缩。</p>
+      <ul class="meta">
+        <li>约 14 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>b45e0eb</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>画出「条目日志 → 投影 → 模型消息」三层，并说出每层各丢了什么。</li>
+          <li>解释 <code>firstKeptEntryId</code> 为什么能用一个 id 表示「保留段从这里开始」。</li>
+          <li>说明恢复会话时为什么不需要重新调用模型做摘要，以及这样做的代价。</li>
+          <li>把 pi 的「只追加 + 投影」与 opencode v1 的「重排」、v2 的「seq 边界」放在一起比较。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>这一节的关键名词只有两个：<b>条目（entry）</b>是磁盘上的一行 JSON，<b>消息（message）</b>是发给模型的一条 <code>{role, content}</code>。一条条目可能展开成 0 条、1 条或多条消息——这个「不一定相等」是全部设计的起点。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>压缩写进去的是一条「指针」，不是一段「删除」</h2>
+
+      <p>压缩完成时，pi 向会话文件追加一条 <code>CompactionEntry</code>，字段有 <code>summary</code>、<code>firstKeptEntryId</code>、<code>tokensBefore</code>、<code>details</code>、<code>usage</code>、<code>fromHook</code>，以及一个容易忽略的 <code>systemMessage</code>。<span class="tag tag--ok">已核实</span>它没有删除任何旧条目，也没有改写旧条目，只是把「从这里往前的都可以不看了」这句话写成了一个 id。</p>
+
+      <p class="lead-in">「历史变短」发生在读取时，不发生在写入时。写入只做一件事：追加一条带指针的记录。</p>
+
+      <p>读取时，<code>buildContextEntries()</code> 沿当前叶子回溯出一条路径，找到<b>最新</b>的压缩条目，然后拼出三段：压缩条目自己（它会展开成摘要消息）、从 <code>firstKeptEntryId</code> 起的保留段、压缩条目之后的新条目。更早的原始条目仍在路径上，但不再进入结果。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 268" role="img" aria-labelledby="pi2-f1-title pi2-f1-desc">
+          <title id="pi2-f1-title">条目日志与模型投影是两层</title>
+          <desc id="pi2-f1-desc">上层是十条只追加的日志条目，包含一条压缩条目；下层是投影结果，只保留压缩条目、保留段和压缩之后的条目。中间用箭头表示 buildContextEntries 的筛选。</desc>
+          <text class="svg-note" x="8" y="18">磁盘：只追加的 JSONL（一条都没删）</text>
+          <rect class="svg-track" x="8" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="34" y="50" text-anchor="middle">E1</text>
+          <rect class="svg-track" x="66" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="92" y="50" text-anchor="middle">E2</text>
+          <rect class="svg-track" x="124" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="150" y="50" text-anchor="middle">E3</text>
+          <rect class="svg-track" x="182" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="208" y="50" text-anchor="middle">E4</text>
+          <rect class="svg-track" x="240" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark" x="266" y="50" text-anchor="middle">E5</text>
+          <rect class="svg-seg--c" x="298" y="28" width="72" height="34" rx="6"/>
+          <text class="svg-label" x="334" y="50" text-anchor="middle">C1</text>
+          <rect class="svg-seg--b" x="376" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label" x="402" y="50" text-anchor="middle">E6</text>
+          <rect class="svg-seg--b" x="434" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label" x="460" y="50" text-anchor="middle">E7</text>
+          <rect class="svg-seg--b" x="492" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label" x="518" y="50" text-anchor="middle">E8</text>
+          <rect class="svg-seg--b" x="550" y="28" width="52" height="34" rx="6"/>
+          <text class="svg-label" x="576" y="50" text-anchor="middle">E9</text>
+
+          <text class="svg-note" x="8" y="82">firstKeptEntryId = E6</text>
+          <line class="svg-rule" x1="334" y1="68" x2="334" y2="100"/>
+          <text class="svg-note" x="342" y="100">压缩点</text>
+
+          <line class="svg-rule" x1="320" y1="118" x2="320" y2="140"/>
+          <text class="svg-note" x="330" y="136">buildContextEntries 之后</text>
+
+          <text class="svg-note" x="8" y="160">模型：投影结果（E1–E5 不再出现）</text>
+          <rect class="svg-seg--c" x="8" y="170" width="112" height="40" rx="7"/>
+          <text class="svg-label" x="64" y="195" text-anchor="middle">C1 摘要</text>
+          <rect class="svg-seg--b" x="128" y="170" width="82" height="40" rx="7"/>
+          <text class="svg-label" x="169" y="195" text-anchor="middle">E6</text>
+          <rect class="svg-seg--b" x="218" y="170" width="82" height="40" rx="7"/>
+          <text class="svg-label" x="259" y="195" text-anchor="middle">E7</text>
+          <rect class="svg-seg--b" x="308" y="170" width="82" height="40" rx="7"/>
+          <text class="svg-label" x="349" y="195" text-anchor="middle">E8</text>
+          <rect class="svg-seg--b" x="398" y="170" width="82" height="40" rx="7"/>
+          <text class="svg-label" x="439" y="195" text-anchor="middle">E9</text>
+          <rect class="svg-track svg-seg--free" x="488" y="170" width="144" height="40" rx="7"/>
+          <text class="svg-note" x="560" y="195" text-anchor="middle">之后继续追加</text>
+
+          <text class="svg-note" x="8" y="238">E1–E5 仍在文件里：/tree 可以回去，审计可以查，但没有检索入口。</text>
+          <text class="svg-note" x="8" y="260">投影是纯函数：同样的条目 + 同样的叶子，永远得到同样的消息序列。</text>
+        </svg>
+        <figcaption>图 1　两层结构。压缩只追加一条 C1 并写下 <code>firstKeptEntryId = E6</code>；模型看到的是「摘要 + E6 起的尾巴」，磁盘上 E1–E5 原封不动。</figcaption>
+      </figure>
+
+      <p>这套设计带来三个直接后果。第一，压缩是<b>可逆的</b>：删掉那条压缩条目（或把叶子移到它之前），历史立刻恢复原样。第二，压缩是<b>可重复的</b>：第二次压缩不需要重读原始消息，它读的是上一次的投影，摘要因此是「摘要的摘要」。第三，压缩是<b>便宜的</b>：写入只有一次追加，没有重写整个文件。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四个位置：写入、重建、投影、恢复</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 写入：追加一条压缩条目</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L1261-L1287">session-manager.ts#L1261-L1287</a><br>
+          <code>appendCompaction()</code>：<code>firstKeptEntryId ?? id</code>，并顺手保存当前的系统消息。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 重建：从叶子回溯并裁掉旧段</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L476-L512">session-manager.ts#L476-L512</a><br>
+          <code>buildContextEntries()</code>：找到最新压缩，按 <code>firstKeptEntryId</code> 截取，跳过系统消息。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 投影：叠加编辑、清空旧压缩</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L519-L573">session-manager.ts#L519-L573</a><br>
+          <code>projectContextEntry()</code> 处理 <code>replacement: null</code>；旧压缩在 <code>index &gt; 0</code> 时贡献空消息。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 恢复：读文件，不重跑压缩</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L1766-L1801">session-manager.ts#L1766-L1801</a><br>
+          <code>open()</code> 与 <code>continueRecent()</code> 只负责找到文件、构造管理器；投影在下次请求时现算。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：压缩条目类型定义见 <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L95-L114">compaction.ts#L95-L114</a>；条目展开成消息的规则见 <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L431-L466">session-manager.ts#L431-L466</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】<code>firstKeptEntryId</code> 可能指向压缩条目自己</p>
+        <p>写入时写的是 <code>firstKeptEntryId ?? id</code>：如果准备阶段没给出保留起点，指针就指回新追加的这条压缩条目。此时投影结果为「压缩条目自己 + 压缩之后的条目」，保留段为空。这不是 bug，而是「所有内容都进了摘要」的合法表达。读代码时不要把 <code>?? id</code> 当成防御性兜底，它改变的是语义。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：怎么读，怎么写</h2>
+
+      <p>第一段是重建逻辑，完整保留 37 行，没有分支被省略。第二段是写入逻辑，只取条目构造的 18 行；函数签名和参数说明在正文里交代。两段合起来 60 行。</p>
+
+      <p class="small muted">文件：<code>packages/coding-agent/src/core/session-manager.ts</code>　行号：L476-L512（节选 42 行，含注释行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 沿叶子回溯成一条路径，再找路径上「最后一条」压缩</span>
+<span class="code__line">export function buildContextEntries(</span>
+<span class="code__line">    entries: SessionEntry[],</span>
+<span class="code__line">    leafId?: string | null,</span>
+<span class="code__line">    byId?: Map&lt;string, SessionEntry&gt;,</span>
+<span class="code__line">): SessionEntry[] {</span>
+<span class="code__line">    const path = buildSessionPath(entries, leafId, byId);</span>
+<span class="code__line">    let compaction: CompactionEntry | null = null;</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 循环不 break，所以拿到的是路径上最新的那条压缩</span>
+<span class="code__line">    for (const entry of path) {</span>
+<span class="code__line">        if (entry.type === "compaction") {</span>
+<span class="code__line">            compaction = entry;</span>
+<span class="code__line">        }</span>
+<span class="code__line">    }</span>
+<span class="code__line"> </span>
+<span class="code__line">    if (!compaction) {</span>
+<span class="code__line">        return path; <span class="cmt">// 没压过：路径就是上下文</span></span>
+<span class="code__line">    }</span>
+<span class="code__line"> </span>
+<span class="code__line">    const compactionIdx = path.findIndex((entry) =&gt; entry.id === compaction.id);</span>
+<span class="code__line">    if (compactionIdx &lt; 0) {</span>
+<span class="code__line">        return path;</span>
+<span class="code__line">    }</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 结果以压缩条目自己开头，它展开成一条摘要消息</span>
+<span class="code__line">    const contextEntries: SessionEntry[] = [compaction];</span>
+<span class="code__line">    let foundFirstKept = false;</span>
+<span class="code__line">    for (let i = 0; i &lt; compactionIdx; i++) {</span>
+<span class="code__line">        const entry = path[i];</span>
+<span class="code__line">        if (entry.id === compaction.firstKeptEntryId) {</span>
+<span class="code__line">            foundFirstKept = true; <span class="cmt">// 从这条起才保留</span></span>
+<span class="code__line">        }</span>
+<span class="code__line">        <span class="cmt">// 系统消息永远跳过：它们会在请求组装时重新生成</span></span>
+<span class="code__line">        if (foundFirstKept &amp;&amp; !(entry.type === "message" &amp;&amp; entry.message.role === "system")) {</span>
+<span class="code__line">            contextEntries.push(entry);</span>
+<span class="code__line">        }</span>
+<span class="code__line">    }</span>
+<span class="code__line">    <span class="cmt">// 压缩之后的条目全部保留，不再筛选</span></span>
+<span class="code__line">    contextEntries.push(...path.slice(compactionIdx + 1));</span>
+<span class="code__line">    return contextEntries;</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/coding-agent/src/core/session-manager.ts</code>　行号：L1269-L1286（18 行，节选）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 写入前先快照当前系统消息：恢复时要用它</span>
+<span class="code__line">const timestamp = new Date().toISOString();</span>
+<span class="code__line">const systemMessage = getCurrentSystemMessage(this.buildSessionProjection().messages);</span>
+<span class="code__line">const id = generateId(this.byId);</span>
+<span class="code__line">const entry: CompactionEntry&lt;T&gt; = {</span>
+<span class="code__line">    type: "compaction",</span>
+<span class="code__line">    id,</span>
+<span class="code__line">    parentId: this.leafId, <span class="cmt">// 挂在当前叶子上，成为新的叶子</span></span>
+<span class="code__line">    timestamp,</span>
+<span class="code__line">    summary,</span>
+<span class="code__line">    firstKeptEntryId: firstKeptEntryId ?? id, <span class="cmt">// 没给起点就指向自己</span></span>
+<span class="code__line">    tokensBefore, <span class="cmt">// 压缩前的用量，用于统计与调试</span></span>
+<span class="code__line">    details, <span class="cmt">// 文件清单等扩展数据</span></span>
+<span class="code__line">    usage, <span class="cmt">// 生成摘要那次调用的用量</span></span>
+<span class="code__line">    fromHook, <span class="cmt">// 摘要是否由扩展提供</span></span>
+<span class="code__line">    ...(systemMessage ? { systemMessage: { ...systemMessage, timestamp: new Date(timestamp).getTime() } } : {}),</span>
+<span class="code__line">};</span>
+<span class="code__line">this._appendEntry(entry); <span class="cmt">// 只做追加，不删除、不改写</span></span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段含 7 行整行注释，第二段含 8 行注释；两段的可执行语句都能逐行对照源码，只补充了中文注释。合计 60 行，刚好在上限内。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四次筛选，一次追加</h2>
+
+      <h3>第 1 段　为什么要先建路径，再找压缩</h3>
+
+      <p><code>buildSessionPath()</code> 从 <code>leafId</code> 出发，沿 <code>parentId</code> 一路向根走，最后反转成「旧 → 新」。这一步决定了「当前看到的是哪条分支」。pi 的会话是树，不是线性日志：<code>/tree</code> 换一个叶子，路径就变了，压缩条目也可能不在路径上。</p>
+
+      <p>接着的 <code>for</code> 循环没有 <code>break</code>，所以 <code>compaction</code> 最终指向路径上<b>最后</b>一条压缩条目。为什么不用 <code>find</code> 从头找第一条？因为一条分支上可以有多次压缩，只有最新那条的 <code>firstKeptEntryId</code> 才是有效的保留起点；旧压缩的保留段可能已经被新压缩重新摘要过了。</p>
+
+      <p>这里还有一个容易读漏的细节：<code>compactionIdx</code> 是从<b>路径</b>里找的，不是从原始 <code>entries</code> 数组里找的。如果同一个会话文件里存在多条分支，某条压缩条目可能只属于另一条分支，它不该影响当前投影。</p>
+
+      <h3>第 2 段　三段拼接：摘要、保留段、之后的条目</h3>
+
+      <p>结果数组的第一项是压缩条目自己。它会在 <code>sessionEntryToContextMessages()</code> 里展开成一条摘要消息；如果条目里带了 <code>systemMessage</code>，会展开成「系统消息 + 摘要」两条。<span class="tag tag--ok">已核实</span>这就是为什么压缩后模型还能看到「你是谁、有哪些工具」——系统提示被快照进了压缩条目，而不是靠重新读取配置。</p>
+
+      <p>然后是循环：从路径开头走到压缩条目前一条，只有在遇到 <code>firstKeptEntryId</code> 之后才开始 <code>push</code>。注意 <code>foundFirstKept</code> 一旦置真就再也不会变假，所以保留下来的是一段<b>连续</b>的历史，不是「所有 id 大于某个值的条目」。</p>
+
+      <p>循环里还有一道过滤：<code>entry.type === "message" &amp;&amp; entry.message.role === "system"</code> 的条目即使落在保留段里也会被跳过。原因很实际：系统提示在每次请求前由 <code>_preparePromptAndToolLoadout()</code> 重新生成（下一节详述），历史里的旧系统消息只会造成重复。跳过它们，等于把「系统提示」这件事完全交给组装层。</p>
+
+      <p>最后 <code>contextEntries.push(...path.slice(compactionIdx + 1))</code> 把压缩之后的所有条目原样接上。这一段不再筛选，因为它本来就是「压缩后新产生的历史」，没有被摘要过。</p>
+
+      <h3>第 3 段　投影：编辑叠加与旧压缩清零</h3>
+
+      <p><code>buildSessionProjection()</code> 在 <code>buildContextEntries()</code> 的结果上再做两件事。第一，收集所有 <code>context_edit</code> 条目，按 <code>targetId</code> 建索引；第二，对每条被编辑的条目调用 <code>projectContextEntry()</code>：<code>replacement === null</code> 时返回空数组（整条省略），否则把内容替换成 <code>replacement.content</code>。<span class="tag tag--ok">已核实</span>这就是 pi 唯一的「历史裁剪」机制，只改投影，不改原文。</p>
+
+      <p>第二件事更隐蔽：</p>
+
+      <p><code>sourceEntry.type === "compaction" &amp;&amp; index &gt; 0 ? [] : projectContextEntry(...)</code></p>
+
+      <p>下标 0 的那条压缩贡献摘要；下标大于 0 的压缩条目贡献空消息。什么情况下会有第二条压缩？当 <code>firstKeptEntryId</code> 指向的那条原始条目，本身落在更早一次压缩的保留段里时，<code>buildContextEntries()</code> 会把它和它后面的旧压缩条目一起保留下来。旧压缩的摘要早已被新摘要覆盖，再展开一次就是重复计算。这一行是「投影必须理解自己的历史」的最小例子。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 244" role="img" aria-labelledby="pi2-f2-title pi2-f2-desc">
+          <title id="pi2-f2-title">投影的三个开关：保留起点、编辑、旧压缩清零</title>
+          <desc id="pi2-f2-desc">左侧是路径条目，右侧是投影结果。第一个开关按 firstKeptEntryId 丢弃更早条目，第二个开关把 context_edit 目标的投影置空，第三个开关让下标大于零的旧压缩不贡献消息。</desc>
+          <text class="svg-note" x="8" y="18">路径（旧 → 新）</text>
+          <rect class="svg-track" x="8" y="28" width="150" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="83" y="50" text-anchor="middle">E1 … E5</text>
+          <rect class="svg-seg--b" x="166" y="28" width="110" height="34" rx="6"/>
+          <text class="svg-label svg-label--s" x="221" y="50" text-anchor="middle">E6 保留段</text>
+          <rect class="svg-track" x="284" y="28" width="110" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="339" y="50" text-anchor="middle">E7（被编辑）</text>
+          <rect class="svg-seg--c" x="402" y="28" width="90" height="34" rx="6"/>
+          <text class="svg-label svg-label--s" x="447" y="50" text-anchor="middle">C2 新压缩</text>
+          <rect class="svg-track" x="500" y="28" width="60" height="34" rx="6"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="530" y="50" text-anchor="middle">C1</text>
+          <rect class="svg-seg--b" x="568" y="28" width="64" height="34" rx="6"/>
+          <text class="svg-label svg-label--s" x="600" y="50" text-anchor="middle">E9</text>
+
+          <text class="svg-note" x="8" y="92">① firstKeptEntryId 之前：丢弃</text>
+          <text class="svg-note" x="8" y="116">② replacement = null：投影为空</text>
+          <text class="svg-note" x="8" y="140">③ index &gt; 0 的压缩条目：贡献空消息</text>
+
+          <line class="svg-rule" x1="320" y1="156" x2="320" y2="170"/>
+          <text class="svg-note" x="330" y="168">投影</text>
+
+          <rect class="svg-seg--c" x="8" y="180" width="110" height="38" rx="7"/>
+          <text class="svg-label svg-label--s" x="63" y="204" text-anchor="middle">C2 摘要</text>
+          <rect class="svg-seg--b" x="126" y="180" width="120" height="38" rx="7"/>
+          <text class="svg-label svg-label--s" x="186" y="204" text-anchor="middle">E6</text>
+          <rect class="svg-track svg-seg--free" x="254" y="180" width="120" height="38" rx="7"/>
+          <text class="svg-note" x="314" y="204" text-anchor="middle">E7 被省略</text>
+          <rect class="svg-seg--b" x="382" y="180" width="120" height="38" rx="7"/>
+          <text class="svg-label svg-label--s" x="442" y="204" text-anchor="middle">E9</text>
+          <rect class="svg-track svg-seg--free" x="510" y="180" width="122" height="38" rx="7"/>
+          <text class="svg-note" x="571" y="204" text-anchor="middle">C1 不展开</text>
+        </svg>
+        <figcaption>图 2　三个开关。保留起点决定「从哪读」，编辑决定「读不读」，旧压缩清零决定「展开成几条消息」。三者都在读取时生效，磁盘不变。</figcaption>
+      </figure>
+
+      <h3>第 4 段　恢复：为什么不用重跑压缩</h3>
+
+      <p><code>open()</code> 只做三件事：解析路径、读会话头（拿 cwd）、构造 <code>SessionManager</code>。它不调用模型，不重建摘要，也不校验摘要是否过期。<code>continueRecent()</code> 更简单：找到最近的一个会话文件，交给同一个构造函数。</p>
+
+      <p>真正的「恢复」发生在下一次请求：<code>buildSessionProjection()</code> 现算一遍，把摘要 + 保留段 + 新条目摊平成消息。因为投影是纯函数，同样的条目和叶子必然得到同样的结果，所以恢复不需要额外的检查点文件，也不需要「上次压到哪」的元数据。压缩条目本身就是那个检查点。</p>
+
+      <p>代价有两条。第一，<b>摘要质量无法回滚</b>：如果一次压缩把关键约束写丢了，你只能回到压缩条目之前（<code>/tree</code> 换叶子）重来，不能「只重跑摘要」。第二，<b>原文没有检索入口</b>：E1–E5 还在文件里，但模型看不到，也没有工具能按 id 读回来。omp 在实验模式下补了 <code>history://current/full</code>，pi 没有。</p>
+
+      <h3>第 5 段　走查：十一个条目如何变成五条消息</h3>
+
+      <p>路径上有十一个条目：<code>E1…E5</code>、<code>C1</code>、<code>E6…E9</code>。其中 <code>C1.firstKeptEntryId = E6</code>，<code>C1</code> 还带了一个 <code>systemMessage</code>；另有一条 <code>context_edit</code> 把 <code>E7</code> 置空。投影结果如下：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">路径条目</th>
+              <th scope="col">是否进上下文</th>
+              <th scope="col">投影消息数</th>
+              <th scope="col">原因</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">E1–E5<span>message</span></th><td>否</td><td>0</td><td>在 <code>firstKeptEntryId</code> 之前</td></tr>
+            <tr><th scope="row" class="cell-tool">C1<span>compaction</span></th><td>是</td><td>2</td><td>摘要 1 条 + 快照的系统消息 1 条</td></tr>
+            <tr><th scope="row" class="cell-tool">E6<span>user</span></th><td>是</td><td>1</td><td>保留段起点</td></tr>
+            <tr><th scope="row" class="cell-tool">E7<span>message</span></th><td>是，但为空</td><td>0</td><td><code>context_edit.replacement = null</code></td></tr>
+            <tr><th scope="row" class="cell-tool">E8<span>assistant</span></th><td>是</td><td>1</td><td>保留段</td></tr>
+            <tr><th scope="row" class="cell-tool">E9<span>user</span></th><td>是</td><td>1</td><td>压缩之后的新消息</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：消息数指 <code>sessionEntryToContextMessages()</code> 展开后的条数；系统消息若为 <code>null</code> 内容会被补成空字符串，不会报错。</p>
+
+      <p>把表里的数字加起来：0 + 2 + 1 + 0 + 1 + 1 = 5 条消息，而路径上有 11 个条目。这就是「条目数不等于消息数」的最直观例子。会话文件里一行都没少，模型只看到 5 条。</p>
+
+      <p>如果 <code>E7</code> 的编辑是 <code>replacement: {content: "…"}</code> 而不是 <code>null</code>，它会变成 1 条内容被替换的消息。替换只对 <code>user</code> / <code>assistant</code> / <code>toolResult</code> / <code>custom</code> 生效；<code>system</code> 消息即使被编辑也原样返回。<span class="tag tag--ok">已核实</span>这是一个容易忽略的边界：编辑系统消息不会生效。</p>
+
+      <p>再看系统消息为什么是 2 条。压缩时 <code>appendCompaction()</code> 调 <code>getCurrentSystemMessage(this.buildSessionProjection().messages)</code>，把当时重放出的完整系统提示存进 <code>CompactionEntry.systemMessage</code>。<span class="tag tag--ok">已核实</span>恢复时它和摘要一起展开，所以模型看到的开头是「系统提示 + 摘要」，而不是「只有摘要」。这也是为什么 <code>buildContextEntries()</code> 要跳过保留段里的旧系统消息：新的那份已经在压缩条目里了。</p>
+
+      <p>最后一个细节：如果系统的 <code>content</code> 是 <code>null</code>（旧版本或手改文件），<code>sessionEntryToContextMessages()</code> 会补成空数组/空字符串再返回。<span class="tag tag--ok">已核实</span>这让投影对坏数据有韧性，但也意味着「空内容」与「不存在」在投影层看起来一样——排障时要回去看原始 JSON。</p>
+
+      <h3>第 6 段　删掉压缩条目会发生什么</h3>
+
+      <p>因为压缩只追加、不删除，所以「撤销一次压缩」在数据上是可行的：把那条 <code>CompactionEntry</code> 从会话文件里去掉（或把叶子移到它之前），下一次投影就会回到压缩前的完整历史。</p>
+
+      <p>但有三件事会跟着变。第一，<b>上下文突然变大</b>：原本被摘要掉的几万 token 全部回来，下一次请求可能直接超窗。第二，<b>后续压缩的 <code>firstKeptEntryId</code> 可能失效</b>：如果它指向的条目在新路径上不存在（例如你把整条分支切走了），<code>buildContextEntries()</code> 的 <code>foundFirstKept</code> 永远是假，保留段为空，只剩摘要。第三，<b>文件清单丢失</b>：那份 <code>details.readFiles</code> 只存在于被删的条目里。</p>
+
+      <p>所以「撤销压缩」不是无代价的时光机。pi 没有提供这个命令，只提供 <code>/tree</code> 换叶子——换叶子会重新走一遍投影，效果类似，但保留的是「另一条分支」，不是「压缩前的这一条」。</p>
+
+      <p>与 dsh 的 <code>surfaceOp</code> 对比会更清楚：dsh 把「模型可见历史」显式建模成一个 surface，压缩是往 surface 上追加一个 replace 操作；撤销就是再追加一个操作，日志本身不动。<span class="tag tag--ok">已核实</span>pi 的做法更接近「日志 + 纯函数投影」：没有 surface 对象，只有条目与投影规则；撤销靠删条目或换叶子。前者可审计，后者更简单。</p>
+
+      <p>这也解释了为什么 pi 的压缩条目要带 <code>systemMessage</code> 快照：撤销时你可能切到一条没有系统消息的分支，摘要 + 旧系统提示的组合会缺失。快照让「压缩后的世界」自包含，代价是每条压缩都多存一份系统提示。</p>
+
+      <h3>第 7 段　每次请求都重算，代价在哪</h3>
+
+      <p><code>buildSessionProjection()</code> 没有缓存。每次请求都从叶子回溯、筛条目、叠加编辑、展开消息。对一条几千条的会话，这是一次 O(n) 遍历；对树状会话，还要先走一遍 <code>buildSessionPath()</code>。</p>
+
+      <p>为什么不做缓存？因为失效条件太多：追加条目、切换叶子、追加 <code>context_edit</code>、写压缩、扩展改配置，任何一项都会改变投影。缓存的键要做成「叶子 id + 条目数 + 最新编辑 id + 压缩 id」，维护成本高于重算成本。</p>
+
+      <p>代价在超长会话里会显现。假设一条会话有 5 000 个条目，每次请求遍历一遍、给每条展开消息、再估算 token，可能花几十毫秒。对交互式 CLI 可以接受，对高频调用的 SDK 场景就值得优化。</p>
+
+      <p>真要优化，正确的切入点不是「缓存整个投影」，而是「增量维护投影」：条目只追加，叶子只在树导航时变；可以缓存「叶子 → 路径」与「路径 → 投影条目」，只在追加时更新尾部。这也是 v2 选择「按 seq 取段」的原因之一——它把「重算」变成了「查询」。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>压缩只追加一条 <code>CompactionEntry</code>，磁盘上一条旧记录都不删。</li>
+            <li><code>buildContextEntries()</code> 拼三段：压缩条目、<code>firstKeptEntryId</code> 起的保留段、压缩之后的条目。</li>
+            <li>保留段里的系统消息会被跳过，因为系统提示在请求组装时重新生成。</li>
+            <li><code>context_edit</code> 与「旧压缩贡献空消息」都只改投影，不改原文。</li>
+            <li>恢复不重跑压缩：投影是纯函数，压缩条目自己就是检查点。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>四种「历史变短」的实现，差别在谁记住边界</h2>
+
+      <p>「压缩后模型只看到一部分」是所有工具的共同结果，但边界的记法完全不同：pi 记一个 id，opencode v1 记一个 id 然后<b>重排数组</b>，opencode v2 记一个 seq 然后<b>取连续段</b>，omp 在 pi 的骨架上加了 <code>/clear</code> 边界。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">边界记法</th>
+              <th scope="col">读取方式</th>
+              <th scope="col">旧原文</th>
+              <th scope="col">恢复时</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td><code>firstKeptEntryId</code></td>
+              <td>沿树回溯 + 三段拼接</td>
+              <td>保留，无检索入口</td>
+              <td>现算投影，不重跑摘要</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>同上，另有 <code>reset_boundary</code></td>
+              <td>叶子到根 + 清理悬挂调用</td>
+              <td>保留，实验模式可读回</td>
+              <td>现算，晚于压缩的 <code>/clear</code> 会让摘要失效</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td><code>tail_start_id</code>（存在 part 上）</td>
+              <td>按 id 重排数组</td>
+              <td>SQLite 保留</td>
+              <td><code>filterCompacted</code> 每次重排</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td><code>seq</code>（检查点消息自己的序号）</td>
+              <td>取 <code>seq &gt;= checkpoint.seq</code> 的连续段</td>
+              <td>SQLite 保留</td>
+              <td>按 seq 查询，不重排</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：pi 提交 <code>b45e0eb</code>；omp 提交 <code>f979f46</code>；opencode v1 提交 <code>733b2c6</code>；opencode v2 提交 <code>042d083</code>（beta）。四家都不删原文，差别在「读取时怎么把边界翻译成消息序列」。</p>
+
+      <p>三个对照值得记住：</p>
+
+      <p>一是<b>id 与序号的差别</b>。pi 用 id，因为它的条目是树，id 在分叉后仍然唯一；v1 也用 id，但它必须在数组里<b>找</b>这个 id 然后重排；v2 用单调递增的 seq，可以直接写 SQL 的 <code>&gt;=</code>。前者灵活，后者快。</p>
+
+      <p>二是<b>边界能否失效</b>。pi 的边界一旦写下就不会失效；omp 的 <code>/clear</code> 可以写在压缩之后，让摘要和保留段一起作废。这不是「更好的设计」，而是「多一种用户动作」的代价：边界从一条变成两条，读取逻辑必须判断谁更晚。</p>
+
+      <p>三是<b>投影的纯洁性</b>。pi 的投影是纯函数，压缩条目 + 叶子决定一切；v1 的 <code>filterCompacted</code> 会在读取时改变数组顺序，所以「数组下标」不再等于「时间顺序」，任何按下标推断时间的代码都会出错。源码注释专门写了这句话。v2 用 seq 排序，把顺序重新变成可信的。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从读代码到改存储</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">一条路径是 E1、E2、C1（<code>firstKeptEntryId = E3</code>）、E3、E4、C2（<code>firstKeptEntryId = E4</code>）、E5。最终投影包含哪些条目？C1 会展开成消息吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先找「最后一条压缩」——不是第一条。然后以 C2 为界切三段。</p>
+          <p>C1 的位置在下标 2，大于 0，所以 <code>buildSessionProjection()</code> 给它的 <code>messages</code> 是空数组。但注意它仍然在 <code>contextEntries</code> 里占一个位置。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q"><code>firstKeptEntryId</code> 指向一条 <code>system</code> 消息时会发生什么？指向一条已被 <code>context_edit</code> 省略的条目时呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>第一种情况：<code>foundFirstKept</code> 会置真，但那条系统消息本身被 <code>if</code> 挡掉，所以保留段从它的下一条开始。结果不是空，而是「少一条」。</p>
+          <p>第二种情况：<code>buildContextEntries</code> 不关心编辑，它照样从那条开始保留；到了投影阶段，那条被置空，但后面的条目还在。所以「保留起点不可见」不会让保留段整体消失。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">如果产品要求「压缩后仍能按 id 读回任意原文」，在 pi 的架构里最小改动是什么？为什么不能只加一个工具？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>原文一直在文件里，缺的是「寻址」和「权限」。先想 <code>SessionManager</code> 能不能按 id 查条目，再想工具拿到 id 后要不要校验它属于当前分支。</p>
+          <p>还要处理一个语义问题：如果读回的原文包含已被 <code>context_edit</code> 省略的内容，工具输出会不会把「本该看不见」的信息又带回上下文？omp 的做法是把它放在实验开关后面，并且只在压缩摘要里给一个 <code>history://</code> 指针。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：pi · 用 section 补丁保住前缀缓存。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

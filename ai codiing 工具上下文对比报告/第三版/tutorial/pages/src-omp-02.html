@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>oh-my-pi · shake 的机械省略 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-omp-02 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-omp-02 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-omp-02 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-omp-02 .path-card code,
+  #src-omp-02 .callout code,
+  #src-omp-02 .quiz__q code,
+  #src-omp-02 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-omp-02">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-omp-02">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>oh-my-pi</span><span>·</span><span>第 02 节</span></p>
+      <h1>shake 的机械省略</h1>
+      <p class="lede">有一种减量不需要模型：把大块工具输出和长代码块换成一个短占位符，原文塞进 artifact，占位符里留一句「要读回原文，去 artifact://xxx」。oh-my-pi 管这个动作叫 shake。它便宜、可逆、但会永久改写历史——这正是它的价值与风险所在。</p>
+      <ul class="meta">
+        <li>约 14 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>f979f46</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出 shake 会命中哪两类区域，以及哪三类工具结果永远被保护。</li>
+          <li>解释 <code>accumulatedAfter</code> 数组如何用一次倒序遍历实现「最近 16k 不动」。</li>
+          <li>区分「保守 / 激进 / 救援」三档配置，并说出各自的 <code>protectTokens</code> 与 <code>minSavings</code>。</li>
+          <li>把 shake 与 pi 的 <code>context_edit</code>、opencode v1 的 prune、omp 自己的 prune 放在一起比较。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>shake 是 pi 没有的能力，属于 omp 新增。它不调用任何模型，纯本地字符串处理，所以很快；也正因为不调模型，它无法判断「这段内容语义上重不重要」，只能按位置、类型、体积来筛。理解这一点，才能理解它为什么要保护最近 16 000 token。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>不调模型的三步：找区域、算收益、换占位符</h2>
+
+      <p><code>shake</code> 的实现分成两层。纯函数层在 <code>packages/agent/src/compaction/shake.ts</code>，只做区域检测与原地改写，没有 I/O；编排层在 <code>AgentSession.shake()</code>，负责把原文写成 artifact、调用 <code>rewriteEntries()</code> 持久化、失败时回滚、重建运行时消息。<span class="tag tag--ok">已核实</span>文件头注释把这条分层写得很明确：「Artifact offload, persistence, and provider-session teardown are orchestrated by the caller」。</p>
+
+      <p class="lead-in">shake 的输入是一整条分支的条目，输出是一组「字符区间」；它不生成新消息，只把已有文本的某些片段替换掉。</p>
+
+      <p>能命中的区域只有两类。第一类是<b>工具结果</b>：只取其中的文本块，图片等非文本块原样保留；整条结果会被替换成一行占位符。第二类是<b>大块文本</b>：用户、开发者、助手、自定义消息里的 fenced code block（<code>```</code> 或 <code>~~~</code>）与顶层 XML 元素，且单块至少 <code>fenceMinTokens</code>（默认 400）token。<span class="tag tag--ok">已核实</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 286" role="img" aria-labelledby="omp2-f1-title omp2-f1-desc">
+          <title id="omp2-f1-title">shake 前后的上下文对照</title>
+          <desc id="omp2-f1-desc">左侧是原始上下文：用户消息、带大代码块的助手消息、三条工具结果。右侧是 shake 之后：代码块与两条老工具结果变成占位符，最近的工具结果与图片保留，原文进入 artifact。</desc>
+          <text class="svg-note" x="8" y="16">之前</text>
+          <rect class="svg-seg--a" x="8" y="26" width="270" height="34" rx="6"/>
+          <text class="svg-label" x="143" y="48" text-anchor="middle">user：需求描述</text>
+          <rect class="svg-seg--b" x="8" y="66" width="270" height="58" rx="6"/>
+          <text class="svg-label" x="143" y="86" text-anchor="middle">assistant：说明 + 代码块</text>
+          <text class="svg-label" x="143" y="106" text-anchor="middle">（2 800 token）</text>
+          <rect class="svg-track" x="8" y="130" width="270" height="40" rx="6"/>
+          <text class="svg-label svg-label--dark" x="143" y="155" text-anchor="middle">toolResult：旧 grep（9 000）</text>
+          <rect class="svg-track" x="8" y="176" width="270" height="40" rx="6"/>
+          <text class="svg-label svg-label--dark" x="143" y="201" text-anchor="middle">toolResult：旧 read（12 000）</text>
+          <rect class="svg-seg--b" x="8" y="222" width="270" height="44" rx="6"/>
+          <text class="svg-label" x="143" y="249" text-anchor="middle">最近工具结果 + 图片（保护）</text>
+
+          <line class="svg-rule" x1="292" y1="150" x2="340" y2="150"/>
+          <text class="svg-note" x="316" y="140" text-anchor="middle">shake</text>
+
+          <text class="svg-note" x="352" y="16">之后</text>
+          <rect class="svg-seg--a" x="352" y="26" width="280" height="34" rx="6"/>
+          <text class="svg-label" x="492" y="48" text-anchor="middle">user：需求描述（不动）</text>
+          <rect class="svg-track svg-seg--free" x="352" y="66" width="280" height="44" rx="6"/>
+          <text class="svg-note" x="492" y="86" text-anchor="middle">[shaken ~2 800 tokens —</text>
+          <text class="svg-note" x="492" y="102" text-anchor="middle">recover: artifact://a1 (region 1)]</text>
+          <rect class="svg-track svg-seg--free" x="352" y="118" width="280" height="40" rx="6"/>
+          <text class="svg-note" x="492" y="143" text-anchor="middle">[shaken ~9 000 tokens — region 2]</text>
+          <rect class="svg-track svg-seg--free" x="352" y="166" width="280" height="40" rx="6"/>
+          <text class="svg-note" x="492" y="191" text-anchor="middle">[shaken ~12 000 tokens — region 3]</text>
+          <rect class="svg-seg--b" x="352" y="214" width="280" height="52" rx="6"/>
+          <text class="svg-label" x="492" y="236" text-anchor="middle">最近工具结果 + 图片</text>
+          <text class="svg-label" x="492" y="254" text-anchor="middle">（在保护窗口内，原样保留）</text>
+        </svg>
+        <figcaption>图 1　省略前后。代码块与两条旧工具结果被换成占位符，原文写进同一个 artifact；最近的工具结果和非文本块不动。占位符里的 token 数是估算值，不是账单。</figcaption>
+      </figure>
+
+      <p>整个流程有一条硬门槛：<b>总收益不够就不动手</b>。计算方式是每个区域的 <code>tokens - 16</code> 求和（16 是占位符本身的粗略成本），低于 <code>minSavings</code> 就返回空数组。<span class="tag tag--ok">已核实</span>这条门槛避免「删了十个 20 token 的结果，净收益为负」。</p>
+
+      <p>三档配置对应三种场景：自动维护用 <code>DEFAULT_SHAKE_CONFIG</code>（保护 16 000、最少省 4 000），手动 <code>/shake</code> 用 <code>AGGRESSIVE_SHAKE_CONFIG</code>（保护 4 000、无门槛），压缩死路救援用 <code>RESCUE_SHAKE_CONFIG</code>（保护 0、但把 artifact 回读结果也保护起来）。<span class="tag tag--ok">已核实</span></p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五条链接：配置、检测、改写、占位符、编排</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 三档配置与保护名单</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/shake.ts#L47-L76">shake.ts#L47-L76</a><br>
+          <code>DEFAULT</code> / <code>AGGRESSIVE</code> / <code>RESCUE</code> 三个常量，差别只在三个字段。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 检测：一次倒序遍历算出保护窗口</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/shake.ts#L310-L370">shake.ts#L310-L370</a><br>
+          <code>collectShakeRegions()</code>：跳过压缩边界、跳过受保护工具、跳过已裁剪结果。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 块检测：fence 与顶层 XML</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/shake.ts#L151-L203">shake.ts#L151-L203</a><br>
+          <code>scanTextForBlockRanges()</code>：未闭合的 fence 不产生区间，XML 检测在 fence 内关闭。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 改写：替换文本、保留非文本</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/shake.ts#L431-L463">shake.ts#L431-L463</a><br>
+          <code>applyShakeRegion()</code>：工具结果只留一个文本块，<code>prunedAt</code> 打时间戳。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 占位符：带 artifact 指针</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L1071-L1076">session-maintenance.ts#L1071-L1076</a><br>
+          <code>#shakeElidePlaceholder()</code>：有 artifact 就带 <code>artifact://</code>，没有就只报 token 数。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：编排层的 <code>shake()</code> 在 <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L1018-L1046">session-maintenance.ts#L1018-L1046</a>：先 <code>structuredClone</code> 快照，再 <code>applyShakeRegions()</code>、<code>rewriteEntries()</code>，失败时逐条 <code>Object.assign</code> 回滚。三档配置的用途注释在同文件 L55-L76。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】shake 不是「裁剪投影」，它<b>改写原文</b></p>
+        <p>pi 的 <code>context_edit</code> 是追加一条编辑记录，只影响投影；omp 的 shake 直接改 <code>entry.message</code> 的 <code>content</code>，然后 <code>rewriteEntries()</code> 落盘。<span class="tag tag--ok">已核实</span>这意味着 shake 之后，即使你把会话切到别的分支，被省略的那条条目仍然是省略后的样子。原文只在 artifact 里，不在会话文件里。这个代价在第 5 节与 pi 对照时会展开。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：谁被选中，怎么被替换</h2>
+
+      <p>第一段是检测主循环，40 行，保留了保护窗口、边界、受保护工具、useless 例外四处判断。第二段是工具结果的改写，18 行。两段分别 44 行与 24 行，各自都在 60 行以内。</p>
+
+      <p class="small muted">文件：<code>packages/agent/src/compaction/shake.ts</code>　行号：L322-L361（节选 44 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 第一次倒序：accumulatedAfter[i] = 比 i 更新的所有条目的 token 和</span>
+<span class="code__line">const accumulatedAfter = new Array&lt;number&gt;(n);</span>
+<span class="code__line">let acc = 0;</span>
+<span class="code__line">for (let i = n - 1; i &gt;= 0; i--) {</span>
+<span class="code__line">    accumulatedAfter[i] = acc;</span>
+<span class="code__line">    acc += entryTokens(entries[i], tokenizer);</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line">const toolCallsById = collectToolCallsById(entries);</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 压缩边界之前的条目已被摘要，改了也没有请求效果</span>
+<span class="code__line">const boundaryIndex =</span>
+<span class="code__line">    config.keepBoundaryId === undefined</span>
+<span class="code__line">        ? 0</span>
+<span class="code__line">        : Math.max(0, entries.findIndex(entry =&gt; entry.id === config.keepBoundaryId));</span>
+<span class="code__line"> </span>
+<span class="code__line">const regions: ShakeRegion[] = [];</span>
+<span class="code__line">for (let i = 0; i &lt; n; i++) {</span>
+<span class="code__line">    const entry = entries[i];</span>
+<span class="code__line">    if (i &lt; boundaryIndex) continue;</span>
+<span class="code__line">    const toolResult = getToolResultMessage(entry);</span>
+<span class="code__line">    <span class="cmt">// useless 结果没有信息，即使在保护窗口内也可以省</span></span>
+<span class="code__line">    const uselessResult = toolResult !== undefined &amp;&amp; toolResult.useless === true &amp;&amp; toolResult.isError !== true;</span>
+<span class="code__line">    if (!uselessResult &amp;&amp; accumulatedAfter[i] &lt; config.protectTokens) continue;</span>
+<span class="code__line">    if (toolResult) {</span>
+<span class="code__line">        if (toolResult.prunedAt !== undefined) continue; <span class="cmt">// 已经省过</span></span>
+<span class="code__line">        if (isProtectedToolResult(toolResult, toolCallsById.get(toolResult.toolCallId), config.protectedTools))</span>
+<span class="code__line">            continue; <span class="cmt">// skill 读取、artifact 回读等</span></span>
+<span class="code__line">        const text = toolResultText(toolResult, tokenizer);</span>
+<span class="code__line">        if (!text) continue; <span class="cmt">// 没有文本，只剩图片：不动</span></span>
+<span class="code__line">        regions.push({</span>
+<span class="code__line">            kind: "toolResult",</span>
+<span class="code__line">            entry: entry as SessionMessageEntry,</span>
+<span class="code__line">            tokens: text.tokens,</span>
+<span class="code__line">            originalText: text.originalText,</span>
+<span class="code__line">            label: toolResult.toolName,</span>
+<span class="code__line">        });</span>
+<span class="code__line">        continue;</span>
+<span class="code__line">    }</span>
+<span class="code__line">    <span class="cmt">// 非工具消息：只找大块 fence / XML</span></span>
+<span class="code__line">    if (entry.type === "message" || entry.type === "custom_message") {</span>
+<span class="code__line">        collectBlockRegions(entry as SessionMessageEntry | CustomMessageEntry, tokenizer, config, regions);</span>
+<span class="code__line">    }</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/agent/src/compaction/shake.ts</code>　行号：L431-L446（16 行）+ 占位符 L1071-L1076（6 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 工具结果：只保留第一个非空文本块，其余文本块删掉</span>
+<span class="code__line">if (region.kind === "toolResult") {</span>
+<span class="code__line">    const message = region.entry.message as ToolResultMessage;</span>
+<span class="code__line">    const replacementIndex = message.content.findIndex(block =&gt; block.type === "text" &amp;&amp; block.text.length &gt; 0);</span>
+<span class="code__line">    if (replacementIndex &lt; 0) return;</span>
+<span class="code__line">    const kept: typeof message.content = [];</span>
+<span class="code__line">    for (let index = 0; index &lt; message.content.length; index++) {</span>
+<span class="code__line">        const block = message.content[index];</span>
+<span class="code__line">        if (block.type !== "text") kept.push(block); <span class="cmt">// 图片、附件原样保留</span></span>
+<span class="code__line">        else if (index === replacementIndex) kept.push({ type: "text", text: replacement });</span>
+<span class="code__line">    }</span>
+<span class="code__line">    message.content = kept;</span>
+<span class="code__line">    message.prunedAt = Date.now(); <span class="cmt">// 标记：不要重复省</span></span>
+<span class="code__line">    invalidateMessageCache(message as AgentMessage);</span>
+<span class="code__line">    return;</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 占位符：有 artifact 指针就写进去，方便模型回读</span>
+<span class="code__line">#shakeElidePlaceholder(region: ShakeRegion, index: number, artifactId: string | undefined): string {</span>
+<span class="code__line">    if (artifactId) {</span>
+<span class="code__line">        return `[shaken ~${region.tokens} tokens — recover: artifact://${artifactId} (region ${index + 1})]`;</span>
+<span class="code__line">    }</span>
+<span class="code__line">    return `[shaken ~${region.tokens} tokens]`;</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段省略了 <code>getToolResultMessage()</code> 的实现细节（不在本文件）与 <code>regions</code> 之后的收益求和；判断逻辑完整。第二段拼接了两个函数：L431-L446 与 L1071-L1076，中间省略 600 余行编排代码，用空行与注释分隔。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四个判断，一次改写</h2>
+
+      <h3>第 1 段　保护窗口：为什么先算「之后有多少」</h3>
+
+      <p>朴素写法是「从后往前累加，累加到 16 000 就停，之前的都能删」。但那样需要在循环里同时做两件事：判断保护边界、收集区域。omp 用了一个更干净的办法：先倒序算一遍 <code>accumulatedAfter[i]</code>，表示「严格比 <code>i</code> 新的所有条目的 token 总和」，然后正序遍历时只要 <code>accumulatedAfter[i] &lt; protectTokens</code> 就跳过。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这样做的好处是判断变成 O(1)，且语义明确：<b>一条条目是否受保护，只看它后面有多重</b>。副作用是数组要占 O(n) 内存，但对一条会话分支来说可以忽略。</p>
+
+      <p>注意保护的是「最近 16 000 token」，不是「最近 N 条消息」。一个巨大的工具结果可能一条就超过 16 000，它自己会被保护；反过来，二十条小消息加起来不到 16 000，也全部受保护。</p>
+
+      <h3>第 2 段　边界与例外：三种「不用省」</h3>
+
+      <p>第一道是 <code>boundaryIndex</code>：<code>keepBoundaryId</code> 是最近一次压缩的 <code>firstKeptEntryId</code>，它之前的条目已经被摘要掉，永远不会再发给模型。改它们只会让持久化文件「看起来更干净」，对请求没有任何影响，所以直接跳过。<span class="tag tag--ok">已核实</span>源码注释还补了一句：边界之后的缓存前缀它照样会动——因为 shake 本来就是一个「压缩类」的减量手段，不可能既省 token 又保缓存。</p>
+
+      <p>第二道是 <code>prunedAt</code>：已经省过的结果不再处理，避免占位符被「再省略一次」变成嵌套占位符。</p>
+
+      <p>第三道是 <code>isProtectedToolResult()</code>。默认名单是 <code>["skill", isSkillReadToolResult, isArtifactRecoveryToolResult]</code>：技能正文、通过 <code>skill://</code> 读到的内容、以及为了回读 artifact 而产生的工具结果。<span class="tag tag--ok">已核实</span>前两个的理由是「技能正文是行为指令，省掉等于改规则」；第三个的理由更微妙：如果连回读 artifact 的结果都被省掉，模型就永远拿不回原文了，恢复链会断。</p>
+
+      <p><code>useless</code> 是唯一的例外：工具自己标记「这条结果没有信息」（例如零命中的搜索），即使它在保护窗口内也可以省。条件是 <code>isError !== true</code>——错误结果不能省，因为错误信息本身可能就是下一步的线索。</p>
+
+      <h3>第 3 段　块检测：为什么要保守</h3>
+
+      <p><code>scanTextForBlockRanges()</code> 逐行扫描，维护一个 <code>inFence</code> 布尔和一个 <code>tagStack</code>。规则有三条：未闭合的 fence 不产生区间；XML 只在 fence 之外识别；XML 必须严格配对（闭合标签名等于栈顶）才产生区间。<span class="tag tag--ok">已核实</span></p>
+
+      <p>保守是有理由的。如果一段代码块没有闭合（模型输出被截断），把它整段换掉可能吞掉后面的正常内容；如果 XML 标签不配对，按「第一个开始标签到最后一个结束标签」切会跨过无关段落。宁可漏省，不可错省——漏省只是少回收一点 token，错省会破坏语义。</p>
+
+      <p>单块还有 400 token 的下限。低于 400 的块换掉也省不了多少，反而增加一次 artifact 写入与一行占位符，净收益可能是负的。</p>
+
+      <h3>第 4 段　改写：为什么工具结果只留一个文本块</h3>
+
+      <p><code>applyShakeRegion()</code> 对工具结果的处理是：找到第一个非空文本块，把它换成占位符；其余文本块全部丢弃；所有非文本块原样保留。<span class="tag tag--ok">已核实</span>结果是「一条结果 = 一行占位符 + 若干图片」，既表达了「这里被省略过」，又没有丢掉图片。</p>
+
+      <p>块区域的替换则是一次字符串拼接：<code>text.slice(0, start) + replacement + text.slice(end)</code>。多个块共享同一个文本块时，必须<b>从后往前</b>替换，否则前一次替换会改变后一次的偏移。<code>applyShakeRegions()</code> 按 <code>start</code> 降序排序就是为这件事。<span class="tag tag--ok">已核实</span></p>
+
+      <p>还有一个记账细节：如果被改写的是 assistant 消息，代码会把「删掉的 token 数」累加到 <code>elidedOutputTokens</code>。<span class="tag tag--ok">已核实</span>为什么？因为 <code>usage.output</code> 是账单，删掉文本并不会让 provider 退钱；下次统计上下文大小时，要把这部分减掉，否则会高估。这是「账单」与「上下文占用」两个口径分离的典型例子。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 246" role="img" aria-labelledby="omp2-f2-title omp2-f2-desc">
+          <title id="omp2-f2-title">一次 shake 的事务边界</title>
+          <desc id="omp2-f2-desc">从快照、收集区域、写 artifact、原地改写、落盘到回滚的六步流程；落盘成功则重建运行时消息，失败则用快照恢复内存。</desc>
+          <rect class="svg-track" x="8" y="22" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="56" y="47" text-anchor="middle">1 快照</text>
+          <rect class="svg-track" x="112" y="22" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="160" y="47" text-anchor="middle">2 收集区域</text>
+          <rect class="svg-track" x="216" y="22" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="264" y="47" text-anchor="middle">3 写 artifact</text>
+          <rect class="svg-seg--c" x="320" y="22" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--s" x="368" y="47" text-anchor="middle">4 原地改写</text>
+          <rect class="svg-track" x="424" y="22" width="96" height="40" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="472" y="47" text-anchor="middle">5 落盘</text>
+          <rect class="svg-seg--a" x="528" y="22" width="104" height="40" rx="7"/>
+          <text class="svg-label svg-label--s" x="580" y="47" text-anchor="middle">6 重建消息</text>
+
+          <line class="svg-rule" x1="472" y1="62" x2="472" y2="96"/>
+          <text class="svg-note" x="482" y="84">失败</text>
+          <rect class="svg-seg--a" x="424" y="96" width="208" height="40" rx="7"/>
+          <text class="svg-label svg-label--s" x="528" y="121" text-anchor="middle">逐条 Object.assign 回滚</text>
+
+          <text class="svg-note" x="8" y="176">快照只覆盖「会被改写的条目」和 anchor 条目，用 structuredClone 深拷贝。</text>
+          <text class="svg-note" x="8" y="200">改写是内存操作，落盘是 I/O；两者之间失败，文件与内存会分叉。</text>
+          <text class="svg-note" x="8" y="224">所以顺序必须是「先改内存、再落盘、失败回滚」，而不是「先落盘」。</text>
+        </svg>
+        <figcaption>图 2　事务边界。shake 会真正改写条目，所以必须先深拷贝快照；<code>rewriteEntries()</code> 失败时用快照把内存恢复原样，避免内存与磁盘各说各话。</figcaption>
+      </figure>
+
+      <h3>第 5 段　扫描器的四个边界</h3>
+
+      <p><code>scanTextForBlockRanges()</code> 只有五十多行，但它的边界条件决定了「会不会误伤」。逐个看：</p>
+
+      <p><b>未闭合的 fence。</b>如果模型输出被截断，最后一个 <code>```</code> 没有闭合，扫描器会一直停在 <code>inFence = true</code>，直到文本结束也不产生区间。<span class="tag tag--ok">已核实</span>这是有意的：没有闭合边界，就无法确定「块到哪里结束」，宁可不省。</p>
+
+      <p><b>fence 内的 XML。</b>XML 检测被 <code>if (!inFence)</code> 包住，所以代码块里的 <code>&lt;div&gt;</code> 不会被当成 XML 块。<span class="tag tag--ok">已核实</span>否则一段 HTML 示例会被切得七零八落。</p>
+
+      <p><b>同名标签嵌套。</b>扫描器维护一个 <code>tagStack</code>，只有闭合标签等于栈顶才弹栈；弹到空才记录区间。<span class="tag tag--ok">已核实</span>这意味着 <code>&lt;a&gt;&lt;a&gt;&lt;/a&gt;&lt;/a&gt;</code> 能正确配对，而 <code>&lt;a&gt;&lt;/a&gt;&lt;/a&gt;</code> 这种多余的闭合不会误判。</p>
+
+      <p><b>区间合并。</b><code>mergeRanges()</code> 按起点排序，丢弃与已保留区间重叠的项。因为 fence 与 XML 区间总是正确嵌套（XML 检测在 fence 内关闭），重叠只可能是包含关系，保留外层即可。<span class="tag tag--ok">已核实</span></p>
+
+      <p>还有一条不在扫描器里、但同样影响结果的规则：<code>fenceMinTokens = 400</code>。小于 400 token 的块不入选，哪怕它很长。这条阈值对「短代码片段多、单块都不大」的会话很不友好——十块 300 token 的代码合计 3 000，却一块都省不掉。</p>
+
+      <h3>第 6 段　shake 与 prune 的分工</h3>
+
+      <p>omp 有两套不调模型的减量机制，容易混：<code>pruneToolOutputs()</code> 与 <code>shake()</code>。它们的目标不同，触发时机也不同。</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">维度</th>
+              <th scope="col">pruneToolOutputs</th>
+              <th scope="col">shake</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">选择依据</th><td>token 预算（保护 40k，最少省 20k）</td><td>区域类型（工具结果文本、大块 fence/XML）</td></tr>
+            <tr><th scope="row" class="cell-tool">改写对象</th><td>工具结果整体</td><td>工具结果或消息内的字符区间</td></tr>
+            <tr><th scope="row" class="cell-tool">占位符</th><td><code>[Output truncated - N tokens]</code> 等</td><td><code>[shaken ~N tokens — recover: artifact://…]</code></td></tr>
+            <tr><th scope="row" class="cell-tool">缓存守卫</th><td>有（热前缀 suffix 不改）</td><td>无</td></tr>
+            <tr><th scope="row" class="cell-tool">触发</th><td>压缩前自动</td><td>方法链中的一档，或手动 <code>/shake</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：omp <code>f979f46</code>。prune 的阈值见 <code>packages/agent/src/compaction/pruning.ts#L77-L83</code>；shake 的三档配置见 <code>shake.ts#L47-L76</code>。</p>
+
+      <p>两条机制的执行顺序是 prune 在前、shake 在后。原因很实际：prune 更温和（保留原文、只换占位符、有缓存守卫），应该先把「明显没用的」清掉；shake 更激进（改写原文、落 artifact），留给「prune 之后仍然超」的情况。如果反过来，shake 可能先把一条本可以被 prune 温和处理的结果整个搬走，得不偿失。</p>
+
+      <p>这也解释了为什么 shake 的保护窗口（16 000）比 prune 的（40 000）小得多：它是在「已经裁过一轮」的上下文上再动手，剩下的都是更靠近当前任务的内容，保护线自然要收紧。</p>
+
+      <h3>第 7 段　怎么观测一次 shake 的效果</h3>
+
+      <p><code>shake()</code> 的返回值有四个字段：<code>mode</code>、<code>toolResultsDropped</code>、<code>blocksDropped</code>、<code>tokensFreed</code>，以及可选的 <code>artifactId</code>。<span class="tag tag--ok">已核实</span>它们是评估 shake 是否值得的第一手数据。</p>
+
+      <p><code>tokensFreed</code> 是「原始区域 token − 占位符 token」的累加，不是「请求实际减少了多少」。<span class="tag tag--ok">已核实</span>两者可能差很多：如果被省略的区域本来就不在请求窗口里（例如在压缩边界之前），省下的 token 不会体现在请求上。所以评估时要同时看「被改写的条目数」与「下一次请求的实际 token」。</p>
+
+      <p><code>toolResultsDropped</code> 与 <code>blocksDropped</code> 的比值也有信息量。工具结果占多数，说明瓶颈在命令输出；块占多数，说明瓶颈在模型生成的长代码/长文档。前者应该调工具输出上限（第 6 类），后者才该调 shake 的 <code>fenceMinTokens</code>。</p>
+
+      <p><code>artifactId</code> 是「能不能回读」的关键。有 artifact 时占位符带 <code>artifact://</code> 指针，模型可以主动读回；没有时只有 <code>[shaken ~N tokens]</code>，原文就真的只能靠会话文件了。评估「信息保留率」时，要区分这两种占位符——它们的可恢复性完全不同。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>shake 不调模型：只把工具结果文本与大块 fence/XML 换成占位符。</li>
+            <li>保护最近 16 000 token（自动档）；<code>useless</code> 结果可越过保护窗口。</li>
+            <li>技能正文、<code>skill://</code> 读取、artifact 回读结果永不省略；图片原样保留。</li>
+            <li>总收益不到 <code>minSavings</code> 就不动手；占位符自带 <code>artifact://</code> 指针。</li>
+            <li>它改写原文并落盘，不是改投影；失败靠深拷贝快照回滚。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>四种「不调模型的减量」，代价完全不同</h2>
+
+      <p>shake 处在「裁剪」与「压缩」之间：它像裁剪一样不调模型，又像压缩一样会持久化改写历史。把四家的做法排在一起，能看清这条中间路线的位置。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">做法</th>
+              <th scope="col">改哪里</th>
+              <th scope="col">能否回读原文</th>
+              <th scope="col">默认开关</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>shake：工具结果 + 大块文本换占位符</td>
+              <td>条目原文，落盘</td>
+              <td>能，<code>artifact://</code></td>
+              <td>在方法链中默认启用</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td><code>context_edit</code>：省略或替换指定条目</td>
+              <td>投影，追加条目</td>
+              <td>能，原文仍在文件里</td>
+              <td>仅溢出恢复等场景使用</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>prune：给旧工具结果打 <code>time.compacted</code></td>
+              <td>part 的元数据</td>
+              <td>能，库里原文未删</td>
+              <td><b>默认关闭</b>（<code>compaction.prune</code>）</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span>（prune）</th>
+              <td>阈值裁剪：保护 40 000，最少省 20 000</td>
+              <td>条目原文，带缓存守卫</td>
+              <td>能，占位符指向原文</td>
+              <td>压缩前自动运行</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：omp <code>f979f46</code>；pi <code>b45e0eb</code>；opencode v1 <code>733b2c6</code>。表中把 omp 的 shake 与 prune 分成两行，因为它们是两套独立机制：prune 按 token 预算批量裁，shake 按区域类型机械省略。</p>
+
+      <p>三点对照：</p>
+
+      <p>一是<b>可逆性</b>。pi 的 <code>context_edit</code> 最安全：原文不动，去掉编辑条目就恢复。v1 的 prune 次之：原文在库里，只是序列化时显示占位符，改回时间戳就能恢复。shake 最激进：原文只存在 artifact 里，会话文件本身已经变了。安全性与节省的彻底程度成反比。</p>
+
+      <p>二是<b>触发者的意图</b>。v1 的 prune 是「后台清理」，默认关闭，开了也只在一轮结束后跑；shake 是「压缩方法链的一员」，会在阈值触发时自动跑，也可以手动 <code>/shake</code>。前者是维护，后者是救火。</p>
+
+      <p>三是<b>与缓存的关系</b>。三者都会让前缀失效：改历史就是改前缀。omp 的 prune 加了缓存守卫（候选结果后面的 suffix 还在热前缀里就不改），shake 没有——它的定位就是「宁可牺牲一次缓存，也要把上下文降下来」。这也解释了为什么自动档要保护最近 16 000：尽量只动冷区。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从手算收益到设计保护名单</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">三个候选区域，token 分别是 300、900、5 000，<code>minSavings = 4 000</code>。会动手吗？如果把门槛降到 1 000 呢？占位符成本按 16 算。</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>每个区域的净收益是 <code>tokens - 16</code>，三个加起来是多少？和 4 000 比。</p>
+          <p>第二个问题注意：门槛降低后，300 token 的区域也会被算进去，但它的净收益只有 284。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">一条工具结果的 content 是 <code>[图片, 文本A(8 000), 文本B(2 000)]</code>。shake 之后它长什么样？如果 <code>useless === true</code> 且它在最近 16 000 内，会被处理吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>改写逻辑只保留「第一个非空文本块」作为占位符位置，其余文本块丢弃，非文本块全部保留。</p>
+          <p>第二问看 <code>uselessResult</code> 那个短路条件：<code>!uselessResult &amp;&amp; accumulatedAfter[i] &lt; protectTokens</code> 才跳过。所以 useless 为真时会越过保护窗口。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你要把「数据库 schema 文件」加入 shake 的保护名单。用什么条件判断？只按工具名够吗？加进去之后会有什么副作用？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p><code>ProtectedToolMatcher</code> 支持字符串（按工具名）和谓词（可以看配对的工具调用参数）。schema 文件通常是用 <code>read</code> 读的，按工具名会把所有 read 都保护起来。</p>
+          <p>谓词里能拿到 <code>path</code>，所以可以只保护路径匹配 <code>schema.*</code> 的结果。</p>
+          <p>副作用：保护名单越宽，可省略的区域越少，<code>minSavings</code> 越难达到，shake 可能直接 no-op，最后还是落到 <code>soft</code> 摘要。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：oh-my-pi · snapcompact 把历史渲成图。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>历史裁剪：不调用模型的减量 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 长代码与路径在窄屏可断行，避免弹窗内横向溢出 */
+  body[data-chapter="main-07"] .prose :not(pre) > code,
+  body[data-chapter="main-07"] .modal :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="main-07"] .modal .kv dd { min-width: 0; }
+  /* 本章专属：边界对照表与轮龄轴，全部以 #main-07 作用域 */
+  #main-07 .boundary td:first-child {
+    color: var(--text-2);
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  #main-07 .boundary td:nth-child(2) {
+    background: var(--green-soft);
+  }
+  #main-07 .boundary td:nth-child(3) {
+    background: var(--orange-soft);
+  }
+  #main-07 .age-axis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0;
+  }
+  #main-07 .age-cell {
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    font-size: 10.5px;
+    line-height: 1.5;
+  }
+  #main-07 .age-cell b {
+    display: block;
+    color: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+  #main-07 .age-cell--live { border-left: 3px solid var(--green); }
+  #main-07 .age-cell--soft { border-left: 3px solid var(--orange); }
+  #main-07 .age-cell--hard { border-left: 3px solid var(--red); }
+  #main-07 .age-cell--never { border-left: 3px solid var(--accent); }
+  #main-07 .age-note {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.65;
+  }
+</style>
+</head>
+<body data-chapter="main-07">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="main-07">
+
+    <header class="page-head">
+      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 07 章</span></p>
+      <h1>历史裁剪：不调用模型的减量</h1>
+      <p class="lede">上下文里最占地方的往往不是你的话，而是十轮之前的工具结果。删掉它们不需要再问一次模型，也不该让模型“重新总结一遍”。这一章讲的是减量链里最便宜的一层：只改模型能看见的投影，不动磁盘上的原文。</p>
+      <ul class="meta">
+        <li>约 16 分钟</li>
+        <li>0 个交互</li>
+        <li>L2 → L3</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+                <ol>
+          <li>用四个问题判断一个动作是裁剪还是压缩：调不调模型、改的是投影还是内容、原文还在不在、可不可逆。</li>
+          <li>解释 opencode 的 40k 保护线、20k 最小收益与 omp 的两档陈旧省略各自在防什么。</li>
+          <li>设计一条“裁剪优先、压缩兜底”的减量链，并说出它在缓存与一致性上的代价。</li>
+        </ol>
+      </div>
+    </header>
+
+    <section id="overview">
+      <p class="sec-no">01 · 先说边界</p>
+      <h2>“删掉”和“换掉”不是一回事</h2>
+      <p>下午四点，上下文到了 78%。历史里有 12 次 <code>grep</code>、7 次 <code>read</code>、3 次测试输出。其中 9 次 <code>grep</code> 是零命中，2 次 <code>read</code> 读的是同一个文件的旧版本，测试输出里只有最后一次还有效。你想把这些清掉，但不想让模型重新总结一遍任务——因为任务本身没变，变的只是“还需要看见的细节”。</p>
+      <p>这时候该用<strong>裁剪（trimming）</strong>，不是<strong>压缩（compaction）</strong>。两者的边界可以用四个问题划清：</p>
+      <ul>
+        <li><strong>调不调模型？</strong>裁剪不调；压缩要调，压缩本身就是一次完整的模型请求。</li>
+        <li><strong>改的是投影还是内容？</strong>裁剪只改“模型可见的投影”，日志原文不动；压缩生成一段新的摘要，用它替换一段历史。</li>
+        <li><strong>原文还在不在？</strong>裁剪后原文仍在，可以还原；压缩后原文通常只在会话日志里，模型看到的是“另一个模型写的交接笔记”。</li>
+        <li><strong>可不可逆？</strong>裁剪可逆（换回投影即可）；压缩不可逆，摘要一旦生成，细节和控制权都变少了。</li>
+      </ul>
+      <p class="lead-in">裁剪是把窗帘拉上一半，压缩是换一扇窗户。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table boundary">
+          <thead>
+            <tr>
+              <th scope="col">维度</th>
+              <th scope="col">裁剪（trimming）</th>
+              <th scope="col">压缩（compaction）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>是否调用模型</td><td>否，纯本地计算</td><td>是，一次独立请求</td></tr>
+            <tr><td>改什么</td><td>模型可见投影，或给条目打“已擦除”标记</td><td>用摘要替换一段历史</td></tr>
+            <tr><td>原文</td><td>完整保留，随时还原</td><td>通常只留在日志，模型不可见</td></tr>
+            <tr><td>可逆性</td><td>可逆</td><td>不可逆</td></tr>
+            <tr><td>成本</td><td>CPU 与磁盘；零 token、零延迟</td><td>一次请求的 token、延迟与失败面</td></tr>
+            <tr><td>对缓存</td><td>可能破坏前缀，需要守卫</td><td>必然破坏前缀</td></tr>
+            <tr><td>典型触发</td><td>轮龄、预算、单条体积、陈旧判定</td><td>阈值、溢出、手动</td></tr>
+            <tr><td>丢失什么</td><td>可见性，不丢信息</td><td>信息与控制权</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表 07-1　裁剪与压缩的边界。最容易混的是 Claude Code 的 <code>cache_edits</code>：它不调模型、不改本地消息，只让服务端丢弃缓存里的旧结果，仍属于裁剪。</p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 先裁一轮，可能就不用压了</p>
+        <p>dsh 把 pruner 放在“压缩已确认、选区还没开始”之间，目的正是“先做无模型的削峰，可能因此完全不需要摘要”。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/compaction.md#L105-L133">compaction.md#L105-L133</a> <span class="tag tag--ok">已核实</span> 这是本章最重要的一条工程经验：减量链要按代价从低到高排，别一上来就调模型。</p>
+      </div>
+    </section>
+
+    <section id="codex">
+      <p class="sec-no">02 · 主线：Codex 的缺位与 Grok 的三段式</p>
+      <h2>Codex 无此能力，主例换成 Grok Build</h2>
+      <p><strong>Codex 没有“定期清空旧工具结果”的独立通道。</strong>它不调用模型的减量只有三类：写入历史时的输出截断（第 6 章）、压缩重试时删除最旧条目、以及规范化阶段的丢弃。全仓未找到类似 <code>clear old tool results</code> 的独立 pass。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L968-L982">history.rs#L968-L982</a> <span class="tag tag--ok">已核实</span><sup class="fn-ref"><a href="#fn-main-07-1" id="fnref-main-07-1">1</a></sup></p>
+      <p>这三类分别是什么：</p>
+      <ul>
+        <li><strong>写入时截断</strong>：只作用于单条输出，不处理“旧结果是否还有用”。</li>
+        <li><strong>压缩重试删最旧</strong>：压缩请求自己超窗时，<code>remove_first_item</code> 删掉最旧一条并同步删除配对的另一半，避免产生孤立调用。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L685-L700">history.rs#L685-L700</a> <span class="tag tag--ok">已核实</span> 它不是“日常裁剪”，而是失败分支。</li>
+        <li><strong>规范化丢弃</strong>：固定四项——补输出、删孤立输出、剥图片、剥音频。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L968-L982">history.rs#L968-L982</a> <span class="tag tag--ok">已核实</span> 这是为了让历史合法，不是为了省空间。</li>
+      </ul>
+      <p>所以本章的主例换成 <strong>Grok Build</strong>：它有一条完整的、按轮龄分三段、只改请求副本的裁剪链，是七家里最适合讲“零成本减量”的实现。</p>
+
+      <h3 id="grok-trigger">2.1 触发：超过半窗才动手</h3>
+      <p>Grok 的裁剪在请求构建时执行，作用对象是<strong>副本</strong>，不改持久化历史。触发条件硬编码在 <code>should_prune</code>：<code>total_tokens &gt; context_window / 2</code>。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/actor/request_builder.rs#L125-L130">request_builder.rs#L125-L130</a> <span class="tag tag--ok">已核实</span> 也就是说，窗口用不到一半时，一个字节都不动。</p>
+      <p><strong>为什么是 50%，而不是等到 85%。</strong>因为裁剪本身是零成本的，早做不会多花钱；而等到接近阈值再裁，往往已经来不及——下一轮工具结果可能直接把上下文推过线。50% 是一个“提前削峰”的位置：既不影响前半程的完整性，又给后半程留出缓冲。<strong>代价</strong>是每次请求都要扫一遍历史做判定，长会话下有可观的 CPU 开销。</p>
+
+      <h3 id="grok-three">2.2 三段式：保护、软裁剪、硬清空</h3>
+      <p>Grok 把工具结果按“轮龄”分成三段。轮龄的定义很特别：<strong>从后往前数 <code>User</code> 项的个数</strong>，因此一轮里多次工具调用共享同一个轮龄。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/actor/request_builder.rs#L132-L177">request_builder.rs#L132-L177</a> <span class="tag tag--ok">已核实</span></p>
+
+      <div class="age-axis" role="img" aria-label="按轮龄分段的裁剪策略">
+        <div class="age-cell age-cell--live">
+          <b>0–2 轮</b>
+          原样保留。最近 3 轮内的工具结果永不裁剪。
+        </div>
+        <div class="age-cell age-cell--soft">
+          <b>3–9 轮 · 超过 4,000 字符</b>
+          软裁剪：留头 1,500 + 分隔符 + 尾 1,500。
+        </div>
+        <div class="age-cell age-cell--hard">
+          <b>≥10 轮</b>
+          硬清空：整段替换为 <code>[Tool result omitted — too old]</code>。
+        </div>
+        <div class="age-cell age-cell--never">
+          <b>任意轮龄 · ≤4,000 字符</b>
+          不动。小结果裁了也省不了多少。
+        </div>
+      </div>
+      <p class="age-note">图 07-1　Grok Build 的三段式。参数：<code>keep_last_n_turns = 3</code>、<code>soft_trim_threshold = 4000</code>、<code>soft_trim_head = 1500</code>、<code>soft_trim_tail = 1500</code>、<code>hard_clear_age_turns = 10</code>。</p>
+
+      <p><strong>软裁剪为什么是“头 1,500 + 尾 1,500”，而不是只留头。</strong>工具结果的信息分布通常是“开头有命令与摘要、结尾有结论与报错”。中间才是最长的过程。留两头等于用 3,000 字符买下“知道这是什么、结果如何”这两件事，把“具体每一行”留给回读。<strong>代价</strong>是中间可能藏着唯一一条警告，和第 6 章的中间截断一样，命中率取决于内容。</p>
+      <p><strong>硬清空为什么到第 10 轮才做。</strong>因为轮龄是“重要性”的粗糙代理：越久远的工具结果，越可能已经被后续结果覆盖（同一个文件重读过、同一个测试重跑过）。10 轮是一个经验阈值：足够长，避免误删仍然有效的工作状态；足够短，避免上下文被“僵尸结果”长期占据。<strong>代价</strong>是它不判断内容，只看年龄——一个 9 轮前读的、至今没变的关键配置文件，会在第 3 轮被软裁剪、第 10 轮被清空，尽管它仍然有效。</p>
+
+      <h3 id="grok-copy">2.3 只改副本：UI 与实发请求会对不上</h3>
+      <p>裁剪作用在请求副本上，持久化历史不动。这带来一个可逆性上的好处，也带来一个可观测性上的坑：<strong><code>/context</code> 的 <code>used</code> 仍按未裁剪的会话计算</strong>，所以“裁剪后实际发出去的 token”可能低于 UI 显示。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/actor/request_builder.rs#L125-L177">request_builder.rs#L125-L177</a> <span class="tag tag--ok">已核实</span></p>
+      <p>这不是 bug，而是“投影”与“原文”分离的必然结果。用户看到的是原文占用，模型看到的是投影。两者不一致时，用户会误以为“还有很多空间”，实际发出去的可能只有一半。<strong>代价</strong>是排障时要同时看两个数；好处是裁剪永远可逆——下一轮条件变了（比如用户又问了那个文件），可以重新把结果放回投影。</p>
+
+      <h3 id="grok-cost">2.4 这一层的代价</h3>
+      <p>第一，<strong>轮龄不等于重要性</strong>。10 轮前的架构决策可能比 2 轮前的 <code>ls</code> 更重要，但轮龄只看位置。第二，<strong>阈值是字符数</strong>，对中文与代码的 token 密度不敏感。第三，<strong>每次请求重建副本</strong>，长会话下 CPU 开销线性增长。第四，<strong>它与缓存冲突</strong>：裁掉中间一段，后面的前缀位移，prompt cache 可能整段失效。本快照里没有看到这条链的缓存守卫，等于用缓存换空间。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-07-2" id="fnref-main-07-2">2</a></sup></p>
+      <p>这四点解释了为什么其他家在裁剪上都加了“守卫”或“开关”，而不是照抄三段式。</p>
+    </section>
+
+    <section id="chains">
+      <p class="sec-no">03 · 四家的零成本减量链</p>
+      <h2>同样是删旧结果，四种约束</h2>
+      <p>除了 Grok，另外四家各有一条不调模型的减量链。它们的差别不在“删不删”，而在<strong>用什么当保护线、什么时候跑、删完怎么记</strong>。</p>
+
+      <h3 id="chain-opencode">3.1 opencode v1 的 prune：默认关，保护 40k，可擦超过 20k 才动手</h3>
+      <p>v1 只有一种不调模型的裁剪：<code>compaction.prune</code>，<strong>默认关闭</strong>。开启后从最新消息往回扫：数到第 2 个 user turn 才开始动手；遇到已完成压缩的 assistant 摘要就停；对每个已完成工具结果累加估算 token，前 <strong>40,000</strong> token 受保护不动，超过部分才计入“可擦”；只有可擦总量 <strong>&gt; 20,000</strong> token 才真的写回。<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L271-L317">compaction.ts#L271-L317</a> <span class="tag tag--ok">已核实</span></p>
+      <p>擦除方式是给 part 打 <code>state.time.compacted = Date.now()</code>，原文仍在库里，只是序列化时显示 <code>[Old tool result content cleared]</code>。<code>skill</code> 工具的输出永远不擦。<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L28-L33">compaction.ts#L28-L33</a> <span class="tag tag--ok">已核实</span> 调用点在主循环<strong>退出之后</strong>（<code>runLoop</code> 末尾 fork），不在压缩之前同步跑。<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/prompt.ts#L1338">prompt.ts#L1338</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>为什么要有“最小收益”20k。</strong>擦除本身会产生占位符文本，占位符也要 token。如果每次只擦出几百 token，净收益可能为负。设一个 20k 的门槛，等于说“要么一次擦够，要么别擦”。<strong>代价</strong>是很多小节省永远攒不到 20k：每次会话结束时都差一点，旧结果就一直留着。</p>
+      <p><strong>为什么默认关。</strong>因为它会改写历史（虽然是标记式的改写），而改写会让“重放同一段会话得到同一个上下文”这件事不再成立。默认关，把选择权交给知道自己需要它的用户。</p>
+
+      <h3 id="chain-omp">3.2 omp 的两档陈旧省略：删“被覆盖的”和“没用的”</h3>
+      <p>oh-my-pi 有两层不调模型的裁剪，都发生在压缩之前。<strong>第一层</strong>是 <code>pruneToolOutputs()</code>（阈值裁剪）：保护最近 <strong>40,000</strong> token 的工具输出，只有总节省 ≥ <strong>20,000</strong> token 才动手；小于 50 token 的结果不裁（占位符本身约 8 token，裁了反而变大）；永远保护 <code>skill</code> 结果、<code>skill://</code> 读取结果和当前 plan 参考文件。<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/pruning.ts#L77-L83">pruning.ts#L77-L83</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>第二层</strong>是 <code>pruneSupersededToolResults()</code>（逐轮陈旧裁剪），这是它比 opencode 多出来的一档：</p>
+      <ul>
+        <li><strong>被覆盖的读取</strong>：同一个文件被更新的一次 <code>read</code> 覆盖后，旧结果换成 <code>[Superseded by a newer read of this file]</code>。</li>
+        <li><strong>无用的结果</strong>：工具主动标记 <code>useless</code> 的结果（零命中搜索、空目录列表等）换成 <code>[Uneventful result elided]</code>。</li>
+      </ul>
+      <p>这一档的价值在于“语义判断”而不是“体积判断”：一次零命中的 <code>grep</code> 可能只有 200 字符，按体积永远达不到裁剪门槛，但它对模型的价值是零，而且留着会诱导模型再搜一次。把它换成“这次搜索没有命中”，既省了 token，也省了一次重复调用。<strong>代价</strong>是“无用”由工具自己判定，判错就会删掉有用的空结果语义（比如“确认这个目录确实是空的”本身就是一个结论）。</p>
+      <p>两层都有<strong>缓存守卫</strong>：候选结果之后的 suffix 仍在热缓存前缀里时不改（<code>cacheWarmSuffixTokens</code>），或按 provider 的 prompt-cache lookback 位置限制；模型有 prefix-bound thinking 时守卫更严（阈值设为 0）。裁剪是原地改写并 <code>rewriteEntries()</code> 持久化，失败会 <code>undo()</code> 恢复内存，避免内存与磁盘分叉。<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/pruning.ts#L452">pruning.ts#L452</a> <span class="tag tag--ok">已核实</span></p>
+
+      <h3 id="chain-dsh">3.3 dsh 的 pruner：8,192 / 4,096 / 1,024，只在压缩前跑</h3>
+      <p>dsh 的历史裁剪只有一个正式机制：<code>ctx.toolResultPruner</code>。它把当前 surface 上<strong>超预算的工具结果</strong>替换成“头 + 固定省略标记 + 尾”：默认超过 <strong>8,192</strong> 个 Unicode 码点触发，保留头 <strong>4,096</strong>、尾 <strong>1,024</strong>，中间替换为 <code>[... tool result middle pruned ...]</code>；按码点切片，不会劈开代理对。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-tool-result-pruner/src/config.ts#L8-L13">pruner/config.ts#L8-L13</a> <span class="tag tag--ok">已核实</span></p>
+      <p>关键限制：<strong>它只在压缩触发合格后运行</strong>（pressure 或 overflow 确认之后、选区之前），低于压力的会话一个字节都不动。目的正是“先做无模型的削峰，可能因此完全不需要摘要”。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-tool-result-pruner/README.md#L48-L52">pruner/README.md#L48-L52</a> <span class="tag tag--ok">已核实</span><sup class="fn-ref"><a href="#fn-main-07-3" id="fnref-main-07-3">3</a></sup></p>
+      <p>它还有一个很讲究的细节：替换事件会保留工具调用、step、错误与元数据，只有 <code>content</code> 变；紧邻它之前会写一条 <code>compaction/prune</code> <strong>影子计价事件</strong>，把被替换节点按 token meter 计价，让纯投影消费者直接做减法。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/compaction.md#L105-L133">compaction.md#L105-L133</a> <span class="tag tag--ok">已核实</span> 这解决了“裁剪后账目对不上”的问题：不用重新遍历整段历史，只看影子事件就知道省了多少。</p>
+      <p><strong>代价</strong>是裁剪不覆盖“陈旧”语义，只按体积切：一个 9,000 码点的旧文件读取会被裁，一个 2,000 码点的过期读取不会。它也不按轮龄清理，没有任何“这条已经没用了”的判断。</p>
+
+      <h3 id="chain-others">3.4 另外三家：pi 没有、Claude 默认关、v2 直接删掉</h3>
+      <p><strong>pi</strong> 没有自动把旧工具结果换成占位符的常规裁剪器。唯一的原地裁剪机制是 <code>context_edit</code> 条目：<code>replacement: null</code> 表示把目标条目从模型投影中省略，<code>{content}</code> 表示只替换内容；它只改模型可见投影，不改磁盘原始条目。实际使用点主要是溢出恢复：把刚失败的那次 assistant 尝试及其工具结果省略掉，然后压缩重试。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L175-L180">session-manager.ts#L175-L180</a> <span class="tag tag--ok">已核实</span> 另有一个用户侧的小口子：<code>!!</code> 前缀的 bash 执行消息带 <code>excludeFromContext</code>，<code>convertToLlm()</code> 会整条丢弃。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/messages.ts#L148-L196">messages.ts#L148-L196</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>Claude Code</strong> 的 <code>microcompactMessages</code> 有两条路。时间触发：距最后一条助手消息超过 <code>gapThresholdMinutes</code>（默认 60 分钟）时，把旧的可清理工具结果替换成 <code>[Old tool result content cleared]</code>，只保留最近 <code>keepRecent</code> 条；该配置<strong>默认 disabled</strong>。缓存编辑：只对主线程、受支持模型、且 <code>CACHED_MICROCOMPACT</code> 特性开启时生效，不修改本地消息，而是在 API 层插入 <code>cache_edits</code>（删除指定 <code>cache_reference</code>），让服务端丢弃旧结果而不使缓存前缀失效。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/microCompact.ts#L253-L293">microCompact.ts#L253-L293</a> <span class="tag tag--src">源码 v2.1.88</span> 源码注释明确：旧版“直接清空旧结果”的路径已删除；外部构建、非 ant 用户、不支持的模型上这里什么都不做，压力完全交给 autocompact。</p>
+      <p><strong>opencode v2</strong> 则把 v1 的 <code>prune</code> 删掉了：配置规范化里把它标成 unsupported。<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/config/normalize.ts#L333-L334">normalize.ts#L333-L334</a> <span class="tag tag--ok">已核实</span> 它对旧工具输出的治理只发生在构造压缩请求时：<code>flattenAndDropOldest</code> 把历史文本化、必要时按 exchange 整块丢最旧的，并插入 <code>[N older exchanges omitted]</code>。<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L457-L504">compaction.ts#L457-L504</a> <span class="tag tag--ok">已核实</span> 这已经是压缩流程的一部分，不存在“平时就静默擦掉旧结果”的通道。</p>
+
+      <figure class="fig" id="fig-projection">
+        <svg viewBox="0 0 640 268" role="img" aria-labelledby="fig-proj-title fig-proj-desc">
+          <title id="fig-proj-title">同一份日志原文、裁剪后的投影与压缩后的历史</title>
+          <desc id="fig-proj-desc">三行对照。第一行是磁盘原文的九个块，全部保留。第二行是裁剪后的投影，九个块里三个换成占位。第三行是压缩后的历史，前五个块被一条摘要替换，后四个块保留。</desc>
+
+          <text class="svg-note" x="0" y="16" font-size="13">磁盘原文（9 块，始终保留）</text>
+          <rect class="svg-track" x="0" y="26" width="640" height="44" rx="5"/>
+          <rect class="svg-seg--a" x="8" y="34" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--c" x="76" y="34" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--a" x="144" y="34" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--c" x="212" y="34" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--a" x="280" y="34" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--c" x="348" y="34" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--a" x="416" y="34" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--c" x="484" y="34" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--b" x="552" y="34" width="64" height="28" rx="3"/>
+
+          <text class="svg-note" x="0" y="92" font-size="13">裁剪后的投影（9 块，3 块换成占位）</text>
+          <rect class="svg-track" x="0" y="102" width="640" height="44" rx="5"/>
+          <rect class="svg-seg--a" x="8" y="110" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--free" x="76" y="110" width="64" height="28" rx="3"/>
+          <text class="svg-note" x="108" y="129" font-size="12" text-anchor="middle">占位</text>
+          <rect class="svg-seg--a" x="144" y="110" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--c" x="212" y="110" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--free" x="280" y="110" width="64" height="28" rx="3"/>
+          <text class="svg-note" x="312" y="129" font-size="12" text-anchor="middle">占位</text>
+          <rect class="svg-seg--c" x="348" y="110" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--free" x="416" y="110" width="64" height="28" rx="3"/>
+          <text class="svg-note" x="448" y="129" font-size="12" text-anchor="middle">占位</text>
+          <rect class="svg-seg--a" x="484" y="110" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--b" x="552" y="110" width="64" height="28" rx="3"/>
+
+          <text class="svg-note" x="0" y="168" font-size="13">压缩后的历史（前 5 块被一条摘要替换）</text>
+          <rect class="svg-track" x="0" y="178" width="640" height="44" rx="5"/>
+          <rect class="svg-seg--c" x="8" y="186" width="336" height="28" rx="3"/>
+          <text class="svg-label" x="176" y="205" font-size="14" text-anchor="middle">一条摘要（模型生成）</text>
+          <rect class="svg-seg--a" x="352" y="186" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--c" x="420" y="186" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--a" x="488" y="186" width="64" height="28" rx="3"/>
+          <rect class="svg-seg--b" x="556" y="186" width="64" height="28" rx="3"/>
+
+          <line class="svg-rule" x1="0" y1="240" x2="640" y2="240"/>
+          <text class="svg-note" x="0" y="260" font-size="13">裁剪只改“能不能看见”；压缩换掉“内容”本身。三行下方是同一份原文。</text>
+        </svg>
+        <figcaption>图 07-2　同一份日志的三种视图。第一行是磁盘原文；第二行裁剪后，块的数量与顺序不变，只有三块换成占位；第三行压缩后，前五块被一条模型生成的摘要替换。裁剪与压缩都只改“模型可见的投影”，第一行的原文始终保留。位置为示意。</figcaption>
+      </figure>
+    </section>
+
+    <section id="tools">
+      <p class="sec-no">04 · 七个工具</p>
+      <h2>四道闸门，七种默认</h2>
+      <p>Codex 已在上文说明“无独立裁剪通道”，主例是 Grok Build，所以这一节的七个弹窗是其余七家。每个弹窗看四个问题：<strong>有没有独立裁剪、保护线是多少、什么时候跑、默认开还是关</strong>。</p>
+      <div class="tool-grid">
+        <button class="tool-btn" type="button" data-modal="codex">
+          <span class="tool-btn__name">Codex CLI</span>
+          <span class="tool-btn__id">codex</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="claude-code">
+          <span class="tool-btn__name">Claude Code</span>
+          <span class="tool-btn__id">claude-code</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="pi">
+          <span class="tool-btn__name">pi</span>
+          <span class="tool-btn__id">pi</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="omp">
+          <span class="tool-btn__name">oh-my-pi</span>
+          <span class="tool-btn__id">omp</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v1">
+          <span class="tool-btn__name">opencode v1</span>
+          <span class="tool-btn__id">opencode-v1</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v2">
+          <span class="tool-btn__name">opencode v2</span>
+          <span class="tool-btn__id">opencode-v2</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="dsh">
+          <span class="tool-btn__name">DeepSeek Harness</span>
+          <span class="tool-btn__id">dsh</span>
+        </button>
+      </div>
+      <p class="small muted">键盘：<kbd>Esc</kbd> 关闭；<kbd>Tab</kbd> 在弹窗内循环。Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本。</p>
+    </section>
+
+    <section id="matrix">
+      <p class="sec-no">05 · 八工具对比</p>
+      <h2>谁在什么时候，擦掉什么</h2>
+      <p>先看“独立裁剪”一列：没有这一列的工具，只能靠压缩或截断。再看“保护线”和“触发时机”：它们决定裁剪是“随时可能发生”还是“只在最后一刻发生”。最后一列是默认状态——机制存在不等于默认生效。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">独立裁剪</th>
+              <th scope="col">保护线</th>
+              <th scope="col">触发时机</th>
+              <th scope="col">占位与可逆性</th>
+              <th scope="col">默认</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex<span>codex</span></th>
+              <td>无定期清理；只有写入截断、压缩重试删最旧、规范化四项。<span class="tag tag--ok">已核实</span></td>
+              <td>无独立阈值；删最旧时同步删配对另一半。<span class="tag tag--ok">已核实</span></td>
+              <td>压缩请求自身超窗时。<span class="tag tag--ok">已核实</span></td>
+              <td>直接从活历史移除；原文在 rollout 存档。<span class="tag tag--ok">已核实</span></td>
+              <td>不适用（无开关）。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>有 <code>microcompact</code>，时间触发 + <code>cache_edits</code> 两条路。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>时间触发保留最近 5 条；可清理工具为 Read/Shell/Grep/Glob/WebSearch 等。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>距最后一条助手消息 60 分钟；缓存编辑仅主线程与受支持模型。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td><code>[Old tool result content cleared]</code>；<code>cache_edits</code> 不改本地消息，只删服务端缓存引用。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>时间触发默认关；外部构建的缓存编辑不生效。<span class="tag tag--src">源码 v2.1.88</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>无自动裁剪；只有 <code>context_edit</code> 手动省略与 <code>!!</code> 排除。<span class="tag tag--ok">已核实</span></td>
+              <td>无保护线阈值；<code>replacement: null</code> 整条省略。<span class="tag tag--ok">已核实</span></td>
+              <td>溢出恢复时省略失败尝试；扩展也可追加。<span class="tag tag--ok">已核实</span></td>
+              <td>只改投影，原文在会话树；可还原。<span class="tag tag--ok">已核实</span></td>
+              <td>无自动行为。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>两层：阈值裁剪 + 逐轮陈旧裁剪（superseded / useless）。<span class="tag tag--ok">已核实</span></td>
+              <td>保护 40k，最小收益 20k，跳过 &lt;50 token；保护 skill 与 plan 文件。<span class="tag tag--ok">已核实</span></td>
+              <td>压缩之前；原地改写并持久化，失败 <code>undo()</code>。<span class="tag tag--ok">已核实</span></td>
+              <td><code>[Superseded by a newer read]</code> / <code>[Uneventful result elided]</code>；有缓存守卫。<span class="tag tag--ok">已核实</span></td>
+              <td>阈值层默认开；陈旧层由 <code>supersedeReads</code> / <code>dropUseless</code> 控制。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td><code>compaction.prune</code>，唯一的非模型裁剪。<span class="tag tag--ok">已核实</span></td>
+              <td>保护最近 40k，可擦 &gt;20k 才写回；skill 永不擦。<span class="tag tag--ok">已核实</span></td>
+              <td>主循环退出后异步执行；至少保留最近 2 个 user turn。<span class="tag tag--ok">已核实</span></td>
+              <td>打 <code>state.time.compacted</code>，显示 <code>[Old tool result content cleared]</code>；原文在库。<span class="tag tag--ok">已核实</span></td>
+              <td>默认关。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>无 prune；只在构造压缩请求时 <code>flattenAndDropOldest</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>无独立保护线；按 exchange 整块丢最旧。<span class="tag tag--ok">已核实</span></td>
+              <td>仅在压缩请求构造时。<span class="tag tag--ok">已核实</span></td>
+              <td>插入 <code>[N older exchanges omitted]</code>；属于压缩流程。<span class="tag tag--ok">已核实</span></td>
+              <td>无开关（<code>prune</code> 已标 unsupported）。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>三段式请求副本裁剪：保护 / 软裁剪 / 硬清空。<span class="tag tag--ok">已核实</span></td>
+              <td>最近 3 轮不裁；软裁剪阈值 4,000 字符；硬清空轮龄 10。<span class="tag tag--ok">已核实</span></td>
+              <td><code>total_tokens &gt; 窗口 / 2</code> 时，每次构建请求。<span class="tag tag--ok">已核实</span></td>
+              <td>软裁剪留头尾各 1,500；硬清空 <code>[Tool result omitted — too old]</code>；只改副本。<span class="tag tag--ok">已核实</span></td>
+              <td>默认开。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td><code>toolResultPruner</code>，唯一的正式裁剪机制。<span class="tag tag--ok">已核实</span></td>
+              <td>阈值 8,192 码点，头 4,096、尾 1,024。<span class="tag tag--ok">已核实</span></td>
+              <td>仅压缩压力/溢出确认后、选区之前。<span class="tag tag--ok">已核实</span></td>
+              <td>中间替换标记；原文事件永久保留，附影子计价事件。<span class="tag tag--ok">已核实</span></td>
+              <td>默认开（base 配置）。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。</p>
+    </section>
+
+    <section id="tradeoffs">
+      <p class="sec-no">06 · 设计取舍</p>
+      <h2>为什么大多数裁剪默认是关的</h2>
+      <p>下面五组取舍，解释“机制都有、默认各异”的原因。每组给两种路线与代价。</p>
+
+      <h3>取舍一：原地改写，还是只改投影</h3>
+      <p><strong>原地改写</strong>（omp、dsh、Claude 的时间触发）把替换写进会话记录，下一次读取直接看到占位符，不需要每次重建。“只改投影”（Grok 的请求副本、pi 的 <code>context_edit</code>）保留完整原文，每次请求重新算一遍。</p>
+      <p><strong>代价</strong>：原地改写省 CPU、状态一致，但“历史”被永久改变，重放不再等价，且写坏之后需要 <code>undo()</code> 这类补偿；只改投影可逆、可审计，但每次请求都要重算，长会话下成本线性增长，而且 UI 与实发请求容易对不上（Grok 的 <code>/context</code> 就是这样）。</p>
+      <p>omp 的做法是折中：原地改写，但保留被替换节点的原文与元数据，失败可回滚；dsh 更彻底，原文作为 append-only 事件永久保留，替换只是 surface 上的新事件。</p>
+
+      <h3>取舍二：按轮龄，还是按预算</h3>
+      <p><strong>按轮龄</strong>（Grok 的 3 / 10 轮、opencode 的“至少保留 2 个 user turn”）可预测、易解释：用户能说清“为什么这条被删”。<strong>按预算</strong>（opencode 的 40k 保护、omp 的 40k / 20k、dsh 的 8,192 码点）直接对着“要省多少”设计，效率更高。</p>
+      <p><strong>代价</strong>：轮龄不衡量重要性，久远但关键的结果会被误删；预算不衡量时间，刚刚产生但体积很小的结果可能被留下，而很久以前的一条巨大结果被保留在保护线内。两者的最坏情况不同：轮龄错在“删了不该删的”，预算错在“没删该删的”。</p>
+
+      <h3>取舍三：要不要设“最小收益”</h3>
+      <p>opencode 的 <code>&gt; 20,000</code> 与 omp 的 <code>minimumSavings: 20_000</code> 是同一类设计：擦除会产生占位符，占位符本身占 token；如果一次只擦出几百 token，净收益可能为零甚至为负。<strong>不设门槛</strong>的实现（Grok、dsh）更简单，但会频繁产生“擦了个寂寞”的碎片。</p>
+      <p><strong>代价</strong>：门槛越高，越容易出现“每次都差一点”的死区——旧结果一直攒着，直到某次突然跨过门槛被一次清空。用户看到的行为是“长期不动、偶尔大动”，很难建立稳定预期。</p>
+
+      <h3>取舍四：裁了会不会更贵（缓存守卫）</h3>
+      <p>裁剪改变历史中间的一段，后面的内容整体位移，prompt cache 的前缀可能从裁剪点开始全部失效。省下的 token 可能远小于缓存失效带来的成本。omp 为此加了<strong>缓存守卫</strong>：候选结果之后的 suffix 仍在热缓存前缀里时不改，或按 provider 的 prompt-cache lookback 位置限制；模型有 prefix-bound thinking 时守卫更严（阈值设为 0）。<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/pruning.ts#L537">pruning.ts#L537</a> <span class="tag tag--ok">已核实</span> Claude Code 的 <code>cache_edits</code> 走另一条路：不改本地消息，直接告诉服务端删除缓存引用，从而不动前缀。</p>
+      <p><strong>代价</strong>：守卫会让“明明可以裁”的情况变成“不能裁”，裁剪率下降；<code>cache_edits</code> 依赖模型与特性开关，外部构建直接不生效。Grok 干脆不设守卫，用“缓存换空间”，这是另一种合理选择——当上下文已经过半，空间比缓存更紧急。</p>
+
+      <h3>取舍五：什么时候跑，默认开还是关</h3>
+      <p><strong>请求前同步跑</strong>（Grok、dsh）保证“这一次发出去的一定是裁过的”，代价是每次请求都多一段 CPU，且裁剪结果影响缓存。<strong>循环结束后异步跑</strong>（opencode v1）不阻塞当前任务，但本轮不受益——它裁的是“下一次会话”。<strong>只在压缩前跑</strong>（dsh、omp）把裁剪当成压缩的前置削峰，好处是“可能因此不需要摘要”，坏处是“不到压力线就永远不裁”。</p>
+      <p><strong>默认值</strong>的分歧也在这里。默认开（Grok、omp、dsh）意味着用户不用知道这件事就能受益，代价是行为不可预期、排障困难；默认关（opencode v1、Claude 的时间触发）把控制权交给用户，代价是大多数用户永远不会打开，上下文压力全部落到压缩上。Claude Code 的现状最能说明问题：源码注释说旧版清空路径已删除，外部构建里 <code>microcompact</code> 什么都不做，压力完全交给 autocompact。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/microCompact.ts#L253-L293">microCompact.ts#L253-L293</a> <span class="tag tag--src">源码 v2.1.88</span><sup class="fn-ref"><a href="#fn-main-07-4" id="fnref-main-07-4">4</a></sup></p>
+
+      <p>还有一组横切的取舍：<strong>裁剪与压缩的顺序</strong>。先裁后压（dsh、omp）能用零成本手段降低压缩请求的体积，减少“压缩请求自己超窗”的概率；先压后裁没有意义，因为压缩已经把旧结果换掉了。pi 的顺序是“截断 → 可选 context_edit → 摘要”，中间缺少 omp 那种按预算批量裁剪旧结果的层，所以它更容易走到压缩。</p>
+    </section>
+
+    <section id="quiz">
+      <p class="sec-no">07 · 小测验</p>
+      <h2>三道题，检验你分不分得清</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">opencode v1 开启 prune。历史里有 100k token 的已完成工具结果，最近 2 个 user turn 内占 20k，其余 80k 更旧。保护线 40k、最小收益 20k。实际会擦掉多少？为什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>先扣掉最近 2 个 user turn 的 20k（不参与），剩 80k 可参与；其中最新的 40k 受保护，可擦是 40k；40k &gt; 20k，门槛通过，于是这 40k 被擦。最近 20k 与受保护的 40k 留下，总计 60k 原文 + 若干占位符。若可擦只有 15k，则因为不到 20k 门槛，一个都不擦。见 <a href="#chain-opencode">3.1</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">下面四个动作，哪些调用了模型？哪些属于裁剪？A. omp 的 <code>pruneToolOutputs</code>；B. dsh 的 <code>toolResultPruner</code>；C. Claude Code 的 <code>cache_edits</code>；D. pi 的 <code>/compact</code>。</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>只有 D 调用模型。A、B 是本地替换，C 是让服务端删缓存引用，三者都不生成摘要，都属于裁剪。C 的特殊之处是“不改本地消息”，因此连投影都不变，只是服务端少了一份缓存内容；它仍然是裁剪，因为没有模型参与、原文还在。见 <a href="#overview">第 01 节边界表</a> 与 <a href="#chain-others">3.4</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">Grok Build 里，一条 10,000 字符的工具结果在第 5 轮、第 11 轮分别会被怎么处理？为什么 <code>/context</code> 显示的占用可能高于实际发出去的请求？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>第 5 轮：轮龄 ≥ 3、内容 &gt; 4,000 字符，走软裁剪，保留头 1,500 + 尾 1,500（约 3,000 字符）。第 11 轮：轮龄 ≥ 10，整段替换为 <code>[Tool result omitted — too old]</code>。裁剪只作用于请求副本，<code>/context</code> 的 <code>used</code> 仍按未裁剪的会话计算，所以 UI 会显得更满。见 <a href="#grok-three">2.2</a> 与 <a href="#grok-copy">2.3</a>。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-main-07-1">
+          事实卡片对 Codex 的“无定期裁剪”是<strong>否定式核实</strong>：全仓检索 <code>clear.*tool</code> 无命中，且只在压缩重试与规范化路径里找到删除逻辑。已检查 <code>context_manager/history.rs</code> 与 <code>rollout_reconstruction.rs</code>，未穷举插件与实验特性。结论按“核心无独立通道”表述，不排除扩展提供。
+          <a class="footnotes__back" href="#fnref-main-07-1">↩</a>
+        </li>
+        <li id="fn-main-07-2">
+          Grok Build 的事实卡片描述了 <code>prune_conversation</code> 的三段式与触发阈值，但没有提到缓存守卫；正文检查了同一段实现与配置默认值，未见 <code>cacheWarmSuffixTokens</code> 一类逻辑。结论按“本快照未见守卫”表述，不排除其他层（如网关）另有保护。
+          <a class="footnotes__back" href="#fnref-main-07-2">↩</a>
+        </li>
+        <li id="fn-main-07-3">
+          事实卡片把 dsh 的 pruner 时机标为【已核实】，但“因此可能完全不需要摘要”是文档里的设计意图，不是可观测的统计。正文按“设计目的”表述，不声称每次都能避免压缩。
+          <a class="footnotes__back" href="#fnref-main-07-3">↩</a>
+        </li>
+        <li id="fn-main-07-4">
+          Claude Code 的“外部构建里 <code>microcompact</code> 什么都不做”来自源码注释与特性门控，属于对分发方式的外推：<code>CACHED_MICROCOMPACT</code> 在非 ant 用户上默认不开启。已核对 <code>microCompact.ts</code> 的分流与注释，未验证每个外部发行版的实际配置。标【可能已变化】。
+          <a class="footnotes__back" href="#fnref-main-07-4">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：<a href="main-08.html">压缩：把历史换成摘要</a>。</p>
+
+  </article>
+</main>
+
+<!-- ===== 工具弹窗（7 个；Grok Build 已在正文） ===== -->
+
+<div class="modal" id="modal-codex" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-codex-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · codex</p>
+        <h2 class="modal__title" id="modal-codex-title">Codex CLI</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">Codex 没有独立的“定期清空旧工具结果”通道。不调模型的减量只有三类：写入活历史时的输出截断；压缩请求自身超窗时删除最旧条目（<code>remove_first_item</code>，并同步删除配对的另一半，避免孤立调用）；以及规范化阶段的四项固定丢弃（补输出、删孤立输出、剥图片、剥音频）。恢复会话时回放历史会重新套用当前截断策略，所以同一份存档在不同策略下恢复出的活历史长度可能不同。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>无独立裁剪阈值；规范化固定四项；<code>remove_first_item</code> 只在压缩失败分支触发。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“历史合法性”与“节省空间”分开：规范化保证请求能被接受，截断保证单条不爆，压缩负责大规模减量。代价是没有“旧结果已经没用了”这一层判断，压力全部落到压缩上。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L685-L700">history.rs#L685-L700</a>（remove_first_item）·
+          <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L968-L982">history.rs#L968-L982</a>（规范化四项）·
+          <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/rollout_reconstruction.rs#L508-L515">rollout_reconstruction.rs#L508-L515</a>（回放重截断）
+        </dd>
+      </dl>
+      <p class="modal__note">“无独立通道”是否定式结论：全仓检索 <code>clear.*tool</code> 无命中。<sup class="fn-ref"><a href="#fn-main-07-1">1</a></sup></p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-claude-code" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">清理入口是 <code>microcompactMessages</code>，有两条路。第一条是时间触发：距最后一条助手消息超过 <code>gapThresholdMinutes</code>（默认 60 分钟）时，认为服务端缓存已冷，直接把旧的可清理工具结果替换成 <code>[Old tool result content cleared]</code>，只保留最近 <code>keepRecent</code> 条；该配置默认 <strong>disabled</strong>。第二条是缓存编辑：只对主线程、受支持模型、且 <code>CACHED_MICROCOMPACT</code> 特性开启时生效，不修改本地消息，而是在 API 层插入 <code>cache_edits</code>（删除指定 <code>cache_reference</code>），让服务端丢弃旧结果而不使缓存前缀失效。源码注释明确：旧版“直接清空旧结果”的路径已删除。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>可清理白名单：Read、Shell 系、Grep、Glob、WebSearch、WebFetch、Edit、Write；时间触发 <code>enabled=false</code>、<code>gapThresholdMinutes=60</code>、<code>keepRecent=5</code>；占位 <code>[Old tool result content cleared]</code>；缓存编辑受特性与模型能力双重门控。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dt>设计意图</dt>
+        <dd><code>cache_edits</code> 试图同时拿到“省 token”和“不破缓存”，这是七家里最巧的一手；代价是只在很窄的条件下生效。时间触发则是反方向：先假设缓存已经冷了，再直接清。两条路的默认状态都是“尽量不动”。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/microCompact.ts#L36-L50">microCompact.ts#L36-L50</a>（占位与白名单）·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/microCompact.ts#L253-L293">microCompact.ts#L253-L293</a>（分流与 legacy removed）·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/microCompact.ts#L305-L399">microCompact.ts#L305-L399</a>（cache_edits）·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/timeBasedMCConfig.ts#L28-L40">timeBasedMCConfig.ts#L28-L40</a>（默认 disabled）
+        </dd>
+      </dl>
+      <p class="modal__note">来源类型：<span class="tag tag--src">源码 v2.1.88</span>。官方文档说“先清理较旧工具输出，再按需摘要”，源码显示这条“先清理”在外部构建里默认不生效，两者不一致，以源码为准。【可能已变化】<sup class="fn-ref"><a href="#fn-main-07-4">4</a></sup></p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pi" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · pi</p>
+        <h2 class="modal__title" id="modal-pi-title">pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">pi 没有“自动把旧工具结果换成占位符”的常规裁剪器。唯一的原地裁剪机制是 <code>context_edit</code> 条目：<code>replacement: null</code> 把目标条目从模型投影中省略，<code>{content}</code> 只替换内容；它只改模型可见投影，不改磁盘原始条目。实际使用点主要是溢出恢复——把刚失败的那次 assistant 尝试及其工具结果省略掉，然后压缩重试。扩展也可以追加 <code>context_edit</code>。另有一个用户侧的小口子：<code>!!</code> 前缀的 bash 执行消息带 <code>excludeFromContext</code>，<code>convertToLlm()</code> 会整条丢弃。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>无自动裁剪阈值（没有 <code>protectTokens</code> / <code>minimumSavings</code> 一类配置）；<code>ContextEditEntry</code> 字段为 <code>targetId</code> 与 <code>replacement</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“省略哪条”交给调用方（溢出恢复逻辑或扩展），内核只提供机制。代价是普通用户没有“清理旧结果”的按钮，减量顺序里缺少批量裁剪这一层，更容易直接走到压缩。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L175-L180">session-manager.ts#L175-L180</a>（字段）·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L519-L540">session-manager.ts#L519-L540</a>（应用投影）·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/agent-session.ts#L1241-L1257">agent-session.ts#L1241-L1257</a>（溢出恢复）·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/messages.ts#L148-L196">messages.ts#L148-L196</a>（<code>!!</code> 排除）
+        </dd>
+      </dl>
+      <p class="modal__note">“没有自动裁剪”是未找到实现的否定式结论，不是文档声明；不排除扩展市场里有第三方实现。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-omp" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · omp</p>
+        <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">omp 有两层不调模型的裁剪。第一层 <code>pruneToolOutputs()</code>：保护最近 40,000 token 的工具输出，只有总节省 ≥ 20,000 token 才动手；小于 50 token 的结果不裁；永远保护 <code>skill</code> 结果、<code>skill://</code> 读取结果和当前 plan 参考文件。第二层 <code>pruneSupersededToolResults()</code>：同一文件被更新一次 <code>read</code> 覆盖后，旧结果换成 <code>[Superseded by a newer read of this file]</code>；工具主动标记 <code>useless</code> 的结果换成 <code>[Uneventful result elided]</code>。两层都有缓存守卫：候选结果之后的 suffix 仍在热缓存前缀里时不改，或按 provider 的 prompt-cache lookback 位置限制；模型有 prefix-bound thinking 时守卫更严。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>protectTokens = 40_000</code>、<code>minimumSavings = 20_000</code>、<code>MIN_PRUNE_TOKENS = 50</code>、<code>pruneUseless = true</code>；占位符三种；开关 <code>compaction.supersedeReads</code> / <code>compaction.dropUseless</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“体积裁剪”和“语义陈旧”分开：前者按预算，后者按内容关系。缓存守卫是它相对其他家最讲究的一处——宁可少裁，也不要把热前缀打散。代价是裁剪率低，且一旦守卫判定保守（prefix-bound thinking），几乎不裁。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/pruning.ts#L77-L83">pruning.ts#L77-L83</a>（默认值）·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/pruning.ts#L290-L294">pruning.ts#L290-L294</a>（最小单元）·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L710-L790">session-maintenance.ts#L710-L790</a>（调用与 undo）·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/docs/compaction.md#L227-L252">docs/compaction.md#L227-L252</a>（行为说明）
+        </dd>
+      </dl>
+      <p class="modal__note">原地改写会持久化；失败时 <code>undo()</code> 恢复内存，避免内存与磁盘分叉。这是“可逆”在工程上的具体实现，而不是概念上的承诺。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v1" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">v1 只有一种不调模型的裁剪：<code>compaction.prune</code>，默认关闭。开启后从最新消息往回扫：数到第 2 个 user turn 才开始动手；遇到已完成压缩的 assistant 摘要就停；对每个已完成工具结果累加估算 token，前 40,000 token 受保护不动，超过部分才计入“可擦”，且只有可擦总量 &gt; 20,000 token 才真的写回。擦除方式是给 part 打 <code>state.time.compacted</code>，原文仍在库里，序列化时显示 <code>[Old tool result content cleared]</code>。调用点在主循环退出之后异步执行。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>PRUNE_PROTECT = 40_000</code>、<code>PRUNE_MINIMUM = 20_000</code>、<code>PRUNE_PROTECTED_TOOLS = ["skill"]</code>；开关 <code>compaction.prune</code> 默认 <code>false</code>；至少保留最近 2 个 user turn。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>用“保护线 + 最小收益”两道门槛确保每次擦除都划算；用时间戳而不是删除，保证原文可追溯。代价是默认关、异步跑，大多数会话根本不会触发；门槛也可能导致长期攒着不擦。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L28-L33">compaction.ts#L28-L33</a>（常量）·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L271-L317">compaction.ts#L271-L317</a>（实现）·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L76-L78">compaction.ts#L76-L78</a>（占位文本）·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/prompt.ts#L1338">prompt.ts#L1338</a>（调用点）
+        </dd>
+      </dl>
+      <p class="modal__note">擦除发生在压缩<strong>之后</strong>的循环退出点，所以它优化的是“下一次任务”，不是“当前这一轮”。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v2" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">v2 <strong>没有独立的历史裁剪能力</strong>。v1 的 <code>prune</code> 在 v2 已没有实现，只在配置规范化里作为 unsupported 字段被拒绝；<code>packages/core/src</code> 内除 git 的 <code>prune</code> 外无相关代码。v2 对旧工具输出的治理只发生在构造压缩请求时：<code>flattenAndDropOldest</code> 把历史文本化（丢 reasoning、媒体、指令更新，切长工具输出），必要时按 exchange 整块丢最旧的，并插入 <code>[N older exchanges omitted]</code>。这一步已经是压缩流程的一部分，不存在“平时就静默擦掉旧工具结果”的通道。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>prune</code> 与 <code>tail_turns</code> 在配置规范化里标 unsupported；<code>flattenAndDropOldest</code> 按 exchange 整块丢弃；占位 <code>[N older exchanges omitted]</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“减量”收敛到单一入口（压缩），减少“平时偷偷改历史”的不可预期行为。代价是压缩前的削峰能力消失，压缩请求更容易因为历史太大而自身超窗，只能靠 <code>deliver</code> 的 0.7 / 0.5 / 0.35 收缩兜底。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/config/normalize.ts#L333-L334">config/normalize.ts#L333-L334</a>（unsupported）·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L457-L504">session/compaction.ts#L457-L504</a>（flattenAndDropOldest）
+        </dd>
+      </dl>
+      <p class="modal__note">v2 是 beta <code>v2.0.29</code>，<code>prune</code> 是否会在正式版回归未知，不能把“无裁剪”外推到未来版本。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-dsh" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">dsh 的 <code>ctx.toolResultPruner</code> 把当前 surface 上超预算的工具结果替换成“头 + 固定省略标记 + 尾”：默认超过 8,192 个 Unicode 码点触发，保留头 4,096、尾 1,024，中间替换为 <code>[... tool result middle pruned ...]</code>；按码点切片，不会劈开代理对，富内容块保持顺序，图片的 offload 选择原样保留。替换事件保留工具调用、step、错误与元数据，只有 <code>content</code> 变；紧邻它之前会写一条 <code>compaction/prune</code> 影子计价事件，把被替换节点按 token meter 计价，让纯投影消费者直接做减法。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>thresholdChars = 8_192</code>、<code>headChars = 4_096</code>、<code>tailChars = 1_024</code>；约束 <code>head + marker + tail ≤ threshold</code>，否则加载即报错；只在 pressure / overflow 确认后运行。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把裁剪定位成“压缩前的削峰”，而不是常驻清理：不到压力线不动，避免无谓改写与缓存失效。影子计价事件解决了“裁剪后账目怎么对”的问题。代价是没有轮龄与陈旧判断，小于 8,192 码点的过期结果永远不会被裁。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-tool-result-pruner/src/config.ts#L8-L13">pruner/config.ts#L8-L13</a>（默认值）·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-tool-result-pruner/src/config.ts#L43-L60">pruner/config.ts#L43-L60</a>（校验）·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/compaction.md#L105-L133">compaction.md#L105-L133</a>（影子计价与替换）
+        </dd>
+      </dl>
+      <p class="modal__note">“可能因此完全不需要摘要”是文档里的设计目的，不是统计结论。<sup class="fn-ref"><a href="#fn-main-07-3">3</a></sup></p>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>opencode v2 · 三入口触发与 due 判定 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-opencode-v2-01 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-opencode-v2-01 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-opencode-v2-01 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-opencode-v2-01 .path-card code,
+  #src-opencode-v2-01 .callout code,
+  #src-opencode-v2-01 .quiz__q code,
+  #src-opencode-v2-01 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-opencode-v2-01">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-opencode-v2-01">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v2</span><span>·</span><span>第 01 节</span></p>
+      <h1>三入口触发与 due 判定</h1>
+      <p class="lede">v2 把压缩拆成三个入口：每步开头的自动检查、溢出后的恢复、用户手动的命令。三个入口共用同一个 <code>compact()</code>，但预算与前置条件不同。真正决定「这一轮压不压」的不是阈值，而是 <code>due()</code> 里那两条不变量。</p>
+      <ul class="meta">
+        <li>约 15 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L4</li>
+        <li>源码 <code>042d083</code>（beta v2.0.29）</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>画出 auto / overflow / manual 三条触发路径，并说出各自的预算算法。</li>
+          <li>解释 <code>due()</code> 的两条例外：刚压完、锚点早于检查点，各自防的是什么。</li>
+          <li>算出 200k 窗口下的 <code>ceiling</code>，以及溢出时为什么要再乘 0.7。</li>
+          <li>把 v2 的「锚点 + 估算」与 v1 的「只看实测」放在一起比较。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前：beta 快照</p>
+      <p>本节只代表 <b>v2.0.29 beta</b>（提交 <code>042d083</code>）。beta 线的字段与默认值可能在下个版本改变；v1 的结论只引 <code>733b2c6</code>，两段不混用证据。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>三个入口，一个函数</h2>
+
+      <p><b>auto</b>：<code>runStep()</code> 在准备上下文之后、发请求之前调用 <code>compact({ reason: "auto", context })</code>。如果返回 <code>completed</code>，就换一条新的 assistant 消息 id、<code>continue</code> 重新跑这一步。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>overflow</b>：<code>steps.attempt()</code> 捕获「上下文过长且尚未产出任何输出」的错误，调用 <code>recoverOverflow</code>，后者执行 <code>compact({ reason: "overflow", context })</code>；成功则重建上下文重发，同一步只允许一次。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>manual</b>：<code>/compact</code> 往 inbox 塞一条 <code>compaction</code> 控制项，<code>drain()</code> 在步边界消费它，带上 <code>reason: "manual"</code> 调用同一个 <code>compact()</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p class="lead-in">三个入口的差别不在「压什么」，而在「预算多少」和「允不允许跳过」。</p>
+
+      <p>入口内部的前三道判断是共用的：</p>
+
+      <p>一，<b>开关</b>：<code>trigger.reason !== "manual" &amp;&amp; !settings.auto</code> 时直接返回 <code>skipped</code>。手动压缩不受 <code>auto</code> 开关限制。<span class="tag tag--ok">已核实</span></p>
+
+      <p>二，<b>到期</b>：只有 <code>auto</code> 才检查 <code>due()</code>；<code>overflow</code> 与 <code>manual</code> 不检查——它们本身就是「必须压」的信号。<span class="tag tag--ok">已核实</span></p>
+
+      <p>三，<b>预算</b>：先按当前模型算 <code>ceiling</code>；如果模型窗口未知，用 <code>UNKNOWN_WINDOW = 200_000</code> 算一个 <code>cap</code> 给压缩请求用（但不用于触发）。<code>overflow</code> 时 <code>budget = min(cap, floor(estimate × 0.7))</code>，其余用 <code>cap</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 320" role="img" aria-labelledby="v21-f1-title v21-f1-desc">
+          <title id="v21-f1-title">三个入口与共用的四道判断</title>
+          <desc id="v21-f1-desc">三条入口 auto、overflow、manual 汇入 compact，经过开关、due、预算、native 四个判断，最后走 compactNatively 或 summarize。</desc>
+          <rect class="svg-seg--a" x="8" y="20" width="150" height="40" rx="7"/>
+          <text class="svg-label" x="83" y="45" text-anchor="middle">auto（每步开头）</text>
+          <rect class="svg-seg--b" x="8" y="70" width="150" height="40" rx="7"/>
+          <text class="svg-label" x="83" y="95" text-anchor="middle">overflow（未产出）</text>
+          <rect class="svg-seg--b" x="8" y="120" width="150" height="40" rx="7"/>
+          <text class="svg-label" x="83" y="145" text-anchor="middle">manual（inbox）</text>
+
+          <line class="svg-rule" x1="158" y1="90" x2="196" y2="90"/>
+          <rect class="svg-track" x="196" y="66" width="132" height="46" rx="7"/>
+          <text class="svg-label svg-label--dark" x="262" y="85" text-anchor="middle">settings.auto</text>
+          <text class="svg-note" x="262" y="103" text-anchor="middle">manual 绕过</text>
+
+          <line class="svg-rule" x1="328" y1="90" x2="360" y2="90"/>
+          <rect class="svg-track" x="360" y="66" width="112" height="46" rx="7"/>
+          <text class="svg-label svg-label--dark" x="416" y="85" text-anchor="middle">due()</text>
+          <text class="svg-note" x="416" y="103" text-anchor="middle">仅 auto</text>
+
+          <line class="svg-rule" x1="472" y1="90" x2="504" y2="90"/>
+          <rect class="svg-seg--c" x="504" y="66" width="128" height="46" rx="7"/>
+          <text class="svg-label" x="568" y="85" text-anchor="middle">算预算</text>
+          <text class="svg-note" x="568" y="103" text-anchor="middle">overflow × 0.7</text>
+
+          <line class="svg-rule" x1="568" y1="112" x2="568" y2="146"/>
+          <rect class="svg-track" x="480" y="146" width="152" height="46" rx="7"/>
+          <text class="svg-label svg-label--dark" x="556" y="165" text-anchor="middle">native?</text>
+          <text class="svg-note" x="556" y="183" text-anchor="middle">模型元数据声明</text>
+
+          <line class="svg-rule" x1="480" y1="169" x2="440" y2="169"/>
+          <rect class="svg-seg--a" x="300" y="146" width="132" height="46" rx="7"/>
+          <text class="svg-label" x="366" y="175" text-anchor="middle">compactNatively</text>
+          <line class="svg-rule" x1="556" y1="192" x2="556" y2="214"/>
+          <rect class="svg-seg--b" x="480" y="214" width="152" height="46" rx="7"/>
+          <text class="svg-label" x="556" y="243" text-anchor="middle">summarize</text>
+
+          <text class="svg-note" x="8" y="232">auto 的 due 不成立 → skipped，不产生任何消息。</text>
+          <text class="svg-note" x="8" y="256">overflow 的预算按估算的 70% 起，因为 provider 刚拒绝过，</text>
+          <text class="svg-note" x="8" y="280">说明本地估算偏低；先自降一档，避免第二次被拒。</text>
+          <text class="svg-note" x="8" y="304">native 与 summarize 是二选一，不是回退关系。</text>
+        </svg>
+        <figcaption>图 1　三入口与四道判断。只有 auto 受 <code>settings.auto</code> 与 <code>due()</code> 双重约束；overflow 与 manual 进入后一定会尝试压缩，差别只在预算。</figcaption>
+      </figure>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五条链接：入口、判定、上限、估算、常量</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 主函数：三入口共用</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L205-L240">compaction.ts#L205-L240</a><br>
+          <code>compact()</code>：开关、due、预算、native 分支。</p>
+        </div>
+        <div class="path-card">
+          <h3>② due：两条不变量</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L242-L251">compaction.ts#L242-L251</a><br>
+          刚压完跳过；测量锚点必须晚于最后一个检查点。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 上限：10% 或 16 000</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L905-L912">compaction.ts#L905-L912</a><br>
+          <code>calculateCeiling()</code>：未知窗口返回 <code>+∞</code>，<code>buffer</code> 可覆盖。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 估算：锚点 + 之后累加</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L874-L898">compaction.ts#L874-L898</a><br>
+          <code>estimatePrompt()</code>：<code>measured</code> 来自最近一次同 provider 的 usage。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 入口调用点</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/runner/llm.ts#L220-L271">runner/llm.ts#L220-L271</a><br>
+          <code>runStep</code> 的 auto 调用与 <code>recoverOverflow</code> 的 overflow 调用。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：手动入口的 inbox 消费见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/runner/llm.ts#L115-L163">runner/llm.ts#L115-L163</a>；<code>SHRINK_STEPS</code> 与 <code>RESERVE_MIN</code> 见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L94-L102">compaction.ts#L94-L102</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】<code>due()</code> 不是「阈值到了就压」</p>
+        <p><code>due()</code> 的最后一行才是阈值比较；前两行是「不该压」的否决条件。只读最后一行会得出错误结论：<code>estimateContext(context) &gt;= ceiling</code> 为真，也可能因为「最后一条是刚完成的压缩」或「测量锚点早于检查点」而返回 <code>false</code>。<span class="tag tag--ok">已核实</span>这两条例外不是优化，是正确性条件。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：主函数 40 行，due 10 行</h2>
+
+      <p>第一段是 <code>compact()</code> 从开关到预算的完整逻辑，36 行；省略了 <code>publish</code> 之后的结果封装。第二段是 <code>due()</code>，10 行完整。两段合计 50 行。</p>
+
+      <p class="small muted">文件：<code>packages/core/src/session/compaction.ts</code>　行号：L205-L240（节选 40 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// trigger 带 reason 与 context；settings 是运行时配置</span>
+<span class="code__line">const compact = Effect.fn("SessionCompaction.compact")(function* (trigger: Trigger): Effect.fn.Return&lt;Outcome&gt; {</span>
+<span class="code__line">  const settings = state.get()</span>
+<span class="code__line">  const context = trigger.context</span>
+<span class="code__line"> </span>
+<span class="code__line">  <span class="cmt">// 自动关闭时，只有手动还能压；overflow 也不行</span></span>
+<span class="code__line">  if (trigger.reason !== "manual" &amp;&amp; !settings.auto) return { status: "skipped" }</span>
+<span class="code__line">  <span class="cmt">// 只有 auto 看 due；overflow / manual 是「必须压」的信号</span></span>
+<span class="code__line">  if (trigger.reason === "auto" &amp;&amp; !due(context, calculateCeiling(context.model.limit, settings.buffer)))</span>
+<span class="code__line">    return { status: "skipped" }</span>
+<span class="code__line">  <span class="cmt">// 模型元数据声明支持原生压缩：走 provider，不写本地摘要</span></span>
+<span class="code__line">  const native = context.model.compaction?.type === "native"</span>
+<span class="code__line">  const agent = native ? undefined : yield* agents.get(Agent.ID.make("compaction"))</span>
+<span class="code__line">  const model =</span>
+<span class="code__line">    (agent?.model &amp;&amp;</span>
+<span class="code__line">      (yield* models</span>
+<span class="code__line">        .resolve({ ...context.session, model: agent.model }, catalog.available)</span>
+<span class="code__line">        .pipe(Effect.orElseSucceed(() =&gt; undefined)))) ??</span>
+<span class="code__line">    context.model <span class="cmt">// 压缩 agent 没配模型就用当前模型</span></span>
+<span class="code__line">  const ceiling = calculateCeiling(model.limit, settings.buffer)</span>
+<span class="code__line">  <span class="cmt">// 窗口未知：触发永远不成立，但压缩请求仍要有个目标大小</span></span>
+<span class="code__line">  const cap = Number.isFinite(ceiling)</span>
+<span class="code__line">    ? ceiling</span>
+<span class="code__line">    : calculateCeiling({ ...model.limit, context: UNKNOWN_WINDOW }, settings.buffer)</span>
+<span class="code__line">  <span class="cmt">// provider 刚拒过，说明估算低；第一次尝试就瞄准 70%</span></span>
+<span class="code__line">  const budget =</span>
+<span class="code__line">    trigger.reason === "overflow" ? Math.min(cap, Math.floor(estimateContext(context) * SHRINK_STEPS[0])) : cap</span>
+<span class="code__line"> </span>
+<span class="code__line">  <span class="cmt">// 若压缩 agent 换了模型，用它重新加载上下文的一小部分</span></span>
+<span class="code__line">  const selected = model === context.model ? trigger : { ...trigger, context: { ...context, model } }</span>
+<span class="code__line">  const compaction = native</span>
+<span class="code__line">    ? compactNatively(selected, budget, settings.keep)</span>
+<span class="code__line">    : summarize(selected, budget, settings.keep)</span>
+<span class="code__line">  return yield* compaction.pipe(</span>
+<span class="code__line">    Effect.matchEffect({</span>
+<span class="code__line">      onSuccess: (result) =&gt; publish(selected, result),</span>
+<span class="code__line">      onFailure: (failure) =&gt; publish(selected, failure),</span>
+<span class="code__line">    }),</span>
+<span class="code__line">  )</span>
+<span class="code__line">})</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/core/src/session/compaction.ts</code>　行号：L242-L251（10 行，完整）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 例外 1：最后一条就是刚完成的压缩 → 先让 runner 重建请求</span>
+<span class="code__line">const due = (context: SessionContext.Loaded, ceiling: number) =&gt; {</span>
+<span class="code__line">  const messages = context.messages</span>
+<span class="code__line">  const last = messages.at(-1)</span>
+<span class="code__line">  if (last?.type === "compaction" &amp;&amp; last.status === "completed") return false</span>
+<span class="code__line">  <span class="cmt">// 例外 2：加密的原生窗口本地估不出大小，等 provider 回报一次</span></span>
+<span class="code__line">  const measured = messages.findLastIndex((message) =&gt; hasMeasuredPrompt(message, context.model.ref))</span>
+<span class="code__line">  if (measured &lt; messages.findLastIndex(SessionProviderContext.isCheckpoint)) return false</span>
+<span class="code__line">  return estimateContext(context) &gt;= ceiling</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段省略了 L213-L220 中 <code>models.resolve</code> 的错误分支细节（用 <code>Effect.orElseSucceed</code> 一行表达）与 <code>publish</code> 的实现；控制流完整。第二段没有省略。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>两道否决，两个预算</h2>
+
+      <h3>第 1 段　开关：为什么 overflow 也受 <code>auto</code> 约束</h3>
+
+      <p>第一行判断是 <code>trigger.reason !== "manual" &amp;&amp; !settings.auto</code> 就跳过。<span class="tag tag--ok">已核实</span>也就是说，用户关掉自动压缩后，溢出也不会自动救——只有手动 <code>/compact</code> 能压。这是一个明确的产品选择：把「自动」的定义扩大到「所有非手动触发」，而不是只限阈值触发。</p>
+
+      <p>v1 的规则不同：<code>isOverflow()</code> 里 <code>compaction.auto === false</code> 直接返回 <code>false</code>，溢出信号根本不产生；但一旦产生，压缩流程不会再检查开关。<span class="tag tag--ok">已核实</span>两者结果相近，语义不同：v1 是「不检测」，v2 是「检测但不压」。</p>
+
+      <h3>第 2 段　due 的两条例外</h3>
+
+      <p>第一条例外：最后一条消息是 <code>status === "completed"</code> 的压缩条目，直接返回 <code>false</code>。<span class="tag tag--ok">已核实</span>因为压缩刚完成，runner 还没用新检查点重建请求；此时 <code>estimateContext()</code> 仍按旧消息估算，必然还是超阈值。不挡住就会连续压缩，每次都把上一次的摘要再摘要一遍。</p>
+
+      <p>第二条例外：<code>measured</code>（最近一次同 provider 的用量锚点）早于最后一个检查点，返回 <code>false</code>。<span class="tag tag--ok">已核实</span>为什么？原生压缩（OpenAI Responses compact / Anthropic compaction beta）返回的是一段<b>加密窗口</b>，本地无法估算它的大小；只有 provider 下次回报 usage，才知道「压缩后到底多大」。在拿到这个数之前触发，等于用旧的大估算去压一个已经变小的上下文。</p>
+
+      <p>两条合起来说明：<code>due()</code> 不是「阈值判断」，而是「阈值判断 + 两个数据新鲜度检查」。它防的是「用过期数据做决定」。</p>
+
+      <h3>第 3 段　ceiling：10% 与 16 000 取大</h3>
+
+      <p><code>calculateCeiling()</code> 的逻辑是：</p>
+
+      <p><code>window = limit.input || limit.context</code>；<code>window &lt;= 0</code> 返回 <code>+∞</code>；<code>buffer</code> 有值就用 <code>window - buffer</code>；否则 <code>window - max(floor(window × 0.1), window ≥ 32_000 ? 16_000 : 0)</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p>200k 窗口：<code>max(20 000, 16 000) = 20 000</code>，<code>ceiling = 180 000</code>。32k 窗口：<code>max(3 200, 16 000) = 16 000</code>，<code>ceiling = 16 000</code>。16k 窗口：<code>window ≥ 32 000</code> 不成立，<code>max(1 600, 0) = 1 600</code>，<code>ceiling = 14 400</code>。</p>
+
+      <p>为什么小窗口要留 10% 而不是 16 000？因为 16 000 已经接近半个窗口，留完就没有历史可压了。源码注释写得很清楚：「A window too small to give up RESERVE_MIN keeps 10%.」</p>
+
+      <p>未知窗口返回 <code>+∞</code> 也值得注意：触发永远不成立（除非 provider 报溢出），但 <code>cap</code> 会用 <code>UNKNOWN_WINDOW</code> 算一个有限值给压缩请求。<span class="tag tag--ok">已核实</span>这是「不知道多大，但总得给摘要请求一个目标」的折中。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 244" role="img" aria-labelledby="v21-f2-title v21-f2-desc">
+          <title id="v21-f2-title">估算的锚点模型</title>
+          <desc id="v21-f2-desc">一条时间轴：锚点之前用 provider 实测 usage，锚点之后逐条估算并累加；锚点必须晚于最后一个检查点，否则不触发。</desc>
+          <text class="svg-note" x="8" y="18">消息（左旧右新）</text>
+          <rect class="svg-track" x="8" y="28" width="220" height="42" rx="7"/>
+          <text class="svg-note" x="118" y="54" text-anchor="middle">锚点之前的消息</text>
+          <rect class="svg-seg--a" x="236" y="28" width="130" height="42" rx="7"/>
+          <text class="svg-label" x="301" y="54" text-anchor="middle">A 带 usage</text>
+          <rect class="svg-seg--b" x="374" y="28" width="120" height="42" rx="7"/>
+          <text class="svg-note" x="434" y="54" text-anchor="middle">之后逐条估算</text>
+          <rect class="svg-seg--c" x="502" y="28" width="130" height="42" rx="7"/>
+          <text class="svg-note" x="567" y="54" text-anchor="middle">新消息</text>
+
+          <line class="svg-rule" x1="301" y1="70" x2="301" y2="94"/>
+          <text class="svg-note" x="301" y="112" text-anchor="middle">measured 锚点</text>
+
+          <text class="svg-note" x="8" y="150">measured = input + cache.read + cache.write + output + reasoning</text>
+          <text class="svg-note" x="8" y="174">estimated = 锚点之后每条文本的 chars/4 累加</text>
+          <text class="svg-note" x="8" y="198">estimateContext = measured + estimated</text>
+
+          <rect class="svg-track svg-seg--free" x="8" y="210" width="624" height="26" rx="6"/>
+          <text class="svg-note" x="320" y="228" text-anchor="middle">若锚点早于最后一个检查点：估算不可信 → due 返回 false</text>
+        </svg>
+        <figcaption>图 2　锚点模型。<code>measured</code> 只信「同一 provider 报过的 usage」，锚点之后才用本地估算；锚点早于检查点时，整个估算被判定为不可信。</figcaption>
+      </figure>
+
+      <h3>第 4 段　overflow 的 0.7：为什么先自降一档</h3>
+
+      <p><code>budget = min(cap, floor(estimateContext(context) × SHRINK_STEPS[0]))</code>，而 <code>SHRINK_STEPS = [0.7, 0.5, 0.35]</code>。<span class="tag tag--ok">已核实</span>溢出意味着 provider 刚刚拒绝了这份请求，说明本地估算<b>偏低</b>；如果还按 <code>cap</code> 去构造摘要请求，很可能第二次被拒。</p>
+
+      <p>0.7 不是「目标上下文大小」，而是「摘要请求允许的大小」。摘要请求会把要压缩的历史序列化后发给模型；如果历史本身就有 180k，按 180k 发还是会被拒。先降到 126k，就有更大概率一次成功。</p>
+
+      <p>这与 v1 的 overflow 处理不同：v1 在 overflow 模式下先把「触发溢出的那条用户消息」剥掉再压，压完再把它重放回去（<code>compaction.ts#L340-L356</code>、<code>#L484-L487</code>）。<span class="tag tag--ok">已核实</span>v1 减的是「输入里的一条消息」，v2 减的是「摘要请求的目标大小」，再配合 <code>deliver()</code> 的 0.7 / 0.5 / 0.35 三轮收缩。</p>
+
+      <h3>第 5 段　三种触发 reason，两种落盘 reason</h3>
+
+      <p><code>Trigger</code> 有三种：<code>auto</code>、<code>overflow</code>、<code>manual</code>。<span class="tag tag--ok">已核实</span>但落到检查点上时只剩两种，因为 <code>publish()</code> 里有一行映射：</p>
+
+      <p><code>const reason = trigger.reason === "manual" ? "manual" : "auto"</code><span class="tag tag--ok">已核实</span></p>
+
+      <p>也就是说，溢出恢复产生的检查点，<code>reason</code> 记的是 <code>auto</code>。schema 的 <code>CompactionCompleted.reason</code> 也只允许 <code>auto</code> / <code>manual</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">触发</th>
+              <th scope="col">内部 reason</th>
+              <th scope="col">落盘 reason</th>
+              <th scope="col">预算</th>
+              <th scope="col">看 due</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">每步开头</th><td><code>auto</code></td><td><code>auto</code></td><td><code>cap</code></td><td>是</td></tr>
+            <tr><th scope="row" class="cell-tool">溢出恢复</th><td><code>overflow</code></td><td><code>auto</code></td><td><code>min(cap, 0.7 × 估算)</code></td><td>否</td></tr>
+            <tr><th scope="row" class="cell-tool">手动 /compact</th><td><code>manual</code></td><td><code>manual</code></td><td><code>cap</code></td><td>否</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：v2 <code>042d083</code>（beta）。<code>cap</code> 在有窗口时等于 <code>ceiling</code>，未知窗口时按 200k 重算。</p>
+
+      <p>这个映射有一个实际后果：<b>事后无法从检查点区分「正常到期压缩」与「溢出救火」</b>。两者都记成 <code>auto</code>。要做这类统计，只能从别处取证据：溢出压缩的 <code>tokens.before</code> 通常非常接近窗口上限，或者去读日志里的 <code>Compaction.Started</code> / <code>Compaction.Ended</code> 事件（它在 L394 统一写 <code>reason: "auto"</code>，同样区分不了）。这是 beta 快照的一个可观测性缺口，不是设计意图的声明。</p>
+
+      <p>把三种 reason 与 omp 的六条触发放在一起看，会发现一个共同趋势：<b>触发路径越多，记录字段越倾向于收敛</b>。omp 的 <code>reason</code> 有四个值（overflow / threshold / idle / incomplete），但检查点里也只存 <code>method</code> 与统计数据，不存 reason。原因类似：检查点的职责是「重建上下文」，不是「记录运维事件」。想审计，要靠事件流。</p>
+
+      <h3>第 6 段　走查：三步之内压不压</h3>
+
+      <p>设窗口 200k、<code>buffer</code> 未设、模型有 <code>limit.input = 200 000</code>。ceiling 是 <code>200 000 - max(20 000, 16 000) = 180 000</code>。连续三步的估算如下：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">步</th>
+              <th scope="col">estimate</th>
+              <th scope="col">最后一条</th>
+              <th scope="col">锚点 vs 检查点</th>
+              <th scope="col">due</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">1</th><td>175 000</td><td>user</td><td>锚点更晚</td><td>false（未到 180 000）</td></tr>
+            <tr><th scope="row" class="cell-tool">2</th><td>182 000</td><td>user</td><td>锚点更晚</td><td>true → 压缩</td></tr>
+            <tr><th scope="row" class="cell-tool">3</th><td>182 000</td><td>compaction（completed）</td><td>—</td><td>false（例外 1）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：估算值只用于演示；真实 <code>estimateContext</code> = 锚点实测 + 之后逐条 chars/4。</p>
+
+      <p>第 2 步压缩时 <code>budget = cap = 180 000</code>，<code>keep = 15 000</code>。摘要请求要把 older 部分文本化后发出去；如果装不下，<code>deliver()</code> 会先丢最旧的 exchange，再按 0.7 / 0.5 / 0.35 收缩。</p>
+
+      <p>第 3 步是例外 1 的典型场景：压缩刚完成，最后一条就是检查点，<code>due()</code> 直接返回 false。等到 runner 用新检查点重建上下文，最后一条变成新消息，估算也会从「新基线」重新算起——此时如果 <code>measured</code> 还早于检查点，仍会被例外 2 挡住。</p>
+
+      <p>如果模型窗口未知（<code>limit.input</code> 与 <code>limit.context</code> 都是 0），<code>ceiling = +∞</code>，第 1、2 步都不会触发 auto；只有 provider 报溢出才会压，且预算用 200k 重算出的 <code>cap</code>。这是「不知道多大就不主动压」的保守策略。</p>
+
+      <h3>第 7 段　改的其实不是阈值，是估算</h3>
+
+      <p>把 v1 与 v2 的公式并排，会发现阈值几乎一样。v1：<code>usable = input - min(20 000, maxOutputTokens)</code>；v2：<code>ceiling = window - max(10%, 16 000)</code>。200k 窗口、32k 输出时，v1 是 180 000，v2 也是 180 000。<span class="tag tag--ok">已核实</span></p>
+
+      <p>真正的差别在「拿什么比」。v1 用上一轮的 <code>tokens.total</code>，它只覆盖「上一轮请求 + 回复」；v2 用「锚点实测 + 锚点之后逐条估算」，覆盖「锚点之后新增的所有消息」。如果用户在两次压缩之间连发了五条长消息，v1 的数会明显偏小，v2 不会。</p>
+
+      <p>这也解释了为什么 v2 要加「锚点必须晚于检查点」：估算的可信区间是「从锚点到当前」，如果锚点在检查点之前，中间隔了一次压缩，估算的基数就错了。v1 没有这个问题，因为它每次都用最新一轮的实测值，天然在检查点之后——代价是它看不到「最新一轮之后」的新增。</p>
+
+      <p>所以两者的取舍是：v1 用「新鲜但覆盖窄」的数据，v2 用「覆盖宽但需要锚点」的数据。前者在连续对话里容易低估，后者在原生压缩后容易暂时不触发。没有一种估算在所有场景下都准。</p>
+
+      <h3>第 8 段　手动压缩的两个坑</h3>
+
+      <p>手动入口最容易被当成「安全阀」：自动不压的时候，用户按一下就好。但它绕过了 <code>due()</code>，也绕过了 <code>settings.auto</code>，于是有两个坑。</p>
+
+      <p><b>刚压完又压一次。</b>用户看到上下文百分比还很高（因为百分比读的是旧 usage），再按一次 <code>/compact</code>。此时 <code>compact({reason:"manual"})</code> 不看 <code>due()</code>，会把刚生成的检查点连同它的 <code>recent</code> 文本再摘要一遍。结果是「摘要的摘要」，信息损失叠加。v1 也有类似问题，但它至少在隐藏上一对压缩消息时做了处理。</p>
+
+      <p><b>重复排队。</b><code>SessionPendingTable</code> 上有一个部分唯一索引：<code>uniqueIndex(...).on(session_id).where(type = 'compaction')</code>。<span class="tag tag--ok">已核实</span>它保证同一会话同时只有一条待处理的压缩控制项。没有这个索引，用户连点两次就会排队两条，第二条在第一条完成后立刻执行——正好是上一个坑。</p>
+
+      <p>两个坑的共同解法在产品层：手动压缩后禁用按钮，直到 <code>Compaction.Ended</code> 或 <code>Failed</code> 到达。服务端的唯一索引只是兜底，不是交互设计。</p>
+
+      <p>把 v1 与 v2 的触发逻辑压成一张表，能看清「改了什么、为什么」：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th scope="col">维度</th><th scope="col">v1（733b2c6）</th><th scope="col">v2（042d083）</th><th scope="col">为什么改</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">触发依据</th><td>上一轮 <code>tokens.total</code></td><td>锚点实测 + 之后估算</td><td>覆盖锚点之后新增的消息</td></tr>
+            <tr><th scope="row" class="cell-tool">到期检查</th><td><code>isOverflow</code> 单一比较</td><td><code>due()</code> 两条不变量</td><td>防「用过期数据做决定」</td></tr>
+            <tr><th scope="row" class="cell-tool">预算</th><td><code>min(20k, maxOutput)</code> 预留</td><td><code>max(10%, 16k)</code> 预留</td><td>小窗口也留够回复空间</td></tr>
+            <tr><th scope="row" class="cell-tool">入口</th><td>2（自动 / 手动）</td><td>3（auto / overflow / manual）</td><td>把「未产出的溢出」独立成路径</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：v1 的溢出也走自动路径，但没有独立的 <code>overflow</code> reason；v2 把它显式化，并在预算上乘 0.7。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>三个入口：auto（每步开头）、overflow（未产出时）、manual（inbox）；共用 <code>compact()</code>。</li>
+            <li>关掉 <code>auto</code> 后，overflow 也不会自动压，只有手动能压。</li>
+            <li><code>due()</code> 有两条例外：刚压完、锚点早于检查点；它们防的是「用过期数据决定」。</li>
+            <li><code>ceiling = window - max(10%, 16 000)</code>；未知窗口返回 <code>+∞</code>，但压缩请求仍用 200k 算目标。</li>
+            <li>overflow 预算先乘 0.7，因为 provider 刚拒过，估算偏低。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>v1 看实测，v2 看锚点，pi 看尾部</h2>
+
+      <p>触发判定是三家里差别最大的地方。v1 完全信任上一轮的 <code>tokens</code>，pi 用「最近一次 assistant usage + 之后累加」，v2 则要求「锚点必须晚于检查点」。三种做法对应三种失败模式。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">触发依据</th>
+              <th scope="col">预算</th>
+              <th scope="col">入口数</th>
+              <th scope="col">特殊情况</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>锚点实测 + 之后估算</td>
+              <td><code>window - max(10%, 16k)</code></td>
+              <td>3（auto/overflow/manual）</td>
+              <td>锚点须晚于检查点；刚压完跳过</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>上一轮 <code>tokens.total</code></td>
+              <td><code>input - reserved</code></td>
+              <td>2（自动/手动）</td>
+              <td>无锚点概念；overflow 剥一条消息再重放</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>最近 assistant usage + 尾随估算</td>
+              <td><code>window - reserveTokens(16 384)</code></td>
+              <td>4（轮中/提示前/结束/手动）</td>
+              <td>压缩后丢弃旧 usage，全量重估</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>provider tokens 与本地估算取大</td>
+              <td><code>window - max(15%, 16 384)</code></td>
+              <td>6</td>
+              <td>阈值可按模型覆盖</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：v2 <code>042d083</code>（beta）；v1 <code>733b2c6</code>；pi <code>b45e0eb</code>；omp <code>f979f46</code>。omp 的入口数来自 <code>docs/compaction.md</code>；v2 的「两条例外」在 v1 中没有等价实现。</p>
+
+      <p>三点对照：</p>
+
+      <p>一是<b>「上一轮」与「锚点」的区别</b>。v1 用上一轮的 total，前提是「上一轮之后没有新增消息」；一旦用户连着发了几条，这个数就偏小。v2 从锚点往后逐条加，能覆盖「锚点之后新增的消息」。pi 也是这个思路，但它会在压缩后丢弃旧 usage、全量重估——v2 用「锚点须晚于检查点」达到类似效果。</p>
+
+      <p>二是<b>预算的保守程度</b>。v1 的 <code>reserved = min(20 000, maxOutputTokens)</code>，v2 是 <code>max(10%, 16 000)</code>。对 200k 窗口，v1 留 20 000、v2 留 20 000，一样；对 32k 窗口，v1 留 <code>min(20 000, 8 000) = 8 000</code>，v2 留 16 000，v2 更保守。</p>
+
+      <p>三是<b>入口的语义</b>。pi 有「轮中」触发（工具结果落定、下一次 assistant 之前），v2 只有「每步开头」；omp 有六条，包括空闲维护。入口越多，压缩越及时，也越容易在不该压的时候压。v2 用 <code>due()</code> 的两条例外来收这个口子。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从算 ceiling 到判断 due</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">窗口 64k、<code>buffer</code> 未设。ceiling 是多少？如果 <code>buffer = 8 000</code> 呢？如果窗口未知呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>未设 buffer：<code>window ≥ 32 000</code> 成立，<code>max(6 400, 16 000) = 16 000</code>。</p>
+          <p>设了 buffer：直接 <code>window - buffer</code>，不再取 10%。</p>
+          <p>未知窗口：<code>window &lt;= 0</code>，返回 <code>+∞</code>；但 <code>cap</code> 会用 200k 重算。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">一次原生压缩刚完成，最后一条消息是 <code>status: "completed"</code> 的 compaction。下一轮 <code>auto</code> 会压吗？再下一轮呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>第一问看 <code>due()</code> 的第一条例外：<code>last?.type === "compaction" &amp;&amp; last.status === "completed"</code> 直接返回 false。</p>
+          <p>第二问：runner 用新检查点重建请求后，最后一条不再是 compaction；但还要过第二条例外——如果 <code>measured</code> 仍早于检查点（provider 还没回报），依然不压。</p>
+          <p>所以原生压缩后可能连续几步都不触发，直到拿到一次真实 usage。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">provider 报上下文过长，但本地 <code>estimateContext()</code> 只有 ceiling 的 60%。<code>compact({reason:"overflow"})</code> 会怎么走？预算多少？这说明估算模型有什么盲区？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>overflow 不看 <code>due()</code>，所以会进入压缩；<code>budget = min(cap, floor(estimate × 0.7))</code>，即 42% 的 ceiling 左右。</p>
+          <p>盲区在 <code>estimatePrompt()</code>：图片按 1 500、PDF 按 2 000 估算；原生窗口本地测不出；system 与工具定义只按文本估。任何「provider 计费口径与本地文本口径不一致」的地方都会低估。</p>
+          <p>这也是 <code>deliver()</code> 要有 0.7 / 0.5 / 0.35 三轮收缩的原因。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：opencode v2 · 检查点：一条消息 + seq 边界。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

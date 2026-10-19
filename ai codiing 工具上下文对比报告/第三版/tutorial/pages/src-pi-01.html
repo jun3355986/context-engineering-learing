@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>pi · 切点、单回合拆分与文件跟踪 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本页专属：思考题提示折叠块（未新增 class，仅给 <details> 加页面内样式） */
+  #src-pi-01 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-pi-01 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-pi-01 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-pi-01 .path-card code,
+  #src-pi-01 .callout code,
+  #src-pi-01 .quiz__q code,
+  #src-pi-01 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-pi-01">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-pi-01">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>pi</span><span>·</span><span>第 01 节</span></p>
+      <h1>切点、单回合拆分与文件跟踪</h1>
+      <p class="lede">压缩要回答一个看起来很小的问题：从哪一条开始保留？pi 的答案不是「数够 20 000 token 就切」，而是「数够之后，往后找最近一个合法边界」。这一步之差，决定了工具调用会不会被切成孤儿，也决定了压缩后模型还能不能接着干活。</p>
+      <ul class="meta">
+        <li>约 15 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>b45e0eb</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出哪些条目可以当切点、哪些绝对不行，并指出判断在哪个函数里。</li>
+          <li>给定一组条目和 <code>keepRecentTokens</code>，手算切点落在哪一条、是否触发单回合拆分。</li>
+          <li>解释「按条目累加」与「按整轮累加」的差别，以及各自在什么情况下会多留或少留。</li>
+          <li>说明压缩摘要末尾的 <code>&lt;read-files&gt;</code> / <code>&lt;modified-files&gt;</code> 是怎么算出来的。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>本节的代码是 TypeScript 原文，函数名未做改写。所有行号对应提交 <code>b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb</code>。pi 的会话是「只追加的条目树」，一条 <code>SessionEntry</code> 可能展开成多条模型消息，理解这一点再看切点会容易得多。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>压缩的五个动作，本节讲最靠前的那个决策</h2>
+
+      <p>pi 的自动压缩由阈值触发：<code>contextTokens &gt; contextWindow - reserveTokens</code>，<code>reserveTokens</code> 默认 16 384。<span class="tag tag--ok">已核实</span>触发之后，它并不立刻把历史丢给模型，而是先做一次「准备」：算出保留段的起点、要摘要的消息、要单独摘要的轮前缀，以及这一路读写过哪些文件。准备结果交给 <code>compact()</code>，由它决定发一次还是两次摘要请求。</p>
+
+      <p class="lead-in">切点不是「预算用完的那一条」，而是「预算用完之后，往后最近的一个合法边界」。这两个位置常常不是同一条，差额就是压缩质量的来源。</p>
+
+      <p>整条链路可以拆成五步。本节讲第 2 步和第 3 步：找切点、判断是否拆轮；文件清单作为第 2 步的副产品一起讲。第 4 步「拼摘要」和第 5 步「只追加条目」分别属于下一节 <b>pi · 压缩只改投影</b> 的内容。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 258" role="img" aria-labelledby="pi1-f1-title pi1-f1-desc">
+          <title id="pi1-f1-title">pi 压缩的五个步骤，本节讲第 2、3 步</title>
+          <desc id="pi1-f1-desc">五条横向色块从上到下排列：阈值判定、找切点、判断单回合拆分、生成摘要、追加压缩条目。第二、三条为橙色高亮，标注本节范围。</desc>
+          <rect class="svg-track" x="8" y="14" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="28" y="39" text-anchor="middle">1</text>
+          <text class="svg-label svg-label--dark" x="52" y="39">阈值判定 shouldCompact</text>
+          <text class="svg-note" x="620" y="39" text-anchor="end">窗口 − 16 384</text>
+
+          <rect class="svg-seg--c" x="8" y="60" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="28" y="85" text-anchor="middle">2</text>
+          <text class="svg-label" x="52" y="85">找切点 findProjectedCutPoint</text>
+          <text class="svg-label" x="620" y="85" text-anchor="end">← 本节</text>
+
+          <rect class="svg-seg--c" x="8" y="106" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="28" y="131" text-anchor="middle">3</text>
+          <text class="svg-label" x="52" y="131">拆轮判定 isSplitTurn + 文件清单</text>
+          <text class="svg-label" x="620" y="131" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="152" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="28" y="177" text-anchor="middle">4</text>
+          <text class="svg-label svg-label--dark" x="52" y="177">生成摘要（可能两次）</text>
+          <text class="svg-note" x="620" y="177" text-anchor="end">0.8 / 0.5 × reserve</text>
+
+          <rect class="svg-track" x="8" y="198" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="28" y="223" text-anchor="middle">5</text>
+          <text class="svg-label svg-label--dark" x="52" y="223">appendCompaction 只追加一条</text>
+          <text class="svg-note" x="620" y="223" text-anchor="end">原文不动</text>
+        </svg>
+        <figcaption>图 1　pi 压缩的五个步骤。橙色两步都在 <code>prepareCompaction()</code> 里完成：切点决定「摘要谁、保留谁」，拆分决定「摘要要不要写两份」。</figcaption>
+      </figure>
+
+      <p>准备阶段的入口是 <code>prepareCompaction(pathEntries, settings)</code>。它先判断路径末尾是不是已经有一条压缩条目（是就返回 <code>undefined</code>，避免连续压缩），再用 <code>buildSessionProjection()</code> 把「树 + 旧压缩 + 编辑」投影成条目列表，然后在这个投影上找切点。用投影而不是原始条目，是因为上一条压缩的保留段会让一部分原始条目「看得见但不再贡献内容」，直接在原始数组上数 token 会多算。<span class="tag tag--ok">已核实</span></p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四条链接，从常量到调用点</h2>
+
+      <p>下面四条都固定在同一提交，行号已用 <code>sed -n</code> 逐段核对：起止行与描述一致，没有跨函数。</p>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 合法切点：哪些条目能切</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L351-L406">compaction.ts#L351-L406</a><br>
+          <code>isCutPointMessage()</code> 的白名单里没有 <code>toolResult</code>；<code>findValidCutPoints()</code> 顺手跳过压缩条目。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 切点主循环：累加与回退</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L446-L501">compaction.ts#L446-L501</a><br>
+          <code>findCutPoint()</code>：从新到旧累加，越过预算后取「大于等于当前下标」的第一个合法切点。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 生产路径：投影版切点</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L802-L870">compaction.ts#L802-L870</a><br>
+          <code>findProjectedCutPoint()</code>：多处理一种情况——「恢复失败被省略的尾部」可以把切点再往后推一格。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 文件清单：三集合变两清单</h3>
+          <p><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/utils.ts#L67-L87">compaction/utils.ts#L67-L87</a><br>
+          <code>computeFileLists()</code>：读过的文件里去掉被写过的，剩下的才是「只读清单」。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：切点结果如何被使用，见 <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L872-L936">prepareCompaction()#L872-L936</a>；文件操作如何从工具调用里抽取，见同文件 <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/utils.ts#L30-L61">utils.ts#L30-L61</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】大纲写 <code>findCutPoint</code>，但线上跑的是它的投影版</p>
+        <p>大纲和事实卡片都把切点标在 <code>findCutPoint()</code>（L446）。这个函数确实存在，也被 <code>src/index.ts</code> 导出、被 <code>test/compaction.test.ts</code> 直接调用；但 <code>prepareCompaction()</code> 实际调用的是 <code>findProjectedCutPoint()</code>（L802）。两者算法骨架相同（倒序累加、取最近的合法切点、回溯轮首），差别在三点：入参是「投影条目」而不是原始条目；多一段 <code>isRecoveryOmissionSuffix</code> 判断；多一层「相邻不可见元数据」的回退。本节引 <code>findCutPoint()</code> 讲主干，是因为它没有投影类型的噪音，读起来更干净；投影版的三点差异在第 4 节单独说明。以源码为准，不以大纲为准。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段代码：切点 47 行，清单 22 行</h2>
+
+      <p>第一段是切点主循环，去掉上方 20 行文档注释，保留全部可执行语句，共 44 行。第二段是文件清单，21 行，完整保留。两段各自能独立读懂：第一段的输入是一组条目和一个预算，输出是三个字段；第二段的输入是三个集合，输出是两个排好序的数组。</p>
+
+      <p class="small muted">文件：<code>packages/coding-agent/src/core/compaction/compaction.ts</code>　行号：L452-L496（节选 47 行，含注释行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 先算出所有合法切点，再倒着累加 token（L452-L456）</span>
+<span class="code__line">const cutPoints = findValidCutPoints(entries, startIndex, endIndex);</span>
+<span class="code__line">if (cutPoints.length === 0) {</span>
+<span class="code__line">    return { firstKeptEntryIndex: startIndex, turnStartIndex: -1, isSplitTurn: false };</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// accumulatedTokens 只统计「会进入模型上下文」的条目</span>
+<span class="code__line">let accumulatedTokens = 0;</span>
+<span class="code__line">let cutIndex = cutPoints[0]; <span class="cmt">// 兜底：从第一条合法切点开始</span></span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 从新到旧走一遍，走到预算够为止（L462-L479）</span>
+<span class="code__line">for (let i = endIndex - 1; i &gt;= startIndex; i--) {</span>
+<span class="code__line">    const entry = entries[i];</span>
+<span class="code__line">    const messageTokens = sessionEntryToContextMessages(entry).reduce(</span>
+<span class="code__line">        (sum, message) =&gt; sum + estimateTokens(message),</span>
+<span class="code__line">        0,</span>
+<span class="code__line">    );</span>
+<span class="code__line">    if (messageTokens === 0) continue; <span class="cmt">// 不可见条目不计、也不当切点</span></span>
+<span class="code__line">    accumulatedTokens += messageTokens;</span>
+<span class="code__line"> </span>
+<span class="code__line">    if (accumulatedTokens &gt;= keepRecentTokens) {</span>
+<span class="code__line">        <span class="cmt">// 关键：不是切在 i，而是切在「≥ i 的最近合法切点」</span></span>
+<span class="code__line">        <span class="cmt">// 若尾部工具结果自己就超预算，就保留它前面那条 toolCall</span></span>
+<span class="code__line">        cutIndex = cutPoints.find((candidate) =&gt; candidate &gt;= i) ?? cutPoints[cutPoints.length - 1];</span>
+<span class="code__line">        break;</span>
+<span class="code__line">    }</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 再往前吞掉相邻的「不可见元数据」，让保留段从干净处开始（L481-L489）</span>
+<span class="code__line">while (cutIndex &gt; startIndex) {</span>
+<span class="code__line">    const prevEntry = entries[cutIndex - 1];</span>
+<span class="code__line">    if (prevEntry.type === "compaction" || sessionEntryToContextMessages(prevEntry).length &gt; 0) {</span>
+<span class="code__line">        break; <span class="cmt">// 遇到压缩边界或可见条目就停</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    cutIndex--;</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 切点若不是轮首，就要额外摘要「这一轮的前半段」（L491-L500）</span>
+<span class="code__line">const cutEntry = entries[cutIndex];</span>
+<span class="code__line">const startsTurn = isTurnStartEntry(cutEntry);</span>
+<span class="code__line">const turnStartIndex = startsTurn ? -1 : findTurnStartIndex(entries, cutIndex, startIndex);</span>
+<span class="code__line"> </span>
+<span class="code__line">return {</span>
+<span class="code__line">    firstKeptEntryIndex: cutIndex,</span>
+<span class="code__line">    turnStartIndex,</span>
+<span class="code__line">    isSplitTurn: !startsTurn &amp;&amp; turnStartIndex !== -1,</span>
+<span class="code__line">};</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/coding-agent/src/core/compaction/utils.ts</code>　行号：L67-L87（节选 22 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 输入三个集合：读过 / 写过 / 编辑过</span>
+<span class="code__line">export function computeFileLists(fileOps: FileOperations): { readFiles: string[]; modifiedFiles: string[] } {</span>
+<span class="code__line">    <span class="cmt">// 写过和编辑过合并成一个「改过」集合</span></span>
+<span class="code__line">    const modified = new Set([...fileOps.edited, ...fileOps.written]);</span>
+<span class="code__line">    <span class="cmt">// 只读 = 读过 − 改过；排序让同一批操作的输出稳定</span></span>
+<span class="code__line">    const readOnly = [...fileOps.read].filter((f) =&gt; !modified.has(f)).sort();</span>
+<span class="code__line">    const modifiedFiles = [...modified].sort();</span>
+<span class="code__line">    return { readFiles: readOnly, modifiedFiles };</span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 下面是清单如何变成摘要末尾的 XML（L77-L87）</span>
+<span class="code__line">export function formatFileOperations(readFiles: string[], modifiedFiles: string[]): string {</span>
+<span class="code__line">    const sections: string[] = [];</span>
+<span class="code__line">    if (readFiles.length &gt; 0) {</span>
+<span class="code__line">        sections.push(`&lt;read-files&gt;\n${readFiles.join("\n")}\n&lt;/read-files&gt;`);</span>
+<span class="code__line">    }</span>
+<span class="code__line">    if (modifiedFiles.length &gt; 0) {</span>
+<span class="code__line">        sections.push(`&lt;modified-files&gt;\n${modifiedFiles.join("\n")}\n&lt;/modified-files&gt;`);</span>
+<span class="code__line">    }</span>
+<span class="code__line">    if (sections.length === 0) return "";</span>
+<span class="code__line">    return `\n\n${sections.join("\n\n")}`; <span class="cmt">// 前面留两个换行，接在摘要正文后</span></span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">两段分别 47 行与 22 行，各自都在 60 行以内。第一段省略了 L446-L451 的函数签名与 20 行文档注释、以及 L497-L500 的返回结构前半；省略的都不是判断逻辑。第二段省略了 L73-L76 的四行 JSDoc，并合并了同文件 <code>formatFileOperations()</code>（L77-L87）以便看到 XML 形态。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四个决定，一条比一条细</h2>
+
+      <h3>第 1 段　合法切点：为什么 <code>toolResult</code> 永远不能切</h3>
+
+      <p><code>isCutPointMessage()</code> 是一个 <code>switch</code>：<code>user</code>、<code>assistant</code>、<code>bashExecution</code>、<code>custom</code>、<code>branchSummary</code>、<code>compactionSummary</code> 返回 <code>true</code>，<code>toolResult</code> 返回 <code>false</code>。<span class="tag tag--ok">已核实</span>原因不是审美，而是协议约束：OpenAI 与 Anthropic 都要求工具结果与发起它的调用<b>配对出现</b>，Anthropic 还要求结果紧跟在调用之后。如果切点落在工具结果上，压缩后的第一条消息就是一个没有调用方的结果，请求会被直接拒绝。</p>
+
+      <p>反过来，切在带工具调用的 <code>assistant</code> 上是安全的：它的工具结果在数组里排在它后面，会跟着一起进入保留段。源码注释把这条写得很直白——「When we cut at an assistant message with tool calls, its tool results follow it and will be kept.」<span class="tag tag--ok">已核实</span></p>
+
+      <p>还有一类条目被单独排除：<code>entry.type === "compaction"</code>。旧压缩条目本身不产生消息（投影时它的摘要已经由最新压缩承担），但它在数组里占一个位置；如果让它当切点，<code>firstKeptEntryId</code> 会指向一条不贡献内容的历史记录，重建投影时保留段就变成空的。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="pi1-f2-title pi1-f2-desc">
+          <title id="pi1-f2-title">八条历史条目里只有五个是合法切点</title>
+          <desc id="pi1-f2-desc">横向排列八个小方块，依次是用户、助手调用、工具结果、工具结果、助手、用户、工具结果、助手。工具结果三块为灰色并标不可切，其余五块为蓝色并标可切。</desc>
+          <text class="svg-note" x="8" y="20">一次会话的条目序列（从左到旧，向右变新）</text>
+
+          <rect class="svg-seg--a" x="8" y="34" width="72" height="44" rx="7"/>
+          <text class="svg-label svg-label--xxs" x="44" y="62" text-anchor="middle">user</text>
+          <rect class="svg-seg--a" x="88" y="34" width="72" height="44" rx="7"/>
+          <text class="svg-label svg-label--xxs" x="124" y="62" text-anchor="middle">assistant</text>
+          <rect class="svg-track" x="168" y="34" width="72" height="44" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--xxs" x="204" y="62" text-anchor="middle">toolResult</text>
+          <rect class="svg-track" x="248" y="34" width="72" height="44" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--xxs" x="284" y="62" text-anchor="middle">toolResult</text>
+          <rect class="svg-seg--a" x="328" y="34" width="72" height="44" rx="7"/>
+          <text class="svg-label svg-label--xxs" x="364" y="62" text-anchor="middle">assistant</text>
+          <rect class="svg-seg--a" x="408" y="34" width="72" height="44" rx="7"/>
+          <text class="svg-label svg-label--xxs" x="444" y="62" text-anchor="middle">user</text>
+          <rect class="svg-track" x="488" y="34" width="72" height="44" rx="7"/>
+          <text class="svg-label svg-label--dark svg-label--xxs" x="524" y="62" text-anchor="middle">toolResult</text>
+          <rect class="svg-seg--a" x="568" y="34" width="64" height="44" rx="7"/>
+          <text class="svg-label svg-label--xxs" x="600" y="62" text-anchor="middle">assistant</text>
+
+          <text class="svg-note" x="44" y="98" text-anchor="middle">可切</text>
+          <text class="svg-note" x="124" y="98" text-anchor="middle">可切</text>
+          <text class="svg-note" x="204" y="98" text-anchor="middle">不可切</text>
+          <text class="svg-note" x="284" y="98" text-anchor="middle">不可切</text>
+          <text class="svg-note" x="364" y="98" text-anchor="middle">可切</text>
+          <text class="svg-note" x="444" y="98" text-anchor="middle">可切</text>
+          <text class="svg-note" x="524" y="98" text-anchor="middle">不可切</text>
+          <text class="svg-note" x="600" y="98" text-anchor="middle">可切</text>
+
+          <text class="svg-note" x="8" y="136">预算从这里往回数满了 → 落在灰色工具结果上</text>
+          <line class="svg-rule" x1="248" y1="118" x2="288" y2="118"/>
+          <text class="svg-note" x="8" y="164">实际切点向右找最近的蓝色块：那条 assistant</text>
+          <text class="svg-note" x="8" y="192">于是它后面的两条工具结果作为保留段一起进入上下文</text>
+          <text class="svg-note" x="8" y="220">代价：保留段可能比预算略大；收益：工具调用永远成对</text>
+        </svg>
+        <figcaption>图 2　合法切点。灰色三条是工具结果，不能当切点；预算越线后向右找最近的蓝块，工具结果因此整组落在保留段里（示意，非真实比例）。</figcaption>
+      </figure>
+
+      <h3>第 2 段　预算累加：为什么用 <code>&gt;=</code> 和 <code>find(candidate &gt;= i)</code></h3>
+
+      <p>循环从 <code>endIndex - 1</code> 往回走，每条先折算成 token（<code>estimateTokens</code>，<code>ceil(chars / 4)</code>，图片按 4800 字符计），累加后与 <code>keepRecentTokens</code>（默认 20 000）比较。一旦 <code>&gt;=</code>，就停下来定切点。</p>
+
+      <p>停下来的位置 <code>i</code> 只是「预算刚好越线的那条」，它可能是工具结果。所以下一行不是 <code>cutIndex = i</code>，而是 <code>cutPoints.find(candidate =&gt; candidate &gt;= i)</code>：在合法切点数组里找第一个不小于 <code>i</code> 的位置，也就是往<b>新</b>的方向挪。挪过去意味着保留段变短、被摘要的内容变多——注意方向，切点越大，保留越少。</p>
+
+      <p><code>?? cutPoints[cutPoints.length - 1]</code> 兜住「<code>i</code> 之后没有合法切点」的情况：那说明最新的一条本身就是工具结果，于是退到最后一个合法切点。源码注释给的理由是「trailing tool results exceed the budget by themselves」——尾部工具结果自己就超预算时，宁可保留它前面那条 <code>toolCall</code>，也不要退回到第一条消息。这一行是「宁可多留一条调用，也不要留一个孤儿结果」的代码化。</p>
+
+      <p>循环结束后还有一个 <code>while</code>：如果切点前一条是不可见的元数据（<code>usage</code>、<code>session_info</code>、<code>model_change</code> 这类不产生消息的条目），就把切点再往前挪一格。它不改变语义，只是让 <code>firstKeptEntryId</code> 指在一条「真实存在且可见」的条目上，方便恢复时定位。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】投影版多一条「恢复省略」规则</p>
+        <p><code>findProjectedCutPoint()</code>（L802-L870）在主循环之后多了一段 <code>isRecoveryOmissionSuffix</code>（L834-L856）：当预算越线、且切点之后的整个后缀里只有「被 <code>context_edit</code> 省略掉的失败尝试」时，把切点再往后推一格。原因是这些条目对模型不可见，留着它们当边界没有意义。这段逻辑在 <code>findCutPoint()</code> 里不存在，因为后者拿不到编辑信息。读源码时不要把两者当成同一个函数。</p>
+      </div>
+
+      <h3>第 3 段　单回合拆分：切点落在轮中间怎么办</h3>
+
+      <p>切点定下来后，代码判断它是不是「轮首」。<code>isTurnStartEntry()</code> 认的轮首是 <code>user</code>、<code>bashExecution</code>、<code>custom</code>、<code>branchSummary</code>、<code>compactionSummary</code>——共同点是「用户侧发起」。<code>assistant</code> 不算轮首，<code>toolResult</code> 也不算。</p>
+
+      <p>如果切点是 <code>assistant</code>，说明这一轮从某条用户消息开始、经过若干次工具调用还没结束。此时 <code>findTurnStartIndex()</code> 从切点往回找最近一条轮首，得到 <code>turnStartIndex</code>，并置 <code>isSplitTurn = true</code>。切点之前、轮首之后的这段消息叫「轮前缀」。</p>
+
+      <p>为什么不能把轮前缀直接并进历史摘要？因为它和「被保留的尾部」是同一轮。历史摘要描述的是「很早以前发生了什么」，轮前缀描述的是「这轮任务刚才做到哪」。混在一起，模型会分不清哪些是已完成、哪些是进行中。pi 的做法是发两次摘要请求，再用一个固定标记拼起来：</p>
+
+      <p><code>${historyText}\n\n---\n\n**Turn Context (split turn):**\n\n${turnPrefixResult.text}</code><span class="tag tag--ok">已核实</span></p>
+
+      <p>两份摘要的预算也不同：历史摘要 <code>min(floor(0.8 × reserveTokens), model.maxTokens)</code>，轮前缀摘要 <code>min(floor(0.5 × reserveTokens), model.maxTokens)</code>。默认 reserve 16 384，即 13 107 与 8 192。<span class="tag tag--ok">已核实</span>轮前缀更短，因为它只需要交代「原始请求 + 目前的进展」。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 236" role="img" aria-labelledby="pi1-f3-title pi1-f3-desc">
+          <title id="pi1-f3-title">单回合拆分后，一次压缩发两次摘要请求</title>
+          <desc id="pi1-f3-desc">上排是历史消息被切成三段：历史摘要区、轮前缀、保留尾部。下排显示两次摘要请求分别处理前两段，最后用分隔标记合并成一份摘要放在保留段之前。</desc>
+          <text class="svg-note" x="8" y="18">原始条目（左旧右新）</text>
+          <rect class="svg-seg--a" x="8" y="30" width="300" height="40" rx="7"/>
+          <text class="svg-label" x="158" y="55" text-anchor="middle">更早的历史</text>
+          <rect class="svg-seg--c" x="316" y="30" width="150" height="40" rx="7"/>
+          <text class="svg-label" x="391" y="55" text-anchor="middle">轮前缀</text>
+          <rect class="svg-seg--b" x="474" y="30" width="158" height="40" rx="7"/>
+          <text class="svg-label" x="553" y="55" text-anchor="middle">保留尾部</text>
+
+          <line class="svg-rule" x1="466" y1="78" x2="466" y2="96"/>
+          <text class="svg-note" x="466" y="112" text-anchor="middle">切点</text>
+
+          <rect class="svg-track" x="8" y="124" width="300" height="40" rx="7"/>
+          <text class="svg-note" x="158" y="149" text-anchor="middle">摘要请求 1：0.8 × reserve</text>
+          <rect class="svg-track" x="316" y="124" width="150" height="40" rx="7"/>
+          <text class="svg-note" x="391" y="149" text-anchor="middle">请求 2：0.5 × reserve</text>
+          <rect class="svg-track" x="474" y="124" width="158" height="40" rx="7"/>
+          <text class="svg-note" x="553" y="149" text-anchor="middle">不发请求</text>
+
+          <rect class="svg-seg--a" x="8" y="184" width="624" height="40" rx="7"/>
+          <text class="svg-label" x="320" y="209" text-anchor="middle">合并：历史摘要 + “Turn Context (split turn)” + 轮前缀摘要 → 保留段</text>
+        </svg>
+        <figcaption>图 3　单回合拆分。切点落在 <code>assistant</code> 上时，轮前缀单独摘要，预算只有历史摘要的 5/8；两份文本用固定标记拼接，避免模型把「正在进行」误读成「早就完成」。</figcaption>
+      </figure>
+
+      <h3>第 4 段　文件清单：为什么是「读 − 改」而不是三个并列清单</h3>
+
+      <p><code>extractFileOpsFromMessage()</code> 只认三个工具名：<code>read</code> 进 <code>read</code> 集合、<code>write</code> 进 <code>written</code>、<code>edit</code> 进 <code>edited</code>；路径取自 <code>args.path</code>。它还处理一个特殊情况：codemode 脚本里的调用不挂在 <code>assistant</code> 消息上，而是记在工具结果的 <code>nestedCalls</code> 里，所以要单独扫一遍。<span class="tag tag--ok">已核实</span></p>
+
+      <p>最后的清单只有两个：<code>&lt;read-files&gt;</code> 和 <code>&lt;modified-files&gt;</code>。一个文件如果先读后改，它只出现在 <code>modified-files</code> 里。这不是为了省字符，而是为了给模型一个明确的语义：<b>只读清单里的文件是「我看过、可以放心引用」；修改清单里的文件是「我动过、可能需要核对」。</b>一个文件同时出现在两边，模型就没有稳定预期。</p>
+
+      <p>清单只覆盖「被摘要掉的那部分」，因为 <code>fileOps</code> 是从 <code>messagesToSummarize</code> 和轮前缀里抽的；保留段里的工具调用仍然原样存在，不需要再列一遍。多次压缩时，上一份 <code>CompactionEntry.details</code> 里的清单会先继承再累加，所以第三次压缩的清单里仍能看到第一次改过的文件。<span class="tag tag--ok">已核实</span></p>
+
+      <p>注意清单不设条数上限。一个改过 300 个文件的重构任务，摘要末尾就会挂 300 行路径。这是 pi 的取舍：路径短、信息密度高，宁可多列也不丢。opencode 的做法相反，见第 5 节。</p>
+
+      <h3>第 5 段　走查：十条条目、一次拆轮</h3>
+
+      <p>把规则落到一组具体数字上，看看切点到底落在哪。假设 <code>keepRecentTokens = 20 000</code>，条目如下（token 为 <code>estimateTokens</code> 的结果）：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">下标</th>
+              <th scope="col">条目</th>
+              <th scope="col">token</th>
+              <th scope="col">倒序累计</th>
+              <th scope="col">判断</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">10<span>toolResult</span></th><td>测试输出</td><td>2 000</td><td>2 000</td><td>继续</td></tr>
+            <tr><th scope="row" class="cell-tool">9<span>assistant</span></th><td>总结 + 下一步</td><td>4 000</td><td>6 000</td><td>继续</td></tr>
+            <tr><th scope="row" class="cell-tool">8<span>user</span></th><td>「再改一下导出」</td><td>7 000</td><td>13 000</td><td>继续</td></tr>
+            <tr><th scope="row" class="cell-tool">7<span>assistant</span></th><td>解释改动</td><td>500</td><td>13 500</td><td>继续</td></tr>
+            <tr><th scope="row" class="cell-tool">6<span>toolResult</span></th><td>大文件读取</td><td>9 000</td><td>22 500</td><td><b>越线</b>，i = 6</td></tr>
+            <tr><th scope="row" class="cell-tool">5<span>assistant</span></th><td>含 toolCall</td><td>6 000</td><td>—</td><td>不参与</td></tr>
+            <tr><th scope="row" class="cell-tool">4<span>user</span></th><td>「重构导出模块」</td><td>1 000</td><td>—</td><td>轮首</td></tr>
+            <tr><th scope="row" class="cell-tool">3<span>toolResult</span></th><td>旧 grep</td><td>8 000</td><td>—</td><td>不参与</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：下标 1–2 省略。累计从下标 10 开始，只累加「可见且有 token」的条目。</p>
+
+      <p>下标 6 是工具结果，不能当切点；合法切点数组是 <code>[1, 2, 4, 5, 7, 8, 9, 10]</code>，其中不小于 6 的第一个是 7。<span class="tag tag--ok">已核实</span>于是 <code>firstKeptEntryIndex = 7</code>，保留段是 7、8、9、10，共 13 500 token——<b>比预算少 6 500</b>。</p>
+
+      <p>为什么不少留一点、正好卡在 20 000？因为 6 是工具结果，往后挪到 7 是唯一安全的选择；往前挪到 5 会把 5、6 一起带进来（22 500 + 6 000），反而更超。这条「只能往新方向找」的规则，在这里表现为「宁可少留，不拆工具组」。</p>
+
+      <p>接着判断拆轮：下标 7 是 <code>assistant</code>，不是轮首；<code>findTurnStartIndex()</code> 往回找到下标 4 的 user 消息，于是 <code>isSplitTurn = true</code>、<code>turnStartIndex = 4</code>。这一轮的前缀是 4、5、6（1 000 + 6 000 + 9 000 = 16 000），单独发一次摘要请求，预算 <code>0.5 × 16 384 = 8 192</code>。</p>
+
+      <p>注意轮前缀 16 000 已经超过它自己的 8 192 预算。摘要请求并不要求输入小于输出预算——预算是给<b>输出</b>的 <code>maxTokens</code>，不是给输入的。输入太大只会让请求更贵，不会被拒（除非超过模型窗口）。这一点在读 <code>generateTurnPrefixSummary()</code> 时容易混淆。</p>
+
+      <p>最后，文件清单从 1–3 与 4–6 里抽：假设 4 是 <code>read src/export.ts</code>、5 是 <code>edit src/export.ts</code>，那么 <code>readFiles</code> 为空（读过的被改过），<code>modifiedFiles = ["src/export.ts"]</code>。摘要末尾因此只有一段 <code>&lt;modified-files&gt;</code>。</p>
+
+      <h3>第 6 段　三条错误规则，三种可观察的故障</h3>
+
+      <p>把切点规则写错，故障不会立刻表现为「报错」，而是表现为「模型忽然变笨」。三种典型错法：</p>
+
+      <p><b>允许切在工具结果上。</b>压缩后的第一条消息是一个孤立的 <code>tool_result</code>。Anthropic 会直接拒绝请求；OpenAI 兼容端点可能接受，但模型看到「一个没有问题的答案」，后续推理会围绕它编造一个不存在的问题。前者容易发现，后者更难。</p>
+
+      <p><b>把压缩条目当切点。</b><code>firstKeptEntryId</code> 指向一条不贡献消息的条目，重建时 <code>foundFirstKept</code> 会置真，但保留段从下一条才开始。表面上「保留段少了一条」，实际是「摘要 + 从压缩条目之后开始」，中间可能缺一段关键历史。这个错误在单次压缩里看不出来，第二次压缩才会暴露。</p>
+
+      <p><b>不判断拆轮。</b>切点落在 <code>assistant</code> 上却把 <code>isSplitTurn</code> 置假，轮前缀会被并进历史摘要。模型读到的摘要里，「这轮正在做什么」和「很久以前做过什么」混在一起，最常见的表现是重复执行已完成的步骤。</p>
+
+      <p>三种故障有一个共同的检测方法：压缩后打印保留段第一条消息的 role 与 id，再对照 <code>findCutPoint()</code> 的返回值。如果 role 是 <code>tool</code>，或者 id 不等于 <code>firstKeptEntryId</code>，规则就有问题。这比读完整投影快得多。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>合法切点不含 <code>toolResult</code>，因为工具结果必须跟在自己的调用后面。</li>
+            <li>预算越线后不切在当前条，而是往新方向找最近的合法切点；尾部工具结果超预算时退到最后一条合法切点。</li>
+            <li>切点落在 <code>assistant</code> 上就叫拆轮：轮前缀单独摘要，预算 0.5 × reserve，用固定标记合并。</li>
+            <li>文件清单是「读过 − 改过」加「改过」，只覆盖被摘要的部分，跨多次压缩继承累加。</li>
+            <li>线上跑的是 <code>findProjectedCutPoint()</code>，它比导出的 <code>findCutPoint()</code> 多一条恢复省略规则。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>同一句「保留最近 20k」，四家保留的东西不一样</h2>
+
+      <p>把四家放在一张表里，会发现分歧不在数字，而在<b>累加单位</b>和<b>切点约束</b>：pi 按条目累加，omp 按整组累加；Codex 只留用户消息，所以根本不需要切点约束；opencode v1 按整轮挑，必要时才拆轮。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">累加单位</th>
+              <th scope="col">保留预算</th>
+              <th scope="col">切点约束</th>
+              <th scope="col">拆轮时怎么办</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>单条目（一条 entry 可展开多条消息）</td>
+              <td><code>keepRecentTokens</code> 20 000</td>
+              <td>排除 <code>toolResult</code> 与压缩条目</td>
+              <td>轮前缀单独摘要，0.5 × reserve</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>整组（assistant + 全部 toolResult）</td>
+              <td>同默认 20 000，按实测比值缩放</td>
+              <td>只在合法边界比较预算</td>
+              <td>沿用 pi 的双摘要结构</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>整个 user turn</td>
+              <td><code>clamp(usable × 0.25, 2k, 15k)</code></td>
+              <td>消息边界，可 <code>tail_turns</code> 限候选</td>
+              <td><code>splitTurn()</code> 在轮内找起点</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>单条用户消息</td>
+              <td>本地 20 000 / 远端 64 000</td>
+              <td>候选里没有工具结果，无需约束</td>
+              <td>无此问题（不保留工具段）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：pi 为提交 <code>b45e0eb</code>，omp 为 <code>f979f46</code>，opencode v1 为 tag <code>v1.19.0</code>，Codex 为 <code>76ed3b4</code>。四家都用 chars/4 或相近的估算，但「一条消息值多少 token」的折算对象不同：pi 算展开后的模型消息，v1 算序列化后的 JSON。</p>
+
+      <p>三个值得记住的对照：</p>
+
+      <p>一是<b>累加与切点的耦合</b>。pi 先按条目累加、再往后找合法切点，代价是保留段可能明显超过 20 000（尾部一整组工具结果都被带进来）；omp 改成按整组累加、只在合法边界比较预算，就不会出现「越线后再补一大段」的偏差。pi 的写法更简单，omp 的结果更接近预算。</p>
+
+      <p>二是<b>拆轮的触发条件</b>。pi 只要切点不是轮首就拆；v1 先尝试整轮装下，装不下才调 <code>splitTurn()</code> 在轮内从前往后找第一个「剩余部分装得下」的起点。前者保证「一定切在预算附近」，后者保证「尽量不拆轮」。两种都合理，取决于你更怕超出预算还是更怕摘要质量下降。</p>
+
+      <p>三是<b>文件清单的容量策略</b>。pi 不设上限，omp 折成目录树并截到 20 个（其余写 <code>[…N files elided…]</code>），opencode v1 的摘要模板里有 <code>Relevant Files</code> 一节但不规定条数，v2 规定最多 15 个。清单越长，模型越可能只扫一眼；清单越短，越可能漏掉关键文件。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从手算到改设计</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">条目序列（从旧到新）：U1、A1（含 toolCall）、T1、T2、A2、U2、T3、A3。每条 4 000 token，<code>keepRecentTokens = 10 000</code>。切点落在哪一条？保留段从哪开始？如果 T3 单独就有 12 000 token，结论会变吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>从 A3 往回数：4 000、8 000、12 000——第三条越线时停在哪一条？那一条是 <code>toolResult</code> 吗？</p>
+          <p>然后看 <code>cutPoints.find(candidate =&gt; candidate &gt;= i)</code>：合法切点数组里，谁是不小于它的第一个？</p>
+          <p>第二问回到那句注释：尾部工具结果自己超预算时，代码退到 <code>cutPoints[length - 1]</code>，不是退到第一条。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">某轮从 U5 开始，依次是 A5、T5、A6、T6，切点落在 A6 上。这一轮会被拆成哪几段？发几次摘要请求？如果 <code>turnStartIndex</code> 返回 -1，<code>isSplitTurn</code> 是什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>看返回结构：<code>isSplitTurn: !startsTurn &amp;&amp; turnStartIndex !== -1</code>。两个条件同时成立才算拆轮。</p>
+          <p>-1 表示「往回找到 startIndex 也没找到轮首」，通常是这一段历史本身就从半轮开始。此时没有可摘要的轮前缀，只能当普通切点处理。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你的任务是「反复改同一个文件 20 次」，每次改完都跑测试，工具输出很大。pi 这套「按条目累加 + 绝不切工具结果」会在哪里吃亏？如果只改一个常量，你会改哪个？还有什么必须一起改？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先算一笔账：一组「A + T」如果 T 很大，pi 的保留段会把整组带进来，实际保留量可能远超 20 000。切点越靠后，被摘要的内容越多，但被保留的那组工具输出又很占地方。</p>
+          <p>再看 omp 的改法：按整组累加、只在合法边界比较预算。它没有改变「不能切工具结果」这条约束，只是把「什么时候算越线」算准了。</p>
+          <p>只改常量不够。预算变小之后，切点更可能落在 <code>assistant</code> 上，拆轮会更频繁；你还需要决定轮前缀摘要的预算，以及文件清单是否要限长。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：pi · 压缩只改投影，不删历史。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

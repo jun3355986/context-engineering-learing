@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>架构对比：四种把历史变短的路线 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本章专属：只作用于 adv-03 */
+  body[data-chapter="adv-03"] .prose :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  #choose .data-table th:first-child,
+  #choose .data-table td:first-child {
+    width: 24%;
+  }
+  #choose .data-table th:nth-child(2),
+  #choose .data-table td:nth-child(2) {
+    width: 22%;
+  }
+  body[data-chapter="adv-03"] .kv {
+    grid-template-columns: 96px 1fr;
+  }
+  body[data-chapter="adv-03"] .kv dt {
+    white-space: nowrap;
+  }
+  body[data-chapter="adv-03"] .k-lvl {
+    margin-left: 10px;
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+  #fig-arch .a3-box {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+  }
+  #fig-arch .a3-box--truth {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  #fig-arch .a3-box--cut {
+    fill: var(--orange-soft);
+    stroke: var(--orange-line);
+  }
+  #fig-arch .a3-box--view {
+    fill: var(--green-soft);
+    stroke: var(--green-line);
+  }
+  #fig-arch .a3-t {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 650;
+  }
+  #fig-arch .a3-s {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 10px;
+  }
+  #fig-arch .a3-name {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  #fig-arch .a3-head {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+  }
+  #fig-arch .a3-line {
+    stroke: var(--border-strong);
+    stroke-width: 1.2;
+    fill: none;
+  }
+  #fig-arch .a3-arrow {
+    fill: var(--border-strong);
+  }
+  #fig-arch .a3-fork {
+    stroke: var(--orange);
+    stroke-width: 1.2;
+    stroke-dasharray: 4 4;
+  }
+  #fig-arch .a3-fork-t {
+    fill: var(--orange);
+    font-family: var(--font-sans);
+    font-size: 10px;
+  }
+  @media print {
+    body[data-chapter="adv-03"] .table-wrap {
+      overflow: visible;
+    }
+  }
+</style>
+</head>
+<body data-chapter="adv-03">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第三部分 · 进阶</b><span>·</span><span>第 03 章</span></p>
+      <h1>架构对比：四种把历史变短的路线</h1>
+      <p class="lede">同样是“压缩到 64k”，有的工具改的是内存里的一个数组，有的工具只在日志上追加一条记录，还有的把这件事交给了服务端。功能表上看不出差别，架构图上差别很大——差在真相存在哪、减量动了谁、失败之后从哪儿恢复。</p>
+      <ul class="meta">
+        <li>约 22 分钟</li>
+        <li>1 张主图</li>
+        <li>L3 → L4</li>
+        <li>前置：主线第 11 章</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>用「真相源 / 减量位置 / 视图重建 / 恢复单位」四个部件，说清五种上下文架构的分叉点。</li>
+          <li>给定一个团队的并发、审计、成本与离线约束，选出架构并说出它的代价。</li>
+          <li>判断一个工具属于哪种架构，或它是不是混合架构；并给出迁移顺序。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 ========== -->
+    <section id="why-arch">
+      <p class="sec-no">01 · 先别比功能<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>三份目录，三种“历史”</h2>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 同一份需求，三种目录结构</p>
+        <p>三家公司都买了同一个模型，都要求“会话能恢复、能压缩、能回退”。A 公司的会话目录里只有一个 <code>history.json</code>，越用越大，压缩后旧内容就没了。B 公司每个会话是一个树，节点带父指针，压缩只追加一个节点。C 公司只有一个追加日志，另有一份“当前可见消息”的派生文件。三家都能跑，但出故障时，能查的东西完全不一样。</p>
+      </div>
+
+      <p>大多数人比较工具时，看的是功能清单：有没有自动压缩、阈值多少、保留多少。这张清单有用，但它回答不了下面这些问题：</p>
+      <ul>
+        <li>压缩之后，原始记录还在不在？在的话，谁能读到？</li>
+        <li>同一个会话能不能同时存在两种历史（比如“审计版”和“模型版”）？</li>
+        <li>回退到第 12 轮，是删掉后面的记录，还是只让它们“不可见”？</li>
+        <li>压缩失败，是留下半截摘要，还是整段回滚？</li>
+      </ul>
+      <p>这些问题的答案，不取决于阈值，取决于<strong>架构</strong>。本章把架构拆成四个部件：</p>
+      <ol>
+        <li><strong>真相源（source of truth）</strong>：哪份数据是“真正发生过的事”，不可篡改或只追加。</li>
+        <li><strong>减量层</strong>：在哪一步、对哪份数据做缩短；改的是原文，还是只改“模型看到的视图”。</li>
+        <li><strong>视图重建（projection）</strong>：每次请求前，模型看到的消息序列是怎么算出来的。</li>
+        <li><strong>恢复单位</strong>：崩溃或回退时，从哪个粒度重来——一条消息、一个检查点，还是一整段日志。</li>
+      </ol>
+      <p class="lead-in">架构的差别，最后都会落在一句话上：模型看到的历史，是不是磁盘上那份历史。</p>
+
+      <p>为什么先讲架构，而不是先讲参数？因为参数只能在架构允许的范围内调。一个覆盖式的实现，把阈值从 90% 调到 70%，能改变的只是“多久压一次”，改变不了“压完能不能回去”；一个日志式的实现，阈值调错最多是多压一次，原文还在，可以重新投影。同样一个“保留 20k”的数字，在前者意味着“只记得这 20k”，在后者意味着“模型这次只看这 20k”。参数相同，能力不同。</p>
+
+      <div class="hf hf--think">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <div class="hf__body">
+          <p>一个工具把会话写成追加日志，但压缩时直接覆盖了内存里的消息数组。它算“日志型”还是“覆盖型”？</p>
+          <p class="small muted">提示：先问“真相源是哪一份”，再问“重启后模型看到的历史从哪里来”。两个答案可能不一致，这正是混合架构。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 02 主图 ========== -->
+    <section id="fig">
+      <p class="sec-no">02 · 一张图看分叉<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>五种架构，四个部件</h2>
+      <p>下面这张图把五种架构放在同一组坐标里。每一行是一种架构，每一列是一个部件。读图顺序固定：先看第一列（真相在哪），再看第二列（减量动了谁），最后看第四列（坏了从哪恢复）。</p>
+
+      <figure class="fig" id="fig-arch">
+        <svg viewBox="0 0 640 486" role="img" aria-labelledby="fig-arch-title fig-arch-desc">
+          <title id="fig-arch-title">五种上下文架构在真相源、减量位置、模型视图与恢复单位上的对比</title>
+          <desc id="fig-arch-desc">五行五列。行是单会话加压缩、树加投影、日志加 surface、服务端压缩、记忆增强五种架构。列是真相源、减量发生在哪、模型看到什么、恢复单位。两条橙色虚线标出两个主要分叉点：真相存在哪里，减量改的是原文还是视图。</desc>
+
+          <text class="a3-head" x="112" y="22">真相源</text>
+          <text class="a3-head" x="242" y="22">减量动了谁</text>
+          <text class="a3-head" x="372" y="22">模型看到</text>
+          <text class="a3-head" x="502" y="22">恢复单位</text>
+
+          <line class="a3-fork" x1="236" y1="30" x2="236" y2="456"/>
+          <line class="a3-fork" x1="366" y1="30" x2="366" y2="456"/>
+          <text class="a3-fork-t" x="228" y="470" text-anchor="end">分叉 ①</text>
+          <text class="a3-fork-t" x="360" y="470" text-anchor="end">分叉 ②</text>
+
+          <!-- A -->
+          <text class="a3-name" x="8" y="70">A 单会话</text>
+          <text class="a3-tool" x="8" y="85">＋压缩</text>
+          <rect class="a3-box a3-box--truth" x="112" y="48" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="120" y="68">内存消息数组</text>
+          <text class="a3-s" x="120" y="83">随对话滚动</text>
+          <rect class="a3-box a3-box--cut" x="242" y="48" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="250" y="68">摘要覆盖前段</text>
+          <text class="a3-s" x="250" y="83">原文只在存档</text>
+          <rect class="a3-box a3-box--view" x="372" y="48" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="380" y="68">摘要＋保留段</text>
+          <text class="a3-s" x="380" y="83">顺序不变</text>
+          <rect class="a3-box" x="502" y="48" width="130" height="46" rx="6"/>
+          <text class="a3-t" x="510" y="68">最新检查点</text>
+          <text class="a3-s" x="510" y="83">＋其后后缀</text>
+
+          <!-- B -->
+          <text class="a3-name" x="8" y="146">B 树</text>
+          <text class="a3-tool" x="8" y="161">＋投影</text>
+          <rect class="a3-box a3-box--truth" x="112" y="124" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="120" y="144">条目树</text>
+          <text class="a3-s" x="120" y="159">id / parentId</text>
+          <rect class="a3-box a3-box--cut" x="242" y="124" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="250" y="144">追加压缩条目</text>
+          <text class="a3-s" x="250" y="159">不删旧条目</text>
+          <rect class="a3-box a3-box--view" x="372" y="124" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="380" y="144">叶子回溯投影</text>
+          <text class="a3-s" x="380" y="159">每次请求重算</text>
+          <rect class="a3-box" x="502" y="124" width="130" height="46" rx="6"/>
+          <text class="a3-t" x="510" y="144">换叶子</text>
+          <text class="a3-s" x="510" y="159">或重算投影</text>
+
+          <!-- C -->
+          <text class="a3-name" x="8" y="222">C 日志</text>
+          <text class="a3-tool" x="8" y="237">＋surface</text>
+          <rect class="a3-box a3-box--truth" x="112" y="200" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="120" y="220">append-only 日志</text>
+          <text class="a3-s" x="120" y="235">只追加事件</text>
+          <rect class="a3-box a3-box--cut" x="242" y="200" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="250" y="220">replace 遮蔽</text>
+          <text class="a3-s" x="250" y="235">原文仍可重放</text>
+          <rect class="a3-box a3-box--view" x="372" y="200" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="380" y="220">派生视图</text>
+          <text class="a3-s" x="380" y="235">由 surface 算出</text>
+          <rect class="a3-box" x="502" y="200" width="130" height="46" rx="6"/>
+          <text class="a3-t" x="510" y="220">重放日志</text>
+          <text class="a3-s" x="510" y="235">结果确定</text>
+
+          <!-- D -->
+          <text class="a3-name" x="8" y="298">D 服务端</text>
+          <text class="a3-tool" x="8" y="313">压缩</text>
+          <rect class="a3-box a3-box--truth" x="112" y="276" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="120" y="296">服务端会话</text>
+          <text class="a3-s" x="120" y="311">客户端只见结果</text>
+          <rect class="a3-box a3-box--cut" x="242" y="276" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="250" y="296">服务端替换</text>
+          <text class="a3-s" x="250" y="311">客户端不参与</text>
+          <rect class="a3-box a3-box--view" x="372" y="276" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="380" y="296">返回的短历史</text>
+          <text class="a3-s" x="380" y="311">验收后写回</text>
+          <rect class="a3-box" x="502" y="276" width="130" height="46" rx="6"/>
+          <text class="a3-t" x="510" y="296">服务端检查点</text>
+          <text class="a3-s" x="510" y="311">＋本地存档</text>
+
+          <!-- E -->
+          <text class="a3-name" x="8" y="374">E 记忆</text>
+          <text class="a3-tool" x="8" y="389">增强型</text>
+          <rect class="a3-box a3-box--truth" x="112" y="352" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="120" y="372">日志＋记忆库</text>
+          <text class="a3-s" x="120" y="387">两份真相</text>
+          <rect class="a3-box a3-box--cut" x="242" y="352" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="250" y="372">压缩＋检索补回</text>
+          <text class="a3-s" x="250" y="387">先写后召回</text>
+          <rect class="a3-box a3-box--view" x="372" y="352" width="118" height="46" rx="6"/>
+          <text class="a3-t" x="380" y="372">摘要＋记忆条目</text>
+          <text class="a3-s" x="380" y="387">受检索预算限制</text>
+          <rect class="a3-box" x="502" y="352" width="130" height="46" rx="6"/>
+          <text class="a3-t" x="510" y="372">日志重放</text>
+          <text class="a3-s" x="510" y="387">＋记忆快照</text>
+        </svg>
+        <figcaption>图 03-1　五种架构的四个部件。分叉 ① 在“真相源”：A 把历史放在内存数组里，B 放在条目树里，C 放在追加日志里，D 放在服务端，E 多一份外部记忆。分叉 ② 在“减量动了谁”：A 直接覆盖，B、C 只追加或遮蔽，D 由服务端决定，E 还会从记忆里补回。代表工具：A Codex 本地压缩、Grok Build full-replace；B pi、Claude Code、opencode v1；C DeepSeek Harness；D Codex 远端 v2；E Grok Build memory、Codex memories。图注比图更全，缩到手机宽度时以图注为准。</figcaption>
+      </figure>
+
+      <p>读这张图时，容易犯两个错。第一个是<strong>把“日志”当成架构</strong>：几乎每个工具都写日志，日志只能说明“真相被保存了”，不能说明“模型看到的是哪一份”。第二个是<strong>把“压缩”当成一个动作</strong>：在 A 里压缩是覆盖，在 B、C 里压缩是追加一条记录，在 D 里压缩发生在你看不到的地方。同一个词，三种语义。</p>
+      <p>所以下面每讲一种架构，都按同一组问题走：数据流怎么走、上下文从哪里来、减量发生在哪、失败时怎么恢复、谁是这个架构的代表。</p>
+    </section>
+
+    <!-- ========== 03 A ========== -->
+    <section id="arch-a">
+      <p class="sec-no">03 · 架构 A<span class="k-lvl">文字＋结构 · Karpathy L1–L2</span></p>
+      <h2>单会话 + 压缩：覆盖，然后继续</h2>
+      <p>这是最容易理解、也最早出现的一种。整个会话就是一个消息数组，按轮次往后追加。到阈值时，把前段交给模型写成摘要，用摘要替换前段，后面的消息原样保留。模型下一轮看到的是“摘要 + 保留段”，顺序和原来一样。</p>
+
+      <dl class="kv">
+        <dt>数据流</dt>
+        <dd>用户输入 → 追加到数组 → 调模型 → 追加助手消息与工具结果 → 超阈值时压缩 → 数组变短 → 继续。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/mod.rs#L4321-L4376">Codex session/mod.rs#L4321-L4376</a> <span class="tag tag--ok">已核实</span></dd>
+        <dt>上下文来源</dt>
+        <dd>当前数组本身。恢复时读最新检查点，再回放它之后的后缀，不从头重放。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/rollout_reconstruction.rs#L485-L520">rollout_reconstruction.rs#L485-L520</a> <span class="tag tag--ok">已核实</span></dd>
+        <dt>减量在哪</dt>
+        <dd>压缩时一次性覆盖前段；平时靠工具输出截断做小减量。原文通常留在 rollout 或会话目录里，但不再进入模型。</dd>
+        <dt>失败恢复</dt>
+        <dd>从最新 <code>CompactedItem</code> 的替代历史起，回放后缀。压缩本身失败时，另一条路是删最旧条目再压。</dd>
+        <dt>代表</dt>
+        <dd>Codex 本地压缩、Grok Build 的 full-replace 装配、oh-my-pi 的五方法链。</dd>
+      </dl>
+
+      <p><strong>它的优点是可预测。</strong>模型看到的消息序列和数组完全一致，没有“投影”这一步，调试时只要打印数组就知道模型看到了什么。实现成本也最低：一个列表、一个阈值、一次摘要调用。</p>
+      <p><strong>它的代价是“覆盖”不可逆。</strong>压缩之后，内存里没有“压缩前的数组”了，只有存档里的原始记录。要做审计，得另写一套读存档的工具；要做“回到压缩前”，得从检查点重放。Grok Build 的做法是把摘要装配成固定七段，最近消息放在摘要之前；装配顺序固定，重放时不会因为消息位置变化而得到另一份历史。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-telemetry/src/events/compaction.rs#L30-L60">events/compaction.rs#L30-L60</a> <span class="tag tag--ok">已核实</span></p>
+      <p>还有一个隐蔽的代价：<strong>每次压缩都会让前缀缓存断一次</strong>。摘要替代了原来的开头，从摘要第一个 token 起，后面的缓存都不能复用。A 架构把“省下的输入 token”和“失效的缓存”放在同一笔账里，长任务上通常是划算的，短任务上不一定——这正是主线第 16 章要算的 <code>CPS</code>。</p>
+      <p>覆盖式实现还有一个边界要特别小心：<strong>压缩本身也可能超窗</strong>。要把待压缩的历史再发一遍给模型，输入比压缩前更大。Codex 的处理是删掉最旧条目再试，并把“删到不能再删”的情况单独兜底<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L685-L700">history.rs#L685-L700</a> <span class="tag tag--ok">已核实</span>；Claude Code 连续失败三次就熔断<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L257-L350">autoCompact.ts#L257-L350</a> <span class="tag tag--src">源码 v2.1.88</span>。这些兜底在架构上属于“A 的失败分支”，如果一开始没留位置，后面很难补。</p>
+    </section>
+
+    <!-- ========== 04 B ========== -->
+    <section id="arch-b">
+      <p class="sec-no">04 · 架构 B<span class="k-lvl">文字＋结构 · Karpathy L1–L2</span></p>
+      <h2>树 + 投影：历史只追加，视图每次重算</h2>
+      <p>B 把“历史”和“模型看到的历史”彻底分开。磁盘上是一棵条目树，每条消息是一个节点，带自己的 id 和父节点 id。压缩不删除任何节点，只追加一个“压缩条目”，里面记着摘要和“从哪个节点开始保留”。每次请求前，从当前叶子往回走，遇到压缩条目就换成摘要，再拼上保留段，得到这次要发的消息序列。</p>
+
+      <dl class="kv">
+        <dt>数据流</dt>
+        <dd>追加节点 → 需要时追加压缩条目 → 请求前由叶子回溯生成投影 → 发送。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L476-L512">pi session-manager.ts#L476-L512</a> <span class="tag tag--ok">已核实</span></dd>
+        <dt>上下文来源</dt>
+        <dd>投影的计算结果，不是某个“当前历史”字段。pi 的 <code>_installAgentRequestProjection()</code> 在每次请求前把投影塞进 <code>context.messages</code>。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/agent-session.ts#L788-L845">agent-session.ts#L788-L845</a> <span class="tag tag--ok">已核实</span></dd>
+        <dt>减量在哪</dt>
+        <dd>追加压缩条目（带 <code>firstKeptEntryId</code>）；裁剪则是追加“省略/替换”编辑，同样不改原文。</dd>
+        <dt>失败恢复</dt>
+        <dd>读回文件后按持久化断点重建，<strong>不重跑压缩</strong>；回退是移动叶子，不是删行。</dd>
+        <dt>代表</dt>
+        <dd>pi、Claude Code、opencode v1。</dd>
+      </dl>
+
+      <p>Claude Code 用的是同一种结构，但落点不同：会话按 <code>parentUuid</code> 串成链，写进 <code>&lt;sessionId&gt;.jsonl</code>；<code>/compact</code> 只替换内存历史并写入一条边界消息，原始记录仍在文件里。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/sessionStorage.ts#L1408-L1449">sessionStorage.ts#L1408-L1449</a> <span class="tag tag--src">源码 v2.1.88</span> 它的 <code>/rewind</code> 还多一层：不只截断对话，还把被跟踪的文件恢复到对应版本，最多保留 100 个快照。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/fileHistory.ts#L54-L57">fileHistory.ts#L54-L57</a> <span class="tag tag--both">两者一致</span></p>
+      <p>opencode v1 则把投影写进了主循环：每一步请求都从 SQLite 重新投影一次历史，先取“替代历史”，再插入提醒、跑插件改写、拼系统块。<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L223-L269">session/compaction.ts#L223-L269</a> <span class="tag tag--ok">已核实</span> 所以它的历史不是“内存里那份”，而是“这一步算出来的那份”。</p>
+      <p><strong>优点是可以有多种视图。</strong>同一棵树，可以给模型看压缩后的投影，给审计看完整节点；可以分叉出两条实验路径，互不影响。<strong>代价是投影逻辑复杂</strong>：切点必须落在合法边界（不能切在工具结果上）、压缩条目要能嵌套、回退后要保证投影仍然自洽。任何一个边界条件写错，模型看到的历史就会“少一条”或“多一条”。</p>
+      <p>多次压缩会把复杂度放大。第二次压缩的输入里已经有一条摘要，投影必须先决定“旧摘要还算不算数”，否则会出现“摘要里套摘要、保留段被算两遍”。pi 的做法是投影只认最新一条 <code>CompactionEntry</code>：从它的 <code>firstKeptEntryId</code> 起取保留段，再接上它之后的条目；更早的条目仍在文件里，但不参与这次投影。压了五次，投影只展开最后一次。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L476-L512">session-manager.ts#L476-L512</a> <span class="tag tag--ok">已核实</span></p>
+    </section>
+
+    <!-- ========== 05 C ========== -->
+    <section id="arch-c">
+      <p class="sec-no">05 · 架构 C<span class="k-lvl">文字＋结构 · Karpathy L1–L2</span></p>
+      <h2>日志 + surface：两份数据，一份给审计，一份给模型</h2>
+      <p>C 和 B 很像：都不删原文。差别在“视图”怎么表达。B 用树结构加压缩条目，投影时按结构遍历；C 用一条追加日志加一个<strong>可见面（surface）</strong>，每条消息事件带一个操作：要么 <code>append</code> 到尾部，要么 <code>replace(startSeq, endSeq)</code> 遮蔽一段已有节点。派生函数走一遍 surface，就得到模型可见的消息。</p>
+
+      <dl class="kv">
+        <dt>数据流</dt>
+        <dd>追加事件 → 事件带 surfaceOp → <code>deriveMessages()</code> 生成消息 → 发送。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/index.ts#L966-L1005">session/src/index.ts#L966-L1005</a> <span class="tag tag--ok">已核实</span></dd>
+        <dt>上下文来源</dt>
+        <dd>派生结果。被 <code>replace</code> 遮蔽的事件还在日志里，但不再出现在派生历史中。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/surface.ts#L49-L56">session/src/surface.ts#L49-L56</a> <span class="tag tag--ok">已核实</span></dd>
+        <dt>减量在哪</dt>
+        <dd>追加一条 <code>replace</code>，把一段旧节点遮掉；不移动、不改写旧事件。</dd>
+        <dt>失败恢复</dt>
+        <dd>重放日志，结果确定。dsh 在模型请求前、顶层工具产生副作用前、下一步前刷盘，写不成功就不继续。</dd>
+        <dt>代表</dt>
+        <dd>DeepSeek Harness（dsh）。</dd>
+      </dl>
+
+      <p>这套结构最值得学的一点是<strong>把“缓存失效”收敛到一个变量</strong>。纯尾部追加时，缓存只需增量计算；只有发生 replacement，或消息投影规则变了（<code>contentGeneration</code> 变化），才整体重建。换句话说，架构从一开始就把“哪种操作会让缓存失效”写进了类型里，而不是事后去猜。</p>
+      <p>Grok Build 的回退是同一思路的另一个方向：日志只追加，回退时在文件末尾写一条 <code>RewindMarker</code>，指向要回到的 prompt 序号；重放器读到 marker 就把累积列表截回那个位置。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/rewind.rs#L400-L410">rewind.rs#L400-L410</a> <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/storage/mod.rs#L1655-L1677">storage/mod.rs#L1655-L1677</a> <span class="tag tag--ok">已核实</span> 磁盘上没有“分支”，只有同一文件里被 marker 隔开的多段时间线。它和 dsh 的 surface 只共享“只追加 + 逻辑截断”这一点，数据结构并不相同<sup class="fn-ref"><a href="#fn-adv-03-3" id="fnref-adv-03-3">3</a></sup>。</p>
+      <p><strong>优点是审计友好。</strong>“发生过什么”和“模型看到什么”是两份可以对照的数据，出了事故能复现。<strong>代价是两套语义必须严格对齐</strong>：任何一次派生规则变更（比如消息合并、角色归一化）都会改变历史，而日志本身没变。dsh 用 <code>contentGeneration</code> 显式标出这种变化，就是为了让缓存和审计都能判断“是不是同一份视图”。</p>
+      <p>第二层代价是膨胀。只追加意味着日志只增不减，一个长期使用的项目，日志体积会远超上下文本身。清理策略要自己定：按天归档、按会话封存、保留索引删除正文。清理时还要保证“重放仍然确定”，否则删日志等于改历史。</p>
+    </section>
+
+    <!-- ========== 06 D ========== -->
+    <section id="arch-d">
+      <p class="sec-no">06 · 架构 D<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>服务端压缩：把减法交给别人做</h2>
+      <p>D 把减量搬到服务端。客户端照常发历史，服务端决定保留多少、摘要怎么写，然后返回一份“替换历史”。客户端拿到之后，用它覆盖本地历史，再写一条检查点。</p>
+      <p>Codex 的远端 v2 压缩是现成例子：保留消息共享 64,000 token 预算，单条 AgentMessage 上限 10,000，流式重试 2 次；客户端还要验收响应里的 <code>compaction_count</code> 恰好为 1，否则按致命错误处理。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L87-L91">compact_remote_v2.rs#L87-L91</a> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L458-L466">compact_remote_v2.rs#L458-L466</a> <span class="tag tag--ok">已核实</span></p>
+
+      <dl class="kv">
+        <dt>数据流</dt>
+        <dd>客户端发全量历史 → 服务端压缩 → 返回替换历史 → 客户端验收并写检查点。</dd>
+        <dt>上下文来源</dt>
+        <dd>服务端的会话状态，加上客户端每次带上来的历史。客户端不知道服务端保留了哪一段。</dd>
+        <dt>减量在哪</dt>
+        <dd>服务端。客户端只有两个旋钮：什么时候发起、收到后接不接受。</dd>
+        <dt>失败恢复</dt>
+        <dd>服务端有自己的检查点；客户端仍要写本地存档，否则换网络、换账号就接不上。</dd>
+        <dt>代表</dt>
+        <dd>Codex 远端 v2 压缩。</dd>
+      </dl>
+
+      <p><strong>优点是省实现。</strong>阈值、切点、摘要模板、重试策略都不用自己维护，模型升级时压缩策略也跟着升级。对只有一两个内部团队的场景，这是最省人力的选择。</p>
+      <p><strong>代价有三条。</strong>第一，<strong>不可观测</strong>：你只看到“进去 180k、出来 40k”，看不到中间删了哪一段；出了问题只能靠对比输入输出。<sup class="fn-ref"><a href="#fn-adv-03-1" id="fnref-adv-03-1">1</a></sup> 第二，<strong>不可移植</strong>：换模型供应商，压缩行为就换了，之前调好的阈值全部作废。第三，<strong>历史要出本机</strong>：对代码不能出内网的团队，这一条直接否决。</p>
+      <p>所以 D 很少单独出现。常见组合是“本地压缩兜底 + 服务端压缩优先”，或者“服务端压缩 + 本地完整日志”，把可观测性补回来。</p>
+      <p>什么时候值得用 D？三个条件最好同时成立：团队没有人力维护压缩链路；使用的模型只有一家、短期不换；历史里没有不能出内网的内容。少一条，就要重新算账——尤其第三条，它不是成本问题，是合规问题，不能用“省了多少 token”去换。</p>
+    </section>
+
+    <!-- ========== 07 E ========== -->
+    <section id="arch-e">
+      <p class="sec-no">07 · 架构 E<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>记忆增强：压缩之外再加一层外部存储</h2>
+      <p>E 不是替代压缩，而是在压缩前后各加一步：压缩前把值得留的事实写进记忆库，压缩后按当前任务检索，把可能被摘要丢掉的内容补回上下文。它多了一份真相源，也多了一次“写入—检索—注入”的循环。</p>
+      <p>Grok Build 开启记忆后（默认关闭）的路径是：<code>/flush</code> 触发一次摘要写进记忆，压缩前自动跑一次（阈值比压缩阈值提前 4,000 token），压缩完成后再检索一次，把相关事实补回上下文。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-memory/src/flush.rs#L18-L58">xai-grok-memory/flush.rs#L18-L58</a> <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/13-memory.md#L398-L410">13-memory.md#L398-L410</a> <span class="tag tag--ok">已核实</span> Codex 走的是后台两阶段管线：先从各线程的 rollout 提取候选，再合并成产物，读路径把记忆作为 developer 指令注入。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/memories/README.md#L1-L40">memories/README.md#L1-L40</a> <span class="tag tag--ok">已核实</span></p>
+
+      <dl class="kv">
+        <dt>数据流</dt>
+        <dd>对话 → 压缩前写入记忆 → 压缩 → 检索 → 注入下一轮 → 继续。</dd>
+        <dt>上下文来源</dt>
+        <dd>摘要 + 保留下段 + 检索到的记忆条目，三部分。</dd>
+        <dt>减量在哪</dt>
+        <dd>压缩仍然做减法；记忆做的是“补回”，两者方向相反，必须一起调。</dd>
+        <dt>失败恢复</dt>
+        <dd>日志重放保证对话可复现；记忆要额外有快照或版本，否则“上次明明记住了”无法复现。</dd>
+        <dt>代表</dt>
+        <dd>Grok Build memory（默认关闭）、Codex memories、oh-my-pi 的多后端记忆（默认关闭）。</dd>
+      </dl>
+
+      <p><strong>优点是把“跨会话”接上了。</strong>A 到 D 都只解决“这一次会话太长”，E 解决“下一次还要用上次的结论”。对长期维护同一个仓库的团队，这一层的价值比压缩本身大。</p>
+      <p><strong>代价是污染与预算。</strong>一条错误的记忆会在之后每个会话里出现，而且比一次错误的摘要更难发现——摘要错了，下一次压缩会重写；记忆错了，会一直留在库里。所以 E 架构必须配套三件事：写入白名单、过期策略、可删除。另外，记忆注入会改变前缀，缓存又要断一次；检索预算太大，等于把压缩省下的空间还回去。</p>
+    </section>
+
+    <!-- ========== 08 决策表 ========== -->
+    <section id="choose">
+      <p class="sec-no">08 · 决策表<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <h2>约束先于偏好</h2>
+      <p>选架构时，先问团队约束，再问“哪个先进”。下面这张表把常见的团队约束和五种架构对上。它不是标准答案，是一张起点表：先找到你的约束那一行，再读“代价”那一列，确认你能接受。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">团队约束</th>
+              <th scope="col">推荐</th>
+              <th scope="col">理由</th>
+              <th scope="col">你要接受的代价</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">要逐条审计与复盘</th>
+              <td>B 树 + 投影，或 C 日志 + surface</td>
+              <td>原文不删，模型视图可重算；审计读原文，模型读投影。</td>
+              <td>投影逻辑要自己维护；每次请求多一步计算；边界条件容易写错。</td>
+            </tr>
+            <tr>
+              <th scope="row">并行试两种改法，可回退</th>
+              <td>B 树 + 投影</td>
+              <td>分叉只是多一个叶子；回退是移动指针，不动历史。</td>
+              <td>会话文件会变大；分支摘要也要花一次模型调用。</td>
+            </tr>
+            <tr>
+              <th scope="row">单机、少人维护</th>
+              <td>A 单会话 + 压缩</td>
+              <td>实现最短，模型看到的就是数组，调试直观。</td>
+              <td>覆盖不可逆；审计要另写读存档的工具；每次压缩断一次缓存。</td>
+            </tr>
+            <tr>
+              <th scope="row">不自建压缩，接受黑盒</th>
+              <td>D 服务端压缩</td>
+              <td>阈值、切点、模板、重试都由服务端维护。</td>
+              <td>看不到中间过程；换供应商即失效；历史要出本机。</td>
+            </tr>
+            <tr>
+              <th scope="row">代码不能出内网，或必须离线</th>
+              <td>A / B / C，排除 D</td>
+              <td>减量在本地完成，历史不出机器。</td>
+              <td>压缩质量与模型能力绑定；升级要自己回归。</td>
+            </tr>
+            <tr>
+              <th scope="row">跨会话复用结论</th>
+              <td>E 记忆增强，叠在 A/B/C 上</td>
+              <td>压缩只保当前任务，记忆负责跨会话。</td>
+              <td>污染会长期存在；检索占预算；注入改前缀、断缓存。</td>
+            </tr>
+            <tr>
+              <th scope="row">高并发多租户，单机存不下</th>
+              <td>C 日志 + surface，或 D</td>
+              <td>日志与视图分离，便于分片与横向扩展；D 则把状态外移。</td>
+              <td>C 要自己做日志清理与一致性；D 要接受不可观测。</td>
+            </tr>
+            <tr>
+              <th scope="row">成本敏感，要调阈值</th>
+              <td>A 或 B（本地压缩）</td>
+              <td>阈值、保留量、缓存策略都在自己手里，能做 A/B。</td>
+              <td>要自己搭评测；调参成本转嫁到工程侧。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">这张表是经验判断，不是对照实验结论<sup class="fn-ref"><a href="#fn-adv-03-2" id="fnref-adv-03-2">2</a></sup>。“推荐”列假设你已经能改客户端；如果用的是现成产品，约束会反过来限制你可选的架构。</p>
+
+      <p>表里最容易被忽略的是最后两行。很多团队一开始按“先进程度”选了 B，后来发现真正卡住自己的是并发和存储，不得不把日志搬到服务端；也有团队为了省事选了 D，直到要做成本优化时才发现自己连“这次压缩删了哪段”都看不到。约束是慢变量，架构要跟着慢变量走。</p>
+      <p>举个读表的例子。一个 6 人团队，做内部代码助手，代码不能出内网，需要回退到上一版改法，但不需要跨会话记忆。读表顺序是：先命中“代码不能出内网”，排除 D；再命中“要回退”，选 B；最后确认代价——投影逻辑要自己维护，团队里至少有一个人能读懂会话文件格式。如果这一条不成立，退到 A 加“整文件快照”也能用，只是回退粒度变粗。选型不是选最好的，是选“代价付得起”的。</p>
+    </section>
+
+    <!-- ========== 09 混合与迁移 ========== -->
+    <section id="migrate">
+      <p class="sec-no">09 · 混合与迁移<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>现实里没有纯种架构</h2>
+      <p>把五种架构当成“类型”，不要当成“产品”。一个真实工具往往同时具备两三种特征：</p>
+      <ul>
+        <li><strong>Codex</strong>：内存里是 A（覆盖），磁盘上是追加 rollout 加检查点，远端点还会走 D。三种特征都在。</li>
+        <li><strong>pi</strong>：B 的树 + 投影，但请求侧还有 section 级 patch，属于“只发变化”的缓存优化。</li>
+        <li><strong>opencode v2</strong>：B 的树形条目，但检查点压成一条消息加 <code>seq</code> 边界，恢复粒度比 v1 粗。</li>
+        <li><strong>Grok Build</strong>：A 的 full-replace，加 C 的 marker 截断，再加 E 的记忆，三层叠在一起。</li>
+      </ul>
+      <p>所以判断一个工具属于哪种架构，不要看它“有没有日志”，要看三个动作：<strong>压缩时改的是原文还是视图</strong>、<strong>恢复时重放还是读检查点</strong>、<strong>模型看到的历史能不能和磁盘上的原文逐条对上</strong>。</p>
+
+      <h3 id="migrate-order">9.1 迁移顺序：先把真相固定，再动视图</h3>
+      <p>如果你现在的实现是 A，想往 B 或 C 迁，顺序不要反。一个可行的四步：</p>
+      <ol>
+        <li><strong>先把写入变成只追加</strong>：所有消息、工具结果、压缩动作都落成事件，不再覆盖。此时模型看到的仍是数组，行为不变。</li>
+        <li><strong>再加一层投影</strong>：从事件算出“模型可见消息”，先让它和原数组逐条对齐，跑一轮回归，确认没有差异。</li>
+        <li><strong>把压缩改成追加记录</strong>：压缩不再覆盖数组，而是追加一条带“保留起点”的记录，由投影负责替换。</li>
+        <li><strong>最后才加分支与回退</strong>：有了树或 surface，分叉和回退才有地方落。</li>
+      </ol>
+      <p>反过来做——先加分支、再改写入——会出现“分支指向的节点已经被覆盖”的情况，只能靠补丁修，越修越复杂。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">三种常见误配</p>
+        <p><strong>用 A 的存储做 B 的功能</strong>：只有一份数组，却想支持回退，最后只能靠“复制整个数组”当快照，存储随轮次平方增长。<strong>用 D 的黑盒做审计</strong>：服务端只回一份短历史，本地没存原文，出了事故无法复盘。<strong>用 E 补 A 的洞</strong>：摘要丢约束，就用记忆把约束再写一遍；两套写入时机不一致时，模型会同时看到“旧约束”和“新约束”。</p>
+      </div>
+    </section>
+
+    <!-- ========== 10 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">10 · 小测验<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <h2>三道题，检验你会不会看架构</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">一个工具把每条消息写成 JSONL 的一行，压缩时在文件末尾追加一条“摘要 + 保留起点”，请求前再从当前末尾往回走生成消息序列。它属于哪种架构？如果它同时还允许切换分支，又多了什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>属于 B（树 + 投影）：追加条目、请求前投影、不删原文。允许切换分支，说明条目之间有父子关系，投影要从“当前叶子”回溯——这正是 pi 的做法。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L476-L512">session-manager.ts#L476-L512</a> 如果它只是追加日志、用 replace 遮蔽，而不维护父子关系，那更接近 C。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">团队要求“代码不出内网”，但很想用服务端压缩，理由是“省实现”。你会怎么回答？给出一个折中方案。</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>“代码不出内网”和“历史发给服务端压缩”直接冲突，不能靠配置绕过。折中是：本地做压缩（A 或 B），服务端只做模型推理。如果必须内网部署，压缩链路也只能自己实现，等于回到 A/B；厂商的“服务端压缩”不会跟着模型一起搬进内网。代价是压缩质量与维护成本回到自己身上，需要配一套评测（见第 05 章）。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">有人说：“我们已经写了完整日志，所以架构是日志型，压缩丢东西也不怕。”这句话哪里不成立？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>“有日志”只说明真相被保存，不说明模型能看到它。如果压缩覆盖了内存数组，模型下一轮只看到摘要；日志再全，也要有人把它读回来。判断架构要看“模型看到的序列怎么来”，不是看“磁盘上有没有原文”。这也是 A 与 B/C 的分界。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-adv-03-1">
+          “服务端压缩不可观测”是根据客户端侧证据推断的：Codex 远端 v2 只有发起、验收 <code>compaction_count</code>、写回检查点三个动作，没有把服务端的切点或丢弃段回传给客户端；已核对 <code>compact_remote_v2.rs</code> 的响应校验与检查点写入两处，缺少服务端实现，因此不能断言“服务端一定不记录”，只能断言“客户端看不到”。
+          <a class="footnotes__back" href="#fnref-adv-03-1">↩</a>
+        </li>
+        <li id="fn-adv-03-2">
+          “约束 → 架构”的推荐是经验判断，不是对照实验：本章没有为每类团队跑过 A/B，也没有跨团队的样本。它来自各工具公开的设计取舍与源码结构，只能作为选型起点。真正选型时，应按第 05 章的方法在自己的任务集上验证。
+          <a class="footnotes__back" href="#fnref-adv-03-2">↩</a>
+        </li>
+        <li id="fn-adv-03-3">
+          “Grok Build 的 RewindMarker 与 dsh 的 surface 属同一思路”是类比，不是同构：前者在重放时按 marker 截断列表，后者用 <code>replace(startSeq,endSeq)</code> 遮蔽节点，数据结构与失效范围都不同。已分别核对 <code>rewind.rs</code> 与 <code>surface.ts</code>；此处只借用“只追加 + 逻辑截断”这一共同点。
+          <a class="footnotes__back" href="#fnref-adv-03-3">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：<a href="adv-04.html">设计你自己的上下文策略</a>。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

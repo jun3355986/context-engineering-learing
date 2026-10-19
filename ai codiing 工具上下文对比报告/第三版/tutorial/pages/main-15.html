@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>扩展点：hooks 与插件 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本章专属：只作用于 main-15 */
+  body[data-chapter="main-15"] .prose :not(pre) > code,
+  body[data-chapter="main-15"] .modal :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="main-15"] .modal .kv dd {
+    min-width: 0;
+  }
+  #fig-ext-points .ep-chain {
+    fill: var(--surface);
+    stroke: var(--border-strong);
+  }
+  #fig-ext-points .ep-rewrite {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  #fig-ext-points .ep-supply {
+    fill: var(--orange-soft);
+    stroke: var(--orange-line);
+  }
+  #fig-ext-points .ep-observe {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+    stroke-dasharray: 4 3;
+  }
+  #fig-ext-points .ep-title {
+    fill: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 650;
+  }
+  #fig-ext-points .ep-title--sm {
+    font-size: 11.5px;
+  }
+  #fig-ext-points .ep-sub--mono {
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  #fig-ext-points .ep-sub {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+  }
+  #fig-ext-points .ep-line {
+    stroke: var(--border-strong);
+    stroke-width: 1.2;
+  }
+  #fig-ext-points .ep-legend {
+    fill: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body data-chapter="main-15">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 15 章</span></p>
+      <h1>扩展点：hooks 与插件</h1>
+      <p class="lede">你不可能改每个 Agent 的源码，但几乎每个 Agent 都留了缝。缝的位置决定了你能做什么：有的缝能改提示词，有的能直接交出摘要，有的能整段换掉压缩实现。本章按“能改到多深”分三档，并说清每一档在升级时会不会悄悄坏掉。</p>
+      <ul class="meta">
+        <li>约 17 分钟</li>
+        <li>1 张扩展点图</li>
+        <li>L2 → L3</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>判断一个需求该用 hook、插件、MCP 还是规则文件，并说出各自改不到的地方。</li>
+          <li>解释 PreCompact 与 PostCompact 的能力差异，以及为什么“压缩后”通常只能观察。</li>
+          <li>为“让摘要保留接口契约”选一档自定义压缩做法，并列出它的稳定性风险。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 场景 ========== -->
+    <section id="why-ext">
+      <p class="sec-no">01 · 一个三周的尝试</p>
+      <h2>“上周还好好的”</h2>
+
+      <div class="callout callout--info">
+        <p class="callout__title">场景 · 一个字段改名，注入静默消失</p>
+        <p>一个团队希望每次压缩后都保留“对外接口契约清单”，试了三种做法：写进项目规则文件，压缩后常被摘要稀释；写一个 <code>PreCompact</code> 钩子，把清单塞进压缩指令，头两周有效；第三周升级工具版本，钩子输出字段改名，进程仍然正常退出，清单却再也没进过上下文。没有人报错，直到一次重构改坏了公开 API。</p>
+      </div>
+
+      <p>扩展点的第一个问题，不是“能不能改”，而是“改了之后，升级时会不会<strong>静默失效</strong>”。静默失效比报错更难查：进程正常、日志正常、任务也能跑完，只是某条信息不再出现。等发现时，通常已经是一次线上事故。</p>
+      <p>要判断一个扩展点靠不靠谱，先问三个问题：</p>
+      <ul>
+        <li><strong>它改的是哪一层？</strong>是提示词、摘要内容、切点算法，还是整个压缩实现？改得越深，能力越强，耦合也越重。</li>
+        <li><strong>它的契约是什么？</strong>是稳定的公开 API，还是带 <code>experimental</code> 前缀的内部接口？契约变了会不会报错？</li>
+        <li><strong>它失败时会发生什么？</strong>是阻断主流程、静默跳过，还是把错误写进上下文？</li>
+      </ul>
+      <p class="lead-in">扩展点的设计，本质是在“可塑性”和“可维护性”之间画一条线。线画得越靠里，能改的越多，升级时越容易断。</p>
+    </section>
+
+    <!-- ========== 02 Codex ========== -->
+    <section id="codex">
+      <p class="sec-no">02 · Codex 主线</p>
+      <h2>四类扩展，一个不给碰的压缩</h2>
+      <p>Codex 的扩展面不窄：hooks、skills、plugins、MCP 服务器，四类各有明确分工。但压缩是例外——它没有用户可替换的钩子，流程写死在 <code>compact.rs</code> 与 <code>compact_remote_v2.rs</code>，只能通过 provider 能力与 feature 开关影响走哪条路径。<span class="tag tag--ok">已核实</span></p>
+
+      <h3 id="codex-four">2.1 四类扩展各管什么</h3>
+      <ul>
+        <li><strong>Hooks</strong>：挂在生命周期事件上的回调，由 <code>hook_runtime</code> 负责调度，<code>hook_mcp_executor</code> 负责 MCP 侧执行。它们的附加上下文以 <code>hook_additional_context</code> 片段进入历史，而不是改写系统提示词。</li>
+        <li><strong>Skills</strong>：<code>SKILL.md</code> 加 frontmatter 的指令包，按需加载。它扩展的是“模型知道怎么做”，不是“模型能调用什么”。</li>
+        <li><strong>Plugins</strong>：把 skills、MCP、apps 打成一个包，并在提示词里说明命名前缀（<code>plugin_name:</code>）。它扩展的是“一次性安装一组能力”。</li>
+        <li><strong>MCP 服务器</strong>：工具并入统一工具表，扩展的是“模型能调用什么”。</li>
+      </ul>
+      <p>这四类里，只有 hooks 能在运行时改变上下文；skills 与 plugins 主要改变“可用能力”，MCP 改变“工具表”。理解这个分工，才不会用错扩展点：想让模型记住一条规范，写 skill 或规则；想让它能查一个内部系统，接 MCP；想在每次工具调用后补一条状态，才用 hook。</p>
+
+      <h3 id="codex-hook-boundary">2.2 hooks 的边界：能附加，不能改写</h3>
+      <p>Codex 的 hook 输出不会直接变成系统提示词，而是作为 <code>hook_additional_context</code> 片段进入历史。位置在历史里，不在前缀里。这个设计有两个好处：一，不破坏已经缓存的前缀；二，注入内容与对话一起被压缩、一起被裁剪，不会永远占着固定开销。</p>
+      <p><strong>代价</strong>是“重要性”下降。系统提示词里的规则，模型通常会当作硬约束；历史里的一条附加片段，可能被后来的工具输出淹没，也可能在压缩时被摘要掉。想让一条信息“永远在”，得放规则文件；想让一条信息“这次在”，才放 hook。</p>
+      <p>另一条边界是：hook 能阻断、能附加，但不能改压缩算法。压缩完成后，Codex 会触发一次 <code>SessionStart(Compact)</code> 钩子。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/mod.rs#L4375-L4380">session/mod.rs#L4375-L4380</a> <span class="tag tag--ok">已核实</span> 这个钩子发生在摘要已经写回历史之后，它能做的是“再补一条上下文”，不能改摘要本身。</p>
+
+      <h3 id="codex-why-closed">2.3 为什么压缩不开放</h3>
+      <p>压缩是一致性敏感的流程：切点必须落在合法边界，工具调用与结果必须成对，摘要写回后内存与检查点必须同时更新。任何一条被插件改坏，都会产生一段“模型能看见但协议不合法”的历史。开放压缩，等于把这三个不变量交给第三方维护。</p>
+      <p>Codex 的选择是“不开放”，代价是用户想保留领域信息时，只能绕路：写进压缩模板（手动 <code>/compact</code> 可替换 <code>compact_prompt</code>）、写进规则文件、或者在压缩后用 <code>SessionStart(Compact)</code> 补一条交接清单。前两条改的是“摘要要写什么”，第三条改的是“摘要之后再加什么”，都不是“改压缩算法”。</p>
+      <p>这也解释了一个常见困惑：为什么有的工具能“自定义压缩”，有的只能“自定义压缩提示词”。不是能力高低，而是<strong>愿不愿意把不变量交出去</strong>。</p>
+
+      <h3 id="codex-plugin-prefix">2.4 插件的命名前缀为什么算接口</h3>
+      <p>Codex 的插件在提示词里用 <code>plugin_name:</code> 前缀标注技能来源。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/available_plugins_instructions.rs#L33-L42">available_plugins_instructions.rs#L33-L42</a> <span class="tag tag--ok">已核实</span> 这不是装饰：它让模型能区分“项目自带的技能”和“某个插件提供的技能”，也让用户在排查时知道该卸哪个包。</p>
+      <p>前缀一旦成为约定，就不能随便改。改了，模型对技能来源的判断会变，已有提示词里写死的“用 <code>foo:</code> 开头的技能”也会失效。扩展点的稳定性，往往就藏在这些看起来像文案的细节里。</p>
+
+      <div class="hf hf--qa">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <div class="hf__body">
+          <p class="hf__q">问：既然 Codex 压缩不可替换，那写 hook 还有什么意义？</p>
+          <p class="hf__a">答：hook 的意义不在“改压缩”，而在“压缩之后补一条”。比如压缩后把当前任务的验收命令、未完成的 todo、最近改过的文件清单再注入一次。它不能阻止摘要丢信息，但能让模型在下一轮马上看到“接着做什么”。这是“追加”而不是“改写”，代价小，也不会破坏前缀。</p>
+        </div>
+      </div>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>Codex 有四类扩展：hooks（生命周期）、skills（指令包）、plugins（打包）、MCP（工具）。</li>
+            <li>hook 的附加上下文进历史，不进系统提示；能补，不能改前缀。</li>
+            <li>压缩流程写死，没有用户可替换钩子；能改的只有压缩提示词与压缩后的补充。</li>
+            <li>不开放压缩，是为了守住切点、配对、检查点三个不变量。</li>
+            <li>插件命名前缀是稳定接口的一部分，不要随手改。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 03 三档 ========== -->
+    <section id="three-levels">
+      <p class="sec-no">03 · 三档做法</p>
+      <h2>改提示词、给摘要、换实现</h2>
+      <p>把各家“自定义压缩”的能力排一下，会发现它们正好落成三档。档位越高，能改的越多；档位越高，也越依赖内部契约。</p>
+
+      <figure class="fig" id="fig-ext-points">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-ep-title fig-ep-desc">
+          <title id="fig-ep-title">请求链路旁挂的扩展点与三档能力</title>
+          <desc id="fig-ep-desc">主链路从左到右是组装、发送、工具执行、压缩、完成。上方挂可改写提示词的钩子，下方挂可直接提供摘要或只观察的钩子。蓝色表示可改写，橙色表示可提供产物，灰色虚线表示只能观察。</desc>
+          <text class="ep-legend" x="16" y="16">蓝 = 可改写提示词 / 上下文　橙 = 可提供压缩产物　灰虚线 = 只能观察</text>
+
+          <rect class="ep-chain" x="16" y="120" width="104" height="46" rx="7"/>
+          <text class="ep-title" x="68" y="141" text-anchor="middle">组装</text>
+          <text class="ep-sub" x="68" y="158" text-anchor="middle">系统 / 工具 / 规则</text>
+
+          <rect class="ep-chain" x="140" y="120" width="104" height="46" rx="7"/>
+          <text class="ep-title" x="192" y="141" text-anchor="middle">发送</text>
+          <text class="ep-sub" x="192" y="158" text-anchor="middle">一次模型请求</text>
+
+          <rect class="ep-chain" x="264" y="120" width="104" height="46" rx="7"/>
+          <text class="ep-title" x="316" y="141" text-anchor="middle">工具执行</text>
+          <text class="ep-sub" x="316" y="158" text-anchor="middle">调用 / 结果</text>
+
+          <rect class="ep-chain" x="388" y="120" width="104" height="46" rx="7"/>
+          <text class="ep-title" x="440" y="141" text-anchor="middle">压缩</text>
+          <text class="ep-sub" x="440" y="158" text-anchor="middle">切点 / 摘要 / 重建</text>
+
+          <rect class="ep-chain" x="512" y="120" width="112" height="46" rx="7"/>
+          <text class="ep-title" x="568" y="141" text-anchor="middle">完成</text>
+          <text class="ep-sub" x="568" y="158" text-anchor="middle">回复 / 结束</text>
+
+          <line class="ep-line" x1="120" y1="143" x2="136" y2="143"/>
+          <line class="ep-line" x1="244" y1="143" x2="260" y2="143"/>
+          <line class="ep-line" x1="368" y1="143" x2="384" y2="143"/>
+          <line class="ep-line" x1="492" y1="143" x2="508" y2="143"/>
+
+          <rect class="ep-rewrite" x="16" y="44" width="130" height="48" rx="7"/>
+          <text class="ep-title ep-title--sm" x="81" y="64" text-anchor="middle">UserPromptSubmit</text>
+          <text class="ep-sub" x="81" y="81" text-anchor="middle">注入附加上下文</text>
+          <line class="ep-line" x1="81" y1="92" x2="81" y2="116"/>
+
+          <rect class="ep-rewrite" x="264" y="44" width="104" height="48" rx="7"/>
+          <text class="ep-title" x="316" y="64" text-anchor="middle">PreToolUse</text>
+          <text class="ep-sub" x="316" y="81" text-anchor="middle">改参数 / 阻断</text>
+          <line class="ep-line" x1="316" y1="92" x2="316" y2="116"/>
+
+          <rect class="ep-rewrite" x="388" y="44" width="104" height="48" rx="7"/>
+          <text class="ep-title" x="440" y="64" text-anchor="middle">PreCompact</text>
+          <text class="ep-sub" x="440" y="81" text-anchor="middle">改写压缩指令</text>
+          <line class="ep-line" x1="440" y1="92" x2="440" y2="116"/>
+
+          <rect class="ep-supply" x="388" y="196" width="104" height="56" rx="7"/>
+          <text class="ep-title ep-title--sm" x="440" y="214" text-anchor="middle">session_before</text>
+          <text class="ep-sub ep-sub--mono" x="440" y="229" text-anchor="middle">_compact</text>
+          <text class="ep-sub" x="440" y="245" text-anchor="middle">给摘要 / 取消</text>
+          <line class="ep-line" x1="440" y1="196" x2="440" y2="170"/>
+
+          <rect class="ep-observe" x="512" y="196" width="112" height="56" rx="7"/>
+          <text class="ep-title" x="568" y="216" text-anchor="middle">PostCompact</text>
+          <text class="ep-sub" x="568" y="233" text-anchor="middle">/ session_compact</text>
+          <text class="ep-sub" x="568" y="247" text-anchor="middle">只看，不改</text>
+          <line class="ep-line" x1="568" y1="196" x2="568" y2="170"/>
+
+          <rect class="ep-rewrite" x="140" y="196" width="104" height="48" rx="7"/>
+          <text class="ep-title" x="192" y="216" text-anchor="middle">context</text>
+          <text class="ep-sub" x="192" y="233" text-anchor="middle">改消息投影</text>
+          <line class="ep-line" x1="192" y1="196" x2="192" y2="170"/>
+
+          <text class="ep-sub" x="16" y="284">主链路只画一次；同一条链路上，钩子可能来自不同扩展机制（hook / 插件 / 进程内扩展），能力以各自契约为准。</text>
+        </svg>
+        <figcaption>图 15-1　扩展点旁挂在请求链路上。越靠前的钩子越容易改“输入”，越靠后的钩子越容易只做“观察”。压缩前后的两个位置能力差异最大：之前可改指令或直接给摘要，之后通常只能看。</figcaption>
+      </figure>
+
+      <h3 id="level-1">3.1 第一档：只改提示词</h3>
+      <p>做法是给压缩引擎一段“额外指令”，让它知道摘要该重点保留什么。Claude Code 的 <code>PreCompact</code> 可以通过 <code>mergeHookInstructions</code> 改写自定义压缩指令；<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L411-L424">compact.ts#L411-L424</a> <span class="tag tag--src">源码 v2.1.88</span> opencode v1 的 <code>experimental.session.compacting</code> 可以注入 context 或整体替换压缩提示词；omp 的 <code>session.compacting</code> 可以返回 <code>{prompt, context, preserveData}</code>。</p>
+      <p><strong>能改</strong>：摘要要写什么、按什么顺序写、哪些字段必须出现。<strong>不能改</strong>：切点在哪、保留多少原文、摘要怎么放回历史、失败怎么重试。换句话说，它改的是“作文题”，不是“考试规则”。opencode v2 的 <code>session.context</code> 也能改系统提示与消息，但它改的是普通请求的上下文，不是压缩指令；v2 的压缩能力属于下一档。</p>
+      <p><strong>代价</strong>：最安全，也最容易被稀释。模型可能只写一半、可能把指令当成建议；提示词越长，压缩请求自己的开销越大。适合“锦上添花”的信息，不适合“缺了就错”的硬约束。</p>
+
+      <h3 id="level-2">3.2 第二档：直接给摘要</h3>
+      <p>做法是跳过摘要模型，自己产出摘要，交给引擎写回。pi 的 <code>session_before_compact</code> 可以返回 <code>{summary, firstKeptEntryId, tokensBefore, usage, details}</code>，也可以直接取消压缩；omp 的 <code>session_before_compact</code> 返回 <code>{cancel:true}</code> 或一个完整的 <code>CompactionResult</code>；opencode v2 的 <code>session.compaction</code> 返回 <code>{summary, tokens?, providerState?, metadata?}</code> 时走 <code>fromHook</code>，跳过模型调用。</p>
+      <p><strong>能改</strong>：摘要的全部内容、格式、来源（可以查数据库、可以拼模板、可以用另一个模型）。<strong>不能改</strong>：引擎仍然决定切点、保留段与重建顺序；你给的 <code>firstKeptEntryId</code> 必须落在合法边界上。</p>
+      <p><strong>代价</strong>：可控性大幅提升，但你要自己保证摘要“不漏关键约束、不与保留段重复、不超出预算”。一旦摘要质量差，压缩后的任务失败率会直接上升，而且很难归因——看起来像模型变笨，其实是摘要写坏了。适合“有明确结构、可以程序化生成”的信息，比如接口清单、迁移步骤、验收命令。</p>
+
+      <h3 id="level-3">3.3 第三档：换实现</h3>
+      <p>做法是替换整个压缩后端。dsh 的插件体系里，<code>ctx.compaction</code> 可以被替换；自定义压缩的正确姿势是继承 <code>CompactionEngine</code>，实现 <code>compactIfNeeded</code> / <code>compactNow</code> / <code>compactRegion</code>，或者只覆写 <code>summarize()</code>。这是“一切皆插件”的架构：模型适配器、工具注册表、会话日志、agent 循环都可以换。</p>
+      <p><strong>能改</strong>：切点算法、保留预算、摘要模型、重建方式、失败重试，全都能改。<strong>不能改</strong>：宿主对“压缩结果必须合法”的要求；你仍然要产出引擎能消费的结构。</p>
+      <p><strong>代价</strong>：能力最强，耦合也最重。你依赖的是内部接口，不是公开协议；升级时构造函数、抽象方法、事件顺序都可能变。Codex、Grok Build、opencode v1/v2 都没有“注册自定义压缩算法”的接缝；pi 与 omp 也只有“整段替换产物”，没有“往方法链里插一个新方法”的注册表。真正能换实现的，只有 dsh 这类把内核也插件化的架构。</p>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">怎么选档</p>
+        <p>先问“缺了这条信息会不会错”。不会错，选第一档，成本最低。会错，但信息结构固定、可以程序化生成，选第二档。只有当前两档都做不到（比如你要改切点，或者要把压缩换成检索式摘要），才考虑第三档，并准备好跟着上游升级改代码。</p>
+      </div>
+
+      <h3 id="pre-post">3.4 PreCompact 与 PostCompact：为什么一个能改，一个只能看</h3>
+      <p>“压缩前”和“压缩后”看起来只差一个时间点，能力却常常差一整档。原因在于<strong>提交点</strong>：压缩前，历史还没变，改指令、给摘要都只是影响“即将发生的写入”；压缩后，新的基线已经提交，内存、检查点、日志都指向新历史，此时再改，就是在改一个已经生效的检查点。</p>
+      <p>各家的具体差异：</p>
+      <ul>
+        <li><strong>Claude Code</strong>：<code>PreCompact</code> 可以改写自定义压缩指令，属于第一档。本快照的事件清单里没有 <code>PostCompact</code>；压缩后没有专门的钩子，要补内容只能在后续的 <code>UserPromptSubmit</code> 里注入。<span class="tag tag--src">源码 v2.1.88</span><sup class="fn-ref"><a href="#fn-main-15-1" id="fnref-main-15-1">1</a></sup></li>
+        <li><strong>Grok Build</strong>：<code>pre_compact</code> 与 <code>post_compact</code> 都有，但 trait 都是 <code>Observe</code>——只能观察，不能改压缩内容，也不能阻止压缩。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-hooks/src/event.rs#L78-L180">event.rs#L78-L180</a> <span class="tag tag--ok">已核实</span> 它把“有事件”和“能改”分开了：两个位置都给你看，但都不给你写。</li>
+        <li><strong>pi</strong>：<code>session_before_compact</code> 能取消或直接给产物（第二档）；<code>session_compact</code> 与 <code>session_compact_failed</code> 只观察。</li>
+        <li><strong>omp</strong>：<code>session_before_compact</code> 能取消或给完整结果；<code>session.compacting</code> 能改提示词、追加 <code>&lt;additional-context&gt;</code>、写 <code>preserveData</code>；<code>session_compact</code> 只观察。</li>
+        <li><strong>opencode v1</strong>：只有压缩前的 <code>experimental.session.compacting</code>（改提示词）与压缩后的 <code>Session.Compacted</code> 事件（观察）。</li>
+        <li><strong>opencode v2</strong>：<code>session.compaction</code> 可以直接给摘要（第二档）；压缩的 Started / Ended / Failed 是事件。</li>
+        <li><strong>Codex</strong>：没有 PreCompact；压缩后触发 <code>SessionStart(Compact)</code>，可以补上下文，但不能改摘要。</li>
+        <li><strong>dsh</strong>：没有同名钩子，走 <code>compaction/summary-error</code> 瀑布与 <code>CompactionEngine</code> 子类（第三档）。</li>
+      </ul>
+      <p>所以“PreCompact / PostCompact 能力差异”不是实现偷懒，而是<strong>提交点决定可写性</strong>。在提交点之前，你可以影响要写什么；在提交点之后，最安全的能力就是观察。少数工具允许在提交后追加（比如 Codex 的 <code>SessionStart(Compact)</code>），但那是“追加一条新消息”，不是“改已提交的摘要”。</p>
+
+      <h3 id="plugin-mcp">3.5 插件与 MCP 的分工</h3>
+      <p>这两个词经常被混用，但它们改的不是同一件事。</p>
+      <ul>
+        <li><strong>MCP</strong> 提供<strong>能力</strong>：工具、资源、提示模板。它让 Agent “能做一件新事”，比如查工单、读数据库。它本身不改变上下文组装；但工具定义会占 token，工具表一变，前缀缓存就可能失效。</li>
+        <li><strong>插件</strong> 提供<strong>打包与挂载</strong>：把 skills、agents、hooks、MCP 服务器打成一个可安装单元，并允许在生命周期上挂钩。它让 Agent “按某种方式工作”，比如每次提交前跑一次检查、压缩后补一条清单。</li>
+      </ul>
+      <p>判据很简单：<strong>需要模型调用一个新能力，选 MCP；需要在某个时刻改变上下文或行为，选插件 / hook；需要长期存在的知识，选规则文件或技能。</strong>三者可以叠加，但不要用错层：把“必须遵守的规范”写成 hook 注入，压缩后可能就没了；把“一次性状态”写进系统提示，会破坏缓存。</p>
+      <p>还有一层容易被忽略的成本：MCP 的工具定义会进入工具表，而工具表通常位于请求前缀。装十个 MCP 服务器、每个暴露五个工具，前缀就可能多出几千 token；更麻烦的是，服务器重连或工具列表顺序变化，会让整张表重新排序，缓存从工具块开始失效。所以“按需加载 MCP”不只是省 token，也是保前缀（第 3 章）。插件如果顺带装了一组 MCP，效果一样：能力变多，前缀变重。</p>
+
+      <h3 id="stability">3.6 稳定性风险：五种会在升级时坏掉的地方</h3>
+      <ol>
+        <li><strong>实验性命名空间</strong>：opencode v1 的 <code>experimental.chat.system.transform</code>、<code>experimental.session.compacting</code>，v2 的 <code>experimental.ws.*</code>。带这个前缀，就意味着“随时可能改”。</li>
+        <li><strong>字段与事件 schema</strong>：Claude Code 的 hook 输出依赖 <code>hookSpecificOutput.additionalContext</code> 等字段；字段改名不会让进程崩溃，只会让注入静默消失。这就是开篇场景里发生的事。</li>
+        <li><strong>能力语义变化</strong>：今天 <code>Observe</code> 只能看，明天可能支持改写；反过来也可能。依赖“它不能改”来做安全假设，同样有风险。</li>
+        <li><strong>延迟与超时</strong>：hook 是同步执行的，跑得慢就会拖住主循环。一个每次工具调用都查网络的 hook，会把延迟从毫秒级拉到秒级。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-15-2" id="fnref-main-15-2">2</a></sup></li>
+        <li><strong>缓存副作用</strong>：在 <code>UserPromptSubmit</code> 里每轮注入 2k 上下文，看起来只是“多加一点”，实际上每轮都在改变历史尾部，可能让上一轮的缓存尾部失效，也可能让压缩更早触发。</li>
+      </ol>
+      <p>降低风险的办法不是“不用扩展”，而是<strong>把扩展当成外部依赖来管</strong>：给它写契约测试（断言注入真的进了上下文）、给它加超时与降级（hook 失败时不阻断主流程）、给它记录版本（升级前后各跑一次同一任务）。这些做法会在第 16 章变成可观测指标。</p>
+      <p>契约测试可以很小：准备一个固定任务，跑完后断言“上下文里出现了某个只有 hook 才会写入的标记字符串”，再断言“压缩后这个标记仍在”。这条测试不关心模型答得好不好，只关心扩展有没有生效。它能在升级当天抓到字段改名、事件未触发、注入被去重这三类问题，成本只有几分钟。</p>
+    </section>
+
+    <!-- ========== 04 工具弹窗 ========== -->
+    <section id="tools">
+      <p class="sec-no">04 · 七个工具</p>
+      <h2>同一道缝，七种开法</h2>
+      <p>Codex 已经在主线里拆过。剩下七个工具可以按“缝开在哪”分三派：<strong>事件钩子</strong>（Claude Code、Grok Build）、<strong>进程内扩展</strong>（pi、omp、opencode v1/v2）、<strong>全插件内核</strong>（dsh）。第一派最容易接入，第三派能改得最深。</p>
+      <div class="tool-grid">
+        <button class="tool-btn" type="button" data-modal="claude-code">
+          <span class="tool-btn__name">Claude Code</span>
+          <span class="tool-btn__id">claude-code</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="pi">
+          <span class="tool-btn__name">pi</span>
+          <span class="tool-btn__id">pi</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="omp">
+          <span class="tool-btn__name">oh-my-pi</span>
+          <span class="tool-btn__id">omp</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v1">
+          <span class="tool-btn__name">opencode v1</span>
+          <span class="tool-btn__id">opencode-v1</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v2">
+          <span class="tool-btn__name">opencode v2</span>
+          <span class="tool-btn__id">opencode-v2</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="grok-build">
+          <span class="tool-btn__name">Grok Build</span>
+          <span class="tool-btn__id">grok-build</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="dsh">
+          <span class="tool-btn__name">DeepSeek Harness</span>
+          <span class="tool-btn__id">dsh</span>
+        </button>
+      </div>
+      <p class="small muted">键盘：<kbd>Esc</kbd> 关闭；<kbd>Tab</kbd> 在弹窗内循环。Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本。</p>
+    </section>
+
+    <!-- ========== 05 对比表 ========== -->
+    <section id="matrix">
+      <p class="sec-no">05 · 八工具对比</p>
+      <h2>把“能改到多深”排成一张表</h2>
+      <p>先看第二列“扩展机制”：它决定你以什么形式接入。第三列是压缩相关钩子，第四列是能力深度，最后一列是升级时最可能坏的地方。读表时把第三、四列连起来看：同样是“有压缩钩子”，有的只能改提示词，有的能直接给摘要。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">扩展机制</th>
+              <th scope="col">压缩相关钩子</th>
+              <th scope="col">能改到多深</th>
+              <th scope="col">稳定性风险</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex<span>codex</span></th>
+              <td>hooks / skills / plugins / MCP 四类。<span class="tag tag--ok">已核实</span></td>
+              <td>无 PreCompact；压缩后 <code>SessionStart(Compact)</code> 可补上下文。<span class="tag tag--ok">已核实</span></td>
+              <td>只能附加，不能改摘要、切点或保留预算。<span class="tag tag--ok">已核实</span></td>
+              <td>hook 事件与片段字段；插件命名前缀。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>多事件 hooks（工具、提示、会话、子代理、压缩）。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td><code>PreCompact</code> 可改写压缩指令；本快照无 PostCompact。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>第一档：改提示词；不能给摘要或换切点。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>退出码语义、<code>additionalContext</code> 字段、事件清单。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>进程内 TypeScript 扩展，注册工具、命令、provider、事件。<span class="tag tag--ok">已核实</span></td>
+              <td><code>session_before_compact</code> 可取消或给完整产物；<code>session_compact</code> 只观察。<span class="tag tag--ok">已核实</span></td>
+              <td>第二档：可给摘要与保留起点；不能改阈值常量。<span class="tag tag--ok">已核实</span></td>
+              <td>扩展 API 跟随内核版本；没有方法注册表。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>extensions + hooks 两层；事件覆盖上下文、工具、压缩、分支。<span class="tag tag--ok">已核实</span></td>
+              <td><code>session.compacting</code> 改提示词 / 上下文 / <code>preserveData</code>；<code>session_before_compact</code> 给完整结果。<span class="tag tag--ok">已核实</span></td>
+              <td>第二档：可改 <code>methodOrder</code>、可整段替换产物；不能注册新方法。<span class="tag tag--ok">已核实</span></td>
+              <td>fork 与 pi 分叉后的 API 差异；<code>preserveData</code> 的跨版本兼容。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>插件 <code>Hooks</code>：消息、参数、system、messages、工具、压缩。<span class="tag tag--ok">已核实</span></td>
+              <td><code>experimental.session.compacting</code> 注入上下文或替换提示词。<span class="tag tag--ok">已核实</span></td>
+              <td>第一档：改提示词；<code>autocontinue</code> 可控制压缩后是否续跑。<span class="tag tag--ok">已核实</span></td>
+              <td><code>experimental.*</code> 命名空间；system 合并规则。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>会话钩子：prompt、context、compaction、generate、title、retry 等。<span class="tag tag--ok">已核实</span></td>
+              <td><code>session.compaction</code> 可直接给摘要，走 <code>fromHook</code> 跳过模型。<span class="tag tag--ok">已核实</span></td>
+              <td>第二档：给摘要；不能改切点算法；新增工具定义会被丢弃。<span class="tag tag--ok">已核实</span></td>
+              <td>beta 线字段变化；钩子返回结构的校验。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>15 个 hook 事件 + plugins / marketplace + workflows。<span class="tag tag--ok">已核实</span></td>
+              <td><code>pre_compact</code> / <code>post_compact</code> 都是 <code>Observe</code>，只能看。<span class="tag tag--ok">已核实</span></td>
+              <td>压缩不可定制；<code>user_prompt_submit</code> 可注入上下文。<span class="tag tag--ok">已核实</span></td>
+              <td>hook trait 从 Observe 变为可写的可能性；插件信任模型。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>Cordis 全插件：profile + bundle + patch；一切皆可替换。<span class="tag tag--ok">已核实</span></td>
+              <td>无同名钩子；<code>ctx.compaction</code> 换后端，或继承 <code>CompactionEngine</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>第三档：可换切点、预算、摘要、重建；hooks 只是兼容层。<span class="tag tag--ok">已核实</span></td>
+              <td>内部抽象方法签名；profile / patch 顺序；hooks 仅 command 型。<span class="tag tag--guess">推断</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗与事实卡片里。</p>
+    </section>
+
+    <!-- ========== 06 取舍 ========== -->
+    <section id="tradeoffs">
+      <p class="sec-no">06 · 设计取舍</p>
+      <h2>为什么有人只给看，有人给整段换</h2>
+      <p>扩展点的每一次“开放”，都是在把某一层不变量交出去。下面五组取舍，对应五种交法。</p>
+
+      <h3>取舍一：开放提示词，还是开放产物，还是开放实现</h3>
+      <p><strong>提示词派</strong>：Claude Code、opencode v1 只让扩展改压缩指令。引擎仍控制切点、预算、重建，摘要质量由模型负责。<strong>产物派</strong>：pi、omp、opencode v2 允许扩展直接交出摘要，引擎只负责写回。<strong>实现派</strong>：dsh 允许替换整个压缩后端。</p>
+      <p><strong>代价</strong>：提示词派最安全，扩展写坏了最多是“摘要差一点”，不会产生非法历史；但能力有限，改不了“保留谁”。产物派可控性强，扩展要自己对摘要质量负责，写坏了会让压缩后的任务失败率上升；实现派能力最强，扩展要维护切点、配对、检查点，升级时最先坏。开放得越深，责任转移得越多。</p>
+
+      <h3>取舍二：给“压缩前”写权限，还是只给“压缩后”观察</h3>
+      <p><strong>前写派</strong>：Claude Code 的 <code>PreCompact</code>、pi / omp 的 <code>session_before_compact</code>、opencode v2 的 <code>session.compaction</code>。它们都发生在提交点之前，改的是“即将写入的内容”。<strong>后看派</strong>：Grok 的 <code>post_compact</code>、pi / omp 的 <code>session_compact</code>、Codex 的 <code>SessionStart(Compact)</code>（只能追加）。</p>
+      <p><strong>代价</strong>：前写能力强，但要求扩展理解压缩的约束（切点合法、配对完整、预算不超）；写坏了，错误会被写进新基线，后面很难修。后看最安全，但只能做事后补救，比如记录指标、追加一条提醒、触发一次外部索引；它救不回已经丢掉的细节。这也是为什么大多数工具把“写”放在前、“看”放在后。</p>
+
+      <h3>取舍三：进程内扩展，还是外部命令</h3>
+      <p><strong>进程内</strong>：pi、omp、opencode 的扩展是同一进程里的模块，能直接拿到消息对象、工具定义、压缩准备数据，改起来最细；Grok 的 hooks 也是进程内事件回调。<strong>外部命令</strong>：Claude Code 的 hooks 是外部命令或 HTTP 端点，通过 stdin/stdout 与退出码通信。</p>
+      <p><strong>代价</strong>：进程内延迟低、能力深，但扩展与内核同生共死，内核升级可能直接编译失败；外部命令隔离好、语言无关、可以独立部署，但每次调用都有进程启动开销，能力受限于协议（只能给 JSON、退出码、附加字段）。一个需要读内部对象的需求，外部命令做不到；一个需要独立团队维护的需求，进程内扩展不合适。</p>
+
+      <h3>取舍四：插件，还是 MCP</h3>
+      <p><strong>MCP</strong> 扩展“能调用什么”：工具、资源、提示模板。它不改上下文组装，但工具定义会进工具表，影响 token 与缓存。<strong>插件</strong> 扩展“怎么工作”：打包 skills / agents / hooks / MCP，能在生命周期上挂行为。</p>
+      <p><strong>代价</strong>：MCP 接入简单、跨客户端通用，但它只能提供能力，不能保证“什么时候被调用”；工具一多，工具表膨胀，前缀缓存更容易失效。插件能力强，能挂压缩前后、能注入上下文，但它是工具私有的，换一个 Agent 就要重写；插件还能带来供应链风险，安装前要确认来源。判据还是那句：能力用 MCP，时机用插件，长期知识用规则或技能。</p>
+
+      <h3>取舍五：稳定公开 API，还是 experimental 快车道</h3>
+      <p><strong>稳定派</strong>：dsh 的 <code>ctx.compaction</code>、pi 的 <code>session_before_compact</code> 都是相对明确的扩展契约，文档与类型都在。<strong>快车道</strong>：opencode v1/v2 把大量钩子放在 <code>experimental.*</code> 下，能改得多，但不承诺兼容。</p>
+      <p><strong>代价</strong>：稳定 API 升级慢，有些新能力要等很久才开放；experimental 能第一时间用上新能力，但升级时可能改名、改字段、改语义，而且失败往往是静默的。选择快车道，就要接受“每次升级都跑一遍契约测试”的成本；不接受这个成本，就不要用 experimental。</p>
+
+      <p>还有一组横切的取舍：<strong>全插件内核，还是硬编码核心</strong>。dsh 把模型适配器、工具注册表、会话日志、agent 循环都做成插件，任何一层都能换，代价是没有“特权核心”，排查问题要沿着插件树走；Codex 把压缩写死在核心里，行为一致、容易审计，代价是用户只能绕路。两者没有高下，取决于你更怕“改不动”还是更怕“不一致”。</p>
+    </section>
+
+    <!-- ========== 07 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">07 · 小测验</p>
+      <h2>三道题，检验你会不会选缝</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">PreCompact 通常能改什么、不能改什么？为什么 PostCompact 多半只能观察？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>PreCompact 在提交点之前，能改“即将写入的内容”，比如压缩指令、要重点保留的字段，有的实现还能直接给摘要；它不能改引擎的切点、保留预算和重建顺序。PostCompact 在提交点之后，新基线已经写进内存和检查点，此时改历史等于改一个已生效的检查点，所以大多数实现只给观察（Grok 的 pre/post 都是 <code>Observe</code>）。见<a href="#pre-post">3.4 PreCompact 与 PostCompact</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">你只想让摘要稳定保留“对外接口契约清单”，不需要改切点或预算。选哪一档？为什么？如果清单必须逐字准确、不能由模型改写呢？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>第一档就够：用 PreCompact / <code>session.compacting</code> 把“必须保留接口契约，按文件与符号列出”写进压缩指令，成本最低，也不碰引擎不变量。如果清单必须逐字准确，第一档不够——模型可能改写或漏项，应选第二档，直接给出摘要（pi / omp / opencode v2 都支持跳过模型），由程序生成清单并放进摘要。只有当你还要改“保留哪些原文”“切点在哪”时，才需要第三档。见<a href="#level-1">3.1</a>、<a href="#level-2">3.2</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">一个团队在每次 UserPromptSubmit 注入 2k 的项目状态。两周后他们发现缓存命中率下降、首 token 延迟上升、压缩触发更早。请给出诊断和两个替代方案。</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>诊断：每轮都在历史尾部追加 2k，输入持续变大，压缩提前；如果注入位置影响到上一轮的缓存尾部，命中率也会下降。两个替代：一，把稳定部分移出 hook，写进规则文件或技能，只在变化时注入差分；二，把“必须每轮都在”的少量状态压缩到几百 token，并放在固定位置，避免每轮改变前缀。若只是偶尔需要，改成按需读取（工具或技能），不要每轮注入。见<a href="#stability">3.6 稳定性风险</a>与第 13 章的前缀三原则。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-main-15-1">
+          “本快照没有 PostCompact”是反证式结论：已逐条核对 <code>hooks.ts</code> 的事件枚举与 <code>hooksConfigManager.ts</code> 的事件说明，未找到 <code>PostCompact</code>；官方文档可能列出本快照之外的事件，且新版本可能新增。因此正文按“本快照的事件清单里没有”表述，不推断线上版本一定没有。
+          <a class="footnotes__back" href="#fnref-main-15-1">↩</a>
+        </li>
+        <li id="fn-main-15-2">
+          “hook 同步执行会拖住主循环”是根据 hooks 的调用方式推断的：Claude Code 的 hooks 通过子进程执行并等待结果，源码里能看到超时与异步选项，但没有找到“所有事件都在关键路径上串行”的统一说明。已检查 <code>hooks.ts</code> 的执行与超时分支，缺少端到端延迟测量。结论按“可能拖慢、需自行加超时”表述。
+          <a class="footnotes__back" href="#fnref-main-15-2">↩</a>
+        </li>
+        <li id="fn-main-15-3">
+          dsh 的 hooks 兼容层“只支持 command 型”来自 <code>hook-protocol</code> 包 README，事实卡片把该节标为【推断】；已核对其支持矩阵，<code>http</code> / <code>mcp_tool</code> / <code>prompt</code> / <code>agent</code> 会被跳过并告警。缺少运行时验证，因此正文按“兼容层能力有限”表述，不把它当作所有 dsh 版本的统一行为。
+          <a class="footnotes__back" href="#fnref-main-15-3">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：<a href="main-16.html">评估与可观测：指标与 A/B</a>。</p>
+
+  </article>
+</main>
+
+<!-- ========== 弹窗 ========== -->
+<div class="modal" id="modal-claude-code" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">hooks 是外部命令或 HTTP 端点在生命周期事件上的回调。与上下文最相关的是 <code>UserPromptSubmit</code>（<code>additionalContext</code> 必填，会注入）、<code>PreToolUse</code> / <code>PostToolUse</code>（退出码 2 把 stderr 给模型并阻断）、<code>SessionStart</code>（可给 <code>initialUserMessage</code> 与 <code>watchPaths</code>）和 <code>PreCompact</code>（可改写压缩指令）。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>退出码 0 / 2 / 其他；普通 stdout 默认不进上下文，只有 <code>hookSpecificOutput.additionalContext</code> 进；<code>PreCompact</code> 通过 <code>mergeHookInstructions</code> 合并指令；支持 async hook。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“扩展”限制在进程外，用退出码和 JSON 做契约，语言无关、隔离好。代价是能力受协议限制，且字段改名时容易静默失效。压缩前能改指令，压缩后只能通过会话启动类钩子补上下文。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/hooks.ts#L400-L451">hooks.ts#L400-L451</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L411-L424">compact.ts#L411-L424</a></dd>
+      </dl>
+      <p class="modal__note">官方文档“hook stdout 默认不进上下文、只有 additionalContext 进”与源码一致。<span class="tag tag--both">两者一致</span> 事件清单与官方文档可能存在版本差，以其为准时需注明版本。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pi" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · pi</p>
+        <h2 class="modal__title" id="modal-pi-title">pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">pi 的扩展是进程内 TypeScript 模块，工厂函数可以注册工具、命令、provider、渲染器和事件处理器。与上下文相关的接缝有 <code>context</code>、<code>context_with_system</code>、<code>before_provider_request</code>、<code>before_agent_start</code>，以及最重的 <code>session_before_compact</code>。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd><code>session_before_compact</code> 的 <code>reason</code> 为 <code>manual</code> / <code>threshold</code> / <code>overflow</code>；可返回 <code>{summary, firstKeptEntryId, tokensBefore, usage, details}</code> 或取消；<code>preparation</code> 暴露待摘要消息、轮前缀、<code>isSplitTurn</code>、前一次摘要、文件操作。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把压缩产物完全交给扩展，扩展可以换模型、换格式、甚至整段替换摘要算法。代价是没有“注册自定义压缩方法”的注册表，只能整段替换；阈值来自 settings，扩展改不了内置常量。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/extensions/types.ts#L770-L872">extensions/types.ts#L770-L872</a>、<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/agent-session.ts#L2820-L2842">agent-session.ts#L2820-L2842</a></dd>
+      </dl>
+      <p class="modal__note"><code>session_compact</code> 与 <code>session_compact_failed</code> 只用于观测；分支切换、fork、建树也各有 before 钩子，可以取消或自定义摘要。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-omp" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · omp</p>
+        <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">omp 有两层扩展：<code>extensions</code>（工具、命令、provider、UI）与 <code>hooks</code>（事件处理器）。压缩相关的能力分三处：<code>session.compacting</code> 改提示词 / 上下文 / <code>preserveData</code>，<code>session_before_compact</code> 取消或给完整结果，<code>session_compact</code> 只观察。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd><code>session.compacting</code> 返回 <code>{prompt?, context?, preserveData?}</code>；<code>session_before_compact</code> 返回 <code>{cancel:true}</code> 或 <code>{compaction: CompactionResult}</code>；<code>compaction.methodOrder</code> 可增删排序方法。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>既给“改提示词”的轻量入口，也给“整段替换”的重入口，还能调整方法链顺序。<code>preserveData</code> 会存进 <code>CompactionEntry</code> 并跨重建保留，适合放扩展自己的索引。代价是没有“注册一个全新压缩方法”的 API，方法集是枚举。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/extensibility/hooks/types.ts#L472-L501">hooks/types.ts#L472-L501</a>、<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/docs/compaction.md#L453-L491">compaction.md#L453-L491</a></dd>
+      </dl>
+      <p class="modal__note">omp 是 pi 的 fork，钩子名字与返回结构有差异，不能把 pi 的 <code>session_before_compact</code> 签名直接套过来。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v1" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">插件接口 <code>Hooks</code> 覆盖上下文链路的多个位置：<code>chat.message</code> 改新用户消息、<code>chat.params</code> / <code>chat.headers</code> 改请求参数、<code>experimental.chat.system.transform</code> 改 system 数组、<code>experimental.chat.messages.transform</code> 改投影后的消息、<code>experimental.session.compacting</code> 改压缩提示词、<code>tool.execute.before/after</code> 改工具输入输出。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd><code>experimental.compaction.autocontinue.enabled</code> 默认 <code>true</code>；<code>experimental.session.compacting.prompt</code> 为 undefined 时用内置模板，设置后整体替换；system 数组超过 2 段且首段未变时会合并。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>钩子覆盖“消息、系统提示、压缩提示、工具”四个层面，足够做领域定制；但没有自定义压缩算法的入口，选尾、裁剪、重建仍是内建逻辑。代价是实验性命名空间多，升级时要跟着改。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/plugin/src/index.ts#L222-L335">plugin/src/index.ts#L222-L335</a>、<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L373-L391">session/compaction.ts#L373-L391</a></dd>
+      </dl>
+      <p class="modal__note">压缩后可自动追加 synthetic continue，由 <code>autocontinue</code> 控制；这个开关会影响“压缩后是否继续跑”，但不改变摘要内容。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v2" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">会话钩子 <code>SessionHooks</code> 覆盖 prompt、context、compaction、generate、title、model.request、http、ws、retry。其中 <code>session.compaction</code> 可以直接返回摘要，走 <code>fromHook</code> 跳过模型调用——这是 v2 相对 v1 最大的一处升级。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd><code>session.compaction</code> 返回 <code>{summary, tokens?, providerState?, metadata?}</code> 时跳过模型；<code>session.context</code> 可改 system / messages / tools，但“凭空新增的工具定义”会被丢弃；<code>session.retry.decision</code> 可改重试与延迟。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“给摘要”做成正式能力，适合程序化生成交接文档；同时限制工具定义只能在已有身份上改，防止插件偷偷扩权。代价是仍没有切点算法钩子，压缩的选尾与重建不可改。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/plugin/src/effect/session.ts#L138-L151">plugin/effect/session.ts#L138-L151</a>、<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L594-L608">session/compaction.ts#L594-L608</a></dd>
+      </dl>
+      <p class="modal__note">v2 是 beta（<code>v2.0.29</code>），钩子返回结构与字段可能在下个版本调整；上线前要加 schema 校验。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-grok-build" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">三层扩展：hooks（兼容 Claude Code / Cursor 风格，15 个事件）、plugins / marketplace（贡献技能、agent、hooks、MCP 服务器）、workflows（<code>.grok/workflows/*.rhai</code>，可编排子代理）。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd><code>pre_compact</code> 与 <code>post_compact</code> 的 trait 都是 <code>Observe</code>，不能改内容、不能阻止压缩；<code>user_prompt_submit</code> 可注入上下文；workflow <code>agent_budget</code> 默认 128、并发默认 32。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“观察”和“改写”严格分开：压缩前后都给你看，但不给你写，避免扩展破坏 replace 语义。代价是想保留领域信息只能靠 <code>user_prompt_submit</code> 或自定义模板，不能改摘要本身。没有“注册自定义 compactor”的接缝。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-hooks/src/event.rs#L78-L180">event.rs#L78-L180</a>、<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-agent/src/compaction.rs#L1-L34">compaction.rs#L1-L34</a></dd>
+      </dl>
+      <p class="modal__note">“无自定义压缩接缝”是源码未找到，事实卡片标【推断】；插件还受信任模型约束，安装前要确认来源。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-dsh" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">“一切皆插件”：模型适配器、工具注册表、会话日志、agent 循环都是可替换插件，注册即副作用，卸载自动回滚。组合单位是 profile + bundle + 有序 patch，<code>dsh --profile web --dump-config</code> 能看到实际插件树。</p>
+      <dl class="kv">
+        <dt>关键参数</dt>
+        <dd>可替换接缝：<code>ctx.compaction</code>、<code>ctx.toolResultPruner</code>、<code>ctx.systemPrompt</code>、<code>ctx.skills</code>、<code>ctx.subagents</code>；压缩可继承 <code>CompactionEngine</code> 实现三个抽象方法，或只覆写 <code>summarize()</code>；hooks 兼容层只支持 command 型。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把压缩后端也变成插件，能换切点、预算、摘要模型；代价是依赖内部抽象方法，升级时构造函数与事件顺序可能变。hooks 只是兼容层，不是原生扩展，能力限于阻断、附加上下文、要求停止。</dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/compaction.md#L1-L5">compaction.md#L1-L5</a>、<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/src/index.ts#L237-L257">compaction-basic/src/index.ts#L237-L257</a></dd>
+      </dl>
+      <p class="modal__note">hooks 兼容层的能力边界来自 <code>hook-protocol</code> README，卡片标【推断】<sup class="fn-ref"><a href="#fn-main-15-3" id="fnref-main-15-3">3</a></sup>；<code>http</code> / <code>mcp_tool</code> / <code>prompt</code> / <code>agent</code> 类型会被跳过并告警。</p>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

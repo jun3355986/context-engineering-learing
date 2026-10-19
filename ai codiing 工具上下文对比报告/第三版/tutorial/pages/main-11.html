@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>会话时间线：恢复、分叉与回退 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 演示专属样式：只作用于 #demo-session-tree */
+  body[data-chapter="main-11"] .prose :not(pre) > code,
+  body[data-chapter="main-11"] .modal :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="main-11"] .modal .kv dd { min-width: 0; }
+
+  #demo-session-tree .stree-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  #demo-session-tree .stree-kpi {
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-2);
+  }
+  #demo-session-tree .stree-kpi__k {
+    display: block;
+    color: var(--muted);
+    font-size: 9.5px;
+  }
+  #demo-session-tree .stree-kpi__v {
+    display: block;
+    margin-top: 1px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  #demo-session-tree .stree-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
+  #demo-session-tree .stree-wrap {
+    max-height: 780px;
+    min-width: 0;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg-soft);
+  }
+  #demo-session-tree .stree {
+    position: relative;
+    padding: 10px 8px 6px;
+  }
+  #demo-session-tree .stree svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+  }
+  #demo-session-tree .stree-edge {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    opacity: 0.45;
+  }
+  #demo-session-tree .stree-edge--a { stroke: var(--teal); }
+  #demo-session-tree .stree-edge--b { stroke: var(--orange); }
+  #demo-session-tree .stree-edge--sum { stroke: var(--purple); stroke-dasharray: 3 3; }
+  #demo-session-tree .stree-edge--gone { stroke: var(--border-strong); stroke-dasharray: 3 3; opacity: 0.8; }
+  #demo-session-tree .stree-node {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: auto;
+    margin: 0 0 9px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 1.45;
+    text-align: left;
+    cursor: pointer;
+  }
+  #demo-session-tree .stree-node:hover { border-color: var(--accent); }
+  #demo-session-tree .stree-node.is-selected {
+    box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 3px var(--accent);
+  }
+  #demo-session-tree .stree-node--a { border-left-color: var(--teal); }
+  #demo-session-tree .stree-node--b { border-left-color: var(--orange); }
+  #demo-session-tree .stree-node--sum {
+    border: 1px dashed var(--purple-line);
+    border-left: 3px dashed var(--purple);
+    background: var(--purple-soft);
+  }
+  #demo-session-tree .stree-node--head {
+    border-color: var(--green);
+    background: var(--green-soft);
+  }
+  #demo-session-tree .stree-node.is-bypassed {
+    border-style: dashed;
+    border-left-style: dashed;
+    background: var(--surface);
+    opacity: 0.55;
+  }
+  #demo-session-tree .stree-node.is-offpath { opacity: 0.68; }
+  #demo-session-tree .stree-node__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: baseline;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: 9px;
+    font-family: var(--font-mono);
+  }
+  #demo-session-tree .stree-node__kind {
+    padding: 0 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: 9px;
+  }
+  #demo-session-tree .stree-node__lane {
+    margin-left: auto;
+    color: var(--muted);
+    font-family: inherit;
+  }
+  #demo-session-tree .stree-node__text {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+  #demo-session-tree .stree-node__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+  }
+  #demo-session-tree .stree-node__flag {
+    color: var(--orange);
+    font-family: inherit;
+  }
+  #demo-session-tree .stree-node__flag--head { color: var(--green); }
+  #demo-session-tree .stree-node--lane-1 { margin-left: 20px; }
+  #demo-session-tree .stree-node--lane-2 { margin-left: 40px; }
+  #demo-session-tree .stree-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 9.5px;
+  }
+  #demo-session-tree .stree-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 4px;
+    border-radius: 2px;
+    background: var(--border-strong);
+    vertical-align: middle;
+  }
+  #demo-session-tree .stree-dot--head { background: var(--green); }
+  #demo-session-tree .stree-dot--gone { background: var(--surface); border: 1px dashed var(--border-strong); }
+  #demo-session-tree .stree-side {
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-2);
+  }
+  #demo-session-tree .stree-side__title {
+    margin: 0 0 6px;
+    color: var(--text-2);
+    font-size: 11.5px;
+    font-weight: 650;
+  }
+  #demo-session-tree .stree-visible {
+    max-height: 300px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+  }
+  #demo-session-tree .stree-visible li {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 40px;
+    gap: 5px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  #demo-session-tree .stree-visible li:last-child { border-bottom: 0; }
+  #demo-session-tree .stree-visible b {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 400;
+  }
+  #demo-session-tree .stree-visible span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #demo-session-tree .stree-visible em {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    font-style: normal;
+    text-align: right;
+  }
+  #demo-session-tree .stree-side__foot {
+    margin: 7px 0 0;
+    color: var(--muted);
+    font-size: 9.5px;
+    line-height: 1.55;
+  }
+  #demo-session-tree .stree-files {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid var(--border);
+  }
+  #demo-session-tree .stree-files__title {
+    margin: 0 0 4px;
+    color: var(--text-2);
+    font-size: 10px;
+    font-weight: 650;
+  }
+  #demo-session-tree .stree-files p {
+    margin: 0 0 2px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  #demo-session-tree .stree-status {
+    margin: 9px 0 0;
+    color: var(--text-2);
+    font-size: 11.5px;
+    line-height: 1.6;
+  }
+  #demo-session-tree .stree-warning {
+    margin: 7px 0 0;
+    padding: 7px 9px;
+    border-left: 3px solid var(--red);
+    border-radius: 0 5px 5px 0;
+    background: var(--red-soft);
+    color: var(--red);
+    font-size: 10.5px;
+    line-height: 1.55;
+  }
+  #demo-session-tree .stree-check {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    margin: 0 0 8px;
+    color: var(--text-2);
+    font-size: 11.5px;
+    line-height: 1.45;
+    cursor: pointer;
+  }
+  #demo-session-tree .stree-check input {
+    margin: 2px 0 0;
+    accent-color: var(--accent);
+  }
+  #demo-session-tree .stree-selected {
+    margin: 0 0 9px;
+    padding: 5px 7px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 5px;
+    color: var(--muted);
+    font-size: 10.5px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body data-chapter="main-11">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 11 章</span></p>
+      <h1>会话时间线：恢复、分叉与回退</h1>
+      <p class="lede">Agent 的“记忆”不在模型里，在磁盘上。会话日志只追加，恢复不是重放整段，而是“最近检查点 + 之后的后缀”；分叉不是复制上下文，而是换一个叶子；回退不是删行，而是把模型可见的历史截短，日志本身一行不少。</p>
+      <ul class="meta">
+        <li>约 19 分钟</li>
+        <li>1 个交互</li>
+        <li>L2 → L3</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>给定一份日志和检查点位置，算出恢复时要回放哪些行、模型最终看到什么。</li>
+          <li>区分“回退对话”与“回退文件”两种语义，并说出各自可逆与不可逆的部分。</li>
+          <li>在“同文件换叶”和“复制成新会话”之间做选择，并解释切分支时摘要的代价。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 为什么 ========== -->
+    <section id="why-timeline">
+      <p class="sec-no">01 · 先分清三样东西</p>
+      <h2>“它记得结论，却不记得那次失败的测试”</h2>
+      <p>第二天早上，你用 <code>--continue</code> 接上昨晚的会话。Agent 准确说出“把 <code>legacy.ts</code> 改成 type-only import”，还记得你要求“不要动 public API”。你问它：“昨晚那两次测试为什么失败？”它停了一下，说：“我需要重新跑一遍。”</p>
+      <p>这不是记忆坏了。昨晚的会话在跑到一半时触发过压缩，检查点之前那些测试日志被摘要替换了；恢复时，系统只把<strong>检查点里的替换历史</strong>和<strong>检查点之后的新消息</strong>装回模型，不会把更早的原始工具输出重新读一遍。结论留下了，失败栈没有。</p>
+      <p>要理解这件事，先分清三样东西：</p>
+      <ul>
+        <li><strong>日志（log）</strong>：只追加的事实记录。每条输入、每次工具调用、每个压缩检查点，都按顺序写进去，旧行不删。它是审计与恢复的唯一真实来源。</li>
+        <li><strong>检查点（checkpoint）</strong>：日志里的一种特殊行。它不记录“发生了什么”，而记录“从这一行开始，模型可见历史应该长什么样”。压缩检查点通常带一份替换历史或一个摘要。</li>
+        <li><strong>投影（projection）</strong>：从日志和检查点算出来的、真正发给模型的消息序列。同一个日志，可以有多个投影；换模型、换压缩策略、换分支，投影都可能不同。</li>
+      </ul>
+      <p class="lead-in">恢复不是“把日志从头读一遍”，而是“找到最近的检查点，再把之后的后缀接上”。</p>
+      <p>这条规则带来三个直接后果。第一，<strong>恢复成本与“上次检查点之后写了多少”成正比</strong>，不与整个会话长度成正比。第二，<strong>检查点必须自包含</strong>：它得单独说明“模型应该看到哪些消息”，否则后缀接不上。第三，<strong>压缩不可逆，但日志可逆</strong>：摘要替换了投影，原始行还在磁盘上，只是不再进入模型。</p>
+
+      <figure class="fig" id="fig-checkpoint">
+        <svg viewBox="0 0 640 176" role="img" aria-labelledby="fig-cp-title fig-cp-desc">
+          <title id="fig-cp-title">恢复等于检查点替换历史加之后的后缀</title>
+          <desc id="fig-cp-desc">一行行日志中，第 7 行是压缩检查点，第 8 到 12 行是之后追加的后缀。下方箭头指向模型可见历史：检查点里的替换历史加上第 8 到 12 行，之前的原始行不再进入投影。</desc>
+          <text class="svg-note" x="10" y="16">日志（只追加）</text>
+          <rect class="svg-track" x="10" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-track" x="44" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-track" x="78" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-track" x="112" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-track" x="146" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-track" x="180" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-seg--c" x="214" y="24" width="46" height="24" rx="3"/>
+          <text class="svg-label svg-label--xxs" x="237" y="40" text-anchor="middle">检查点</text>
+          <rect class="svg-seg--b" x="264" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-seg--b" x="298" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-seg--b" x="332" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-seg--b" x="366" y="24" width="30" height="24" rx="3"/>
+          <rect class="svg-seg--b" x="400" y="24" width="30" height="24" rx="3"/>
+          <text class="svg-note" x="347" y="66" text-anchor="middle">后缀：检查点之后追加</text>
+          <line class="svg-rule" x1="20" y1="96" x2="620" y2="96"/>
+          <text class="svg-note" x="10" y="118">模型可见历史</text>
+          <rect class="svg-seg--c" x="150" y="106" width="200" height="26" rx="4"/>
+          <text class="svg-label svg-label--xs" x="250" y="124" text-anchor="middle">替换历史（摘要+保留段）</text>
+          <rect class="svg-seg--b" x="356" y="106" width="190" height="26" rx="4"/>
+          <text class="svg-label" x="451" y="124" text-anchor="middle">后缀回放</text>
+          <text class="svg-note" x="10" y="158">更早的原始行仍在日志里，但不再进入这次投影。</text>
+        </svg>
+        <figcaption>图 11-1　恢复 = 最近检查点 + 后缀回放。检查点之前的原始行没有被删除，只是被替换历史挡住；后缀里的新消息、工具结果、子代理完成消息照常回放。示意图，行数为示意。</figcaption>
+      </figure>
+
+      <p>分叉和回退则是同一套结构的两个操作。<strong>分叉</strong>是在树上加一个新叶子：父节点不变，新节点从某一点长出去；如果写到新文件，就是“另开一本账”。<strong>回退</strong>是把 HEAD 移到树上的另一个节点：模型可见历史变成“从根到新 HEAD 的路径”，被绕过的节点仍在日志里，只是不在路径上。一个只追加的系统，靠“指针 + 标记”实现撤销，而不是靠删除。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">日志在，不等于状态在</p>
+        <p>对话可以精确回退到某一条消息，文件却不一定。多数工具把“回退对话”和“回退文件”做成两件事：前者只改投影，后者要覆盖工作区。两者不同步时，模型会看到一个“代码已经改了、但对话说还没改”的世界。这是本章最后一组取舍。</p>
+      </div>
+    </section>
+
+    <!-- ========== 02 Codex ========== -->
+    <section id="codex">
+      <p class="sec-no">02 · Codex 主线</p>
+      <h2>一条只追加的 rollout，和一个自包含的检查点</h2>
+      <p>Codex 把会话写成 JSONL 格式的 rollout：每条输入、工具调用、压缩检查点、world state 都按顺序追加，旧记录不删除。恢复时，它先找到最新的 <code>CompactedItem</code>，用里面的 <code>replacement_history</code> 作为起点，再回放之后的后缀。提交固定为 <code>76ed3b4</code>。</p>
+
+      <h3 id="codex-log">2.1 日志：记录“发生过”，不记录“现在该看什么”</h3>
+      <p>rollout 的职责是完整：模型收到什么、调用了什么工具、返回了什么、什么时候压缩过，都写进去。源码里有一句关键注释：内存中的 live 历史可以被截断，但 rollout 里保存的是原始载荷。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L520-L545">history.rs#L520-L545</a> <span class="tag tag--ok">已核实</span> 这句话把“事实”和“投影”分开了：日志是事实，内存历史只是当前投影。</p>
+      <p><strong>为什么必须只追加。</strong>第一，审计：你事后能查清“它当时到底看到了什么”，而不是只看摘要。第二，恢复：检查点之后的任意一条消息都可以重放。第三，分叉：从旧节点长出新枝时，旧路径不能被改写。<strong>代价</strong>是日志会膨胀，而且包含完整的文件内容和工具输出，磁盘、备份、隐私都要跟着处理。多数工具的做法是“不自动删，交给上层清理”，Codex 的事实卡片也没有记录自动过期策略。</p>
+
+      <h3 id="codex-checkpoint">2.2 检查点：存的是“替换后的历史”，不是“摘要文本”</h3>
+      <p><code>CompactedItem</code> 里带四类东西：<code>replacement_history</code>（替换后的完整历史）、窗口编号与前后窗口 id、当时的 token 用量记录、以及恢复所需的 <code>resume_metadata</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/mod.rs#L4321-L4356">session/mod.rs#L4321-L4356</a> <span class="tag tag--ok">已核实</span> 注意它存的是“模型应该看到的那串消息”，不是“一段摘要 + 一段原文”的配方。</p>
+      <p><strong>为什么存替换历史。</strong>因为恢复时不想再跑一次压缩。压缩是一次模型调用：有成本、有延迟，而且输出不确定；如果恢复时重跑，同一个会话两次打开可能得到不同的历史。<strong>代价</strong>是检查点本身很大：它把摘要和保留段又复制了一遍，和原始日志有重叠。压缩次数越多，检查点越多，磁盘上的重复也越多。</p>
+      <p>这也解释了一个常见误解：“压缩后原文被删了。” 原文没有被删，它还在更早的日志行里；只是最新检查点的替换历史不再引用它。你仍然可以用工具读日志，但模型不会自动看到。</p>
+
+      <h3 id="codex-resume">2.3 恢复：找最新检查点，只回放后缀</h3>
+      <p><code>rollout_reconstruction</code> 先扫描日志，选出最新的检查点，然后把检查点之后的后缀逐条回放：普通响应项、保留上下文、子代理的代理间消息都在其中。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/rollout_reconstruction.rs#L485-L520">rollout_reconstruction.rs#L485-L520</a> <span class="tag tag--ok">已核实</span> 这条链路也把上一章的子代理接回来了：子代理完成消息是日志里的一种输入项，恢复时会跟着后缀一起回来。</p>
+      <p><strong>为什么不是从头重放。</strong>从头重放要把整个会话重新组装一遍，token 成本高、启动慢；更麻烦的是，压缩是模型调用，重放时要么重跑压缩（不确定），要么在重放过程中再识别一次检查点（等于又做了一遍恢复）。<strong>代价</strong>是检查点必须“自包含到可以直接当历史用”：少一个字段，后缀就可能接在一段不完整的历史上。实现上通常还要校验窗口编号与模型，防止拿旧模型的检查点喂给新模型。</p>
+
+      <h3 id="codex-fork">2.4 分叉：协议层有参数，core 侧靠历史版本</h3>
+      <p>Codex 在 app-server 协议里提供 <code>ThreadForkParams</code>，core 侧用历史版本号与检查点支持“从某条历史继续”。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/app-server-protocol/src/protocol/v2/thread.rs#L544-L560">thread.rs#L544-L560</a> <span class="tag tag--ok">已核实</span> 从参数命名看，它把“回到过去”表达为<strong>一次 fork（新线程）</strong>，而不是在原名上截断；新线程与旧线程在 UI 里怎么呈现，本快照没有核实。</p>
+      <p><strong>为什么用新线程而不是原地截断。</strong>原地截断会让“之前的结论”与“现在继续的方向”混在同一个 id 下，审计时分不清哪段是旧路、哪段是新路；新线程天然把两条路分开，也更容易并行。<strong>代价</strong>是线程数量膨胀，用户要自己管理“哪个 fork 是有效的”；如果 UI 不显示父子关系，过几天就找不到源头。本快照只确认了协议参数，TUI 的具体 fork 交互没有核实<sup class="fn-ref"><a href="#fn-main-11-1" id="fnref-main-11-1">1</a></sup>。</p>
+
+      <h3 id="codex-rewind">2.5 回退：本快照所见的是线程分叉</h3>
+      <p>本快照的 core 与协议里能找到的是 fork；“在原名上截断到某条消息”的 rewind 入口没有找到，和上一节是同一个空白。这意味着 Codex 的“撤销上一轮”更像是：从那条消息之前 fork 一个新线程，或者恢复一个更早的线程；被放弃的那一轮仍留在旧线程里。对使用者来说，效果是“回到过去继续”，但对上下文来说，新线程不会自动继承旧线程那轮的中间工具输出——除非 fork 点就在它之前。</p>
+      <p><strong>为什么可以接受。</strong>Codex 把“会话”当成可分支的持久对象，而不是一条可随意剪接的录音带。分支比剪接更安全：任何一次“回到过去”都不会破坏已有记录。<strong>代价</strong>是“我只想删掉刚才那句话”这种小操作，成本比一个 <code>/rewind</code> 高；用户要理解 fork 与恢复的区别。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>rollout 只追加：记录事实，不决定投影；内存历史可以被截断，日志不会。</li>
+            <li>检查点存的是替换后的完整历史，恢复时不再重跑压缩，代价是检查点体积与重复。</li>
+            <li>恢复 = 最新检查点 + 后缀回放；成本与后缀长度成正比。</li>
+            <li>Codex 把分支表达为新线程（<code>ThreadForkParams</code>），旧线程保留；逐消息 rewind 未见入口。</li>
+            <li>“压缩不可逆”指的是投影不可逆，不是日志被删。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 03 Demo ========== -->
+    <section id="tree-demo">
+      <p class="sec-no">03 · 交互演示</p>
+      <h2>绕过它，但别删掉它</h2>
+      <p>下面是一棵已经长出两条分支的会话树：主干 8 个节点，分支 A 从 <code>#2</code> 长出，分支 B 从 <code>#3</code> 长出。点任意节点选中它，然后试三件事：从它分叉、回退到它、打开“同时回退文件”。右侧会实时显示“模型可见历史”和当前文件快照。</p>
+      <p>重点看两个数字：<strong>可见历史</strong>会随着回退变短，<strong>日志行数</strong>只会增加。树上被绕过的节点会变灰、打上“已绕过”，但它们仍在原位——这就是“日志没有删除任何行”。再勾上“分叉时生成摘要”，看切分支时多出来的一条摘要如何替代被放弃的路径。</p>
+
+      <div class="demo" id="demo-session-tree">
+        <div class="demo__head">
+          <span class="demo__tag">交互演示</span>
+          <h3 class="demo__title">会话树、分叉与回退</h3>
+        </div>
+        <div class="demo__body">
+          <div class="demo__controls">
+            <p class="stree-selected" id="tree-selected">已选中 #5 · 工具结果</p>
+            <button class="btn btn--primary btn--small" type="button" id="tree-fork">从这里分叉</button>
+            <button class="btn btn--ghost btn--small" type="button" id="tree-rewind">回退到这里</button>
+            <label class="stree-check">
+              <input type="checkbox" id="tree-files">
+              <span>同时回退文件（不可逆）</span>
+            </label>
+            <label class="stree-check">
+              <input type="checkbox" id="tree-summary" checked>
+              <span>分叉时生成摘要</span>
+            </label>
+            <button class="btn btn--ghost btn--small" type="button" id="tree-reset">重置</button>
+            <p class="demo__hint">先回退到 #3，再回退到 #1；然后从 #5 分叉。观察灰节点不消失、日志行数只增不减。</p>
+            <p class="demo__readout">实线 = 当前路径<br>灰虚线 = 已绕过，仍在日志里</p>
+          </div>
+          <div class="demo__canvas">
+            <div class="stree-kpis" id="tree-kpis"></div>
+            <div class="stree-body">
+              <div class="stree-wrap">
+                <div class="stree" id="stree" aria-label="会话树"></div>
+              </div>
+              <aside class="stree-side" aria-label="模型可见历史">
+                <h4 class="stree-side__title">模型可见历史</h4>
+                <ol class="stree-visible" id="tree-visible" role="list"></ol>
+                <p class="stree-side__foot" id="tree-visible-foot"></p>
+                <div class="stree-files" id="tree-files-state"></div>
+              </aside>
+            </div>
+            <p class="stree-status" id="tree-status" role="status" aria-live="polite"></p>
+            <p class="stree-warning" id="tree-warning" role="alert" hidden></p>
+          </div>
+        </div>
+        <p class="demo__note">教学示意：节点文本、token、文件版本与日志行数都是演示值。真实工具的分支与回退语义各不相同：有的同文件换叶，有的复制成新会话，有的只改投影。页内说明以各工具事实卡片为准。</p>
+      </div>
+    </section>
+
+    <!-- ========== 04 工具 ========== -->
+    <section id="tools">
+      <p class="sec-no">04 · 七个工具</p>
+      <h2>同一棵树，七种走法</h2>
+      <p>下面七个工具各有一个弹窗。可以按“树在哪里”分成三派：<strong>JSONL 树</strong>（Claude Code、pi、oh-my-pi）用 <code>parentUuid</code> / <code>parentId</code> 在同一个文件里成树；<strong>数据库投影</strong>（opencode v1/v2）把消息写进 SQLite，再按压缩边界重排；<strong>日志 + 表面</strong>（Grok Build、DeepSeek Harness）用只追加日志加一个“可见视图”，回退靠标记或 <code>replace</code>。pi 有树但没有 checkpoint/rewind；opencode v1/v2 没有树也没有 rewind；dsh 连 rewind 都没有。这些空白和“有”一样重要。弹窗里的“设计意图”是作者根据源码结构做的分析，不是工具作者的自述<sup class="fn-ref"><a href="#fn-main-11-4" id="fnref-main-11-4">4</a></sup>。</p>
+      <div class="tool-grid">
+        <button class="tool-btn" type="button" data-modal="claude-code">
+          <span class="tool-btn__name">Claude Code</span>
+          <span class="tool-btn__id">claude-code</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="pi">
+          <span class="tool-btn__name">pi</span>
+          <span class="tool-btn__id">pi</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="omp">
+          <span class="tool-btn__name">oh-my-pi</span>
+          <span class="tool-btn__id">omp</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v1">
+          <span class="tool-btn__name">opencode v1</span>
+          <span class="tool-btn__id">opencode-v1</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v2">
+          <span class="tool-btn__name">opencode v2</span>
+          <span class="tool-btn__id">opencode-v2</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="grok-build">
+          <span class="tool-btn__name">Grok Build</span>
+          <span class="tool-btn__id">grok-build</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="dsh">
+          <span class="tool-btn__name">DeepSeek Harness</span>
+          <span class="tool-btn__id">dsh</span>
+        </button>
+      </div>
+      <p class="small muted">键盘：<kbd>Esc</kbd> 关闭；<kbd>Tab</kbd> 在弹窗内循环。Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本。</p>
+      <p><strong>三个必须如实写的空白。</strong>opencode v1 与 v2 都只有 <code>parentID</code> 单亲关系：子会话算一层分支，但没有“树状多分支”，也没有 rewind；v1 的 <code>revert</code> 是文件回滚，不是对话回退。dsh 没有 <code>/rewind</code>、没有 undo、没有树状多分支，回退能力在本版不存在<sup class="fn-ref"><a href="#fn-main-11-3" id="fnref-main-11-3">3</a></sup>。pi 有树与 <code>/fork</code>，但没有 checkpoint/rewind，回退靠树导航或 fork。把这三处写成“有”，会让读者对能力边界产生错误预期。Claude Code 的 <code>/rewind</code> 内部，文件回退有明确实现，对话侧的截断则由选择器 UI 完成，后者是【推断】<sup class="fn-ref"><a href="#fn-main-11-2" id="fnref-main-11-2">2</a></sup>。</p>
+    </section>
+
+    <!-- ========== 05 对比表 ========== -->
+    <section id="matrix">
+      <p class="sec-no">05 · 八工具对比</p>
+      <h2>把“怎么回去”排成一张表</h2>
+      <p>先看“恢复”：是检查点 + 后缀，还是全量重放，还是数据库投影。再看“分支”：同文件换叶、复制新文件，还是只有子会话的单亲关系。最后看“回退”：回退对话、回退文件，还是两者都能做。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">日志与真实来源</th>
+              <th scope="col">恢复</th>
+              <th scope="col">分支 / fork</th>
+              <th scope="col">回退语义</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex<span>codex</span></th>
+              <td>JSONL rollout，只追加；压缩只改内存历史。<span class="tag tag--ok">已核实</span></td>
+              <td>最新 <code>CompactedItem</code> + 后缀回放；不重跑压缩。<span class="tag tag--ok">已核实</span></td>
+              <td><code>ThreadForkParams</code> 新线程；旧线程保留。<span class="tag tag--ok">已核实</span></td>
+              <td>未见逐消息 rewind；以 fork / 恢复旧线程为主。<span class="tag tag--todo">待核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td><code>&lt;project&gt;/&lt;session&gt;.jsonl</code>，<code>parentUuid</code> 成树；读上限 50 MB。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>读 JSONL 重建链；压缩写边界消息，原始记录保留。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td><code>parentUuid</code> 树；fork 时缓存断点前移。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td><code>/rewind</code> 开选择器；文件走快照回退（最多 100 个）。<span class="tag tag--src">源码 v2.1.88</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>JSONL 条目日志，<code>id</code>/<code>parentId</code> 成树；压缩只追加 <code>CompactionEntry</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>按持久化断点重建，不重跑压缩。<span class="tag tag--ok">已核实</span></td>
+              <td><code>/tree</code> 同文件换叶；<code>/fork</code>、<code>/clone</code> 复制成新文件。<span class="tag tag--ok">已核实</span></td>
+              <td>无 checkpoint/rewind；靠树导航或 fork。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>JSONL 树；<code>/clear</code> 写 <code>reset_boundary</code>；压缩追加条目。<span class="tag tag--ok">已核实</span></td>
+              <td>按摘要 + 保留段 + 压缩后投影。<span class="tag tag--ok">已核实</span></td>
+              <td><code>/tree</code> 换叶 + <code>BranchSummaryEntry</code>；fork 复制新文件。<span class="tag tag--ok">已核实</span></td>
+              <td><code>checkpoint</code> / <code>rewind</code> 是模型工具；用报告换探索段。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>SQLite 事件溯源；消息与 part 不因压缩删除。<span class="tag tag--ok">已核实</span></td>
+              <td>载入后 <code>filterCompacted</code> 现场重排，不重算。<span class="tag tag--ok">已核实</span></td>
+              <td><code>--fork</code> 复制消息并重映射 ID；无树。<span class="tag tag--ok">已核实</span></td>
+              <td>无对话 rewind；<code>revert</code> 只回滚文件。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>按 seq 读历史；压缩消息一条不删。<span class="tag tag--ok">已核实</span></td>
+              <td><code>latestCompaction</code> + <code>seq &gt;=</code> 边界；崩溃靠 <code>time_suspended</code>。<span class="tag tag--ok">已核实</span></td>
+              <td><code>--fork</code> 用 <code>before</code>/<code>through</code>；继承最新指令基线。<span class="tag tag--ok">已核实</span></td>
+              <td>无树、无 rewind；fork 是主要的“重来”方式。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td><code>updates.jsonl</code> 权威日志，只追加；<code>rewind_points.jsonl</code> 记录检查点。<span class="tag tag--ok">已核实</span></td>
+              <td>重放 <code>updates.jsonl</code>，读到 <code>RewindMarker</code> 就逻辑截断。<span class="tag tag--ok">已核实</span></td>
+              <td><code>/fork</code> 复制为同级会话，可选 worktree；<code>--at</code> 本版不支持。<span class="tag tag--ok">已核实</span></td>
+              <td>每个用户 prompt 一个点；TUI 只回对话，shell 可选 all / files_only / conversation_only。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>追加式 <code>SessionEvent</code>；模型历史由 <code>deriveMessages</code> 从 surface 派生。<span class="tag tag--ok">已核实</span></td>
+              <td>读日志 + surface 替换；检查点在模型请求前 / 工具副作用前 / 下一步前。<span class="tag tag--ok">已核实</span></td>
+              <td><code>buildForkSeed</code> 复制前缀 + <code>session/end-seed</code> + 合成 closers。<span class="tag tag--ok">已核实</span></td>
+              <td>无 rewind / undo / 树；崩溃只补 closer，不续跑未完成 turn。<span class="tag tag--guess">推断</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
+    </section>
+
+    <!-- ========== 06 取舍 ========== -->
+    <section id="tradeoffs">
+      <p class="sec-no">06 · 设计取舍</p>
+      <h2>为什么“回到过去”有六种代价</h2>
+      <p>下面六组取舍，决定了同一份日志能支持什么样的恢复、分叉与回退。每组都给出两派做法与一句代价。它们不是互斥的：一个工具可以同时选“日志为源”和“检查点 + 后缀”，但在具体实现上总要付出某一面的成本。</p>
+
+      <h3>取舍一：日志为源，还是数据库投影</h3>
+      <p><strong>日志派</strong>（Codex、Claude Code、pi、oh-my-pi、Grok Build、dsh）把 JSONL / 事件日志当唯一真实来源，投影现场计算。好处是可读、可审计、可用文本工具查；坏处是每次启动都要解析、校验、重放，日志大了会慢。<strong>数据库派</strong>（opencode v1/v2）把消息与 part 写进 SQLite，查询与分页快，投影由 <code>filterCompacted</code> 或 seq 边界现场重排。</p>
+      <p><strong>代价</strong>：数据库查询快，但“真实来源”变成二进制文件，出了问题不能 <code>cat</code> 一行看；迁移、备份、跨版本兼容都要额外处理。日志派透明，但大文件读取有上限（Claude Code 单次读 50 MB），超过就只能放弃。</p>
+
+      <h3>取舍二：检查点 + 后缀，还是全量重放</h3>
+      <p><strong>检查点派</strong>（Codex、pi、opencode v1/v2）只回放最近检查点之后的部分，恢复成本与“上次压缩之后写了多少”成正比。<strong>全量重放派</strong>（更朴素的做法）从第一条消息开始重建，逻辑简单，不依赖检查点字段是否完整。</p>
+      <p><strong>代价</strong>：检查点快，但检查点必须自包含，字段少了就接不上；而且压缩次数越多，检查点越多，磁盘重复越大。全量重放简单，但长会话启动慢，而且如果重放过程中要重新判断“哪里压缩过”，逻辑会变得和恢复一样复杂。多数成熟工具最终都会选检查点，因为启动延迟是用户能直接感知的。</p>
+
+      <h3>取舍三：同文件换叶，还是复制成新会话</h3>
+      <p><strong>同文件换叶派</strong>（pi 的 <code>/tree</code>、oh-my-pi 的 <code>/tree</code>）在同一个 JSONL 里移动 HEAD，分支共享一份日志，磁盘省、关系清楚。<strong>新文件派</strong>（pi 的 <code>/fork</code>、omp 的 <code>createBranchedSession</code>、Grok 的 <code>/fork</code>、opencode 的 <code>--fork</code>）把选中分支复制成新会话，父子关系变弱，但两条路可以独立演化。</p>
+      <p><strong>代价</strong>：同文件换叶省空间，但日志会越来越长，分支之间的 id 关系也更难读；一旦文件损坏，所有分支一起坏。新文件隔离好、易分享，但复制要花时间与磁盘，而且“哪份是最新的”要靠标题或外部索引维护。Grok 的 <code>/fork</code> 还支持可选 worktree，把文件也一起隔离，代价是合并。</p>
+
+      <h3>取舍四：回退对话，还是回退文件</h3>
+      <p><strong>只回退对话派</strong>（Grok TUI 默认 <code>conversation_only</code>、pi 的树导航、opencode v2 的 fork）只改变模型可见历史，磁盘不动。它可逆：你还能再切回原来的节点，文件也没被覆盖。<strong>同时回退文件派</strong>（Claude Code 的 <code>fileHistoryRewind</code>、Grok shell 的 <code>all</code> / <code>files_only</code>、opencode v1 的 <code>revert</code>）会把工作区恢复到某个快照，通常不可逆。</p>
+      <p><strong>代价</strong>：只回退对话会让“对话说没改、文件其实改了”同时存在，模型下一轮可能基于错误前提行动；同时回退文件能让状态一致，但会覆盖你在这之后手动做的修改。Grok 的做法是先做只读预览、检测外部修改（<code>modified_externally</code> / <code>deleted_externally</code> / <code>created_externally</code>）再写回，这是在“不可逆”上再加一道确认。Claude Code 的快照上限 100 个，超过就只剩最近的历史，老节点回不去。</p>
+
+      <h3>取舍五：切分支时生成摘要，还是直接切</h3>
+      <p><strong>摘要派</strong>（pi 的 <code>BranchSummaryEntry</code>、omp 的 <code>branchWithSummary()</code> / <code>rewind(report)</code>）在离开一条分支时，把被放弃的路径压成一条摘要，挂在跳转点。新分支的模型知道“刚才试过什么、为什么放弃”。<strong>直接切派</strong>只移动 HEAD，不生成任何摘要，历史更短、更干净。</p>
+      <p><strong>代价</strong>：摘要要再调一次模型（pi 的预算 <code>contextWindow - 16,384</code>，输出上限 4,096；omp 文档写 2,048），有成本也有延迟；摘要还会把“被放弃路径”的细节变成二手信息，模型可能误以为那就是当前状态。直接切最便宜，但模型可能重复刚被放弃的方案。omp 的 <code>branchSummary.enabled</code> 默认 <code>false</code>，说明它认为这笔钱不必默认花。</p>
+
+      <h3>取舍六：检查点粒度，按 prompt 还是按请求</h3>
+      <p><strong>粗粒度派</strong>（Grok Build 每个用户 prompt 一个回退点）让用户容易理解：“回到我上一次说话之前”。<strong>细粒度派</strong>（dsh 在每个模型请求前、每个顶层工具产生外部副作用前、下一步开始前都刷盘）恢复更精确，能对上“工具已经改了文件”这种边界。<strong>中间派</strong>（Claude Code 每条消息一个文件快照，未变化的文件复用上一版本）在成本与精度之间折中。</p>
+      <p><strong>代价</strong>：粒度越细，写入越多、日志越大，恢复时要重放的片段也越多；粒度越粗，回退越像“重来一轮”，中间的半成品状态保不住。选哪种，取决于你更怕“丢了一步”还是更怕“写得太频繁”。dsh 的 fail-closed 策略（写不成功就不跑）把一致性放在可用性之前，代价是一次磁盘故障就会阻塞整个 turn。</p>
+    </section>
+
+    <!-- ========== 07 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">07 · 小测验</p>
+      <h2>三道题，检验你是否真的会恢复</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">一份日志有 120 行，最新检查点在第 80 行，检查点的替换历史已经包含前 70 行的摘要与最近 10 行原文。恢复时要回放多少行？为什么不是 120 行？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>回放第 81–120 行，约 40 行后缀；检查点本身提供“起点历史”，不需要再回放 1–79 行。不是 120 行，因为恢复用的是“检查点 + 后缀”，不是全量重放；也不是 0 行，因为检查点之后的新消息必须接上，否则模型看不到昨晚最后几轮。见<a href="#fig-checkpoint">图 11-1</a>与 <a href="#codex-resume">2.3 恢复</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">回退到 <code>#3</code> 之后，日志行数会减少吗？文件会跟着回退吗？如果两者不一致，会出什么问题？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>日志不会减少：回退通常是追加一条标记（Grok 的 <code>RewindMarker</code>）或移动 HEAD，被绕过的节点仍在。文件是否回退取决于模式：Grok TUI 默认 <code>conversation_only</code> 不动文件，shell 的 <code>all</code> / <code>files_only</code> 才回滚；Claude Code 的 <code>/rewind</code> 会走文件快照。不一致时，模型看到的历史说“还没改”，磁盘却已经改了，下一轮可能基于错误前提继续。见<a href="#tradeoffs">取舍四</a>与<a href="#tree-demo">演示</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你要在一个长会话里试两条重构路线，最后只保留一条。选“同文件换叶 + 分支摘要”，还是“每次 fork 成新文件”？各自的代价是什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>同文件换叶省磁盘、分支关系清楚，切回来快；代价是日志越来越长、文件损坏会带走所有分支，而且切分支时要么丢上下文、要么花一次摘要调用。新文件隔离好、易分享、可并行，代价是复制耗时与磁盘，且要自己维护“哪份有效”。如果两条路线会同时改代码，还要叠 worktree；如果只是试探，同文件换叶 + 摘要更轻。见<a href="#tradeoffs">取舍三与取舍五</a>。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-main-11-1">
+          事实卡片标【待核实】：已核对 <code>app-server-protocol/src/protocol/v2/thread.rs</code> 的 <code>ThreadForkParams</code> 与 core 的 session/rollout 代码，确认 fork 参数存在；未找到逐消息 rewind 的命令入口。缺 TUI / app-server 的命令表与 UI 代码，因此本章只写“本快照未见 rewind 入口”，不写“Codex 不支持回退”。<a class="footnotes__back" href="#fnref-main-11-1">↩</a>
+        </li>
+        <li id="fn-main-11-2">
+          事实卡片把“对话侧截断由选择器 UI 完成”标为【推断】：已核对 <code>commands/rewind/rewind.ts</code>（命令只打开选择器并返回 <code>skip</code>）与 <code>utils/fileHistory.ts</code>（文件快照与回退），未逐行读选择器组件。缺 UI 组件源码，所以“对话如何被截断”只能按“选择器完成后截断”表述，不能给出具体实现。<a class="footnotes__back" href="#fnref-main-11-2">↩</a>
+        </li>
+        <li id="fn-main-11-3">
+          事实卡片对 dsh 的【推断】结论：已核对 <code>core/session/src/index.ts</code> 的 <code>deriveMessages</code>、<code>surface.ts</code> 的 <code>replace</code>、<code>fork.ts</code> 与 <code>session-persistence/README.md</code>；没有找到 rewind / undo / 树状多分支的实现。缺完整命令表与前端代码，因此“没有”是按“源码未找到”得出的，不排除插件层提供。<a class="footnotes__back" href="#fnref-main-11-3">↩</a>
+        </li>
+        <li id="fn-main-11-4">
+          本页七个弹窗的“设计意图”段都标【推断】：依据是源码的数据结构、字段名与调用顺序，缺作者的设计文档。它们解释“为什么这样设计、代价是什么”，不改变前文标【已核实】的日志格式、恢复路径与回退语义；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-11-4">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：<a href="main-12.html">跨会话记忆</a>。</p>
+
+  </article>
+</main>
+
+<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+
+<div class="modal" id="modal-claude-code" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">会话以 <code>&lt;projectDir&gt;/&lt;sessionId&gt;.jsonl</code> 逐条追加，<code>recordTranscript</code> 只写尚未记录的消息，并用 <code>parentUuid</code> 维护消息链，因此天然支持树状分支与回退。读原始 transcript 有 50 MB 上限，超过直接放弃，避免 OOM。<code>/rewind</code> 命令本身只打开消息选择器（返回 <code>skip</code>，不追加消息），真正的文件回退由 <code>fileHistoryRewind</code> 执行：每轮对话前为被跟踪文件建版本备份，最多保留 100 个快照，回退时恢复到对应版本；对话侧的截断由选择器 UI 完成。压缩不会删存档：<code>/compact</code> 只替换内存历史并写入边界消息。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>transcript 路径 <code>~/.claude/projects/&lt;project&gt;/&lt;sessionId&gt;.jsonl</code>；<code>MAX_TRANSCRIPT_READ_BYTES = 50 MB</code>；<code>MAX_SNAPSHOTS = 100</code>；快照粒度每条消息一个，未变化文件复用上一版本；<code>/rewind</code> 不改写历史文件。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“对话”和“文件”拆成两条可回退的链：JSONL 负责消息链，fileHistory 负责文件版本。好处是可以只回退其中一边；代价是两边可能不同步，且 100 个快照之后老版本不可回。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/sessionStorage.ts#L198-L229">sessionStorage.ts#L198-L229</a> ·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/sessionStorage.ts#L1408-L1449">sessionStorage.ts#L1408-L1449</a> ·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/fileHistory.ts#L347-L398">fileHistory.ts#L347-L398</a> ·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/commands/rewind/rewind.ts#L1-L13">rewind.ts#L1-L13</a>
+        </dd>
+      </dl>
+      <p class="modal__note">来源类型：<span class="tag tag--src">源码 v2.1.88</span>。官方文档“检查点可回退代码与对话、压缩不改磁盘”与源码一致。“对话截断由 UI 完成”是【推断】，本页脚注 2 已说明缺什么。【可能已变化】</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pi" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · pi</p>
+        <h2 class="modal__title" id="modal-pi-title">pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">会话文件是只追加的 JSONL 条目日志，靠 <code>id</code> / <code>parentId</code> 成树（<code>CURRENT_SESSION_VERSION = 3</code>）。压缩只追加 <code>CompactionEntry</code>，不删除旧条目；投影重建时取“最新压缩 + 从 <code>firstKeptEntryId</code> 起的保留段 + 压缩之后的条目”。恢复用 <code>SessionManager.open()</code> / <code>continueRecent()</code> 读回文件后按持久化断点重建，不重跑压缩。<code>/tree</code> 在同一文件内移动叶子；离开的分支可按需生成 <code>BranchSummaryEntry</code>（<code>fromId</code> 指回跳转点），摘要预算 <code>contextWindow - 16,384</code>，输出上限 4,096。<code>/fork</code> / <code>/clone</code> 走 <code>createBranchedSession()</code>，复制成新文件。pi 没有 checkpoint/rewind，回退靠树导航或 fork。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>CURRENT_SESSION_VERSION = 3</code>；分支摘要 <code>reserveTokens = 16,384</code>、<code>maxTokens = min(4,096, model.maxTokens)</code>；触发 <code>navigateTree(targetId, { summarize: true })</code>；无 rewind 命令。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>树与日志是同一份数据：换叶只改指针，不复制历史；只有需要“离开的分支留下什么”时才花一次摘要。好处是磁盘省、关系清楚；代价是日志越来越长，且没有“回到任意消息前”的快捷方式，只能导航或 fork。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L476-L512">session-manager.ts#L476-L512</a> ·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L1261-L1287">session-manager.ts#L1261-L1287</a> ·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/agent-session.ts#L3996-L4140">agent-session.ts#L3996-L4140</a> ·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/branch-summarization.ts#L293-L382">branch-summarization.ts#L293-L382</a>
+        </dd>
+      </dl>
+      <p class="modal__note">不要把“树”误解成“任意时刻可回退”：pi 的树导航是移动叶子，配合可选的 <code>BranchSummaryEntry</code>；它没有把文件一起回滚的能力，也没有 checkpoint/rewind 工具。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-omp" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · omp</p>
+        <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">会话是只追加的 JSONL 条目日志，靠 <code>id</code> / <code>parentId</code> 成树。压缩只追加 <code>CompactionEntry</code>（含 <code>summary</code>、<code>firstKeptEntryId</code>、<code>tokensBefore</code>、<code>method</code> 等），不删除原始条目。<code>/clear</code> 写入 <code>reset_boundary</code>：晚于最新压缩的边界会让摘要与保留段一起失效，只发射 reset 之后的条目。<code>/tree</code> 是同文件叶子移动，离开的分支可生成 <code>BranchSummaryEntry</code>，用 <code>branchWithSummary()</code> 挂在导航目标上；<code>createBranchedSession()</code> 才另写新文件。<code>checkpoint</code> / <code>rewind</code> 是模型可调用的两个工具：<code>checkpoint(goal)</code> 记录当前条目 id 与消息计数；<code>rewind(report)</code> 把探索报告作为分支摘要，把叶子切回 checkpoint 位置，再追加一条 <code>rewind-report</code> 自定义消息；同一 checkpoint 只能 rewind 一次。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>branchSummary.enabled = false</code>、<code>branchSummary.reserveTokens = 16,384</code>；分支摘要输出上限 2,048 token；checkpoint 记录 <code>checkpointMessageCount</code>、<code>checkpointEntryId</code>、<code>startedAt</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把 rewind 做成“用报告换掉探索段”，而不是“删掉一段历史”：模型先 checkpoint，探索完写报告，再 rewind，报告成为新分支的第一条消息。好处是探索的结论被保留、上下文大幅缩短；代价是报告质量决定后续，且同一 checkpoint 不能反复回。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-context.ts#L463-L482">session-context.ts#L463-L482</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-manager.ts#L3854-L3871">session-manager.ts#L3854-L3871</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/tools/checkpoint.ts#L11-L131">checkpoint.ts#L11-L131</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/agent-session.ts#L10529-L10624">agent-session.ts#L10529-L10624</a>
+        </dd>
+      </dl>
+      <p class="modal__note">omp 的 rewind 与 Claude Code 的 <code>/rewind</code> 不是一回事：前者是模型主动“折叠探索”，后者是用户选一个消息点回退。名字相同，语义不同，比较时不要混。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v1" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">磁盘上的原始消息从不在压缩时删除：消息与 part 写入 SQLite（事件溯源 + 投影），读取按 <code>time_created</code> 倒序分页再翻正序。模型可见层由 <code>filterCompacted</code> 现场重排：找到带 <code>tail_start_id</code> 的压缩条目，再找它对应的摘要 assistant 消息，输出顺序变成“压缩 user → 摘要 assistant → 从 <code>tail_start_id</code> 起的保留段 → 之后的新消息”。恢复走持久化断点路线：<code>--continue</code> / <code>--session &lt;id&gt;</code> 载入后第一步就 <code>filterCompacted</code>，不重放历史重算。<code>--fork</code> / <code>Session.fork</code> 新建会话逐条复制消息并重映射 ID，<code>tail_start_id</code> 一并重映射。分支只有 <code>parentID</code> 一层（子会话），没有树状多分支；回退是独立的 <code>revert</code> 机制（文件回滚），与压缩无关。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>存储 SQLite（<code>MessageTable</code> / <code>PartTable</code>），分页游标 <code>time_created</code>；检查点 <code>CompactionPart{type:"compaction", auto, overflow?, tail_start_id?}</code>；替代历史顺序固定；CLI <code>--continue</code> / <code>--session</code> / <code>--fork</code>；树状分支无。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>用“日志 + 投影”两层同时满足审计与压缩：原始消息不删，模型只看重排后的投影。代价是投影逻辑复杂，任何一处顺序错都会让模型看到“有结果没调用”的历史；没有树与 rewind，分支只能靠 fork 新会话。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/message-v2.ts#L534-L585">message-v2.ts#L534-L585</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L559-L582">compaction.ts#L559-L582</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/session.ts#L691-L731">session.ts#L691-L731</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/cli/cmd/tui.ts#L123-L135">tui.ts#L123-L135</a>
+        </dd>
+      </dl>
+      <p class="modal__note">v1 的 <code>--fork</code> 必须与 <code>--continue</code> 或 <code>--session</code> 同用；它复制的是消息，不是文件，工作区仍然共享。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v2" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">历史读取按 <strong>seq 边界</strong>：<code>SessionHistory.latestCompaction</code> 找最近一条 <code>status="completed"</code> 的压缩消息（并按 boundary 判定是否可重放），然后取 <code>seq &gt;= 该条</code> 的所有消息按 seq 升序，原始消息一条不删。检查点是一条 <code>type:"compaction"</code> 的消息，字段为 <code>status</code>、<code>reason</code>、<code>model</code>、<code>summary</code>、<code>recent</code>、<code>providerContext</code>、<code>cost</code>、<code>tokens</code>；投影时包成 <code>&lt;conversation-checkpoint&gt;</code> + <code>&lt;summary&gt;</code> + <code>&lt;recent-context&gt;</code>，并明确“当历史看，不要当新指令”。恢复仍是持久化断点路线：<code>--continue</code> / <code>--session</code>；<code>--fork</code> 用 <code>before</code> / <code>through</code> 表达边界，并继承父会话最新的指令基线。崩溃恢复靠 <code>time_suspended</code> 的写前 claim：正常终态释放，shutdown 中断保留，下次启动据此续跑。树状分支仍不存在。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>边界 <code>"latest"</code> / <code>"local"</code> / <code>Provenance</code>；检查点字段 <code>status, reason, model?, providerState?, summary, recent, providerContext?, cost?, tokens?</code>；fork <code>boundary = {type:"before"|"through", messageID}</code>；崩溃恢复 <code>time_suspended</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把压缩检查点做成普通消息，让“检查点”也能走同一套消息投影与 fork 逻辑；崩溃恢复用数据库事务的 claim 语义，避免“半条压缩”。代价是字段多、状态机复杂，且 beta 版本可能继续变。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/history.ts#L28-L60">history.ts#L28-L60</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/history.ts#L78-L135">history.ts#L78-L135</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session.ts#L319-L359">session.ts#L319-L359</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/execution.ts#L76-L86">execution.ts#L76-L86</a>
+        </dd>
+      </dl>
+      <p class="modal__note">v2 是 beta <code>v2.0.29</code>；<code>--fork</code> 的帮助文本是“继续前先分叉”，本快照未找到 v1 那样的强制校验代码，跨版本比较时要留意。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-grok-build" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">会话目录是唯一真实来源：<code>summary.json</code> 是索引，<code>updates.jsonl</code> 是权威对话日志，另有 <code>chat_history.jsonl</code>、<code>system_prompt.txt</code>、<code>rewind_points.jsonl</code>、<code>compaction_checkpoints/</code> 等。恢复时重放 <code>updates.jsonl</code>，用 <code>RewindMarker</code> 做<strong>逻辑截断</strong>：日志永远只追加，回退不删行，而是在文件末尾追加一条 marker 指向目标 prompt index；重放器读到 marker 就把累积列表截回该位置，所以“分支”在磁盘上表现为同一文件里被 marker 隔开的多段时间线。<code>/rewind</code> 列出的检查点是每个用户 prompt；TUI 请求固定带 <code>mode:"conversation_only"</code>、<code>force:true</code>，默认不动磁盘；shell 的 <code>handle_rewind</code> 支持 <code>All</code> / <code>FilesOnly</code> / <code>ConversationOnly</code>，前两者按文件快照回滚，先做只读预览并检测外部修改。<code>/fork</code> 复制当前会话为同级会话，可选 worktree。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>会话根 <code>$GROK_HOME/sessions/</code>（默认 <code>~/.grok</code>）；回退粒度每个用户 prompt；TUI 模式 <code>conversation_only</code>；shell 模式 <code>all</code> / <code>files_only</code> / <code>conversation_only</code>；双击 Esc 窗口 800 ms；<code>/fork --at</code> 本版不支持。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>用“追加 marker”实现回退，既保住 append-only 不变式，又能让重放确定性地得到同一份历史；把“动不动文件”做成显式模式，避免误覆盖。代价是日志会包含被绕过的时间线，读原始文件时需要理解 marker 语义。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/17-sessions.md#L20-L42">17-sessions.md#L20-L42</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/17-sessions.md#L140-L165">17-sessions.md#L140-L165</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/rewind.rs#L121-L260">rewind.rs#L121-L260</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/storage/mod.rs#L1655-L1677">storage/mod.rs#L1655-L1677</a>
+        </dd>
+      </dl>
+      <p class="modal__note">Grok 是“日志只追加 + tombstone marker”最完整的例子：被回退的节点在磁盘上仍在，只是重放器不再把它们计入当前历史。这与本章演示的灰节点是同一个思路。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-dsh" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">会话是只追加的 <code>SessionEvent</code> 日志，模型历史由 <code>deriveMessages()</code> 从“surface”派生：surface 是“产生消息的事件”的有序视图，每个消息事件必须带 <code>surfaceOp</code>——<code>append</code>（进入尾部）或 <code>{op:'replace', startSeq, endSeq}</code>（遮蔽一段既有节点）。被 replace 遮蔽的原始事件仍在日志里，但不再出现在派生历史中，因此重放是确定性的。缓存策略：纯尾部增长 O(新增节点)，只有 replacement 或消息投影变化才整体重建。恢复：持久化后端读日志，<code>session-checkpoint-policy</code> 在每个模型请求前、每个顶层工具产生外部副作用前、下一步开始前刷盘（fail-closed：写不成功就不跑），崩溃后用合成 closer 收尾未完成的 turn/step，<strong>没有</strong>“继续未完成 turn”的部分恢复。分叉用 <code>buildForkSeed(events, boundary)</code> 复制到边界的前缀，追加 <code>session/end-seed {inherited:true}</code>，再用 <code>openTurnClosers</code> 补齐未闭合的 step/turn。<strong>没有 /rewind、没有 undo、没有树状多分支。</strong></p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>日志追加式 <code>SessionEvent</code>，JSONL 后端；surface 操作 <code>append</code> / <code>replace</code>；检查点在模型请求前 / 顶层工具前 / 下一步前；分叉 = 前缀 + <code>session/end-seed</code> + 合成 closers；回退 / undo 无。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>用“日志 + 可见视图”两层结构同时满足“不可变审计”与“可压缩 / 可替换”，并把缓存失效收敛到 <code>contentGeneration</code> 一个变量。代价是没有面向用户的回退入口，想回到过去只能 fork 或读日志；崩溃恢复也只保证一致，不保证续跑。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/index.ts#L966-L1005">core/session/src/index.ts#L966-L1005</a> ·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/surface.ts#L49-L56">surface.ts#L49-L56</a> ·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/fork.ts#L1-L30">fork.ts#L1-L30</a> ·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/session/session-checkpoint-policy/README.md#L12">session-checkpoint-policy/README.md#L12</a>
+        </dd>
+      </dl>
+      <p class="modal__note">“无 rewind”是按“源码未找到”得出的【推断】，不是官方声明；插件层是否提供不在本次核对范围内。dsh 的 fork 是“前缀 + 合成 closer”，不是在同一文件里换叶。</p>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+<script src="../assets/js/demos/session-tree.js"></script>
+</body>
+</html>

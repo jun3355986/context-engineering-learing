@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+*~
+
+# 依赖与本地构建
+node_modules/
+dist/
+.cache/
+
+# 密钥
+.env
+.env.*
+!.env.example
+
+# 日志
+*.log
+
+# 本地 agent 记忆（含本机路径，不进仓库）
+.workbuddy/

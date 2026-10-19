@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>oh-my-pi · 压缩方法链与回退 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-omp-01 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-omp-01 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-omp-01 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-omp-01 .path-card code,
+  #src-omp-01 .callout code,
+  #src-omp-01 .quiz__q code,
+  #src-omp-01 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-omp-01">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-omp-01">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>oh-my-pi</span><span>·</span><span>第 01 节</span></p>
+      <h1>压缩方法链与回退</h1>
+      <p class="lede">pi 只有一种压缩：调模型写摘要。oh-my-pi 把压缩做成了一条链——服务端压缩、历史转图、交接文档、机械省略、模型摘要，按顺序试，不可用就跳过，不够就往下走。这一节读这条链的选择逻辑，以及它为什么必须写成递归。</p>
+      <ul class="meta">
+        <li>约 16 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>f979f46</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出五种方法的默认顺序，以及每一种在什么条件下被判为「不可用」。</li>
+          <li>解释 <code>reason</code> 为什么能让同一条链走出不同的路径（至少举两处）。</li>
+          <li>说明 shake 失败后为什么用「从下一个下标重新进入」而不是顺序往下走。</li>
+          <li>区分 oh-my-pi 从 pi 继承的骨架与自己新增的决策层。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前：这是一份 fork</p>
+      <p>oh-my-pi 的 <code>README.md</code> 明确写着它是 pi 的 fork。<span class="tag tag--ok">已核实</span>它保留了 pi 的「树 + 投影 + 摘要 + 保留段」骨架，也保留了 <code>keepRecentTokens = 20000</code>、split turn 双摘要、摘要模板、缓存预热这些实现。本节讲的方法链、服务端压缩、snapcompact、handoff、shake 是<b>新增</b>；阈值从「固定预留」改成「窗口比例下限」是<b>改动</b>。读的时候请始终分清这两类。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>一次压缩不是「调一个函数」，而是「走一条链」</h2>
+
+      <p>入口是 <code>runAutoCompaction(reason, willRetry, options)</code>。<code>reason</code> 有四个取值：<code>overflow</code>、<code>threshold</code>、<code>idle</code>、<code>incomplete</code>，分别对应「溢出恢复」「轮后/轮中阈值」「空闲维护」「输出被截断后的续跑」。<span class="tag tag--ok">已核实</span>方法顺序来自配置 <code>compaction.methodOrder</code>，默认是：</p>
+
+      <p><code>["remote", "snapcompact", "handoff", "shake", "soft"]</code><span class="tag tag--ok">已核实</span></p>
+
+      <p class="lead-in">这条顺序不是「从好到差」，而是「从最省事到最费事」：先问 provider 能不能自己压，再试不调模型的历史转图，再试生成交接文档，再试机械删除，最后才调模型写摘要。</p>
+
+      <p>函数先做两件与链无关的事：检查 <code>compaction.enabled</code>（<code>idle</code> 例外），以及检查是否走了实验性的 notes 路径。然后解析方法顺序，从 <code>options.methodIndex ?? 0</code> 开始遍历，对每个候选调用 <code>isCompactionMethodUsable()</code>，第一个可用的就是本次方法。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="omp1-f1-title omp1-f1-desc">
+          <title id="omp1-f1-title">五种压缩方法的默认顺序与可用性闸门</title>
+          <desc id="omp1-f1-desc">五列从上到下依次是 remote、snapcompact、handoff、shake、soft，每列标注可用条件与失败后的去向，右侧箭头表示回退方向。</desc>
+          <text class="svg-note" x="8" y="16">默认顺序（可配置，但只能从这五个里选）</text>
+
+          <rect class="svg-seg--a" x="8" y="28" width="118" height="44" rx="7"/>
+          <text class="svg-label" x="67" y="55" text-anchor="middle">remote</text>
+          <rect class="svg-seg--b" x="134" y="28" width="118" height="44" rx="7"/>
+          <text class="svg-label" x="193" y="55" text-anchor="middle">snapcompact</text>
+          <rect class="svg-seg--b" x="260" y="28" width="118" height="44" rx="7"/>
+          <text class="svg-label" x="319" y="55" text-anchor="middle">handoff</text>
+          <rect class="svg-seg--c" x="386" y="28" width="118" height="44" rx="7"/>
+          <text class="svg-label" x="445" y="55" text-anchor="middle">shake</text>
+          <rect class="svg-seg--a" x="512" y="28" width="120" height="44" rx="7"/>
+          <text class="svg-label" x="572" y="55" text-anchor="middle">soft</text>
+
+          <text class="svg-note" x="67" y="94" text-anchor="middle">要 endpoint</text>
+          <text class="svg-note" x="67" y="112" text-anchor="middle">或原生路由</text>
+          <text class="svg-note" x="193" y="94" text-anchor="middle">模型收图</text>
+          <text class="svg-note" x="193" y="112" text-anchor="middle">且未被排除</text>
+          <text class="svg-note" x="319" y="94" text-anchor="middle">reason ≠</text>
+          <text class="svg-note" x="319" y="112" text-anchor="middle">overflow</text>
+          <text class="svg-note" x="445" y="94" text-anchor="middle">总能跑</text>
+          <text class="svg-note" x="445" y="112" text-anchor="middle">（本地）</text>
+          <text class="svg-note" x="572" y="94" text-anchor="middle">总能跑</text>
+          <text class="svg-note" x="572" y="112" text-anchor="middle">（调模型）</text>
+
+          <line class="svg-rule" x1="8" y1="132" x2="632" y2="132"/>
+
+          <text class="svg-note" x="8" y="156">不可用 → 直接跳过，不进入执行</text>
+          <text class="svg-note" x="8" y="180">可用但失败 → 提交失败并结束；只有 shake「不够」会继续</text>
+
+          <rect class="svg-seg--c" x="386" y="196" width="118" height="40" rx="7"/>
+          <text class="svg-label" x="445" y="221" text-anchor="middle">shake 判定</text>
+          <path d="M504 216 H 540 V 74 H 512" fill="none" stroke="var(--orange)" stroke-width="2"/>
+          <text class="svg-note" x="548" y="150">回退到下一个</text>
+          <text class="svg-note" x="548" y="168">methodIndex + 1</text>
+          <text class="svg-note" x="548" y="186">（递归重入）</text>
+
+          <text class="svg-note" x="8" y="262">「不可用」是静态条件：看模型、看配置、看 reason。</text>
+          <text class="svg-note" x="8" y="284">「不够」是动态结果：跑了 shake，但剩余上下文仍高于恢复带。</text>
+        </svg>
+        <figcaption>图 1　方法链。五列是默认顺序；前三种在进入执行前就被可用性闸门挡住，shake 是唯一一个「执行后还能继续往下」的方法，soft 是最后兜底。</figcaption>
+      </figure>
+
+      <p>这一节的第二个重点是 <code>shake</code>。它是唯一一个「可以执行、可以产生效果、但仍然选择继续」的方法：如果它腾出的空间不足以让上下文回到恢复带（阈值 × 0.8），<code>#runAutoShake()</code> 返回 <code>"fallback"</code>，调用方用 <code>methodIndex + 1</code> <b>递归</b>重新进入 <code>runAutoCompaction()</code>。<span class="tag tag--ok">已核实</span>为什么要递归而不是写一个 <code>for</code> 循环往下走？因为 <code>shake</code> 可能已经改写了历史，后续方法的输入必须是「改写后的」上下文；重新进入函数能保证所有前置检查（启用开关、实验路径、推测压缩、abort controller）都再跑一遍。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>五条链接：顺序、闸门、选择、回退、判定</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 默认顺序：五个枚举</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/compaction-methods.ts#L44-L50">compaction-methods.ts#L44-L50</a><br>
+          <code>DEFAULT_COMPACTION_METHOD_ORDER</code>：remote → snapcompact → handoff → shake → soft。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 可用性闸门：三种条件</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L186-L200">session-maintenance.ts#L186-L200</a><br>
+          <code>isCompactionMethodUsable()</code>：remote 看端点/原生路由，snapcompact 看视觉能力，handoff 看 reason。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 选择循环：第一个可用的胜出</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L4673-L4712">session-maintenance.ts#L4673-L4712</a><br>
+          跳过不可用项；原生压缩刚刚失败过时也跳过，前提是后面还有可用方法。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 回退：shake 不够就重入</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L4730-L4747">session-maintenance.ts#L4730-L4747</a><br>
+          <code>outcome !== "fallback"</code> 就直接返回，否则带 <code>methodIndex + 1</code> 递归。</p>
+        </div>
+        <div class="path-card">
+          <h3>⑤ 判定：什么算「不够」</h3>
+          <p><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L5779-L5818">session-maintenance.ts#L5779-L5818</a><br>
+          <code>#runAutoShake()</code>：先看有没有删掉东西，再看剩余上下文是否低于 <code>阈值 × 0.8</code>。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：<code>COMPACTION_METHOD_CHOICES</code> 的文案（每种方法一句人话）见 <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/compaction-methods.ts#L11-L38">compaction-methods.ts#L11-L38</a>；「方法 → 引擎策略」的映射见 <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/compaction-methods.ts#L79-L101">compaction-methods.ts#L79-L101</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】默认顺序与配置项顺序不是同一个数组</p>
+        <p><code>COMPACTION_METHOD_CHOICES</code> 里 <code>soft</code> 排在 <code>shake</code> 前面（L28-L37），那是给设置界面用的展示顺序；真正的默认执行顺序是 <code>DEFAULT_COMPACTION_METHOD_ORDER</code>，<code>shake</code> 在 <code>soft</code> 之前（L44-L50）。看配置文档时容易把两者混为一谈：展示顺序不等于回退顺序，以常量数组为准。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：选谁，以及选到 shake 之后怎么办</h2>
+
+      <p>第一段是选择循环，去掉两行日志与一个类型收窄，保留 40 行。第二段是 shake 分支，18 行完整保留。两段合起来 59 行，都是纯控制流，没有大段字符串。</p>
+
+      <p class="small muted">文件：<code>packages/coding-agent/src/session/session-maintenance.ts</code>　行号：L4673-L4712（节选 39 行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// startIndex 允许「从中间继续」：shake 回退时传的就是下一个下标</span>
+<span class="code__line">for (let index = startIndex; index &lt; methods.length; index++) {</span>
+<span class="code__line">    const candidate = methods[index];</span>
+<span class="code__line">    <span class="cmt">// 静态闸门：模型不支持、配置不允许、reason 不适用 → 跳过</span></span>
+<span class="code__line">    if (</span>
+<span class="code__line">        !isCompactionMethodUsable(</span>
+<span class="code__line">            candidate,</span>
+<span class="code__line">            reason,</span>
+<span class="code__line">            this.#model,</span>
+<span class="code__line">            compactionSettings,</span>
+<span class="code__line">            options.excludeMediaMethods === true,</span>
+<span class="code__line">        )</span>
+<span class="code__line">    )</span>
+<span class="code__line">        continue;</span>
+<span class="code__line">    <span class="cmt">// 原生压缩刚失败过：如果后面还有可用方法，就别再试它</span></span>
+<span class="code__line">    const liveModel = this.#model;</span>
+<span class="code__line">    if (</span>
+<span class="code__line">        candidate === "remote" &amp;&amp;</span>
+<span class="code__line">        liveModel &amp;&amp;</span>
+<span class="code__line">        this.#nativeSpeculationFailed(liveModel) &amp;&amp;</span>
+<span class="code__line">        methods</span>
+<span class="code__line">            .slice(index + 1)</span>
+<span class="code__line">            .some(next =&gt;</span>
+<span class="code__line">                isCompactionMethodUsable(</span>
+<span class="code__line">                    next,</span>
+<span class="code__line">                    reason,</span>
+<span class="code__line">                    liveModel,</span>
+<span class="code__line">                    compactionSettings,</span>
+<span class="code__line">                    options.excludeMediaMethods === true,</span>
+<span class="code__line">                ),</span>
+<span class="code__line">            )</span>
+<span class="code__line">    ) {</span>
+<span class="code__line">        logger.debug("Skipping native compaction after a failed speculative attempt", { … });</span>
+<span class="code__line">        continue;</span>
+<span class="code__line">    }</span>
+<span class="code__line">    method = candidate; <span class="cmt">// 第一个通过的候选就是本次方法</span></span>
+<span class="code__line">    methodIndex = index;</span>
+<span class="code__line">    break;</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/coding-agent/src/session/session-maintenance.ts</code>　行号：L4730-L4747（20 行，完整）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// shake 是本地操作，不调远端模型，所以内联执行</span>
+<span class="code__line">if (method === "shake" &amp;&amp; !armedSpec) {</span>
+<span class="code__line">    const outcome = await this.#runAutoShake(</span>
+<span class="code__line">        reason,</span>
+<span class="code__line">        willRetry,</span>
+<span class="code__line">        generation,</span>
+<span class="code__line">        shouldAutoContinue,</span>
+<span class="code__line">        terminalTextAnswer,</span>
+<span class="code__line">        options.triggerContextTokens,</span>
+<span class="code__line">        suppressContinuation,</span>
+<span class="code__line">        options.detachPostCommit === true,</span>
+<span class="code__line">    );</span>
+<span class="code__line">    if (outcome !== "fallback") return outcome; <span class="cmt">// 处理完了</span></span>
+<span class="code__line">    <span class="cmt">// 没处理完：从下一个方法重新进入整个决策</span></span>
+<span class="code__line">    return await this.runAutoCompaction(reason, willRetry, {</span>
+<span class="code__line">        ...options,</span>
+<span class="code__line">        methodIndex: methodIndex + 1,</span>
+<span class="code__line">        fallbackFromShake: true, <span class="cmt">// 告诉下游「历史已经改过一次」</span></span>
+<span class="code__line">    });</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段省略了两行 <code>logger.debug</code> 的参数展开（用 <code>…</code> 标注）和一处 <code>CompactionMethod</code> 的类型收窄；判断逻辑一行未删。第二段没有省略。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四层判断，一个递归</h2>
+
+      <h3>第 1 段　闸门：同一份配置，不同 reason 走出不同路径</h3>
+
+      <p><code>isCompactionMethodUsable()</code> 只有三个分支：</p>
+
+      <p><code>remote</code> → <code>canUseRemoteCompaction()</code>：要么配置了 <code>remoteEndpoint</code>，要么当前模型支持 provider 原生压缩。<span class="tag tag--ok">已核实</span></p>
+
+      <p><code>snapcompact</code> → <code>!excludeMedia &amp;&amp; model?.input.includes("image")</code>：模型必须能读图，且本次没有被「排除媒体方法」标记。<span class="tag tag--ok">已核实</span></p>
+
+      <p><code>handoff</code> → <code>reason !== "overflow"</code>：溢出恢复时跳过。<span class="tag tag--ok">已核实</span></p>
+
+      <p>后两个条件的理由值得展开。<code>handoff</code> 的做法是「生成一份交接文档，把它当作摘要继续」，它需要把整段历史再发一次给模型；而 <code>overflow</code> 的前提正是「上一次请求已经超了」，再发一次同样的输入只会再溢出一次。所以溢出路径直接跳过它，而不是「试了再说」。</p>
+
+      <p><code>excludeMediaMethods</code> 来自 413 / payload-too-large 这类错误：请求体太大，而 snapcompact 会<b>增加</b>图片帧，用它来救字节超限等于火上浇油。源码注释写得很直白：「a byte/payload-limit 413 recovery must not retry with an even larger, media-heavy request」。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这就是 <code>reason</code> 的作用：它不是日志标签，而是闸门的输入。同一条 <code>methodOrder</code>，在 <code>threshold</code> 下可能选 <code>handoff</code>，在 <code>overflow</code> 下会跳到 <code>shake</code>。</p>
+
+      <h3>第 2 段　跳过刚失败的原生压缩</h3>
+
+      <p>第二个 <code>if</code> 处理一个很具体的场景：推测压缩（speculation）已经在后台试过 <code>remote</code> 并失败了。如果这时还按顺序选 <code>remote</code>，就会把同一个注定失败的请求再发一次，白等一轮超时。</p>
+
+      <p>注意它的条件里有一个 <code>methods.slice(index + 1).some(...)</code>：只有「后面还有可用方法」时才跳过。如果 <code>remote</code> 是唯一可用的方法，跳过它就等于什么都不做，那还不如再试一次。这是一个「回退必须有着落」的守卫，和很多重试框架里的「最后一次不降级」是同一个思路。</p>
+
+      <p><code>armedSpec</code> 是另一条支线：推测压缩可能已经产出了摘要，这时直接认领结果，不再执行方法。但 <code>snapcompact</code> 例外——它是本地操作，几乎瞬时完成，一个「可能已经过时」的 LLM 摘要不应该覆盖它。<span class="tag tag--ok">已核实</span></p>
+
+      <h3>第 3 段　shake：唯一会「执行后继续」的方法</h3>
+
+      <p><code>shake</code> 的语义是「机械省略」：把工具结果和大块 fenced/XML 文本换成占位符，原文落到 artifact。它不调模型，所以快；也正因为快，它经常「删了一些，但不够」。</p>
+
+      <p><code>#runAutoShake()</code> 的判定在 L5779-L5814，逻辑是三步：</p>
+
+      <p>一，<code>reclaimed = toolResultsDropped + blocksDropped &gt; 0</code>。一个都没删，说明没有可省略的区域。<span class="tag tag--ok">已核实</span></p>
+
+      <p>二，算剩余上下文。优先用调用方传进来的 <code>triggerContextTokens</code> 减去 <code>result.tokensFreed</code>，再与 <code>thresholdTokens × 0.8</code> 比较；没有传就用 <code>getContextUsage()</code> 的当前值。<span class="tag tag--ok">已核实</span>用 provider 侧的触发值而不是本地估算，是因为本地估算会低估 thinking 签名之类的负载。</p>
+
+      <p>三，<code>shouldFallBack = reason !== "idle" &amp;&amp; ((reason === "overflow" &amp;&amp; !reclaimed) || stillOverThreshold)</code>。<span class="tag tag--ok">已核实</span>三种恢复型 reason 只要「仍高于恢复带」就继续；<code>idle</code> 例外，因为空闲维护有 60 秒以上的定时器，下一轮会重新测，不会空转。</p>
+
+      <p>那个 0.8 的系数不是随手写的。源码里叫 <code>COMPACTION_RECOVERY_BAND</code>，作用是滞回：如果只要求「低于阈值」，上下文会在阈值附近来回抖动，每轮都触发一次 shake，而第二次 shake 已经没有东西可删，就会死循环（源码注释提到 issue #2119/#2275）。要求降到阈值的 80%，等于强制「一次退够」。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 244" role="img" aria-labelledby="omp1-f2-title omp1-f2-desc">
+          <title id="omp1-f2-title">shake 之后的三条去向</title>
+          <desc id="omp1-f2-desc">一条判定链：有没有删掉内容、剩余是否低于阈值乘 0.8、reason 是否为 idle。三个判断导向三种结果：直接完成、回退到下一方法、或空闲维护自行结束。</desc>
+          <rect class="svg-track" x="8" y="20" width="200" height="42" rx="7"/>
+          <text class="svg-label svg-label--dark" x="108" y="46" text-anchor="middle">reclaimed &gt; 0 ?</text>
+          <line class="svg-rule" x1="208" y1="41" x2="248" y2="41"/>
+          <text class="svg-note" x="228" y="32" text-anchor="middle">否</text>
+          <rect class="svg-seg--c" x="248" y="20" width="200" height="42" rx="7"/>
+          <text class="svg-label" x="348" y="46" text-anchor="middle">overflow → fallback</text>
+
+          <line class="svg-rule" x1="108" y1="62" x2="108" y2="96"/>
+          <text class="svg-note" x="118" y="86">是</text>
+          <rect class="svg-track" x="8" y="96" width="200" height="42" rx="7"/>
+          <text class="svg-label svg-label--dark" x="108" y="122" text-anchor="middle">剩余 ≤ 阈值 × 0.8 ?</text>
+          <line class="svg-rule" x1="208" y1="117" x2="248" y2="117"/>
+          <text class="svg-note" x="228" y="108" text-anchor="middle">是</text>
+          <rect class="svg-seg--a" x="248" y="96" width="200" height="42" rx="7"/>
+          <text class="svg-label" x="348" y="122" text-anchor="middle">完成，安排续跑</text>
+
+          <line class="svg-rule" x1="108" y1="138" x2="108" y2="172"/>
+          <text class="svg-note" x="118" y="162">否</text>
+          <rect class="svg-track" x="8" y="172" width="200" height="42" rx="7"/>
+          <text class="svg-label svg-label--dark" x="108" y="198" text-anchor="middle">reason === "idle" ?</text>
+          <line class="svg-rule" x1="208" y1="193" x2="248" y2="193"/>
+          <text class="svg-note" x="228" y="184" text-anchor="middle">否</text>
+          <rect class="svg-seg--c" x="248" y="172" width="200" height="42" rx="7"/>
+          <text class="svg-label" x="348" y="198" text-anchor="middle">fallback → 下一方法</text>
+
+          <text class="svg-note" x="464" y="46">没有可删的</text>
+          <text class="svg-note" x="464" y="122">退够了</text>
+          <text class="svg-note" x="464" y="198">退不够</text>
+          <text class="svg-note" x="464" y="216">idle 则等下一轮定时器</text>
+        </svg>
+        <figcaption>图 2　shake 的三条去向。关键不是「删了多少」，而是「删完还剩多少」；0.8 的恢复带用来防抖，避免在阈值附近反复触发。</figcaption>
+      </figure>
+
+      <h3>第 4 段　递归：为什么不是 while</h3>
+
+      <p>回退那一行是 <code>return await this.runAutoCompaction(reason, willRetry, {...options, methodIndex: methodIndex + 1, fallbackFromShake: true})</code>。用递归而不是循环，有三个实际好处：</p>
+
+      <p>第一，<b>输入必须重取</b>。shake 改写了会话条目，后续方法要基于新上下文工作。重新进入函数，<code>preparedContextTokens</code>、<code>triggerContextTokens</code>、推测压缩的认领都会重新计算；如果留在循环里，很容易不小心复用旧值。</p>
+
+      <p>第二，<b>前置检查要重跑</b>。启用开关、实验路径、abort controller 的安装、<code>session.compacting</code> 钩子，都在函数开头；递归天然保证它们对新方法生效。</p>
+
+      <p>第三，<b>调用栈就是决策链</b>。出问题时日志能看出「shake → soft」这条路径，而不是一堆循环变量。<code>fallbackFromShake</code> 这个标志还会告诉下游「历史已经改过一次」，避免某些方法再做一次同样的省略。</p>
+
+      <p>代价是栈深度。方法只有五个，且每个方法最多回退一次（<code>methodIndex</code> 单调递增），所以最坏深度是 5，不会爆栈。</p>
+
+      <h3>第 5 段　六条触发路径与推测压缩</h3>
+
+      <p>方法链解决「怎么压」，触发路径解决「什么时候压」。omp 有六条，全部最终汇到 <code>runAutoCompaction()</code>，只是 <code>reason</code> 不同：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">路径</th>
+              <th scope="col">reason</th>
+              <th scope="col">时机</th>
+              <th scope="col">跳过的方法</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">手动<span>/compact</span></th><td><code>manual</code></td><td>用户输入后、下一轮开始前</td><td>无</td></tr>
+            <tr><th scope="row" class="cell-tool">溢出<span>overflow</span></th><td><code>overflow</code></td><td>provider 报上下文过长</td><td><code>handoff</code>、<code>snapcompact</code>（媒体型 413）</td></tr>
+            <tr><th scope="row" class="cell-tool">输出未完成<span>length</span></th><td><code>incomplete</code></td><td>停止原因为 <code>length</code></td><td>无（按同一链）</td></tr>
+            <tr><th scope="row" class="cell-tool">轮后阈值</th><td><code>threshold</code></td><td>一轮结束、下一次提交前</td><td>无</td></tr>
+            <tr><th scope="row" class="cell-tool">轮中阈值</th><td><code>threshold</code></td><td>工具结果落定、下一次 assistant 之前</td><td>无</td></tr>
+            <tr><th scope="row" class="cell-tool">空闲维护</th><td><code>idle</code></td><td>定时器（默认关闭）</td><td><code>handoff</code> 的续跑语义不同</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：六条路径的清单来自 <code>docs/compaction.md#L70-L77</code>；各路径的跳过规则来自 <code>isCompactionMethodUsable()</code> 与 <code>runAutoCompaction()</code> 的 <code>reason</code> 判断。子代理强制开启轮中压缩。</p>
+
+      <p>「轮中阈值」是 pi 也有的一条：工具结果落定、下一次 assistant 之前检查一次。它的价值在于「不等这一轮结束，先把上下文降下来」；风险是压缩会打断正在进行的工具序列。omp 对此的处理是 <code>midTurnEnabled</code>，默认 <code>true</code>，子代理强制开启。<span class="tag tag--ok">已核实</span></p>
+
+      <p>「输出未完成」值得单独说。模型因为 <code>length</code> 停下，说明回复被截断；此时上下文里可能多了一条半截的 assistant 消息。omp 会按 <code>incomplete</code> 走同一条链，但如果 <code>shake</code> 之后仍然会撞上同一个输出上限，就会连续触发——所以它有「连续恢复上限」的守卫（源码注释提到 #2119/#2275）。这不是方法链本身的逻辑，而是编排层的保护。</p>
+
+      <p>最后是<b>推测压缩</b>。链在真正跑之前，可能已经有一个后台任务按「第一可用方法」生成了摘要；<code>#claimArmedSpeculation()</code> 会尝试认领它。<span class="tag tag--ok">已核实</span>认领的条件包括：当前分支、模型、设置都没变；一旦变了，认领被拒绝，老老实实重跑。为什么值得做？因为压缩的等待时间主要花在模型写摘要上，如果能在阈值触发前就开始写，用户感知的停顿会短很多。代价是可能白跑——上下文没到阈值、或用户切了模型。</p>
+
+      <p>推测压缩与 <code>snapcompact</code> 有一个明确的优先级：<code>armedSpec</code> 对 <code>snapcompact</code> 无效。因为后者是本地瞬时操作，没有必要让一个可能过时的 LLM 摘要覆盖它。<span class="tag tag--ok">已核实</span>这条规则写在 <code>const armedSpec = method === "snapcompact" ? undefined : claimedSpec</code>，一行代码，省掉一次无谓的模型调用。</p>
+
+      <h3>第 6 段　为什么服务端压缩排第一</h3>
+
+      <p>把 <code>remote</code> 放在链首，是一个有争议的选择。它的优点是「最省本地算力」：provider 自己在服务端完成压缩，返回一个不透明的窗口，客户端不需要发第二次请求，也不需要解析摘要。对长会话，这能省掉一次完整的模型调用。</p>
+
+      <p>代价是「不可见」。你拿不到摘要文本，无法在 UI 里展示「压成了什么」，也无法在压缩后做二次编辑。omp 用 <code>providerReplayThroughEntryId</code> 记录「从哪条开始由原生窗口替代」，重建时把整段替换成 provider 的载荷。<span class="tag tag--ok">已核实</span>这要求后续请求仍然走同一个 provider——换模型就重放不了。</p>
+
+      <p>失败的成本也更高：<code>remote</code> 一旦失败，链要往下走，而它排在最前，等于每次都先试一次最慢的路径。omp 的缓解是「原生压缩刚刚失败过就跳过，前提是后面还有可用方法」（前面提到的 <code>methods.slice(index + 1).some(...)</code> 守卫）。<span class="tag tag--ok">已核实</span>这个守卫只在「有退路」时生效，避免了「唯一方法也被跳过」。</p>
+
+      <p>如果换成「<code>soft</code> 排第一」，行为会更可预测：每次都是本地摘要，文本可见，跨模型可重放。但长会话的压缩延迟会明显增加。默认顺序反映的是一个产品判断：优先省时间和钱，接受可观测性的损失。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>默认链 <code>remote → snapcompact → handoff → shake → soft</code>，从「最省事」排到「最费事」。</li>
+            <li><code>reason</code> 是闸门输入：overflow 跳过 handoff，413 排除 snapcompact。</li>
+            <li>shake 是唯一「执行后仍可继续」的方法；不够就带 <code>methodIndex + 1</code> 递归重入。</li>
+            <li>「够不够」看剩余是否低于阈值 × 0.8，滞回用来防抖与防死循环。</li>
+            <li>骨架（树、投影、保留段、双摘要）继承自 pi；方法链、服务端压缩、历史转图、交接文档是新增。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>别人是一条路，它是一棵树</h2>
+
+      <p>多数工具只实现一种压缩：调模型写摘要。oh-my-pi 把「不调模型也能减」的几种手段排在前面，把「调模型」留作兜底。这不是「更强」，而是「把一次失败的等待换成了多次尝试的机会」。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">压缩路径数</th>
+              <th scope="col">失败后</th>
+              <th scope="col">服务端压缩</th>
+              <th scope="col">历史转图</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>5（可配置顺序）</td>
+              <td>shake 不够则回退下一方法</td>
+              <td>有，默认第一优先</td>
+              <td>有（snapcompact）</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>1（LLM 摘要）</td>
+              <td>抛错，不落检查点</td>
+              <td>无</td>
+              <td>无</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>2（native / summarize）</td>
+              <td>按 0.7/0.5/0.35 收缩重试</td>
+              <td>有，模型元数据声明</td>
+              <td>无</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>2（本地 / 远端）</td>
+              <td>摘要失败即失败</td>
+              <td>有（remote v2）</td>
+              <td>无</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：omp <code>f979f46</code>；pi <code>b45e0eb</code>；opencode v2 <code>042d083</code>（beta）；Codex <code>76ed3b4</code>。opencode v2 的两条路径按模型元数据二选一，不是回退关系；Codex 的远端压缩是另一套预算，不是链。</p>
+
+      <p>三点对照：</p>
+
+      <p>一是<b>回退的触发条件</b>。omp 的 <code>shake</code> 会「执行后判断够不够」，这是因为它便宜且可增量；opencode v2 的 <code>deliver</code> 会在发送阶段按比例收缩，也是「执行后判断」，但它收缩的是<b>同一个摘要请求</b>，不是换方法。前者换手段，后者换大小。</p>
+
+      <p>二是<b>服务端压缩的位置</b>。omp 把它放在链首，因为成功时最省本地算力；v2 按模型元数据 <code>compaction.type === "native"</code> 二选一，不做回退；Codex 则是本地与远端两套实现，由调用路径决定。把「可选优化」放在链首，意味着它失败一次就会拖慢整条链——omp 用「失败后跳过」的守卫缓解这一点。</p>
+
+      <p>三是<b>可配置性</b>。omp 允许用户重排五个方法，甚至可以只留 <code>["soft"]</code> 退回 pi 的行为；pi 只有一个开关 <code>enabled</code>。可配置性带来一个隐性成本：不同用户的压缩行为可能完全不同，评测与支持都更难。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从走链到改链</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">配置是默认顺序，模型不支持图片，provider 没有原生压缩端点，reason 是 <code>overflow</code>。这一轮会选哪个方法？如果 <code>shake</code> 删了 3 000 token 但剩余仍在阈值 90%，接下来发生什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>逐个过闸门：remote 不可用、snapcompact 不可用、handoff 因 overflow 不可用、shake 可用。</p>
+          <p>然后看 <code>shouldFallBack</code>：<code>reason !== "idle"</code> 为真；<code>reclaimed</code> 为真，所以第一个括号不成立；<code>stillOverThreshold</code> 为真（90% &gt; 80%）。</p>
+          <p>于是回退到 <code>methodIndex + 1</code>，也就是 <code>soft</code>。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">把 <code>methodOrder</code> 改成 <code>["snapcompact"]</code>，模型不支持图片。会发生什么？这算「安全失败」吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>选择循环里没有任何候选通过闸门，<code>method</code> 保持 <code>undefined</code>，函数返回 <code>COMPACTION_CHECK_NONE</code>。</p>
+          <p>再看 <code>hasUsableCompactionMethod()</code>（L210-L219）的注释：它专门为避免「配置看起来有方法、实际静默 no-op」而写。这说明「什么都不做」在实践中是个需要被检测的状态，而不是一个正常结果。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你要在链里插入一个「先删图片、再摘要」的新方法。只改 <code>methodOrder</code> 够吗？还需要动哪些地方？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p><code>CompactionMethod</code> 是枚举，<code>COMPACTION_METHODS</code> 是白名单，<code>resolveCompactionMethodOrder()</code> 会把不认识的值丢掉。所以先要加枚举。</p>
+          <p>然后 <code>STRATEGY_BY_COMPACTION_METHOD</code> 要给出映射，<code>isCompactionMethodUsable()</code> 要给出可用条件，<code>runAutoCompaction()</code> 的执行分支要能处理它。</p>
+          <p>最后想清楚：它是不是「执行后还能继续」的类型？如果是，就要像 shake 一样返回 <code>"fallback"</code>，否则失败会直接结束整条链。扩展 API 没有「注册新方法」的口子，这也是 omp 的一个边界。</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：oh-my-pi · shake 的机械省略。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

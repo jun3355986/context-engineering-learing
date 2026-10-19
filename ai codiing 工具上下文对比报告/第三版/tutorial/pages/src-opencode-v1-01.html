@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>opencode v1 · 切点：整轮边界与预算 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-opencode-v1-01 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-opencode-v1-01 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-opencode-v1-01 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-opencode-v1-01 .path-card code,
+  #src-opencode-v1-01 .callout code,
+  #src-opencode-v1-01 .quiz__q code,
+  #src-opencode-v1-01 details code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-opencode-v1-01">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-opencode-v1-01">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v1</span><span>·</span><span>第 01 节</span></p>
+      <h1>切点：整轮边界与预算</h1>
+      <p class="lede">opencode v1 的压缩先按「轮」挑：从最后一轮往前，整轮装得下就整轮留；装不下，才在这一轮内部找一个能装下的起点。预算不是固定值，而是「可用窗口的四分之一」，夹在 2 000 与 15 000 之间。这一节把两条规则拆开，再与 v2 的改法并排看。</p>
+      <ul class="meta">
+        <li>约 15 分钟</li>
+        <li>2 个代码块 · 3 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>733b2c6</code>（tag v1.19.0）</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>写出 v1 保留预算的完整公式，并算出 200k 窗口、32k 输出上限时的预算。</li>
+          <li>说明 <code>tail_turns</code> 限制的是候选还是保留量，以及它为什么不能保证结果不超预算。</li>
+          <li>解释 <code>splitTurn()</code> 从轮首往后找起点的原因，以及「找不到」时会发生什么。</li>
+          <li>说出 v2 为什么删掉 <code>tail_turns</code>、把切点收窄到 user 边界。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前：两个 opencode 是两个快照</p>
+      <p>v1 的结论只引提交 <code>733b2c627e5aec39cb33cc22373bdce33053ef2c</code>（tag <code>v1.19.0</code>），v2 只引 <code>042d0832f5f3a73eaa039a58a7d565776f6d4290</code>（beta <code>v2.0.29</code>）。同一段里不混用两份源码。v1 的 <code>packages/core/src/session/*</code> 带 v2 服务标签，不作为 v1 行为证据。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>先切「轮」，再切「消息」</h2>
+
+      <p>v1 把消息序列切成「轮」（turn）：每一轮从一条 <code>user</code> 消息开始，到下一条 <code>user</code> 之前结束。<code>turns()</code> 只认 <code>role === "user"</code> 且 parts 里没有 <code>compaction</code> 的消息当轮首。<span class="tag tag--ok">已核实</span>压缩条目所在的 user 消息被排除，否则「上一轮的压缩标记」会被当成新一轮的开始。</p>
+
+      <p class="lead-in">保留预算决定「留多少」，轮决定「从哪留」。v1 优先整轮，只有整轮装不下时才在轮内切。</p>
+
+      <p>预算由 <code>preserveRecentBudget()</code> 给出：</p>
+
+      <p><code>cfg.compaction?.preserve_recent_tokens ?? clamp(usable × 0.25, 2_000, 15_000)</code><span class="tag tag--ok">已核实</span></p>
+
+      <p><code>usable()</code> 是「可用的输入窗口」：模型有 <code>limit.input</code> 时用 <code>input - reserved</code>，否则用 <code>context - maxOutputTokens</code>；<code>reserved</code> 默认是 <code>min(20_000, maxOutputTokens)</code>。<span class="tag tag--ok">已核实</span>所以 200k 窗口、32k 输出上限时，<code>usable = 200_000 - 20_000 = 180_000</code>，预算 <code>= 45_000</code>，被上限夹到 <b>15 000</b>。</p>
+
+      <p>注意这个值比 pi 的 20 000 小。v1 的取舍是「压缩得更狠」：保留段小，摘要占比大，压完离阈值更远，不容易马上二次触发。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 286" role="img" aria-labelledby="v11-f1-title v11-f1-desc">
+          <title id="v11-f1-title">从最后一轮往前累加，整轮装不下才拆</title>
+          <desc id="v11-f1-desc">四轮消息从旧到新排列，右侧两轮整轮装入 15k 预算，第三轮装不下，于是调用 splitTurn 在该轮内部找一个能装下的起点，更早的轮全部进入摘要。</desc>
+          <text class="svg-note" x="8" y="18">四轮对话（每一轮从 user 开始）</text>
+          <rect class="svg-track" x="8" y="30" width="130" height="48" rx="7"/>
+          <text class="svg-label svg-label--dark" x="73" y="59" text-anchor="middle">轮 1（摘要）</text>
+          <rect class="svg-track" x="146" y="30" width="130" height="48" rx="7"/>
+          <text class="svg-label svg-label--dark" x="211" y="59" text-anchor="middle">轮 2（摘要）</text>
+          <rect class="svg-seg--c" x="284" y="30" width="150" height="48" rx="7"/>
+          <text class="svg-label" x="359" y="52" text-anchor="middle">轮 3（装不下）</text>
+          <text class="svg-label" x="359" y="70" text-anchor="middle">需要拆</text>
+          <rect class="svg-seg--b" x="442" y="30" width="190" height="48" rx="7"/>
+          <text class="svg-label" x="537" y="59" text-anchor="middle">轮 4（整轮保留）</text>
+
+          <text class="svg-note" x="8" y="106">预算 15 000，从轮 4 开始累加：</text>
+          <rect class="svg-track" x="8" y="118" width="624" height="30" rx="6"/>
+          <rect class="svg-seg--b" x="442" y="119" width="190" height="28" rx="5"/>
+          <text class="svg-label" x="537" y="138" text-anchor="middle">轮 4 = 6k</text>
+          <rect class="svg-seg--b" x="284" y="119" width="150" height="28" rx="5"/>
+          <text class="svg-label" x="359" y="138" text-anchor="middle">轮 3 只有 9k 装得下？</text>
+
+          <text class="svg-note" x="8" y="176">轮 3 整轮 12k &gt; 剩余 9k → 调 splitTurn(预算 9k)</text>
+          <rect class="svg-track" x="284" y="188" width="150" height="40" rx="6"/>
+          <text class="svg-note" x="359" y="213" text-anchor="middle">轮内从第 2 条开始试</text>
+          <line class="svg-rule" x1="300" y1="188" x2="300" y2="160"/>
+          <text class="svg-note" x="300" y="154" text-anchor="middle">新切点</text>
+
+          <text class="svg-note" x="8" y="256">找到的第一个「后缀 ≤ 预算」的起点就是切点：尽量多留，且不拆碎工具对。</text>
+          <text class="svg-note" x="8" y="278">找不到（整轮只有一两条、或剩余预算 ≤ 0）→ keep 保持不变，即只保留更晚的整轮。</text>
+        </svg>
+        <figcaption>图 1　整轮累加。轮 4 整轮装入；轮 3 装不下，于是在轮内从第 2 条起找第一个「后缀装得下」的位置。更早的轮全部交给摘要（数字为示意）。</figcaption>
+      </figure>
+
+      <p>代码里还有一个 <code>tail_turns</code>：如果配置了，只把最后 N 轮放进候选（<code>all.slice(-limit)</code>）。它<b>不改变预算</b>，只是缩小搜索范围。<span class="tag tag--ok">已核实</span>所以「设置 <code>tail_turns = 3</code>」不等于「只保留 3 轮」：3 轮如果超过预算，仍然会拆；3 轮如果远小于预算，也只保留这 3 轮。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四条链接：预算、轮、选择、拆分</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 预算：可用窗口的四分之一</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L115-L120">compaction.ts#L115-L120</a><br>
+          <code>preserveRecentBudget()</code>：配置优先，否则 <code>clamp(usable × 0.25, 2k, 15k)</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 轮：user 消息即轮首</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L122-L138">compaction.ts#L122-L138</a><br>
+          <code>turns()</code>：跳过带 <code>compaction</code> part 的 user 消息，<code>end</code> 由下一条轮首回填。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 选择：从新到旧，整轮优先</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L230-L268">compaction.ts#L230-L268</a><br>
+          <code>select</code>：累加、装不下就调 <code>splitTurn</code>、然后 <code>break</code>。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 拆分：从轮首往后找第一个能装下的起点</h3>
+          <p><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L145-L163">compaction.ts#L145-L163</a><br>
+          <code>splitTurn()</code>：预算 ≤ 0 或轮内只有一条消息时直接放弃。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：可用窗口与溢出判定见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/overflow.ts#L8-L34">overflow.ts#L8-L34</a>；保留起点的落盘字段见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L461-L466">compaction.ts#L461-L466</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】<code>tail_turns</code> 是候选上限，不是保留上限</p>
+        <p>配置注释写的是「limit candidate turns」，事实卡片也标了「只限候选」。但很容易被读成「保留 N 轮」。实际逻辑是：候选集缩小到最近 N 轮，然后仍按预算从新到旧累加，仍可能拆轮。<code>tail_turns = 0</code> 是一个特例——直接返回「全部摘要、无保留段」。<span class="tag tag--ok">已核实</span></p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段：选择循环与轮内拆分</h2>
+
+      <p>第一段从预算变量开始到返回，39 行；去掉了函数签名里的类型声明（在正文说明）。第二段 19 行，完整保留 <code>splitTurn()</code> 的判断与循环。合计 59 行。</p>
+
+      <p class="small muted">文件：<code>packages/opencode/src/session/compaction.ts</code>　行号：L230-L268（节选 43 行，含注释行）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 预算：配置优先，否则按可用窗口四分之一，夹在 2k–15k</span>
+<span class="code__line">const budget = preserveRecentBudget({ cfg: input.cfg, model: input.model })</span>
+<span class="code__line">const all = turns(input.messages)</span>
+<span class="code__line">if (!all.length) return { head: input.messages, tail_start_id: undefined }</span>
+<span class="code__line">const recent = limit === undefined ? all : all.slice(-limit) <span class="cmt">// 只缩候选</span></span>
+<span class="code__line"> </span>
+<span class="code__line">let total = 0</span>
+<span class="code__line">let keep: Tail | undefined</span>
+<span class="code__line code__line--cmt">// 从最新一轮往回走</span>
+<span class="code__line">for (let i = recent.length - 1; i &gt;= 0; i--) {</span>
+<span class="code__line">  const turn = recent[i]!</span>
+<span class="code__line">  <span class="cmt">// 只估「这一轮」，成本与保留尾部成正比，不随全会话膨胀</span></span>
+<span class="code__line">  const size = yield* estimate({</span>
+<span class="code__line">    messages: input.messages.slice(turn.start, turn.end),</span>
+<span class="code__line">    model: input.model,</span>
+<span class="code__line">  })</span>
+<span class="code__line">  if (total + size &lt;= budget) {</span>
+<span class="code__line">    total += size <span class="cmt">// 整轮装得下：继续往前</span></span>
+<span class="code__line">    keep = { start: turn.start, id: turn.id }</span>
+<span class="code__line">    continue</span>
+<span class="code__line">  }</span>
+<span class="code__line">  <span class="cmt">// 装不下：用剩余预算在这一轮内部找起点</span></span>
+<span class="code__line">  const remaining = budget - total</span>
+<span class="code__line">  const split = yield* splitTurn({</span>
+<span class="code__line">    messages: input.messages,</span>
+<span class="code__line">    turn,</span>
+<span class="code__line">    model: input.model,</span>
+<span class="code__line">    budget: remaining,</span>
+<span class="code__line">    estimate,</span>
+<span class="code__line">  })</span>
+<span class="code__line">  if (split) keep = split <span class="cmt">// 轮内切点覆盖整轮起点</span></span>
+<span class="code__line">  else if (!keep) {</span>
+<span class="code__line">    yield* Effect.logInfo("tail fallback", { budget, size, total }) <span class="cmt">// 一条都没留下</span></span>
+<span class="code__line">  }</span>
+<span class="code__line">  break <span class="cmt">// 无论拆没拆成，都不再往前找</span></span>
+<span class="code__line">}</span>
+<span class="code__line"> </span>
+<span class="code__line code__line--cmt">// 没留下任何尾部，或尾部从第 0 条开始 → 退化成「全部摘要」</span>
+<span class="code__line">if (!keep || keep.start === 0) return { head: input.messages, tail_start_id: undefined }</span>
+<span class="code__line">return {</span>
+<span class="code__line">  head: input.messages.slice(0, keep.start), <span class="cmt">// 要摘要的部分</span></span>
+<span class="code__line">  tail_start_id: keep.id, <span class="cmt">// 保留段起点，写进压缩 part</span></span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>packages/opencode/src/session/compaction.ts</code>　行号：L145-L163（16 行，完整）</p>
+      <div class="codeblock" data-lang="ts">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">TypeScript</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 预算没了，或这一轮只有一条消息，就没有「轮内」可切</span>
+<span class="code__line">if (input.budget &lt;= 0) return undefined</span>
+<span class="code__line">if (input.turn.end - input.turn.start &lt;= 1) return undefined</span>
+<span class="code__line code__line--cmt">// 从轮首的下一条开始试：start 越大，留下的后缀越小</span>
+<span class="code__line">for (let start = input.turn.start + 1; start &lt; input.turn.end; start++) {</span>
+<span class="code__line">  const size = yield* input.estimate({</span>
+<span class="code__line">    messages: input.messages.slice(start, input.turn.end),</span>
+<span class="code__line">    model: input.model,</span>
+<span class="code__line">  })</span>
+<span class="code__line">  if (size &gt; input.budget) continue <span class="cmt">// 还太大，往后挪</span></span>
+<span class="code__line">  return { <span class="cmt">// 第一个装得下的起点 = 尽量多留</span></span>
+<span class="code__line">    start,</span>
+<span class="code__line">    id: input.messages[start]!.info.id,</span>
+<span class="code__line">  } satisfies Tail</span>
+<span class="code__line">}</span>
+<span class="code__line">return undefined <span class="cmt">// 整轮都试完仍装不下</span></span>
+</code></pre>
+      </div>
+
+      <p class="small muted">第一段省略了 L228-L229 的 <code>limit</code> 读取与「<code>limit &lt;= 0</code> 直接全摘要」的早退（正文交代），其余逻辑完整；第二段省略了 L140-L144 的入参类型声明（正文交代）。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>四个动作，一条与 v2 的分岔</h2>
+
+      <h3>第 1 段　为什么按「轮」而不是按「消息」</h3>
+
+      <p>一条 <code>user</code> 消息之后，通常跟着助手回复、工具调用、工具结果，可能来回好几趟。如果按消息累加，切点很容易落在「工具调用之后、工具结果之前」，留下一组孤儿。<span class="tag tag--ok">已核实</span>v1 的规避方式是「整轮优先」：先以轮为单位装，装不下才进轮内细切。</p>
+
+      <p>但 <code>splitTurn()</code> 的轮内切点<b>并不检查消息角色</b>，它只按「后缀 token 是否 ≤ 预算」判断。这意味着它仍可能切在 assistant 或 tool 消息上。v1 的兜底是：切点之后的所有消息原样保留，只要 provider 接受「历史从对话中间开始」，配对就不一定完整——这是 v1 的一个已知弱点，第 5 节会与 v2 对照。</p>
+
+      <h3>第 2 段　预算为什么是四分之一，且要夹在 2k–15k</h3>
+
+      <p><code>usable × 0.25</code> 的直觉是「保留四分之一、摘要四分之三」。窗口越大，绝对保留量越大；但上限 15 000 把它封住，避免大窗口模型留下太多历史、压完仍然接近阈值。下限 2 000 则防止小窗口模型（例如 32k）算出几百 token 的保留段，导致「刚压完就丢掉了上一句需求」。</p>
+
+      <p>这三个数（0.25 / 2 000 / 15 000）都是硬编码常量，没有注释解释来源。<span class="tag tag--ok">已核实</span>从行为上看，它们与「压缩后要离阈值足够远」这个目标一致：15 000 大约是一个中等回合的体积。</p>
+
+      <p>另一个细节是 <code>estimate</code> 的实现：它把消息转成模型消息后，对 <code>JSON.stringify(msgs)</code> 做 <code>Token.estimate</code>（chars / 4）。<span class="tag tag--ok">已核实</span>所以它估的是「序列化后的 JSON 长度」，比纯文本略高。这解释了为什么同样内容，v1 的预算感觉比 pi 的 20 000 更紧。</p>
+
+      <h3>第 3 段　<code>break</code> 的位置：只拆一轮</h3>
+
+      <p>循环在「装不下」的分支末尾无条件 <code>break</code>。也就是说，v1 只尝试拆<b>当前这一轮</b>；如果拆完仍然留下一个很大的尾巴，它不会继续往前找更小的轮来凑预算。<span class="tag tag--ok">已核实</span>这是一个刻意的简化：保留段必须是连续的一段，拆完这一轮之后，切点已经确定，再往前找只会让保留段变大。</p>
+
+      <p>代价是「预算可能明显没用满」。假设预算 15 000，最后一轮 14 000，前一轮 12 000：循环留下最后一轮（14 000），再往前时 <code>14 000 + 12 000 &gt; 15 000</code>，于是尝试拆前一轮；剩余预算只有 1 000，拆不出东西，<code>keep</code> 仍是最后一轮，然后 <code>break</code>。结果只用了 14 000。</p>
+
+      <p>如果一轮都留不下（<code>keep === undefined</code>），函数返回「全部摘要、无保留段」。日志里会出现 <code>"tail fallback"</code>。<span class="tag tag--ok">已核实</span>这比「硬留一条超预算的消息」安全：至少不会让压缩后的请求再次溢出。</p>
+
+      <h3>第 4 段　与 v2 并排：从「轮内切」到「退到 user 边界」</h3>
+
+      <p>v2 的 <code>splitConversation()</code> 换了一套做法（<code>packages/core/src/session/compaction.ts#L702-L738</code>）：先按 <code>keep</code> 从最旧开始丢，丢到剩余装得下；然后<b>退到最近的 user 消息</b>作为起点；如果全部装得下，就只留最新一轮；如果只有一轮，就把整轮摘要掉。<span class="tag tag--ok">已核实</span></p>
+
+      <p>两者最关键的差别是：v1 允许切在轮内部的任意消息上，v2 只允许切在 <code>user</code> 上。v2 的注释写明了理由：「Start at a user message so an assistant's tool calls and results stay together.」<span class="tag tag--ok">已核实</span>这把「工具对完整性」从事后检查变成了结构保证。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="v11-f2-title v11-f2-desc">
+          <title id="v11-f2-title">v1 与 v2 在同一轮上的切点差异</title>
+          <desc id="v11-f2-desc">上排是 v1：切点落在轮中间的 assistant 消息上，保留段从半轮开始。下排是 v2：先算预算位置，再退回最近的 user 消息，保留段从整轮开始，留下更少的内容。</desc>
+          <text class="svg-note" x="8" y="18">v1：整轮装不下 → splitTurn 在轮内找第一个装得下的起点</text>
+          <rect class="svg-seg--a" x="8" y="30" width="90" height="40" rx="6"/>
+          <text class="svg-label" x="53" y="55" text-anchor="middle">user</text>
+          <rect class="svg-track" x="106" y="30" width="90" height="40" rx="6"/>
+          <text class="svg-label svg-label--dark" x="151" y="55" text-anchor="middle">assistant</text>
+          <rect class="svg-track" x="204" y="30" width="90" height="40" rx="6"/>
+          <text class="svg-label svg-label--dark" x="249" y="55" text-anchor="middle">tool</text>
+          <rect class="svg-seg--c" x="302" y="30" width="110" height="40" rx="6"/>
+          <text class="svg-label" x="357" y="55" text-anchor="middle">assistant ←</text>
+          <rect class="svg-seg--b" x="420" y="30" width="100" height="40" rx="6"/>
+          <text class="svg-label" x="470" y="55" text-anchor="middle">tool</text>
+          <rect class="svg-seg--b" x="528" y="30" width="104" height="40" rx="6"/>
+          <text class="svg-label" x="580" y="55" text-anchor="middle">user</text>
+          <text class="svg-note" x="8" y="88">保留段从轮中间开始：前半轮进了摘要，工具对可能被拆开</text>
+
+          <line class="svg-rule" x1="8" y1="108" x2="632" y2="108"/>
+
+          <text class="svg-note" x="8" y="132">v2：先按 keep 丢到装得下，再退回最近的 user</text>
+          <rect class="svg-track" x="8" y="144" width="90" height="40" rx="6"/>
+          <text class="svg-label svg-label--dark" x="53" y="169" text-anchor="middle">user</text>
+          <rect class="svg-track" x="106" y="144" width="90" height="40" rx="6"/>
+          <text class="svg-label svg-label--dark" x="151" y="169" text-anchor="middle">assistant</text>
+          <rect class="svg-track" x="204" y="144" width="90" height="40" rx="6"/>
+          <text class="svg-label svg-label--dark" x="249" y="169" text-anchor="middle">tool</text>
+          <rect class="svg-track" x="302" y="144" width="110" height="40" rx="6"/>
+          <text class="svg-label svg-label--dark" x="357" y="169" text-anchor="middle">assistant</text>
+          <rect class="svg-seg--b" x="420" y="144" width="100" height="40" rx="6"/>
+          <text class="svg-label" x="470" y="169" text-anchor="middle">tool</text>
+          <rect class="svg-seg--b" x="528" y="144" width="104" height="40" rx="6"/>
+          <text class="svg-label" x="580" y="169" text-anchor="middle">user ← 切点</text>
+          <text class="svg-note" x="8" y="202">保留段从整轮开始：工具对完整，但留下的内容比预算更少</text>
+
+          <text class="svg-note" x="8" y="238">v1 的取舍：尽量用满预算，接受「半轮开头」。</text>
+          <text class="svg-note" x="8" y="262">v2 的取舍：结构正确优先，接受「少留一大段」。</text>
+          <text class="svg-note" x="8" y="286">同一份历史，两个切点相差近一轮——这就是「边界规则」的代价。</text>
+        </svg>
+        <figcaption>图 2　v1 与 v2 的切点差异。v1 可以在轮内任意消息处切，v2 必须退到 user 边界；后者更安全，但保留量常常低于预算（示意，非真实比例）。</figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">维度</th>
+              <th scope="col">v1（733b2c6）</th>
+              <th scope="col">v2（042d083，beta）</th>
+              <th scope="col">为什么改</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">保留预算<span>budget</span></th>
+              <td><code>clamp(usable × 0.25, 2k, 15k)</code></td>
+              <td>固定 <code>keep = 15_000</code></td>
+              <td>去掉对窗口的隐式依赖，预算可预测</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">候选限制<span>tail_turns</span></th>
+              <td>有，只缩候选</td>
+              <td>删除，配置层标 unsupported</td>
+              <td>少一个「看起来像保留量」的旋钮</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">轮内切分<span>split</span></th>
+              <td>可切在任意消息</td>
+              <td>只退到 user 边界</td>
+              <td>保证工具调用与结果同进退</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">估算对象<span>estimate</span></th>
+              <td>序列化 JSON 的 chars/4</td>
+              <td>文本化后的 chars/4（<code>messageToText</code>）</td>
+              <td>与真正发送的内容更接近</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：v1 来源 <code>packages/opencode/src/session/compaction.ts</code>；v2 来源 <code>packages/core/src/session/compaction.ts</code>。两列分别固定到各自提交，不交叉引用。</p>
+
+      <h3>第 5 段　走查：四轮、一次拆分、一个 800 token 的缺口</h3>
+
+      <p>设 <code>budget = 15 000</code>，四轮的估算如下（<code>estimate</code> 算的是序列化 JSON，所以数字会比纯文本高一点）：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">轮</th>
+              <th scope="col">起止下标</th>
+              <th scope="col">token</th>
+              <th scope="col">判断</th>
+              <th scope="col">累计</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">T4<span>最新</span></th><td>12–15</td><td>7 000</td><td>整轮装得下</td><td>7 000</td></tr>
+            <tr><th scope="row" class="cell-tool">T3</th><td>7–12</td><td>12 000</td><td>7 000 + 12 000 &gt; 15 000</td><td>7 000</td></tr>
+            <tr><th scope="row" class="cell-tool">T3 的拆分</th><td>—</td><td>—</td><td>剩余预算 8 000</td><td>—</td></tr>
+            <tr><th scope="row" class="cell-tool">T2</th><td>3–7</td><td>9 000</td><td>不参与（已 break）</td><td>—</td></tr>
+            <tr><th scope="row" class="cell-tool">T1</th><td>0–3</td><td>4 000</td><td>不参与</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：下标为 <code>messages</code> 数组位置，仅示意；token 为 <code>Token.estimate(JSON.stringify(toModelMessages(...)))</code> 的结果。</p>
+
+      <p>T3 里有 5 条消息，每条约 2 400 token。<code>splitTurn</code> 从 <code>start = 1</code> 开始试：4 条 = 9 600 &gt; 8 000，继续；<code>start = 2</code>：3 条 = 7 200 ≤ 8 000，返回。<span class="tag tag--ok">已核实</span>于是保留段是 T3 的第 2–4 条 + T4，共 7 200 + 7 000 = 14 200 token，离预算还差 800。</p>
+
+      <p>这 800 的缺口不是 bug，而是「整轮/整后缀」的必然结果：下一条候选是 T3 的第 1 条（2 400），放进去就超了 1 600。代码不会「试着塞半条消息」，因为一条消息不能被切成两半发给模型。</p>
+
+      <p>注意 T3 的切点选的是「第 2 条」，不是「第 1 条」。<code>start = turn.start + 1</code> 明确从轮首的下一条开始，所以切点永远不会等于轮首——如果等于轮首，那就不叫拆分，而是整轮保留。<span class="tag tag--ok">已核实</span>这个细节让 <code>Tail.start</code> 与 <code>Turn.start</code> 在语义上区分开：前者是「保留段起点」，后者是「轮起点」。</p>
+
+      <p>如果 T3 只有一条消息（<code>end - start &lt;= 1</code>），<code>splitTurn</code> 直接返回 <code>undefined</code>；此时 <code>keep</code> 仍是 T4，结果只保留 T4 的 7 000，剩下的 8 000 预算浪费掉。循环已经 <code>break</code>，不会回头去看 T2（9 000，也装不下）；就算 T2 只有 6 000，也不会被考虑——代码只拆「当前这一轮」，不跨轮凑预算。这是 v1 为了「保留段连续」付的代价。</p>
+
+      <h3>第 6 段　同一份公式，四种窗口</h3>
+
+      <p><code>clamp(usable × 0.25, 2 000, 15 000)</code> 里的三个数会互相压制。把常见的四种窗口代进去：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">模型窗口</th>
+              <th scope="col">usable</th>
+              <th scope="col">× 0.25</th>
+              <th scope="col">最终预算</th>
+              <th scope="col">被谁限制</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="cell-tool">32k<span>输出 8k</span></th><td>24 000</td><td>6 000</td><td>6 000</td><td>比例</td></tr>
+            <tr><th scope="row" class="cell-tool">64k<span>输出 8k</span></th><td>56 000</td><td>14 000</td><td>14 000</td><td>比例</td></tr>
+            <tr><th scope="row" class="cell-tool">128k<span>输出 8k</span></th><td>120 000</td><td>30 000</td><td>15 000</td><td>上限</td></tr>
+            <tr><th scope="row" class="cell-tool">8k<span>输出 4k</span></th><td>4 000</td><td>1 000</td><td>2 000</td><td>下限</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：<code>usable = input - reserved</code>（有 <code>limit.input</code> 时）或 <code>context - maxOutputTokens</code>；<code>reserved = min(20 000, maxOutputTokens)</code>。</p>
+
+      <p>这张表说明「比例预算」的真实行为：只有 32k–64k 这一档，预算才真的随窗口变化；128k 以上全被 15 000 压平，8k 以下全被 2 000 托底。所以「v1 的预算随窗口浮动」这句话只对中等窗口成立。</p>
+
+      <p>15 000 这个上限还带来一个副作用：大窗口模型的压缩频率更高。200k 窗口、预算 15 000，意味着每次只保留很小一段，剩下的都进摘要；如果任务需要精确回忆很久之前的细节，这个预算会显得不够。v2 把默认 <code>keep</code> 也定在 15 000，说明这个数字在实践里被认为是「够用的下限」，而不是「越大越好」。</p>
+
+      <p>下限 2 000 则更像一条安全线：8k 窗口的模型，扣掉 4k 输出预留只剩 4k，如果按 25% 算是 1 000，压完几乎什么都留不下。托到 2 000 至少能保住最近一轮的骨架。两条边界一起看，才能理解为什么源码要用 <code>clamp</code> 而不是直接乘。</p>
+
+      <h3>第 7 段　<code>tail_turns</code> 的三种误用</h3>
+
+      <p><code>tail_turns</code> 的语义只有一个：把候选集缩小到最后 N 轮。三种常见误读都会导致配置与预期不符。</p>
+
+      <p><b>「设 1 就只留 1 轮」。</b>不一定。如果这一轮 20 000 token、预算 15 000，<code>splitTurn</code> 会把它切开，只留后半段。候选是 1 轮，保留的可能只是半轮。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>「设 0 等于不限」。</b>相反：<code>limit &lt;= 0</code> 直接返回「全部摘要、无保留段」。<span class="tag tag--ok">已核实</span>这是一个容易误配的边界，0 不是「关闭限制」，而是「不留尾巴」。</p>
+
+      <p><b>「设 3 能保证不超预算」。</b>不能。候选多了，预算仍是 15 000；循环会在装不下的那一轮拆分或停止，后面的候选根本轮不到。候选上限只影响「最多看几轮」，不影响「最终留多少」。</p>
+
+      <p>三个误读合起来说明：<code>tail_turns</code> 是一个「搜索范围」参数，不是「结果形状」参数。v2 删掉它，一部分原因就是这种语义错位——用户想要的是「保留 N 轮」，代码给的是「只看 N 轮」。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>v1 的预算是 <code>clamp(usable × 0.25, 2 000, 15 000)</code>，可用窗口先扣掉输出预留。</li>
+            <li>按轮累加，整轮装得下就继续；装不下才在这一轮内部找起点，且只找一轮。</li>
+            <li><code>splitTurn()</code> 从轮首往后找第一个「后缀装得下」的位置，尽量多留；找不到就放弃拆。</li>
+            <li><code>tail_turns</code> 只缩小候选，不保证保留量，也不阻止拆轮。</li>
+            <li>v2 删掉 <code>tail_turns</code>、固定 15 000、只切 user 边界：用「少留一点」换「工具对一定完整」。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>「保留多少」的四种算法</h2>
+
+      <p>四家都用「从新到旧累加」这个骨架，但累加单位与预算来源不同。把 v1 放进来，能看清它独特的一点：<b>预算随窗口浮动，切点可以落在轮内</b>。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">累加单位</th>
+              <th scope="col">预算</th>
+              <th scope="col">切点位置</th>
+              <th scope="col">工具对保证</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>整轮，必要时轮内消息</td>
+              <td><code>clamp(usable×0.25, 2k, 15k)</code></td>
+              <td>任意消息</td>
+              <td>无显式保证</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>每个 entry 的文本</td>
+              <td>固定 <code>15_000</code></td>
+              <td>user 边界</td>
+              <td>由边界保证</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>条目</td>
+              <td><code>keepRecentTokens</code> 20 000</td>
+              <td>合法切点（非 toolResult）</td>
+              <td>切点约束保证</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>整组（assistant + 全部结果）</td>
+              <td>20 000，按实测比值缩放</td>
+              <td>合法切点</td>
+              <td>按组累加保证</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：v1 <code>733b2c6</code>；v2 <code>042d083</code>（beta）；pi <code>b45e0eb</code>；omp <code>f979f46</code>。v1 的 <code>splitTurn</code> 是否切在 tool 消息上，取决于消息顺序与预算；源码没有角色检查。</p>
+
+      <p>三点对照：</p>
+
+      <p>一是<b>预算的「形状」</b>。v1 按比例，pi 与 omp 用固定值，v2 也改成固定值。比例制的好处是「小窗口也留得下」，坏处是「同一个会话换模型，保留量会跳变」。v2 选择固定值，说明它更在意可预测性。</p>
+
+      <p>二是<b>切点的安全性</b>。pi 用「合法切点集合」、omp 用「按组累加」、v2 用「user 边界」，三家都在结构层面保证工具对完整。v1 的整轮优先已经避免了大部分问题，但 <code>splitTurn</code> 留下了缺口。这不是实现疏忽，而是「尽量用满预算」与「结构保证」之间的取舍。</p>
+
+      <p>三是<b>候选与保留的分离</b>。只有 v1 有 <code>tail_turns</code> 这种「先缩小候选再算预算」的旋钮，v2 直接删掉。多一个旋钮就多一种误解：「我设了 3 轮，为什么只留了 1 轮？」——因为预算是另一条约束。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从手算预算到判断边界</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">窗口 128k、<code>limit.input</code> 未设、输出上限 8k、<code>compaction.reserved</code> 未设。预算多少？如果 <code>limit.input = 120k</code> 呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>第一条走 <code>context - maxOutputTokens</code>：128 000 − 8 000 = 120 000。再乘 0.25。</p>
+          <p>第二条走 <code>input - reserved</code>，<code>reserved = min(20 000, 8 000) = 8 000</code>。算完别忘 <code>min(15 000, ...)</code>。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">预算 15 000，最近三轮分别是 6 000、12 000、7 000（从旧到新）。切点在哪？如果第三轮只有一条消息呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>从最新一轮 7 000 开始：装得下，total = 7 000。再往前是 12 000：7 000 + 12 000 &gt; 15 000，于是拆这一轮，剩余预算 8 000。</p>
+          <p><code>splitTurn</code> 从这一轮的第 2 条开始试；如果整轮只有一条消息，<code>end - start &lt;= 1</code> 直接返回 <code>undefined</code>，keep 仍是第三轮。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">v2 把切点收窄到 user 边界后，保留量经常低于 <code>keep</code>。这是缺陷还是设计？如果产品要求「必须用满预算」，你会怎么改？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先看 v2 的注释：「Start at a user message so an assistant's tool calls and results stay together.」它把「结构正确」放在「预算用满」之前。</p>
+          <p>要用满预算，就得允许在半轮处切；那就必须回答「工具调用与结果怎么成对」。pi 的答案是「切点白名单」，omp 的答案是「按组累加」。</p>
+          <p>最后一个问题：用满预算的收益（少摘要一点）与拆错工具对的代价（请求被拒或模型误读）哪个更大？</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：opencode v1 · prune：默认关闭的旧结果擦除。</p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

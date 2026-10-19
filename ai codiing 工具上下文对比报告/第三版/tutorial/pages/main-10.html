@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>子代理隔离：把一场搜索关在另一个窗口里 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 演示专属样式：只作用于 #demo-subagent-isolation */
+  body[data-chapter="main-10"] .prose :not(pre) > code,
+  body[data-chapter="main-10"] .modal :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="main-10"] .modal .kv dd { min-width: 0; }
+
+  #demo-subagent-isolation .sub-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  #demo-subagent-isolation .sub-kpi {
+    min-width: 0;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #demo-subagent-isolation .sub-kpi__k {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  #demo-subagent-isolation .sub-kpi__v {
+    display: block;
+    margin-top: 2px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 650;
+  }
+  #demo-subagent-isolation .sub-kpi__s {
+    display: block;
+    color: var(--muted);
+    font-size: 9.5px;
+    line-height: 1.4;
+  }
+  #demo-subagent-isolation .sub-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
+  #demo-subagent-isolation .sub-pane {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: 9px;
+    background: var(--bg);
+  }
+  #demo-subagent-isolation .sub-pane--child {
+    border-style: dashed;
+    border-top-style: dashed;
+    border-color: var(--orange-line);
+    background: var(--bg-soft);
+  }
+  #demo-subagent-isolation .sub-pane__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 6px 9px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    font-size: 10.5px;
+    font-weight: 650;
+  }
+  #demo-subagent-isolation .sub-pane__head span {
+    color: var(--muted);
+    font-size: 9.5px;
+    font-weight: 400;
+  }
+  #demo-subagent-isolation .sub-stream {
+    display: flex;
+    max-height: 350px;
+    min-height: 96px;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  #demo-subagent-isolation .sub-msg {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border-strong);
+    border-radius: 5px;
+    background: var(--bg);
+    font-size: 11px;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+  #demo-subagent-isolation .sub-msg__role {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.03em;
+  }
+  #demo-subagent-isolation .sub-msg--user { border-left-color: var(--accent); }
+  #demo-subagent-isolation .sub-msg--assistant { border-left-color: var(--green); }
+  #demo-subagent-isolation .sub-msg--task {
+    border: 1px dashed var(--purple-line);
+    border-left: 3px solid var(--purple);
+    background: var(--purple-soft);
+  }
+  #demo-subagent-isolation .sub-msg--return {
+    border-left-color: var(--orange);
+    background: var(--orange-soft);
+  }
+  #demo-subagent-isolation .sub-msg--internal {
+    border: 1px dashed var(--orange-line);
+    background: var(--surface-2);
+  }
+  #demo-subagent-isolation .sub-msg--internal .sub-msg__role { color: var(--orange); }
+  #demo-subagent-isolation .sub-json {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  #demo-subagent-isolation .sub-cut {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    color: var(--purple);
+    font-size: 9.5px;
+  }
+  #demo-subagent-isolation .sub-cut::before,
+  #demo-subagent-isolation .sub-cut::after {
+    height: 1px;
+    flex: 1;
+    background: var(--purple-line);
+    content: "";
+  }
+  #demo-subagent-isolation .sub-stream.is-hidden { display: none; }
+  #demo-subagent-isolation .sub-folded {
+    margin: 8px;
+    padding: 10px;
+    border: 1px dashed var(--orange-line);
+    border-radius: 7px;
+    background: var(--bg);
+    color: var(--text-2);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  #demo-subagent-isolation .sub-folded b {
+    color: var(--orange);
+    font-family: var(--font-mono);
+  }
+  #demo-subagent-isolation .sub-empty {
+    padding: 22px 8px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
+  }
+  #demo-subagent-isolation .sub-status {
+    margin: 10px 0 0;
+    color: var(--text-2);
+    font-size: 11.5px;
+    line-height: 1.6;
+  }
+  #demo-subagent-isolation .sub-foot {
+    padding: 5px 9px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+  }
+  #demo-subagent-isolation .sub-seg {
+    display: flex;
+    gap: 4px;
+    margin: 2px 0 4px;
+  }
+  #demo-subagent-isolation .sub-seg button {
+    flex: 1;
+    padding: 5px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text-2);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  #demo-subagent-isolation .sub-seg button[aria-pressed="true"] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-weight: 650;
+  }
+  #demo-subagent-isolation .sub-field-label {
+    display: block;
+    margin: 10px 0 3px;
+    color: var(--text-2);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body data-chapter="main-10">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 10 章</span></p>
+      <h1>子代理隔离：把一场搜索关在另一个窗口里</h1>
+      <p class="lede">子代理不是“更聪明的工具”，它是一次上下文预算的转移：把几十轮搜索、试错和工具输出留在一个你看不见的窗口里，只把结论交回来。设计一次委派，真正要定的是四件事：给它什么上下文、什么工具、什么返回格式，以及允许多深、多宽。</p>
+      <ul class="meta">
+        <li>约 18 分钟</li>
+        <li>1 个交互</li>
+        <li>L2 → L3</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>画出一次委派中父会话与子会话各自的 token 增量，并指出父会话只多了哪两段。</li>
+          <li>给定任务，选出合适的只读或计划子代理，并说出裁剪掉的工具与上下文各自省了什么、丢了什么。</li>
+          <li>在结构化返回与自由文本之间做选择，并解释深度、并发与 worktree 三个上限的代价。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 为什么 ========== -->
+    <section id="why-subagent">
+      <p class="sec-no">01 · 先看清这笔转移</p>
+      <h2>“它找了四十个文件，最后只说了三行”</h2>
+      <p>下午三点，你问 Agent：“导出模块为什么有循环依赖？”它开始读文件。先读入口，再读被引用的工具函数，再读测试，再 grep 一遍调用方。四十分钟后，它给出三行结论：环在 <code>index.ts</code> 和 <code>legacy.ts</code> 之间，把后者改成 type-only import 就行。</p>
+      <p>结论是对的。但你的主会话里多了 38 条工具结果、约 12 万 token 的文件内容。接下来你还要在这个会话里改代码、跑测试、写说明——而那 12 万 token 已经挤在窗口里，压缩会丢掉细节，不压缩又装不下下一轮。你为一个只需要三行答案的问题，付了一整段上下文的租金。</p>
+      <p class="lead-in">子代理解决的不是“模型不够聪明”，而是“过程太占地方”。</p>
+      <p>它把一次任务搬到一个<strong>独立的上下文窗口</strong>里执行：子会话有自己的历史、自己的 token 计数、自己的工具池。父会话不再看见中间的每一次 <code>read</code> 和 <code>grep</code>，只看见两段：<strong>派发时的任务描述</strong>，和<strong>结束时的返回</strong>。中间那几十段输出，物理上仍然存在，只是存在另一个会话的日志里。</p>
+
+      <figure class="fig" id="fig-subagent">
+        <svg viewBox="0 0 640 190" role="img" aria-labelledby="fig-sub-title fig-sub-desc">
+          <title id="fig-sub-title">父会话与子会话之间只有两段消息穿过边界</title>
+          <desc id="fig-sub-desc">左侧父会话包含用户请求、任务描述和最终返回；右侧子会话包含七步工具调用与结果，全部留在虚线边界内，只有任务描述与最终返回两条箭头穿过边界。</desc>
+          <rect class="svg-track" x="8" y="26" width="286" height="138" rx="10"/>
+          <rect class="svg-seg--a" x="18" y="38" width="266" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="30" y="58">用户：查清循环依赖，别动 API</text>
+          <rect class="svg-seg--c" x="18" y="76" width="266" height="26" rx="5"/>
+          <text class="svg-label" x="30" y="94">任务描述（约 160 token）</text>
+          <rect class="svg-seg--b" x="18" y="110" width="266" height="26" rx="5"/>
+          <text class="svg-label svg-label--s" x="30" y="128">最终返回（180 或 1,350）</text>
+          <text class="svg-note" x="151" y="154" text-anchor="middle">父会话：只增两段</text>
+
+          <rect class="svg-seg--free" x="346" y="26" width="286" height="138" rx="10"/>
+          <text class="svg-note" x="489" y="46" text-anchor="middle">子会话：7 步 · 约 34k token</text>
+          <rect class="svg-seg--c" x="358" y="56" width="120" height="18" rx="4"/>
+          <rect class="svg-seg--c" x="486" y="56" width="134" height="18" rx="4"/>
+          <rect class="svg-seg--c" x="358" y="80" width="262" height="18" rx="4"/>
+          <rect class="svg-seg--c" x="358" y="104" width="180" height="18" rx="4"/>
+          <rect class="svg-seg--c" x="546" y="104" width="74" height="18" rx="4"/>
+          <rect class="svg-seg--c" x="358" y="128" width="110" height="18" rx="4"/>
+          <rect class="svg-seg--c" x="476" y="128" width="144" height="18" rx="4"/>
+          <line class="svg-rule" x1="300" y1="88" x2="342" y2="88"/>
+          <line class="svg-rule" x1="342" y1="122" x2="300" y2="122"/>
+        </svg>
+        <figcaption>图 10-1　隔离发生在边界上，不发生在模型里。任务描述与最终返回穿过边界；子会话内部的工具调用、工具结果和中间推理从不进入父历史。块数与 token 为示意，非真实比例。</figcaption>
+      </figure>
+
+      <p>这笔转移有三条容易忽略的代价。第一，<strong>父会话失去了过程</strong>：它不知道子代理试过什么、排除过什么，只能相信返回。第二，<strong>子会话失去了父的隐性知识</strong>：你半小时前说过的“别动 public API”、你读过的那份迁移说明，子代理默认都看不见。第三，<strong>返回本身也会膨胀</strong>：如果子代理把整个分析过程写成自由文本，父会话省下的空间又会被还回去一部分。</p>
+      <p>所以“用子代理”不是一个开关，而是一组设计决定。本章按四组决定展开：上下文（给什么）、工具（能做什么）、返回（交回什么）、上限（能开多少）。每组的取舍，都会在后面的对比表和演示里出现。</p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">先分清三种“多开”</p>
+        <p><strong>子代理</strong>是独立上下文 + 只回传结果；<strong>并行工具调用</strong>是同一个上下文里同时发多个调用，结果仍然全部进父历史；<strong>worktree</strong> 是文件系统隔离，解决的是“两个代理同时改同一棵树”，不是上下文问题。三者可以组合，但不能互相替代。</p>
+      </div>
+    </section>
+
+    <!-- ========== 02 Codex ========== -->
+    <section id="codex">
+      <p class="sec-no">02 · Codex 主线</p>
+      <h2>把“独立”做在会话对象上</h2>
+      <p>Codex 的子代理实现在本快照里是一组多代理工具：<code>spawn_agent</code>、<code>send_message</code>、<code>followup_task</code>、<code>wait_agent</code>。它没有把“子代理”做成一个特殊的提示词模板，而是做成<strong>另一个会话对象</strong>：自己的 <code>Config</code>、自己的历史、自己的 token 计数、自己的 rollout。提交固定为 <code>76ed3b4</code>。</p>
+
+      <h3 id="codex-child-config">2.1 创建：继承指令，不继承历史</h3>
+      <p>子会话的 <code>Config</code> 在 <code>child_config.rs</code> 里构造：它继承父会话的 <code>base_instructions</code> 文本与来源信息，再把 <code>subagent_developer_instructions</code> 叠加到 <code>developer_instructions</code> 上。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agent/child_config.rs#L55-L160">child_config.rs#L55-L160</a> <span class="tag tag--ok">已核实</span> 继承的是“怎么做事”的说明书，不是“已经做了什么”的对话。</p>
+      <p><strong>为什么只继承指令。</strong>指令是稳定的、可复用的：工具怎么用、输出什么风格、哪些操作要谨慎。历史则是本次委派<em>要隔离的对象</em>：如果子代理继承父的全部历史，它也会继承那 12 万 token 的文件内容，隔离就失去意义。<strong>代价</strong>是子代理不知道父已经排除了哪些方案，可能把一条死路再走一遍；父只能在任务描述里补一句“已经试过 X，不要再试”。</p>
+      <p>这一点和 Claude Code 的默认值一致，但开关不同：Claude Code 默认 <code>contextMessages = []</code>，只有显式传 <code>forkContextMessages</code> 才克隆父对话；Codex 则把“继承什么”拆成指令与历史两层，历史默认不继承。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L248-L330">runAgent.ts#L248-L330</a> <span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <h3 id="codex-comm">2.2 通信：完成消息是“输入项”，不是“合并上下文”</h3>
+      <p>父子之间走的是代理间消息（<code>InterAgentCommunication</code>）。子代理结束时，它的完成消息作为一条<strong>输入项</strong>回到父会话，而不是把子会话的全部上下文并回父会话。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tools/handlers/multi_agents_v2/spawn.rs#L37">spawn.rs#L37</a> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tools/handlers/multi_agents_spec.rs#L570-L610">multi_agents_spec.rs#L570-L610</a> <span class="tag tag--ok">已核实</span> 恢复会话时，这条消息也会被回放，所以“子代理说过什么”在日志里是可追溯的。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/rollout_reconstruction.rs#L512-L515">rollout_reconstruction.rs#L512-L515</a> <span class="tag tag--ok">已核实</span></p>
+      <p>父会话还能用 <code>send_message</code> 追加指令、用 <code>followup_task</code> 让子代理继续、用 <code>wait_agent</code> 等结果。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tools/handlers/multi_agents_v2/wait.rs#L24">wait.rs#L24</a> <span class="tag tag--ok">已核实</span> 这条通道是“消息”，不是“共享内存”：子代理看不到父会话刚改的文件，父也看不到子代理的中间推理，除非双方把它写进消息。</p>
+      <p><strong>为什么用消息而不是共享上下文。</strong>共享上下文会让隔离失效，还会让并发写入变成竞态：两个子代理同时改同一段历史，谁赢？消息通道把并发收敛成“收件箱”，每条消息都有明确的发送者与顺序。<strong>代价</strong>是多一次往返：父想问“你为什么排除方案 B”，必须再发一条消息，子代理可能已经结束，只能重启或读日志。</p>
+
+      <h3 id="codex-tools">2.3 工具池：Codex 有机制，但把策略外置</h3>
+      <p>Codex 的形态和 Claude Code、Grok Build 不同：它<strong>没有内置的 Explore / Plan 只读代理类型</strong>。子会话的 Config 与指令由父会话构造，角色约束由调用方通过 <code>subagent_developer_instructions</code> 写进去；工具池本身由配置决定，事实卡片没有展开“是否裁剪写工具”这一层。也就是说，Codex 提供的是“独立会话 + 消息通道 + 指令叠加”这套机制，至于“只读”“只搜索”“不许跑测试”，要由发起方自己定义。</p>
+      <p>这种设计的好处是通用：同一个入口可以派“查资料”“写测试”“审 diff”“跑迁移”任何角色，不需要为每种角色维护一个内置模板。代价是<strong>约束靠提示词，不靠工具池</strong>：如果指令写得含糊，子代理仍然可能调用写工具。真正硬的隔离要在权限层做，而不是在提示词里做。</p>
+      <p>Claude Code 则把两类常用角色内置了：Explore 与 Plan 默认不注入 <code>CLAUDE.md</code>，也不注入 <code>gitStatus</code>，只读工具池排除写类工具。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L370-L410">runAgent.ts#L370-L410</a> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/built-in/exploreAgent.ts#L15-L60">exploreAgent.ts#L15-L60</a> <span class="tag tag--src">源码 v2.1.88</span> 这是“角色内置”和“角色外置”的分野，没有绝对优劣，取决于你更怕“模板不够用”还是更怕“约束不够硬”。</p>
+
+      <h3 id="codex-worktree">2.4 并行与 worktree：能力在环境层，不在 core</h3>
+      <p>事实卡片只核对了 <code>child_config.rs</code>、<code>spawn.rs</code> 与多代理工具目录，<strong>没有在 core 里找到 worktree 级文件隔离</strong>；相关能力如果在运行环境或应用层，本快照没有给出实现<sup class="fn-ref"><a href="#fn-main-10-1" id="fnref-main-10-1">1</a></sup>。这和 Grok Build 明确提供 <code>isolation: worktree</code>、Claude Code 的 <code>isolation: "worktree"</code> 形成对照：Codex 的 core 先把“上下文隔离”做扎实，文件隔离留给外层。</p>
+      <p>为什么文件隔离重要：两个子代理同时改同一个仓库，哪怕上下文完全独立，也会在磁盘上互相覆盖。上下文隔离只保证“模型看不到对方的中间输出”，不保证“文件不会被对方改坏”。如果任务涉及写文件，要么串行，要么给每个子代理一个 worktree，要么让它们只产出 patch、由父统一应用。</p>
+
+      <h3 id="codex-limits">2.5 深度与并发：没有统一常量，不等于没有上限</h3>
+      <p>本快照的 core 里<strong>没有找到统一的并发上限常量</strong><sup class="fn-ref"><a href="#fn-main-10-2" id="fnref-main-10-2">2</a></sup>。深度也不是一个写死的数字：它由调用方与上层调度决定。对比其他工具，上限通常是显式的：Grok Build 的 <code>MAX_SUBAGENT_DEPTH = 1</code>，opencode v1/v2 默认 1，oh-my-pi 默认 2，DeepSeek Harness 的 <code>maxDepth</code> 默认 1、<code>0</code> 表示禁止委派。</p>
+      <p><strong>为什么多数工具把深度压到 1。</strong>每多一层，父会话就多一层“信任传递”：祖父只能看到父的返回，父只能看到子的返回，错误会被逐层转述。深度 1 让“谁说的”始终清楚，也让成本可预测：一次委派最多一个子会话。<strong>代价</strong>是复杂任务无法自然分解——一个“查清三个模块”的任务，只能由一个子代理顺序做，或者由父并发派三个。<strong>并发上限</strong>则是另一把闸：它防的不是递归爆炸，而是同时打满 API、磁盘和 CPU。上限越高，调度越复杂，结果合并也越难。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>子代理的核心是独立上下文：继承指令，不继承父的历史；完成消息作为一条输入项回到父会话。</li>
+            <li>Codex 提供通用机制，把“只读/计划”这类角色约束外置到 <code>subagent_developer_instructions</code>，不内置角色模板。</li>
+            <li>上下文隔离不解决文件冲突；worktree 是另一层能力，Codex 的 core 未见实现。</li>
+            <li>深度与并发是两把不同的闸：一个防信任链过长，一个防资源打满。</li>
+            <li>隔离的代价是父失去过程、子失去隐性知识、返回可能重新膨胀。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 03 Demo ========== -->
+    <section id="subagent-demo">
+      <p class="sec-no">03 · 交互演示</p>
+      <h2>父会话只该多出两段</h2>
+      <p>下面的演示把一次委派拆成两个窗口。左边是父会话，右边是子会话。点“派发一次任务”后，子会话会在自己的上下文里跑 7 步：4 次工具调用、2 次结果读取、1 段结论草稿。注意看左栏：它只多了“任务描述”和“最终返回”两段，中间所有虚线框都停在右栏。</p>
+      <p>先按默认的“结构化 JSON”跑一遍，记下父会话新增的 token；再切到“自由文本”重跑，观察父会话新增量怎么变大。最后点“收起子会话”，看隔离之后父会话还能保留多少可读信息。</p>
+
+      <div class="demo" id="demo-subagent-isolation">
+        <div class="demo__head">
+          <span class="demo__tag">交互演示</span>
+          <h3 class="demo__title">子代理上下文隔离</h3>
+        </div>
+        <div class="demo__body">
+          <div class="demo__controls">
+            <button class="btn btn--primary btn--small" type="button" id="sub-run">派发一次任务</button>
+            <label class="sub-field-label">返回形态</label>
+            <div class="sub-seg" role="group" aria-label="返回形态">
+              <button type="button" data-sub-form="json" aria-pressed="true">结构化 JSON</button>
+              <button type="button" data-sub-form="free" aria-pressed="false">自由文本</button>
+            </div>
+            <button class="btn btn--ghost btn--small" type="button" id="sub-toggle" aria-expanded="true" aria-controls="sub-child-pane">收起子会话</button>
+            <button class="btn btn--ghost btn--small" type="button" id="sub-reset">重置</button>
+            <p class="demo__hint">先跑完一次，再切换返回形态；父会话的“新增”会立刻变化。收起只影响显示，不改变隔离事实。</p>
+            <p class="demo__readout">父会话初始 2 段 · 子会话 7 步<br>token 为示意值，不是实测</p>
+          </div>
+          <div class="demo__canvas">
+            <div class="sub-kpis" id="sub-kpis"></div>
+            <div class="sub-cols">
+              <section class="sub-pane sub-pane--parent" aria-label="父会话">
+                <div class="sub-pane__head">父会话（模型可见）<span>只增任务与返回</span></div>
+                <div class="sub-stream" id="sub-parent" role="log" aria-live="polite" tabindex="0"></div>
+                <div class="sub-foot" id="sub-parent-foot">父上下文 1,200 token</div>
+              </section>
+              <section class="sub-pane sub-pane--child" id="sub-child-pane" aria-label="子会话">
+                <div class="sub-pane__head">子会话（独立上下文）<span>虚线内不进入父会话</span></div>
+                <div class="sub-stream" id="sub-child" role="log" aria-live="polite" tabindex="0"></div>
+                <div class="sub-folded" id="sub-folded" hidden></div>
+                <div class="sub-foot" id="sub-child-foot">子上下文 0 token</div>
+              </section>
+            </div>
+            <p class="sub-status" id="sub-status" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+        <p class="demo__note">教学示意：7 步、34.2k 子会话 token、180 / 1,350 token 的返回都是演示值，不对应任何工具的真实计量。真实工具还会把子代理的系统提示与工具定义算进子会话成本；这里只统计对话与工具输出。</p>
+      </div>
+
+      <p>三个观察值得记住。第一，<strong>父会话的增量与子会话跑了多少步无关</strong>，只与“任务描述 + 返回”有关；子代理从 7 步跑到 70 步，父会话的增量不变。第二，<strong>返回形态是第二个预算旋钮</strong>：同样一份结论，JSON 只带回字段，自由文本把推理链也带回来了；后者更可读，但把隔离省下的空间又花掉一部分。第三，<strong>收起只是显示层的折叠</strong>，不改变“这些内容从未进入父历史”这个事实；真正的证据是父会话的 token 计数没有变。</p>
+    </section>
+
+    <!-- ========== 04 工具 ========== -->
+    <section id="tools">
+      <p class="sec-no">04 · 七个工具</p>
+      <h2>同一个“派出去”，七种边界</h2>
+      <p>下面七个工具各有一个弹窗。可以按“子会话从哪来”分成三派：<strong>全新上下文</strong>（Claude Code、opencode v1/v2、oh-my-pi、Grok Build 的默认）、<strong>可选继承</strong>（Claude Code 的 <code>forkContextMessages</code>、DeepSeek Harness 的 <code>fork</code> provider）、<strong>没有这个能力</strong>（pi）。分野不在“会不会派”，而在“派出去之后，父还能控制多少”。弹窗里的“设计意图”是作者根据源码结构与参数命名做的分析，不是工具作者的自述<sup class="fn-ref"><a href="#fn-main-10-4" id="fnref-main-10-4">4</a></sup>。</p>
+      <div class="tool-grid">
+        <button class="tool-btn" type="button" data-modal="claude-code">
+          <span class="tool-btn__name">Claude Code</span>
+          <span class="tool-btn__id">claude-code</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="pi">
+          <span class="tool-btn__name">pi</span>
+          <span class="tool-btn__id">pi</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="omp">
+          <span class="tool-btn__name">oh-my-pi</span>
+          <span class="tool-btn__id">omp</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v1">
+          <span class="tool-btn__name">opencode v1</span>
+          <span class="tool-btn__id">opencode-v1</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v2">
+          <span class="tool-btn__name">opencode v2</span>
+          <span class="tool-btn__id">opencode-v2</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="grok-build">
+          <span class="tool-btn__name">Grok Build</span>
+          <span class="tool-btn__id">grok-build</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="dsh">
+          <span class="tool-btn__name">DeepSeek Harness</span>
+          <span class="tool-btn__id">dsh</span>
+        </button>
+      </div>
+      <p class="small muted">键盘：<kbd>Esc</kbd> 关闭；<kbd>Tab</kbd> 在弹窗内循环。Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本。</p>
+      <p><strong>pi 为什么不做。</strong>pi 的 README 写得很直白：“Pi ships with powerful defaults but skips features like sub-agents and plan mode.”<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/README.md#L19">README.md#L19</a> <span class="tag tag--ok">已核实</span> 在 <code>packages/coding-agent/src</code> 里检索 <code>subagent</code>、<code>sub-agent</code>、<code>subAgent</code> 均无命中。这不是“还没做”，而是一个明确的产品选择：pi 把默认面压到最小，把子代理、计划模式这类“多一层调度”的能力留给扩展。好处是核心可预测、上下文只有一条链路；代价是复杂任务只能在单会话里做，或者由用户自己写扩展。DeepSeek Harness 的子代理结论则整节标【推断】，因为它来自包 README 而不是逐行运行时代码<sup class="fn-ref"><a href="#fn-main-10-3" id="fnref-main-10-3">3</a></sup>。</p>
+    </section>
+
+    <!-- ========== 05 对比表 ========== -->
+    <section id="matrix">
+      <p class="sec-no">05 · 八工具对比</p>
+      <h2>把“边界”排成一张表</h2>
+      <p>先看“返回形态”，它直接决定父会话要付多少 token；再看“深度与并发”，它决定一次任务能拆多细；最后看“隔离”，它决定并行写文件会不会互相踩。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">子会话上下文</th>
+              <th scope="col">返回形态</th>
+              <th scope="col">并行与文件隔离</th>
+              <th scope="col">深度与并发</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex<span>codex</span></th>
+              <td>独立 Config、历史、token 与 rollout；继承 <code>base_instructions</code> 与开发者指令。<span class="tag tag--ok">已核实</span></td>
+              <td>完成消息作为输入项回父；可用 <code>send_message</code> / <code>followup_task</code> 追加。<span class="tag tag--ok">已核实</span></td>
+              <td>core 未见 worktree 隔离；文件能力在环境层。<span class="tag tag--todo">待核实</span></td>
+              <td>无统一并发常量；深度由上层控制。<span class="tag tag--todo">待核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>默认 <code>contextMessages = []</code>；<code>forkContextMessages</code> 才克隆父对话；只读代理省 CLAUDE.md 与 gitStatus。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>最终内容块（自由文本）+ <code>agentId</code> + <code>&lt;usage&gt;</code> 尾注。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td><code>isolation: "worktree"</code> 建临时 worktree；并发受 swarms/coordinator 开关控制。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>并发受 agent swarms / coordinator 开关控制。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>无此能力：README 明示跳过子代理；源码检索无命中。<span class="tag tag--ok">已核实</span></td>
+              <td>—</td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td><code>task</code> 起独立子会话，默认不继承父历史；子代理强制开启轮中压缩。<span class="tag tag--ok">已核实</span></td>
+              <td><code>outputSchema</code> 校验，<code>permissive</code> / <code>strict</code>；默认不强制结构化；输出上限 500KB / 5,000 行。<span class="tag tag--ok">已核实</span></td>
+              <td><code>task.isolation.enabled</code> 默认 false；开启后走 worktree / patch 合并。<span class="tag tag--ok">已核实</span></td>
+              <td>深度 2，并发 32，批量默认开。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td><code>task</code> 起子会话（<code>parentID</code>），空上下文；禁用 todowrite、task 与 primary_tools。<span class="tag tag--ok">已核实</span></td>
+              <td>固定 XML 信封：<code>&lt;task sessionID state&gt;</code> + <code>&lt;task_result&gt;</code>；内部是自由文本。<span class="tag tag--ok">已核实</span></td>
+              <td>未见 worktree；后台需实验开关。<span class="tag tag--ok">已核实</span></td>
+              <td><code>subagent_depth</code> 默认 1；默认前台。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td><code>subagent</code> 起子会话，空上下文；可传 <code>sessionID</code> 续接同一个子会话。<span class="tag tag--ok">已核实</span></td>
+              <td><code>&lt;subagent sessionID state&gt;</code> 包自由文本；运行中只回“后台跑，别轮询”。<span class="tag tag--ok">已核实</span></td>
+              <td>未见 worktree；<code>background</code> 是普通参数。<span class="tag tag--ok">已核实</span></td>
+              <td><code>experimental.subagent_depth</code> 默认 1。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td><code>task</code> 起独立会话；三种内置类型 <code>general-purpose</code> / <code>explore</code> / <code>plan</code>；可 <code>resume_from</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>只回最终输出；默认不裁剪，可配 <code>completion_output_cap</code>。<span class="tag tag--ok">已核实</span></td>
+              <td><code>isolation</code> 默认 <code>none</code>，可选 <code>worktree</code>；默认后台。<span class="tag tag--ok">已核实</span></td>
+              <td>深度硬上限 1；MCP 默认全继承。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td><code>ctx.subagents</code> 注册表，provider 可选 <code>spawn</code> / <code>fork</code> / <code>acp</code> / <code>codex</code> 等；<code>fork</code> 用父历史播种。<span class="tag tag--guess">推断</span></td>
+              <td>调用立即返回 <code>started subagent &lt;childId&gt;</code>；完成通知携带最终答案。<span class="tag tag--guess">推断</span></td>
+              <td>核心包无 worktree，隔离在实验包。<span class="tag tag--guess">推断</span></td>
+              <td><code>maxDepth</code> 默认 1，<code>0</code> 禁止；外部后端只执行一次。<span class="tag tag--guess">推断</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
+    </section>
+
+    <!-- ========== 06 取舍 ========== -->
+    <section id="tradeoffs">
+      <p class="sec-no">06 · 设计取舍</p>
+      <h2>为什么“派出去”有五种不同做法</h2>
+      <p>下面五组取舍，是这张表背后真正的分歧。每组都给出“选 A 的人在想什么”“选 B 的人在想什么”，以及一句代价。没有正确答案，只有和任务形状匹配的答案。</p>
+
+      <h3>取舍一：空上下文，还是 fork 父对话</h3>
+      <p><strong>空上下文派</strong>（Claude Code 默认、opencode v1/v2、oh-my-pi、Grok Build）让子会话从零开始，只拿到任务描述。父的 12 万 token 历史一条都不带，隔离收益最大。<strong>fork 派</strong>（Claude Code 的 <code>forkContextMessages</code>、DeepSeek Harness 的 <code>fork</code> provider）克隆父的已完成历史，让子代理知道“前面发生过什么”，适合“接着排查同一个 bug”而不是“去查一个新问题”。</p>
+      <p><strong>代价</strong>：空上下文会让子代理重复父已经排除的方案，任务描述必须写得很具体；fork 会把父的噪声也带过去，隔离收益变小，而且父历史里如果有过期的工具结果，子代理会把它当成事实。</p>
+
+      <h3>取舍二：自由文本，还是结构化返回</h3>
+      <p><strong>自由文本派</strong>（Claude Code、opencode v1/v2、Grok Build 默认）让子代理用自己的话总结，父模型读起来自然，适合“解释原因”“给建议”。<strong>结构化派</strong>（oh-my-pi 的 <code>outputSchema</code>、Codex 的输入项类型）要求返回带字段，父可以程序化消费、校验、重试；<code>permissive</code> 允许从自由文本里解析兜底，<code>strict</code> 则要求严格符合 schema。</p>
+      <p><strong>代价</strong>：结构化更可控，但 schema 会把“意外的发现”挡在外面——子代理可能看到了一个 schema 没定义的重要信号，却只能丢掉。自由文本更丰富，但父要再读一遍、再解析一遍，返回过长时等于把隔离省下的 token 还回去。opencode 的折中是“XML 信封 + 自由文本”：外层固定，内层自由。</p>
+
+      <h3>取舍三：只读/计划代理的裁剪，裁到什么程度</h3>
+      <p><strong>深度裁剪派</strong>（Claude Code 的 Explore/Plan 不注入 <code>CLAUDE.md</code> 与 <code>gitStatus</code>；Grok Build 的 <code>explore</code> 只给 Read/List/Grep，<code>plan</code> 再加 TodoWrite）把“搜索”这件事压到最小工具集。Claude Code 的源码注释给出节省量级：每周 5–15 Gtok。<strong>全能力派</strong>（Codex 默认继承工具集、Grok 的 <code>general-purpose</code>）让子代理能读能写能跑测试，适合“实现 + 验证”一体的任务。</p>
+      <p><strong>代价</strong>：裁掉 <code>CLAUDE.md</code> 省钱，但子代理不知道项目约定，给出的建议可能违反规范；裁掉 shell 意味着它不能跑测试验证自己的结论，只能“看起来对”。反过来，全能力子代理可能在你不知情时改了文件，父只看到一句“已完成”。</p>
+
+      <h3>取舍四：共享工作区，还是 worktree</h3>
+      <p><strong>共享派</strong>（Grok Build 默认 <code>isolation: none</code>、opencode v1/v2、oh-my-pi 默认关闭 isolation）让子代理直接在同一个工作区读写，启动快、无需合并，适合只读任务或改动互不相交的并行任务。<strong>worktree 派</strong>（Grok Build 可选、Claude Code <code>isolation: "worktree"</code>、oh-my-pi 开启后走 worktree/patch）给每个子代理一棵独立的树，写完再合并。</p>
+      <p><strong>代价</strong>：worktree 解决写冲突，但引入合并成本：同一文件两边都改，还是要人来解冲突；依赖安装、构建缓存、生成物都要重建，磁盘和时间都翻倍。共享工作区省掉这些，却可能出现“子代理 A 把子代理 B 刚改的文件覆盖了”，而且父从上下文里看不出来。</p>
+
+      <h3>取舍五：同步等待，还是异步通知</h3>
+      <p><strong>同步派</strong>（opencode v1 默认前台、Codex 的 <code>wait_agent</code>）让父在派发后阻塞，拿到结果再继续，因果顺序清楚。<strong>异步派</strong>（DeepSeek Harness 立即返回 <code>started subagent &lt;childId&gt;</code>、opencode v2 的 <code>background</code>、Grok Build 默认 <code>run_in_background: true</code>）让父先去干别的，子代理完成后再用通知把结果送回。</p>
+      <p><strong>代价</strong>：异步能把等待时间藏起来，但父要在“结果还没回来”时继续决策，可能基于旧状态行动；多个子代理同时完成时，还要处理顺序与冲突。同步简单，但一个慢子代理会卡住整条主链。深度上限通常和这一点联动：异步 + 深度 1，是最容易推理的组合；异步 + 深度 N，错误会沿着通知链逐层转述。</p>
+
+      <p>还有一个横切的取舍：<strong>返回要不要再摘要</strong>。oh-my-pi 在子代理输出超过 5,000 字符时再做一次摘要，Grok Build 默认不裁剪、把完整输出交回。前者保护父窗口，后者保护信息完整。选哪个，取决于你更怕“父被撑爆”还是更怕“关键细节被二次摘要吃掉”。</p>
+    </section>
+
+    <!-- ========== 07 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">07 · 小测验</p>
+      <h2>三道题，检验你是否真的会派</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">父会话原本 3,000 token。子代理跑了 7 步、共 40,000 token，返回结构化结果 400 token。父会话最终多少 token？如果把返回改成 3,000 token 的自由文本，隔离收益会怎么变？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>最终约 3,400 token（不含任务描述；加上约 150 token 的任务描述是 3,550）。中间 40,000 token 全部留在子会话。改成 3,000 token 自由文本后，父会话约 6,000 token：隔离仍然成立，但“省下多少”从约 92% 降到约 85%。结论：<strong>父会话增量只由任务描述与返回决定</strong>，与子代理跑多少步无关；返回形态是第二个预算旋钮。可以在<a href="#subagent-demo">演示</a>里切换两种返回形态验证。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">一个只读 Explore 子代理被裁掉了 <code>CLAUDE.md</code>、<code>gitStatus</code> 和写工具。它可能给出什么样的“正确但不可执行”的建议？你会怎么补？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>它可能建议“把导出改成默认导出”“直接升级依赖”，而项目规范要求具名导出、依赖升级要走审批；也可能建议改一个它看不见的生成文件。因为它没有写工具，也无法跑测试验证。补法有三条：父在任务描述里带 3–5 条硬约束；把规范文件的关键段落贴进任务；或者把“验证”拆给一个可写的子代理。见<a href="#tradeoffs">取舍三</a>与 Claude Code 弹窗。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你要并行改 8 个互不相干的包，每个包都要跑测试。选共享工作区还是 worktree？如果 8 个任务改的是同一个入口文件，答案会变吗？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>互不相干时共享工作区更划算：启动快、无需合并，测试各自跑各自的包。若都改同一个入口文件，worktree 也救不了你——合并时仍要解冲突，只是把冲突从“运行中互相覆盖”推迟到“合并时显式冲突”。更稳的做法是串行，或让子代理只产出 patch、由父按顺序应用。见<a href="#tradeoffs">取舍四</a>。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-main-10-1">
+          事实卡片标【待核实】：已检查 <code>codex-rs/core/src/agent/child_config.rs</code>、<code>tools/handlers/multi_agents_v2/</code> 与 <code>spawn.rs</code>，未找到 worktree 字段或创建逻辑；缺 app-server / 运行环境层的代码，因此只能写“core 未见”。这不影响“子会话上下文独立”的结论，但意味着不能断言 Codex 不支持 worktree 隔离。<a class="footnotes__back" href="#fnref-main-10-1">↩</a>
+        </li>
+        <li id="fn-main-10-2">
+          事实卡片标【待核实】：已检索 <code>multi_agents_v2</code> 的 spawn / wait / send_message 与 <code>config</code>，没有找到类似 <code>max_concurrency</code> 的统一常量；缺上层调度器代码。因此本章只写“无统一常量”，不写具体并发数。omp 的 32、Grok 的深度 1 等数字来自各自源码，不能外推到 Codex。<a class="footnotes__back" href="#fnref-main-10-2">↩</a>
+        </li>
+        <li id="fn-main-10-3">
+          事实卡片把 DeepSeek Harness 的子代理整节标为【推断】：依据是 <code>packages/subagent/README.md</code> 与 <code>tool-subagent/README.md</code>，未逐行核对 provider 运行时代码。因此“立即返回 childId + 完成通知”只能按文档表述，不能当作所有 provider 的运行时保证；外部后端（Codex / Claude Code / ACP）只执行一次、不接受追问这一点同样来自 README。<a class="footnotes__back" href="#fnref-main-10-3">↩</a>
+        </li>
+        <li id="fn-main-10-4">
+          本页七个弹窗的“设计意图”段都标【推断】：依据是各工具源码的分支结构、参数命名与默认值，缺作者的设计文档或提交说明。这些句子解释“为什么这样设计、代价是什么”，不影响前文标【已核实】的行为、参数与默认值；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-10-4">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：<a href="main-11.html">会话时间线：恢复、分叉与回退</a>。</p>
+
+  </article>
+</main>
+
+<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+
+<div class="modal" id="modal-claude-code" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><code>AgentTool</code> 的 <code>runAgent</code> 为子代理建独立运行环境：默认 <code>contextMessages = []</code>，只有显式传 <code>forkContextMessages</code> 才克隆父对话，并先过滤掉不完整的工具调用。子代理有自己的系统提示词、工具池、文件状态缓存与 abort controller。两个省 token 的细节：Explore / Plan 默认不注入 <code>CLAUDE.md</code>，也不注入 <code>gitStatus</code>（最多 40 KB 且可能已过期）。返回给父的是最终内容块（自由文本）+ <code>agentId</code> + <code>&lt;usage&gt;</code> 尾注；内置一次性代理连尾注都省掉。<code>isolation: "worktree"</code> 会创建临时 git worktree。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>上下文默认全新；<code>forkContextMessages</code> 才继承；只读代理 Explore / Plan；<code>omitClaudeMd</code> 受 <code>tengu_slim_subagent_claudemd</code> 控制（默认 true）；<code>isolation: "worktree"</code> 与 <code>cwd</code> 互斥；并发受 agent swarms / coordinator 开关控制。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“隔离”做成默认，把“继承”做成显式开关；同时用角色模板把最常见的搜索/计划任务压到最小工具集。代价是只读代理不知道项目规范，建议可能不可执行；worktree 还要付合并成本。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L248-L330">runAgent.ts#L248-L330</a> ·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L370-L410">runAgent.ts#L370-L410</a> ·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/AgentTool.tsx#L1340-L1373">AgentTool.tsx#L1340-L1373</a>
+        </dd>
+      </dl>
+      <p class="modal__note">来源类型：<span class="tag tag--src">源码 v2.1.88</span>。官方文档“子代理有独立上下文、只回传结果”与源码一致。本源码为非官方泄露版本，函数名可能来自 source map 还原，行为可能已在新版本变化。【可能已变化】</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pi" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · pi</p>
+        <h2 class="modal__title" id="modal-pi-title">pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><strong>无此能力。</strong>README 明确写“Pi ships with powerful defaults but skips features like sub-agents and plan mode”。在 <code>packages/coding-agent/src</code> 内检索 <code>subagent</code> / <code>sub-agent</code> / <code>subAgent</code> 无命中；没有独立子会话、结构化返回、并行 worktree 的内置实现。扩展可以自行实现委派（注册工具、起子进程），但那属于扩展行为，不计入默认能力。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>无。没有子代理开关、深度或并发参数。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把核心压到最小：一条会话链路、一套压缩与树导航，不引入第二层调度。好处是行为可预测、排障面小；代价是长搜索只能在主会话里做，靠压缩和裁剪消化，或者由用户自己写扩展。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/README.md#L19">README.md#L19</a>；全仓检索 <code>packages/coding-agent/src</code> 无匹配（2026-10-18）。</dd>
+      </dl>
+      <p class="modal__note">不要把“没有内置子代理”理解成“不能委派”：扩展可以起子进程，但父会话拿不到内建的隔离语义、深度上限与返回结构，这些都要扩展自己实现。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-omp" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · omp</p>
+        <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">内置 <code>task</code> 工具：每个任务项按 <code>agent</code> 定义启动一个独立子会话，有自己的系统提示词与任务，默认不继承父历史。支持批量（<code>task.batch</code> 默认 true）、隔离（<code>task.isolation.enabled</code> 默认 false，开启后走 worktree / patch 合并）、递归深度与并发上限。结构化返回由 <code>outputSchema</code> 控制：<code>permissive</code> 允许从自由文本解析兜底，<code>strict</code> 要求严格符合；<code>task.structured</code> 默认 false。子代理输出硬上限 500,000 字节 / 5,000 行，最终回传还会按 5,000 字符阈值再做一次摘要。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>MAX_OUTPUT_BYTES = 500_000</code>、<code>MAX_OUTPUT_LINES = 5000</code>；<code>isolation.enabled = false</code>、<code>batch = true</code>、<code>structured = false</code>、<code>maxRecursionDepth = 2</code>、<code>maxConcurrency = 32</code>；schema 模式默认 <code>permissive</code>；子会话强制开启 <code>compaction.midTurnEnabled</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“结构化”做成可选而非强制：默认让子代理自由表达，需要程序化消费时再开 schema。输出上限与二次摘要保证父会话不会被一个失控的子代理撑爆。代价是两次摘要可能吃掉细节，schema 的 strict 模式会让“额外发现”无处可放。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/task/types.ts#L28-L68">task/types.ts#L28-L68</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/task/settings.ts#L27-L30">task/settings.ts#L27-L30</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/task/executor.ts#L708-L760">task/executor.ts#L708-L760</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/task/result-summary.ts#L16-L60">result-summary.ts#L16-L60</a>
+        </dd>
+      </dl>
+      <p class="modal__note">omp 是 pi 的 fork，但子代理是新增能力，不是从 pi 继承的：pi 明确跳过子代理，omp 反而把它做成带深度、并发与 schema 的完整工具。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v1" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><code>task</code> 工具为子代理新建子会话（<code>parentID</code> 指向当前会话），从空上下文开始，用自己的 agent 提示词，只拿到 <code>subagent_type</code> 指定的 agent。深度按 <code>parentID</code> 链计算，默认上限 1。子会话默认禁用 <code>todowrite</code> 与 <code>task</code>（除非该 agent 自己显式授权），并禁掉 <code>experimental.primary_tools</code>。返回固定 XML：<code>&lt;task sessionID state&gt;</code> + <code>&lt;task_result&gt;</code> 或 <code>&lt;task_error&gt;</code>，是自由文本包在结构化信封里，没有字段级 schema。默认前台；<code>background: true</code> 需要实验开关。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>subagent_depth</code> 默认 1；子会话额外拒绝 <code>todowrite</code>、<code>task</code>、<code>experimental.primary_tools[*]</code>；<code>background</code> 默认 false，为 true 时要求 <code>OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true</code>；返回信封固定；未见 worktree 隔离。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>用固定信封给父一个稳定的解析点，同时不强制字段 schema，保持子代理的表达自由。禁用 todowrite/task 是防“子代理再派子代理”与“改父的计划状态”。代价是没有 worktree 时并行写文件会互相影响。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/tool/task.ts#L43-L62">task.ts#L43-L62</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/tool/task.ts#L64-L79">task.ts#L64-L79</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/tool/task.ts#L92-L117">task.ts#L92-L117</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/core/src/v1/config/config.ts#L84-L86">config.ts#L84-L86</a>
+        </dd>
+      </dl>
+      <p class="modal__note">前台任务如果被提升为后台，工具会提前返回 <code>state="running"</code>，完成后再由后台通知把结果作为 synthetic 消息注入父会话；这解释了为什么父可能先看到“在跑”再看到结果。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v2" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><code>subagent</code> 工具新建子会话（<code>parentID</code> 指向当前会话），上下文清空，工具描述明确写“New child sessions start with fresh context, so include all relevant context”。可以传 <code>sessionID</code> 续接之前的子会话（会校验它确实是当前会话的子会话），也可传 <code>model</code> 覆盖模型。深度按 <code>parentID</code> 链计算，上限取 <code>experimental.subagent_depth</code>，默认 1。返回 <code>&lt;subagent sessionID state&gt;</code> 包自由文本；运行中只回一句“在后台跑，别轮询”。<code>background: true</code> 是普通参数，不需要实验开关。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>experimental.subagent_depth</code> 默认 1（v1 是顶层 <code>subagent_depth</code>）；<code>background</code> 默认 false；工具名 <code>subagent</code>（v1 为 <code>task</code>）；参数 <code>agent / description / prompt / model? / sessionID? / background?</code>；子代理 agent 不能是 <code>mode: "primary"</code>；未见 worktree。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>v2 把“续接同一个子会话”做成参数：同一个调查可以分几轮追问，而不必每次重建上下文。代价是 <code>sessionID</code> 的生命周期与权限要额外校验，且父要记住它对应哪个任务。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/tool/plugin/subagent.ts#L29-L62">subagent.ts#L29-L62</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/tool/plugin/subagent.ts#L117-L133">subagent.ts#L117-L133</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/tool/plugin/subagent.ts#L184-L256">subagent.ts#L184-L256</a> ·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/schema/src/config/experimental.ts#L11">experimental.ts#L11</a>
+        </dd>
+      </dl>
+      <p class="modal__note">v2 是 beta <code>v2.0.29</code>，字段可能继续变；v1 与 v2 的深度配置位置不同（顶层 vs <code>experimental</code> 下），跨版本不要互相外推。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-grok-build" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">子代理是独立会话、独立上下文窗口，通过 <code>task</code> 工具启动；父只拿最终输出（默认不裁剪，可配 <code>completion_output_cap</code>），中间过程只进子会话 transcript。内置三种：<code>general-purpose</code>（全能力）、<code>explore</code>（Read/List/Grep，无 shell、无写入）、<code>plan</code>（三者 + TodoWrite）。嵌套深度硬上限 1；隔离模式 <code>none</code>（默认）或 <code>worktree</code>；<code>run_in_background</code> 默认 true；<code>resume_from</code> 可继承已完成子代理的 transcript。MCP 继承默认 <code>all</code>。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>类型 <code>general-purpose</code> / <code>explore</code> / <code>plan</code>；省略类型时用 <code>general-purpose</code>；<code>MAX_SUBAGENT_DEPTH = 1</code>；<code>isolation = none</code>；<code>run_in_background = true</code>；输出默认不裁剪；<code>explore</code> 三件套、<code>plan</code> 加 <code>todo_write</code>；MCP 默认全继承。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>用三个固定角色覆盖“查、计划、做”，把最小工具集写死在类型里，而不是靠提示词约束。默认后台 + 默认不裁剪，是把“并行”和“信息完整”放在“父窗口节省”之前。代价是父可能收到很长的输出，且 worktree 合并要自己处理。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-agent/src/config.rs#L646-L691">config.rs#L646-L691</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-agent/src/config.rs#L1504-L1545">config.rs#L1504-L1545</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-tools/src/implementations/grok_build/task/mod.rs#L44-L50">task/mod.rs#L44-L50</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/16-subagents.md#L59-L72">16-subagents.md#L59-L72</a>
+        </dd>
+      </dl>
+      <p class="modal__note">与官方文档的差异：<code>docs.x.ai</code> 写 <code>explore</code> “Read, list, and search only (no shell, no edits)”，仓库内 <code>16-subagents.md</code> 却写 “runs shell commands”；以源码 <code>explore_toolset()</code> 为准：无 shell。<span class="tag tag--ok">已核实</span></p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-dsh" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><code>ctx.subagents</code> 是委派服务的注册表，provider 决定子会话怎么跑：<code>spawn</code>（全新进程内子代理）、<code>fork</code>（用父会话已完成历史播种）、<code>acp</code>、<code>codex</code>、<code>claude-code</code>、<code>dsh-sdk</code>（进程外）。模型侧由 <code>tool-subagent</code> 暴露一个具名工具（默认 <code>subagent</code>）。关键差异：工具<strong>不等待</strong>结果，调用成功立即返回 <code>started subagent &lt;childId&gt;</code>，完成时通过通知把最终答案送回父会话；本地 spawn/fork 子代理还能收后续消息、被中断或恢复。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>provider</code> 必填；<code>toolName</code> 默认 <code>subagent</code>，每个实例必须不同；<code>maxDepth</code> 默认取 Host 设置 <code>1</code>，<code>0</code> 禁止委派；返回 <code>started subagent &lt;childId&gt;</code>；核心包无 worktree，worktree 在实验包；外部后端只执行一次、不接受追问。<span class="tag tag--guess">推断</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“派发”做成非阻塞事件：父可以继续做别的事，子代理完成后用通知回传。代价是父要在结果未到时继续决策，必须自己维护“哪个 childId 对应哪个任务”；到深度上限后工具仍可见，但每次启动都会被拒绝。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/subagent/README.md#L12-L28">packages/subagent/README.md#L12-L28</a> ·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/subagent/tool-subagent/README.md#L12">tool-subagent/README.md#L12</a> ·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/subagent/tool-subagent/README.md#L47-L53">tool-subagent/README.md#L47-L53</a>
+        </dd>
+      </dl>
+      <p class="modal__note">事实卡片整节标【推断】：依据是包 README，不是逐行运行时代码。可以据此说“设计如此”，不能据此断言每个 provider 在任何配置下都非阻塞、都能恢复。</p>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+<script src="../assets/js/demos/subagent-isolation.js"></script>
+</body>
+</html>

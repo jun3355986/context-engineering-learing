@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>跨会话记忆：把经验写进磁盘，而不是写进上下文 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  body[data-chapter="main-12"] .prose :not(pre) > code,
+  body[data-chapter="main-12"] .modal :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="main-12"] .modal .kv dd { min-width: 0; }
+</style>
+</head>
+<body data-chapter="main-12">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 12 章</span></p>
+      <h1>跨会话记忆：把经验写进磁盘，而不是写进上下文</h1>
+      <p class="lede">记忆不是“更长的上下文”。它是一条独立的读写链路：什么时候写、写什么、怎么合并、什么时候取、取多少、什么时候删。最危险的不是记不住，而是记错了还每次都被注入，最后变成模型的“常识”。</p>
+      <ul class="meta">
+        <li>约 18 分钟</li>
+        <li>1 张回路图</li>
+        <li>L2 → L3</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>判断一条信息该写进规则文件、会话日志还是会话记忆，并说出理由。</li>
+          <li>画出一条记忆从写入到注入的链路，指出哪一步最可能引入错误、哪一步最该设预算。</li>
+          <li>针对一条错误记忆，设计“发现—止损—纠错—防止复发”四步处理。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 为什么 ========== -->
+    <section id="why-memory">
+      <p class="sec-no">01 · 先分清三种持久化</p>
+      <h2>“它一进门就说：这个项目用 Jest”</h2>
+      <p>周一早上，新会话的第一条消息还没发完，Agent 已经在计划里写：“用 Jest 补三个单测。” 你愣了一下——项目上个月已经迁到 Vitest，<code>package.json</code> 里连 <code>jest</code> 都删了。你问它为什么这么说，它回答：“项目记忆里写着测试框架是 Jest。”</p>
+      <p>它不是幻觉，也不是读错了文件。它读的是一条三个月前写入的记忆：那时候项目确实用 Jest。记忆没有过期，也没有被新事实覆盖，于是每次新会话都把它当作“已知前提”注入。模型没有理由怀疑它，因为注入的位置和措辞都很像一条稳定的项目约定。</p>
+      <p>这就是跨会话记忆和“长上下文”最根本的区别：<strong>长上下文只影响这一次回答，记忆会影响以后每一次回答</strong>。一条错误的记忆不是一次错误，而是一个会复利的起点。</p>
+      <p class="lead-in">先分清三种持久化，再谈记忆。</p>
+      <ul>
+        <li><strong>规则文件</strong>（<code>AGENTS.md</code>、<code>CLAUDE.md</code>）：人写的、稳定的约束。它回答“必须怎么做”，改动应该经过 review。错误规则的代价大，但通常有人负责。</li>
+        <li><strong>会话日志</strong>：一次会话的事实记录。它回答“这次发生了什么”，只追加、不自动跨会话注入。它可审计，但不会主动影响下一次。</li>
+        <li><strong>记忆</strong>：从过去会话里提炼出来的、跨会话复用的经验。它回答“以前通常怎么做”，由模型或后台管线写入，天然可错、需要过期与纠错。</li>
+      </ul>
+      <p>三者最容易被混用的场景是“把一次会话的结论直接写进规则文件”。比如“这次迁移发现 <code>legacy.ts</code> 要改成 type-only import”，如果写进 <code>AGENTS.md</code>，它就从“一次性事实”变成了“永久规范”，下个月代码结构变了，规则还在。更合适的做法是写进记忆，并带上日期、来源与适用范围；或者只留在会话日志里，等同类问题第二次出现再提炼。</p>
+
+      <figure class="fig" id="fig-memory-loop">
+        <svg viewBox="0 0 640 208" role="img" aria-labelledby="fig-mem-title fig-mem-desc">
+          <title id="fig-mem-title">记忆的写入、整理、检索、注入回路</title>
+          <desc id="fig-mem-desc">会话结束后写入候选记忆，经过整理合并进入存储；下一次会话开始时检索并按预算注入，注入后影响模型行为，再产生新的会话记录。另有一条红色回边表示过期、删除与纠错。</desc>
+          <rect class="svg-track" x="10" y="28" width="132" height="52" rx="7"/>
+          <text class="svg-label" x="76" y="50" text-anchor="middle">会话</text>
+          <text class="svg-note" x="76" y="68" text-anchor="middle">产生事实与结论</text>
+
+          <rect class="svg-seg--a" x="176" y="28" width="132" height="52" rx="7"/>
+          <text class="svg-label" x="242" y="50" text-anchor="middle">写入</text>
+          <text class="svg-note" x="242" y="68" text-anchor="middle">抽取候选 / flush</text>
+
+          <rect class="svg-seg--b" x="342" y="28" width="132" height="52" rx="7"/>
+          <text class="svg-label" x="408" y="50" text-anchor="middle">整理合并</text>
+          <text class="svg-note" x="408" y="68" text-anchor="middle">去重 / 折叠 / 定稿</text>
+
+          <rect class="svg-seg--c" x="508" y="28" width="122" height="52" rx="7"/>
+          <text class="svg-label" x="569" y="50" text-anchor="middle">存储</text>
+          <text class="svg-note" x="569" y="68" text-anchor="middle">主题 / 索引 / 条目</text>
+
+          <line class="svg-rule" x1="142" y1="54" x2="172" y2="54"/>
+          <line class="svg-rule" x1="308" y1="54" x2="338" y2="54"/>
+          <line class="svg-rule" x1="474" y1="54" x2="504" y2="54"/>
+
+          <path class="svg-rule" d="M569 84 V110 H408 V126" fill="none"/>
+          <rect class="svg-seg--c" x="342" y="126" width="132" height="46" rx="7"/>
+          <text class="svg-label" x="408" y="146" text-anchor="middle">检索 + 注入预算</text>
+          <text class="svg-note" x="408" y="163" text-anchor="middle">取多少、放哪里</text>
+
+          <path class="svg-rule" d="M342 149 H76 V84" fill="none"/>
+          <text class="svg-note" x="160" y="144" text-anchor="middle">下一次会话</text>
+
+          <path class="svg-rule" d="M242 126 V96" fill="none" stroke-dasharray="3 3"/>
+          <text class="svg-note" x="242" y="118" text-anchor="middle">过期 / 删除 / 纠错</text>
+        </svg>
+        <figcaption>图 12-1　记忆是一条回路：写入 → 整理 → 存储 → 检索注入 → 影响下一次会话。红色虚线是纠错回边；没有这条边，错误会一直循环。示意图，不代表任何工具的固定架构。</figcaption>
+      </figure>
+
+      <p>这条回路上有四个关键决定，后面每一节都会回到它们：<strong>写什么</strong>（候选选择）、<strong>什么时候写</strong>（会话结束、压缩前、周期整理）、<strong>怎么取</strong>（索引一次、每轮检索、按项目隔离）、<strong>怎么删</strong>（过期、衰减、人工纠错）。四个决定里，最难的不是写，而是删——因为删除需要判断“这条经验已经不适用了”，而模型通常只会热情地记录，不擅长怀疑自己。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">错误的记忆比没有记忆更贵</p>
+        <p>没有记忆，模型每次都要重新读文件，慢但可纠正。错误记忆会让模型跳过读文件这一步，直接基于旧结论行动；它还会在返回里引用这条记忆，让你的下一轮判断也被污染。更糟的是，有些实现会把“模型引用过这条记忆”当成有用性的证据，于是错误记忆反而更容易被保留。</p>
+      </div>
+    </section>
+
+    <!-- ========== 02 Codex ========== -->
+    <section id="codex">
+      <p class="sec-no">02 · Codex 主线</p>
+      <h2>一条后台管线，两个阶段，一条读路径</h2>
+      <p>Codex 的记忆不是“边聊边记”，而是一条在根会话启动时触发的后台管线：先判断这次会话该不该跑记忆，再异步做两阶段处理，最后把结果写进状态库。读的时候，另一条路径把记忆作为指令注入，并解析模型对记忆的引用。提交固定为 <code>76ed3b4</code>。</p>
+
+      <h3 id="codex-trigger">2.1 触发：只在根会话、只跑一次、不阻塞对话</h3>
+      <p>触发条件写得很具体：根会话启动、非临时会话（<code>ephemeral</code> 不跑）、功能开启、<strong>不是子代理会话</strong>、状态库可用。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/memories/README.md#L1-L40">memories/README.md#L1-L40</a> <span class="tag tag--ok">已核实</span> 这四条合起来是在回答一个问题：“这次会话有没有资格产生跨会话知识？” 子代理不跑，是因为它的历史是父任务的一部分，不该独立变成长期记忆；临时会话不跑，是因为它可能只是一次试验。</p>
+      <p>管线是<strong>后台异步</strong>的：Phase 1 从各线程的 rollout 里提取候选记忆，Phase 2 做合并、整合并落成产物。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/memories/README.md#L1-L40">memories/README.md#L1-L40</a> <span class="tag tag--ok">已核实</span> 两阶段拆开的好处是：抽取可以便宜、宽进；合并可以贵、严出。抽取阶段宁可多收，合并阶段再做去重、冲突消解和措辞收敛。</p>
+      <p><strong>为什么不在对话中同步写。</strong>同步写会污染当前上下文：模型一边干活一边决定“这条要不要记”，容易把临时假设写进去，还会拖慢每一轮。后台写让主对话保持干净。<strong>代价</strong>是用户看不见写的过程：这次会话结束后到底记了什么、记错没有，没有一个即时的确认点。</p>
+
+      <h3 id="codex-read">2.2 读路径：作为开发者指令注入，并统计引用</h3>
+      <p>读取由 <code>codex-memories-read</code> 负责：把记忆作为 developer 指令注入，并解析模型对记忆的引用（citations），做使用统计。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/memories/README.md#L1-L40">memories/README.md#L1-L40</a> <span class="tag tag--ok">已核实</span> 这条设计有两个要点：<strong>注入位置</strong>是 developer 消息，不是 system 提示；<strong>可观测性</strong>是引用解析，而不是只看“注入了多少条”。</p>
+      <p>引用统计的价值在于：它能区分“注入了但没用”和“注入了且被采纳”。如果一条记忆连续很多次被注入、却从未被引用，它可能已经过时或与当前任务无关；如果一条记忆被引用后经常导致返工，它可能是错的。没有引用统计，记忆系统只能看体积，看不出质量。</p>
+      <p><strong>为什么放 developer 指令。</strong>developer 消息的权威性高于普通用户消息，又不必改写 system 提示的固定前缀；这对缓存友好，也让“记忆”和“规则”在层级上分开<sup class="fn-ref"><a href="#fn-main-12-2" id="fnref-main-12-2">2</a></sup>。<strong>代价</strong>是模型可能把记忆当成硬约束，即使它已经过期；因此注入时最好带来源与时间，读路径也要有“与当前仓库冲突时以仓库为准”的优先级。</p>
+
+      <h3 id="codex-isolation">2.3 隔离与检索：卡片没有写清的部分</h3>
+      <p>记忆是否按项目隔离，事实卡片只写到“由状态库与工作区决定”，没有给出具体字段；检索排序、条数上限、过期策略也没有在 README 里描述<sup class="fn-ref"><a href="#fn-main-12-1" id="fnref-main-12-1">1</a></sup>。这意味着我们能确认“有写入、有读取、有引用统计”，但不能确认“它一定按仓库隔离”或“它一定按相关性排序”。写教程时必须把这两件事分开：机制存在是已核实，隔离与排序的实现是待核实。</p>
+      <p>这个空白本身也有教学价值：跨会话记忆最容易被想当然的两件事，恰恰是“它只影响这个项目”和“它只取相关的”。如果实现按全局状态库存、按时间倒序取，那么你在 A 项目学到的经验会出现在 B 项目，而且最旧的记忆可能最先被注入。没有读到实现，就不能替它假设。</p>
+
+      <h3 id="codex-gap">2.4 纠错：管线里最薄的一环</h3>
+      <p>事实卡片记录了两阶段写入与读路径，但<strong>没有记录用户可见的记忆编辑、删除或“这条不对”入口</strong>。这意味着纠错主要依赖两种间接手段：后续会话产生新事实、合并阶段覆盖旧结论；或者用户直接去状态库里处理（这已经超出普通用户的路径）。</p>
+      <p><strong>为什么纠错难。</strong>写入是批量的、后台的，读取是隐式的、每次发生的；中间没有一个“确认”步骤。模型不会主动说“我依据的是三个月前的记忆，请确认”，它只会把记忆当事实用。<strong>代价</strong>是一条错误记忆可能活很久，直到某次合并碰巧把它覆盖。对使用者的启示是：不要把关键约束只交给记忆，稳定规范仍应写进规则文件，让 review 流程兜底。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>Codex 的记忆是根会话启动时的后台两阶段管线：先抽取候选，再合并落盘。</li>
+            <li>读路径把记忆作为 developer 指令注入，并用引用解析统计“有没有被用”。</li>
+            <li>按项目隔离、检索排序、条数上限在本快照未核实，不能想当然。</li>
+            <li>纠错入口在卡片里没有记录；稳定约束应留在规则文件，不要只靠记忆。</li>
+            <li>记忆的价值不在“存得多”，而在“取得准、退得掉”。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 03 工具 ========== -->
+    <section id="tools">
+      <p class="sec-no">03 · 七个工具</p>
+      <h2>有的在写，有的在整理，有的干脆不做</h2>
+      <p>下面七个工具各有一个弹窗。先记住一个事实：<strong>八个工具里有四个没有跨会话记忆</strong>——pi、opencode v1、opencode v2、DeepSeek Harness。它们不是“没写完”，而是明确选择不做；跨会话的延续交给规则文件、会话恢复或扩展。剩下的四个里，Claude Code、oh-my-pi、Grok Build 各有完整实现，Codex 是后台管线。弹窗里的“设计意图”是作者根据源码结构做的分析，不是工具作者的自述<sup class="fn-ref"><a href="#fn-main-12-3" id="fnref-main-12-3">3</a></sup>。</p>
+      <div class="tool-grid">
+        <button class="tool-btn" type="button" data-modal="claude-code">
+          <span class="tool-btn__name">Claude Code</span>
+          <span class="tool-btn__id">claude-code</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="pi">
+          <span class="tool-btn__name">pi</span>
+          <span class="tool-btn__id">pi</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="omp">
+          <span class="tool-btn__name">oh-my-pi</span>
+          <span class="tool-btn__id">omp</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v1">
+          <span class="tool-btn__name">opencode v1</span>
+          <span class="tool-btn__id">opencode-v1</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v2">
+          <span class="tool-btn__name">opencode v2</span>
+          <span class="tool-btn__id">opencode-v2</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="grok-build">
+          <span class="tool-btn__name">Grok Build</span>
+          <span class="tool-btn__id">grok-build</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="dsh">
+          <span class="tool-btn__name">DeepSeek Harness</span>
+          <span class="tool-btn__id">dsh</span>
+        </button>
+      </div>
+      <p class="small muted">键盘：<kbd>Esc</kbd> 关闭；<kbd>Tab</kbd> 在弹窗内循环。Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本。</p>
+
+      <p><strong>Grok Build 是本章最好的对照案例。</strong>它把“写”和“取”做成对称的两端：<strong>压缩前</strong>自动 <code>/flush</code>，把本轮可能被摘要丢掉的事实写进记忆；<strong>压缩后</strong>再检索一次，把相关记忆补回上下文。前者防止“压缩把还没记的事吃掉”，后者防止“压缩后模型忘了以前学过的经验”。这条对称设计回答了一个很多实现没回答的问题：记忆和压缩不是两个独立功能，它们在同一条时间线上互相补位。</p>
+      <p><strong>四个“无此能力”要如实写。</strong>pi 没有独立记忆子系统，跨会话只能靠 <code>AGENTS.md</code> / <code>CLAUDE.md</code> 与扩展；opencode v1/v2 的出货源码里没有记忆写入、检索、整理模块；DeepSeek Harness 的核心包也没有记忆服务，跨会话只有 <code>AGENTS.md</code>、会话恢复与 <code>@session</code> 快照。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/README.md#L15-L19">pi README#L15-L19</a> <span class="tag tag--ok">已核实</span> 这些空白不是缺陷清单，而是不同的产品边界：有的把“记忆”视为插件该做的事，有的认为规则文件已经够用。</p>
+    </section>
+
+    <!-- ========== 04 对比表 ========== -->
+    <section id="matrix">
+      <p class="sec-no">04 · 八工具对比</p>
+      <h2>把“记什么、何时记、怎么取”排成一张表</h2>
+      <p>先看“载体与作用域”，它决定记忆会不会串项目；再看“写入时机”，它决定记忆是“会话后总结”还是“压缩前抢救”；最后看“检索与注入”，它决定每次会话要为记忆付多少 token。最后一列是纠错能力，也是最少被实现的一列。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">载体与作用域</th>
+              <th scope="col">写入时机</th>
+              <th scope="col">检索与注入</th>
+              <th scope="col">过期 / 删除 / 防污染</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex<span>codex</span></th>
+              <td>状态库 + <code>memories</code> 管线；按工作区/状态库隔离（细节未核实）。<span class="tag tag--ok">已核实</span> <span class="tag tag--todo">待核实</span></td>
+              <td>根会话启动时后台跑；Phase 1 抽取、Phase 2 合并；临时会话与子代理不跑。<span class="tag tag--ok">已核实</span></td>
+              <td>读路径作为 developer 指令注入；解析 citations 做使用统计；排序未核实。<span class="tag tag--ok">已核实</span></td>
+              <td>未记录用户可见的编辑/删除入口；过期策略未核实。<span class="tag tag--todo">待核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>每项目一个 <code>memory/</code> 目录，<code>MEMORY.md</code> 入口；另有会话内 session memory。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>auto memory 由模型在会话中读写主题文件；session memory 达 10k 后每 5k token + 3 次工具调用抽取。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td><code>MEMORY.md</code> 是索引；<code>findRelevantMemories</code> 按当前对话找相关记忆，作为附件注入。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>入口限制 200 行 / 25,000 字节；模型可改主题文件；无自动 TTL 记录。<span class="tag tag--src">源码 v2.1.88</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>无此能力：无独立记忆子系统。<span class="tag tag--ok">已核实</span></td>
+              <td>—</td>
+              <td>跨会话只靠 <code>AGENTS.md</code> / <code>CLAUDE.md</code> 与扩展。<span class="tag tag--ok">已核实</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>5 种后端，默认 <code>off</code>；<code>local</code> 写项目级 <code>memory_summary.md</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>会话结束后的后台 consolidation；<code>learn</code> 工具可手动捕获经验。<span class="tag tag--ok">已核实</span></td>
+              <td>启动时以 <b>Memory Guidance</b> 注入；摘要+经验共享 5,000 token 上限。<span class="tag tag--ok">已核实</span></td>
+              <td>按项目隔离；<code>/memory</code> 可 view / stats / clear / reset；注入内容标注为启发式。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>无此能力：出货源码无记忆模块。<span class="tag tag--ok">已核实</span></td>
+              <td>—</td>
+              <td>仅 <code>AGENTS.md</code> 等项目规则。<span class="tag tag--ok">已核实</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>无此能力：<code>packages/core/src</code> 无记忆模块。<span class="tag tag--ok">已核实</span></td>
+              <td>—</td>
+              <td>仅 <code>AGENTS.md</code> 等项目规则。<span class="tag tag--ok">已核实</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>实验性、默认关；global 与 workspace 两个作用域；Markdown topics + inbox + 有界 <code>MEMORY.md</code> 索引。<span class="tag tag--ok">已核实</span></td>
+              <td><code>/flush</code> 会话语义摘要；压缩前自动 flush；空闲 300s 后台 flush；<code>/dream</code> 周期整理。<span class="tag tag--ok">已核实</span></td>
+              <td>首轮注入索引；<code>/flush</code> 后与压缩后再检索；全文默认，配置后向量 0.7 + BM25 0.3，最多 6 条。<span class="tag tag--ok">已核实</span></td>
+              <td>session 记忆 30 天半衰期 + 陈旧提示；<code>/remember</code> 先 review；生成的 <code>MEMORY.md</code> 不可手改。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>无此能力：无记忆服务与持久知识库。<span class="tag tag--ok">已核实</span></td>
+              <td>—</td>
+              <td>跨会话仅 <code>AGENTS.md</code>、会话恢复、<code>@session</code> 一次性快照。<span class="tag tag--ok">已核实</span></td>
+              <td>需要记忆时写 Cordis 插件，在 <code>agent/pre-step</code> 注入。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
+    </section>
+
+    <!-- ========== 05 取舍 ========== -->
+    <section id="tradeoffs">
+      <p class="sec-no">05 · 设计取舍</p>
+      <h2>为什么“记住”比“想起来”难</h2>
+      <p>下面六组取舍，覆盖了从“这条信息该不该记”到“记错了怎么删”的全链路。每组都给出两派做法与一句代价。它们共同说明一件事：记忆系统的质量，主要不取决于存储多大，而取决于写入有多克制、注入有多准、删除有多可行。</p>
+
+      <h3>取舍一：写进规则、写进记忆，还是只留在会话里</h3>
+      <p><strong>规则派</strong>把稳定约束写进 <code>AGENTS.md</code> / <code>CLAUDE.md</code>：谁都必须遵守、改动要 review、加载路径固定。<strong>记忆派</strong>把“以前通常怎么做”交给记忆：由模型或后台提炼，允许不完整、允许过期。<strong>会话派</strong>什么都不持久化，只让这次会话知道。</p>
+      <p><strong>代价</strong>：规则太重，改一次要走流程，容易变成“写了没人看”的长文档；记忆太轻，错了没人负责，还会跨会话复利；只留会话最干净，但同类问题第二次出现时要重新发现。判断标准可以很朴素：<strong>如果这条信息错了，会不会造成不可接受的后果？</strong> 会，就写规则；不会，就写记忆；只对这一次有效，就留在会话。</p>
+
+      <h3>取舍二：自动写入，还是人工确认</h3>
+      <p><strong>自动派</strong>（Codex 的两阶段管线、Claude Code 的 auto memory、Grok 的 <code>/flush</code>）让模型或后台自己判断该记什么，用户零操作。<strong>人工派</strong>（Grok 的 <code>/remember</code> 先弹 review 面板、omp 的 <code>learn</code> 手动捕获）要求用户先确认再落盘。</p>
+      <p><strong>代价</strong>：自动写入覆盖全、不打断心流，但错误也会被自动固化；人工确认质量高，但用户往往不知道“什么值得记”，最后要么全点通过，要么全不记。折中是“自动收集、延迟确认”：先进入 inbox，等整理阶段再让人 review，或者至少让用户能看到“这次记了什么”。</p>
+
+      <h3>取舍三：会话结束再写，还是压缩前抢救</h3>
+      <p><strong>结束后写</strong>（omp 的 consolidation）等会话收尾，再统一提炼。它能看到完整对话，摘要质量高；但如果会话中途崩溃，或者压缩已经把细节吃掉，就来不及了。<strong>压缩前写</strong>（Grok 的 <code>/flush</code>，阈值 = 压缩阈值 − 4,000 token 余量，每个压缩周期最多一次）在摘要发生之前，把“即将被丢掉的事实”先写进记忆；压缩后再检索一次，把相关记忆补回来。</p>
+      <p><strong>代价</strong>：结束后写简单，但有时序风险；压缩前写要在最紧张的时刻再发一次模型请求，成本和延迟都高，而且“每个周期只写一次”意味着写不进去就没了。Grok 的对称设计（flush + 重检索）是目前最完整的答案，但它也把记忆系统更深地绑进了压缩链路：压缩逻辑一改，flush 的阈值和时机就要跟着改。</p>
+
+      <h3>取舍四：会话开始注入一次索引，还是每轮检索</h3>
+      <p><strong>一次注入派</strong>（Claude Code 的 <code>MEMORY.md</code> 入口、Grok 的有界索引）在会话开始时把索引放进上下文，让模型自己决定打开哪个主题。它省 token、缓存友好，模型有主动权。<strong>每轮检索派</strong>（<code>findRelevantMemories</code> 一类）按当前对话找相关条目，作为附件注入，相关性更高，但每轮都要算、都要占预算，还会让前缀变化、缓存失效。</p>
+      <p><strong>代价</strong>：索引省，但模型可能不打开；检索准，但贵且不稳定——同一个问题换个说法，取到的记忆可能不同。Grok 的做法是折中：首轮注入索引，压缩后再检索一次，并且如果上下文里已经有 <code>&lt;memory-context&gt;</code> 就跳过，以保住缓存。这个“已经有就不重复注入”的小判断，比多取几条更能省钱。</p>
+
+      <h3>取舍五：全局记忆，还是按项目隔离</h3>
+      <p><strong>全局派</strong>把记忆放在一个跨项目的库里，好处是“我在 A 项目学到的通用经验，B 项目也能用”。<strong>项目派</strong>（Claude Code 的每项目 <code>memory/</code>、omp 的 <code>memory://root</code>、Grok 的 workspace 作用域）按仓库隔离，好处是不会把 A 项目的框架、路径、约定带到 B 项目。</p>
+      <p><strong>代价</strong>：全局记忆容易串味，尤其是“测试框架”“构建命令”这类项目相关事实；项目记忆则会让通用经验重复学习，每个项目都要重新攒。折中是分两类：通用偏好（输出语言、提交风格）放 global，项目事实（框架、目录、命令）放 workspace。Grok 明确提供两个作用域，正是这个思路。</p>
+
+      <h3>取舍六：过期衰减，还是人工删除</h3>
+      <p><strong>衰减派</strong>（Grok 的 session 记忆 30 天半衰期、越老提示越强）让旧记忆自动降权，不需要用户逐条清理。<strong>人工派</strong>（<code>/memory clear</code>、<code>/reset</code>、直接编辑 Markdown）把删除权交给用户，精确但依赖人记得去删。<strong>不可改派</strong>（Grok 生成的 <code>MEMORY.md</code> 不可手改）则是防止“人工编辑把索引改坏”，只允许通过整理流程更新。</p>
+      <p><strong>代价</strong>：衰减会自动放过仍然有效的旧知识，也会让“三年前的最佳实践”在还有用时被降权；人工删除精确，但人会忘；不可改最安全，但纠错路径变长。最稳的组合通常是三者叠加：写入时带来源与日期，读取时按时间降权，界面上给一个明确的“这条不对”入口，并允许整库重置。</p>
+
+      <p>最后回到“错误记忆污染”。它不是某一个环节的问题，而是四个环节一起失效：写入时没有来源，整理时没有冲突消解，检索时没有时间权重，删除时没有入口。防污染也不需要四个环节都做到满分，只要<strong>至少有一个环节能止损</strong>：比如检索时把“记忆”标注为启发式、并在与仓库冲突时以仓库为准；或者写入前让人 review；或者提供一键清空。最怕的是四个环节都“看起来很顺”，却没有任何一个能说“这条不算”。</p>
+    </section>
+
+    <!-- ========== 06 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">06 · 小测验</p>
+      <h2>三道题，检验你是否真的会“记”</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">“这个仓库用 pnpm，不要用 npm”应该写进规则文件、会话日志还是记忆？如果写成“上次迁移时 pnpm 装依赖比 npm 快”，又该放哪？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>第一句是稳定约束，写规则文件：它必须每次生效、改动要 review，错了会造成构建不一致。第二句是一次性观察，放会话日志或记忆都可以，但不该写成硬规范；如果放记忆，要带日期与来源，允许以后被“CI 缓存让 npm 更快”覆盖。判断标准：错了会不会造成不可接受后果；会，就规则；不会，就记忆；只对这一次有效，就留会话。见<a href="#tradeoffs">取舍一</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">Grok Build 在压缩前 <code>/flush</code>、压缩后再检索一次。如果只做“压缩后检索”，会丢掉什么？如果只做“压缩前 flush”，又会缺什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>只做压缩后检索：本次会话里刚产生、还没写进记忆的事实，已经被摘要吃掉了，检索只能取到旧记忆，新经验没落盘。只做压缩前 flush：事实写进去了，但压缩后模型眼前的上下文里没有它，要等下一次会话才会被检索到；这一轮继续干活时仍然“忘了”。所以两者是对称的：flush 负责“别丢”，重检索负责“现在就用”。见<a href="#tools">03 节 Grok 段</a>与<a href="#tradeoffs">取舍三</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">团队发现一条错误记忆“测试框架是 Jest”已经污染了三周。请给出四步处理：发现、止损、纠错、防复发。</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p><strong>发现</strong>：看引用统计或注入日志，确认这条记忆被哪些会话取过、是否被模型引用；<strong>止损</strong>：先禁用/删除这条记忆，或在项目规则里写明“以 <code>package.json</code> 为准”，阻止它继续被注入；<strong>纠错</strong>：写入一条带日期与来源的新记忆（“2026-09 起迁移到 Vitest，依据 <code>package.json</code> 与 CI 配置”），让合并阶段覆盖旧条目；<strong>防复发</strong>：给记忆加来源与时间、检索时按时间降权、与仓库冲突时以仓库为准、保留人工删除入口。四步里至少要有一个环节能“说不”。见<a href="#tradeoffs">取舍六</a>与<a href="#fig-memory-loop">图 12-1</a>。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-main-12-1">
+          事实卡片标【待核实】：已读 <code>codex-rs/memories/README.md</code>（触发条件、两阶段、读路径），未找到按项目隔离的具体字段、检索排序、条数上限与过期/删除策略。缺 <code>codex-memories-read</code> 的实现与状态库 schema，因此本章只写“由状态库与工作区决定”，不写“一定按仓库隔离”或“按相关性排序”。这会直接影响“会不会串项目”的判断，读者应把它当作未确认项。<a class="footnotes__back" href="#fnref-main-12-1">↩</a>
+        </li>
+        <li id="fn-main-12-2">
+          事实卡片确认记忆以 developer 指令注入，但没有解释“为什么不是 system”。本章给出的理由——保持 system 前缀稳定、兼顾缓存与权威层级——是【推断】：已核对读路径模板与注入位置，未找到设计说明。缺官方设计文档，因此这句话只能作为合理解释，不是工具作者的原始意图。<a class="footnotes__back" href="#fnref-main-12-2">↩</a>
+        </li>
+        <li id="fn-main-12-3">
+          本页七个弹窗的“设计意图”段都标【推断】：依据是各工具的记忆后端、字段与默认值，缺作者的设计说明。它们解释“为什么默认关闭、为什么设这个上限”，不改变前文标【已核实】的写入时机、检索参数与删除入口；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-12-3">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：<a href="main-13.html">缓存友好设计</a>。</p>
+
+  </article>
+</main>
+
+<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+
+<div class="modal" id="modal-claude-code" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">有两套并存的“记忆”。<strong>auto memory</strong>：每个项目一个目录 <code>~/.claude/projects/&lt;project&gt;/memory/</code>，入口 <code>MEMORY.md</code>，限制 200 行 / 25,000 字节；模型在会话中自行读写主题文件，入口文件是索引。<strong>session memory</strong>：会话内后台摘要，达到初始化阈值（10,000 token）后启用，此后每增长 5,000 token 且满足工具调用条件（3 次）时抽取一次，产物用于压缩时替代整段摘要（<code>trySessionMemoryCompaction</code>）。检索侧还有 <code>findRelevantMemories</code>，按当前对话找相关记忆并作为附件注入。记忆写入/读取都走独立的工具与提示词，不直接改系统提示词。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>auto memory：<code>ENTRYPOINT_NAME = MEMORY.md</code>、<code>MAX_ENTRYPOINT_LINES = 200</code>、<code>MAX_ENTRYPOINT_BYTES = 25_000</code>；session memory：<code>minimumMessageTokensToInit = 10_000</code>、<code>minimumTokensBetweenUpdate = 5_000</code>、<code>toolCallsBetweenUpdates = 3</code>；目录可用 <code>CLAUDE_COWORK_MEMORY_PATH_OVERRIDE</code> / <code>autoMemoryDirectory</code> 覆盖。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“跨会话记忆”和“会话内摘要”分开：前者是项目级索引 + 主题文件，后者服务于压缩。入口限 200 行 / 25 KB，强制模型用索引而不是全文。代价是索引可能不打开、主题文件可能过时；session memory 是会话内机制，不能当跨会话记忆用。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/memdir/memdir.ts#L36-L45">memdir.ts#L36-L45</a> ·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/memdir/findRelevantMemories.ts#L39">findRelevantMemories.ts#L39</a> ·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/SessionMemory/sessionMemoryUtils.ts#L31-L36">sessionMemoryUtils.ts#L31-L36</a> ·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/SessionMemory/sessionMemory.ts#L134-L181">sessionMemory.ts#L134-L181</a>
+        </dd>
+      </dl>
+      <p class="modal__note">来源类型：<span class="tag tag--src">源码 v2.1.88</span>。官方文档“auto memory 由 Claude 读写、按项目隔离”与源码一致；文档未给 200 行 / 25 KB 上限。【可能已变化】</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pi" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · pi</p>
+        <h2 class="modal__title" id="modal-pi-title">pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><strong>无此能力（无独立记忆子系统）。</strong>源码中没有 <code>memories/</code>、memory backend、记忆抽取或记忆注入相关模块；跨会话的“记忆”实际上由项目规则文件（<code>AGENTS.md</code> / <code>CLAUDE.md</code>）和扩展自行承担。没有写入时机、整理合并、检索、按项目隔离、过期删除这些机制。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>无。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>与“不做子代理”同一条产品线：核心保持最小，跨会话知识交给人类可 review 的规则文件，或交给扩展。好处是不会出现“模型自己写记忆、自己引用”的闭环污染；代价是每次新会话都要重新发现项目惯例，除非规则写得足够全。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>全仓检索 <code>packages/coding-agent/src</code> 内 <code>memories|long-term memory|memoryBackend</code> 无匹配（2026-10-18）；<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/README.md#L15-L19">README.md#L15-L19</a>（可扩展但默认最小）。</dd>
+      </dl>
+      <p class="modal__note">“无此能力”指默认发行版；扩展可以自己实现记忆，但那不属于 pi 的核心能力，也没有统一的注入位置与预算。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-omp" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · omp</p>
+        <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">有独立记忆子系统，<strong>默认关闭</strong>。<code>memory.backend</code> 五选一：<code>off</code>（默认）、<code>local</code>（从持久会话生成项目级摘要与经验，写入 <code>memory_summary.md</code>，启动时以 <strong>Memory Guidance</strong> 块注入系统提示词）、<code>hindsight</code>（远程向量记忆）、<code>mnemopi</code>（本地 SQLite，支持 <code>recall</code> / <code>retain</code> / <code>reflect</code>）、<code>sharpshooter</code>（项目决策文件，后台合并）。<code>local</code> 的摘要与经验共享 5,000 token 上限；经验按摘要占用后的剩余预算截断。记忆按项目隔离，可用 <code>memory://root</code> 等 URL 读回；<code>/memory view|stats|diagnose|queue|sync|clear|reset</code> 管理。写入是会话结束后的后台 consolidation，<code>learn</code> 工具可手动捕获经验；注入内容被明确标注为“启发式上下文”，与仓库现状冲突时以仓库为准。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>memory.backend = "off"</code>；<code>memories.summaryInjectionTokenLimit = 5000</code>；<code>memories.fallbackTokenLimit = 16000</code>；<code>memories.phase1InputTokenLimit = 4000</code>；注入块名 <b>Memory Guidance</b>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>默认关，是因为记忆一旦自动写入就会改变后续所有会话；让用户显式选择后端，等于让用户先决定“我愿意承担多大的污染风险”。5,000 token 硬上限保证注入不会挤掉主任务；标注“启发式”并把仓库放在更高优先级，是防污染的关键。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/memory-backend/settings.ts#L14-L45">memory-backend/settings.ts#L14-L45</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/memories/settings.ts#L77-L93">memories/settings.ts#L77-L93</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/memories/index.ts#L220-L240">memories/index.ts#L220-L240</a> ·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/docs/memory.md#L1-L60">docs/memory.md#L1-L60</a>
+        </dd>
+      </dl>
+      <p class="modal__note">omp 是 pi 的 fork，但记忆是新增能力：pi 明确没有记忆子系统，omp 做了五种后端与一套管理命令。不要把 pi 的“无”套到 omp 上。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v1" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><strong>无此能力。</strong>在 v1 出货路径 <code>packages/opencode/src</code> 与 v1 命名空间 <code>packages/core/src/v1</code> 中检索 <code>memory</code>，只命中 xai 插件的模型字段、<code>cli/heap.ts</code>（堆内存）与提示词文本，没有记忆写入/检索/整理模块；也没有与 <code>AGENTS.md</code> 之外的项目级持久知识注入路径。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>无。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>跨会话延续交给规则文件、会话 fork 与插件；核心不引入“模型自己写长期知识”的闭环。代价是项目惯例只能靠人维护，且 fork 只继承对话、不继承跨会话经验。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>全仓检索 <code>memory</code>（上述两个源码树，2026-10-18）无记忆模块；不排除插件生态提供。</dd>
+      </dl>
+      <p class="modal__note">这个“无”限定于上述两个源码树；插件可能实现记忆，但那不属于 v1 的默认能力，也没有统一的注入预算。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v2" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><strong>无此能力。</strong><code>packages/core/src</code> 中检索 <code>memory</code> 只命中 <code>environment/memory.ts</code>（内存文件系统驱动）、MCP OAuth、shell、watcher 等无关模块，没有记忆写入/整理/检索/过期模块，也没有项目级持久知识注入路径。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>无。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>v2 把注意力放在压缩、会话边界与执行恢复上，跨会话知识仍交给 <code>AGENTS.md</code> 与插件。代价与 v1 相同：项目惯例靠人维护；好处是不会出现“记忆与仓库冲突”的隐性状态。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>全仓检索 <code>packages/core/src</code>（2026-10-18）无记忆模块；不排除插件生态提供。</dd>
+      </dl>
+      <p class="modal__note">v2 是 beta <code>v2.0.29</code>，能力面可能继续变；本条只代表该快照。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-grok-build" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">记忆是<strong>实验性、默认关闭</strong>（<code>[memory] enabled</code> 与 <code>[memory_v2] enabled</code> 都默认 false）。两个作用域：global（跨项目）与 workspace（按仓库，clone/worktree 共享）。v2 用 Markdown：<code>topics/</code>（整理后的主题）与 <code>observations/_inbox/</code>（每轮之后落的新事实），再加一份有界的生成式 <code>MEMORY.md</code> 索引，索引每会话注入一次，让模型自己决定打开哪些 topic。<code>/flush</code> 是“现在就总结进记忆”：触发一次 LLM 摘要，写入带日期的会话日志；写入上限 8,000 字符；还会在<strong>压缩前</strong>自动跑一次（阈值 = 压缩阈值 − 4,000 token 余量，每个压缩周期最多一次），空闲 300 s 也可后台 flush；去重默认余弦相似度 0.92。<code>/dream</code> 把散落的 observation 折叠成 topic，有租约锁（3,600 s）、自动门控（间隔 ≥24 h 且累计 ≥5 个会话）、批量上限 256 KB、单条 note 16 KB、每批最多 20 条。<strong>压缩完成后还会再检索一次记忆</strong>，把可能被摘要丢弃的相关事实补回上下文。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>[memory] enabled = false</code>；<code>max_flush_write_chars = 8000</code>；<code>soft_threshold_tokens = 4000</code>；<code>idle_timeout_secs = 300</code>；<code>semantic_dedup_threshold = 0.92</code>；<code>dream.min_hours = 24</code>、<code>min_sessions = 5</code>、<code>check_interval_secs = 3600</code>；检索 <code>max_results = 6</code>、<code>min_score = 0.7</code>、<code>vector_weight / text_weight = 0.7 / 0.3</code>、<code>temporal_decay.half_life_days = 30</code>、<code>mmr.lambda = 0.7</code>；首轮注入 <code>min_score = 0.9</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把记忆写进“压缩的时间线”而不是会话末尾：先 flush 再压缩，压缩后再检索，保证“即将被丢掉的事实”和“已经学过的经验”都不丢。防污染靠来源加权、陈旧提示、<code>/remember</code> review 面板、以及生成的 <code>MEMORY.md</code> 不可手改。代价是 flush 在最紧张的时刻再发一次模型请求，且默认关闭意味着大多数用户享受不到。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-memory/src/flush.rs#L18-L58">flush.rs#L18-L58</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-config-types/src/memory.rs#L440-L470">config-types/memory.rs#L440-L470</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/turn.rs#L2243-L2300">turn.rs#L2243-L2300</a> ·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/13-memory.md#L99-L128">13-memory.md#L99-L128</a>
+        </dd>
+      </dl>
+      <p class="modal__note">仓库内用户手册 <code>13-memory.md</code>（473 行）已逐节核对，作用域、<code>/flush</code>、<code>/dream</code>、首轮注入与检索参数与源码一致；官方站点 <code>docs.x.ai/build/features/memory</code> 仍返回 404，属文档入口缺失，不影响本节结论。<span class="tag tag--ok">已核实</span></p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-dsh" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><strong>无此能力。</strong>仓库里没有记忆服务、没有 <code>MEMORY.md</code> / topic / observation 之类的持久知识库、没有 dream / flush 一类的整理任务，<code>docs/architecture.md</code> 的核心包表里也没有记忆项。跨会话能带过去的只有三样：<code>AGENTS.md</code> 指令链（用户级 + 项目级）、会话日志与 resume（同一会话续跑，不是跨会话知识）、<code>@session</code> 引用（手动把另一个会话的有界快照拉进当前轮，一次性、不可信、只读）。需要记忆时，只能自己写一个 Cordis 插件，把内容注入 <code>agent/pre-step</code> 或贡献一个系统提示词 section。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>不适用。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>核心只提供“日志 + surface + 插件”三层，把长期知识交给部署方决定：你可以在插件里做检索、做预算、做审核，也可以完全不做。代价是没有开箱即用的记忆，跨会话惯例只能靠 <code>AGENTS.md</code> 手工维护。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/architecture.md#L60-L66">docs/architecture.md#L60-L66</a> ·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/context/session-reference/README.md#L12">session-reference/README.md#L12</a>
+        </dd>
+      </dl>
+      <p class="modal__note">“无此能力”以目录与架构文档为依据，不排除第三方插件提供；<code>@session</code> 快照是一次性注入，不是持久记忆，也不会自动更新。</p>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

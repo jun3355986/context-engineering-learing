@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Grok Build · append-only 日志如何回退 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  #src-grok-build-03 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-grok-build-03 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-grok-build-03 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  #src-grok-build-03 .path-card code,
+  #src-grok-build-03 .callout code,
+  #src-grok-build-03 .quiz__q code,
+  #src-grok-build-03 details code {
+    overflow-wrap: anywhere;
+  }
+  /* 行内代码里的长路径/长哈希允许断行，避免 375px 横向溢出 */
+  #src-grok-build-03 code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-grok-build-03">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-grok-build-03">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Grok Build</span><span>·</span><span>第 03 节</span></p>
+      <h1>append-only 日志如何回退</h1>
+      <p class="lede">回退的常规做法是删掉后面的记录，或者把文件重写成一份新的。Grok Build 两条都没走：日志一行不删，只追加一条「隧道标记」，等下次重放时按标记把列表截断。这一节读这条标记怎么写、怎么被读，以及为什么这个反直觉的设计值得学。</p>
+      <ul class="meta">
+        <li>约 16 分钟</li>
+        <li>2 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>2bdd1d6</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>画出一次 <code>/rewind</code> 从命令到磁盘、再到下次恢复的完整路径。</li>
+          <li>解释 <code>prompt_starts</code> 为什么能让「回退到第 N 条」变成一次数组截断。</li>
+          <li>说出 append-only 回退的三个好处和两个代价，并指出哪一处是 fail-open。</li>
+          <li>对比 DeepSeek Harness、pi、Claude Code 的会话回退设计，说明各自的取舍。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>本节涉及两条路径：内存里的「立即回退」和磁盘上的「延迟重放」。所有行号对应提交 <code>2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8</code>。<code>updates.jsonl</code> 是 ACP 更新流，本节的过滤器同时服务原始 JSON 行与已解析的 update 两种形态。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>回退不是「删掉」，是「宣布后面作废」</h2>
+
+      <p>一次会话在磁盘上是一堆文件：<code>updates.jsonl</code> 是权威对话日志，<code>chat_history.jsonl</code> 是实际发给模型的消息，<code>rewind_points.jsonl</code> 是检查点索引，另有 <code>summary.json</code>、<code>system_prompt.txt</code>、<code>tool_definitions.json</code> 等。回退要解决的是「怎么让日志回到某个用户请求之前」，而日志本身是只追加的。</p>
+
+      <p class="lead-in">Grok Build 的答案是：不动旧行，在文件末尾追加一条 <code>RewindMarker</code>，指向要回到的那个 prompt index；所有读日志的路径先过一个过滤器，读到标记就把已累积的列表截回去。</p>
+
+      <p>这条设计之所以反直觉，是因为我们习惯把「日志」当成「事实的记录」，把「回退」当成「撤销事实」。这里两者被拆开了：日志记录的是「发生过什么」（包括「用户按了回退」这件事），而「当前有效的时间线」是从日志里<b>算</b>出来的。同一个文件里可以并存多条时间线，靠标记隔开。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 320" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">一次回退在内存与磁盘上的两条路径</title>
+          <desc id="fig-1-desc">上半部分是内存路径：命令进入 handle_rewind，截断内存会话，追加标记。下半部分是磁盘路径：updates.jsonl 只追加，下次恢复时过滤器按标记截断，得到当前时间线。</desc>
+          <text class="svg-note" x="8" y="18">内存：立刻生效</text>
+          <rect class="svg-track" x="8" y="28" width="150" height="40" rx="8"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="83" y="53" text-anchor="middle">/rewind</text>
+          <rect class="svg-seg--a" x="170" y="28" width="150" height="40" rx="8"/>
+          <text class="svg-label svg-label--s" x="245" y="53" text-anchor="middle">截断会话</text>
+          <rect class="svg-seg--c" x="332" y="28" width="150" height="40" rx="8"/>
+          <text class="svg-label svg-label--s" x="407" y="53" text-anchor="middle">追加 marker</text>
+          <text class="svg-note" x="494" y="53">→ 落盘</text>
+
+          <line class="svg-rule" x1="8" y1="86" x2="632" y2="86"/>
+
+          <text class="svg-note" x="8" y="110">磁盘：永不删除，只追加</text>
+          <rect class="svg-track" x="8" y="120" width="624" height="34" rx="6"/>
+          <rect class="svg-seg--a" x="10" y="122" width="140" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="80" y="143" text-anchor="middle">第 0 轮</text>
+          <rect class="svg-seg--a" x="154" y="122" width="140" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="224" y="143" text-anchor="middle">第 1 轮</text>
+          <rect class="svg-seg--a" x="298" y="122" width="140" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="368" y="143" text-anchor="middle">第 2 轮</text>
+          <rect class="svg-seg--c" x="442" y="122" width="90" height="30" rx="5"/>
+          <text class="svg-label svg-label--s" x="487" y="143" text-anchor="middle">marker→1</text>
+          <rect class="svg-track" x="536" y="122" width="94" height="30" rx="5"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="583" y="143" text-anchor="middle">第 3 轮</text>
+
+          <text class="svg-note" x="8" y="186">下次恢复：从头重放，读到 marker 就把列表截到第 1 轮之前</text>
+          <rect class="svg-seg--b" x="8" y="198" width="300" height="36" rx="6"/>
+          <text class="svg-label svg-label--s" x="158" y="222" text-anchor="middle">当前时间线 = 第 0 轮</text>
+          <rect class="svg-seg--free" x="316" y="198" width="316" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark svg-label--s" x="474" y="222" text-anchor="middle">第 1、2、3 轮：仍在文件里，不再可见</text>
+
+          <line class="svg-rule" x1="8" y1="256" x2="632" y2="256"/>
+          <text class="svg-note" x="8" y="280">标记不会删除任何字节；它只改变「读到它时累积到哪」。</text>
+          <text class="svg-note" x="8" y="304">所以同一个文件可以装下多条被标记隔开的时间线。</text>
+        </svg>
+        <figcaption>图 1　两条路径。内存侧立刻截断，磁盘侧只追加一条标记；真正让回退「生效到磁盘」的，是下一次重放时的过滤器。虚线框里的轮次仍然完整保存在文件中，只是不再进入当前时间线。</figcaption>
+      </figure>
+
+      <p>这张图解释了一个常见的困惑：回退之后，如果直接去 <code>updates.jsonl</code> 里搜旧内容，还能搜到。不是回退失败，而是回退的语义是「从当前时间线里排除」，不是「从磁盘上抹掉」。这也意味着，任何绕过过滤器直接读文件的工具，都会看到被回退掉的内容——这是这套设计最需要小心的地方。</p>
+
+      <p>为什么要拆成这么多文件？因为它们的「权威性」不同。<code>updates.jsonl</code> 是事件流，负责「发生过什么」；<code>chat_history.jsonl</code> 是某一时刻实际发出去的消息，负责「模型看过什么」；<code>rewind_points.jsonl</code> 只是索引，丢了可以重建。回退只改前者的「可见性」，不动后两者。这种拆分让每种数据都有单一职责，代价是恢复时要按顺序重放并合并多个来源——这也解释了为什么「恢复」在这套代码里比「保存」复杂得多。</p>
+
+      <p>链路上有四个关键点：<code>get_rewind_points()</code> 列出可回退的位置；<code>handle_rewind()</code> 执行回退（截内存、写标记）；<code>filter_rewind_lines()</code> 是读磁盘时的入口；<code>filter_rewind_by()</code> 是真正的截断算法。本节按这个顺序读。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四处位置：检查点、写标记、入口、算法</h2>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 检查点：每个用户请求一个</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/rewind.rs#L23-L68">crates/codegen/xai-grok-shell/src/session/acp_session_impl/rewind.rs#L23-L68</a><br>
+          <code>get_rewind_points()</code>：<code>(0..current_prompt_index)</code> 逐个生成，注释写明「每个 prompt 都是一个 checkpoint」。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 写标记：回退的最后一步</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/rewind.rs#L403-L407">…/acp_session_impl/rewind.rs#L403-L407</a><br>
+          <code>persist_xai_update_only(XaiSessionUpdate::RewindMarker { target_prompt_index, created_at })</code>，注释直接点明「updates.jsonl is append-only」。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 读入口：没有标记就原样返回</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/storage/mod.rs#L1653-L1660">crates/codegen/xai-grok-shell/src/session/storage/mod.rs#L1653-L1660</a><br>
+          <code>filter_rewind_lines()</code>：先做一次子串扫描，没有 <code>rewind</code> 标记就整段返回，不解析 JSON。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 算法：一次截断，两个数据形态共用</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/storage/mod.rs#L1569-L1597">…/storage/mod.rs#L1569-L1597</a><br>
+          <code>filter_rewind_by()</code>：<code>prompt_starts</code> 记账 + <code>truncate</code>；<code>classify</code> 闭包让原始行与 typed update 共用同一份逻辑。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据：回退后必须重放的判定在 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/rewind.rs#L97-L116">rewind.rs#L97-L116</a>（<code>needs_compaction_replay</code>）；三处调用点在 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/storage/replay.rs#L485">replay.rs#L485</a>、<code>#L559</code> 与 <code>extensions/session_updates.rs#L150</code>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】大纲把两件事写在了一起</p>
+        <p>大纲写「<code>filter_rewind_lines</code>（<code>storage/mod.rs:1655</code>）与 RewindMarker 追加（<code>rewind.rs:400</code>）」，两个行号基本准确（入口在 L1655，标记在 L403-L407），但容易读成「过滤器负责追加」。实际分工是：<code>rewind.rs</code> 负责<b>写</b>标记并立刻截断内存；<code>storage/mod.rs</code> 负责在<b>读</b>的时候按标记截断。两者之间隔着一次会话重启或一次重放。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>三段代码：入口、算法、写标记</h2>
+
+      <p>摘录按「读到写」的顺序排：先是读入口的快速路径，再是截断算法，最后是回退时写标记的那五行。算法里的 <code>classify</code> 闭包把「这一行是什么」的判断抽了出去，所以同一个驱动既能处理未解析的 JSON 行，也能处理已解析的 update 对象。</p>
+
+      <p class="small muted">文件：<code>crates/codegen/xai-grok-shell/src/session/storage/mod.rs</code>　行号：L1572-L1597 与 L1655-L1660（合计 32 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 共用驱动：classify 负责「这一项是什么」，这里只负责记账与截断（L1572-L1597）</span>
+<span class="code__line">fn filter_rewind_by&lt;T&gt;(items: Vec&lt;T&gt;, classify: impl Fn(&amp;T) -&gt; RewindStep) -&gt; Vec&lt;T&gt; {</span>
+<span class="code__line">    let mut result: Vec&lt;T&gt; = Vec::with_capacity(items.len());</span>
+<span class="code__line">    let mut prompt_starts: Vec&lt;usize&gt; = Vec::new(); <span class="cmt">// 每个已计数轮次在 result 里的起点</span></span>
+<span class="code__line">    let mut tracker = UserRunTurnTracker::new();</span>
+<span class="code__line">    for item in items {</span>
+<span class="code__line">        match classify(&amp;item) {</span>
+<span class="code__line">            RewindStep::Rewind { target } =&gt; {</span>
+<span class="code__line">                // 目标越界时保留全部幸存者：宁可不回退，也不误删</span>
+<span class="code__line">                let trunc = prompt_starts.get(target).copied().unwrap_or(result.len());</span>
+<span class="code__line">                result.truncate(trunc); <span class="cmt">// 把累积列表截回目标轮次之前</span></span>
+<span class="code__line">                prompt_starts.truncate(target); <span class="cmt">// 轮次起点表同步收缩</span></span>
+<span class="code__line">                tracker.on_non_user(); <span class="cmt">// 标记之后不再处于 user run 中</span></span>
+<span class="code__line">                continue; <span class="cmt">// 标记本身不进入结果</span></span>
+<span class="code__line">            }</span>
+<span class="code__line">            RewindStep::UserChunk { prompt_index } =&gt; {</span>
+<span class="code__line">                if tracker.on_user_chunk(prompt_index) { <span class="cmt">// 这一块是否开启一个「计数轮次」</span></span>
+<span class="code__line">                    prompt_starts.push(result.len()); <span class="cmt">// 记录起点，供将来截断</span></span>
+<span class="code__line">                }</span>
+<span class="code__line">            }</span>
+<span class="code__line">            RewindStep::Other =&gt; tracker.on_non_user(), <span class="cmt">// 非 user 内容结束当前 run</span></span>
+<span class="code__line">        }</span>
+<span class="code__line">        result.push(item);</span>
+<span class="code__line">    }</span>
+<span class="code__line">    result</span>
+<span class="code__line">}</span>
+<span class="code__line code__line--cmt">// 读入口：先做一次子串扫描，绝大多数会话在这里就返回了（L1655-L1660）</span>
+<span class="code__line">pub(crate) fn filter_rewind_lines(lines: Vec&lt;&amp;str&gt;) -&gt; Vec&lt;&amp;str&gt; {</span>
+<span class="code__line">    if !lines.iter().any(|l| l.contains(&amp;*REWIND_MARKER)) {</span>
+<span class="code__line">        return lines; <span class="cmt">// 没有回退标记：零解析成本</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    filter_rewind_by(lines, |line| rewind_step_for_line(line))</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>crates/codegen/xai-grok-shell/src/session/acp_session_impl/rewind.rs</code>　行号：L403-L407（5 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 内存已经截断、信号与摘要也清理完之后，才追加这条标记</span>
+<span class="code__line">self.persist_xai_update_only(XaiSessionUpdate::RewindMarker {</span>
+<span class="code__line">    target_prompt_index: target_index, <span class="cmt">// 回到第 N 条之前，保留 0..N-1</span></span>
+<span class="code__line">    created_at: chrono::Utc::now().to_rfc3339(), <span class="cmt">// 便于审计与排序</span></span>
+<span class="code__line">});</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">三段合计 38 行（33 + 5），远低于 60 行上限。<code>filter_rewind_by</code> 在源码里是 26 行，摘录时补了 7 行中文注释。省略的是 <code>rewind_step_for_line</code>（33 行，负责窥探 JSON 里的 <code>sessionUpdate</code> 与 <code>_meta.promptIndex</code>）与 <code>UserRunTurnTracker</code>（48 行，负责判断一个 user chunk 是否开启新轮次），两者都属于分类细节，不影响主干。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>五个问题，从「怎么记账」到「为什么敢不删」</h2>
+
+      <h3>第 1 段　检查点：为什么每条用户请求都能回</h3>
+
+      <p><code>get_rewind_points()</code> 不维护一张单独的检查点表，它直接用 <code>(0..current_prompt_index)</code> 生成列表，再按文件快照的元数据补上「这一条有没有文件改动」。<span class="tag tag--ok">已核实</span>注释写得很清楚：每个 prompt 都是一个 checkpoint，文件快照可能没有，但对话位置一定有。</p>
+
+      <p>这是一个成本很低的决定：不需要在每轮结束时写一条「检查点记录」，只需要维护一个自增的 <code>prompt_index</code>。代价是回退的粒度固定为「一条用户请求」，不能回退到某次工具调用中间。对用户来说这刚好是自然的粒度：人只会说「回到我上一条消息之前」，不会说「回到第三次 grep 之前」。</p>
+
+      <p>回退语义也由此确定：回退到 N 表示「保留 0 到 N−1，丢掉 N 及之后」，所以目标是 0 时只剩会话前言。这个语义在源码注释里被写死了两次（<code>rewind.rs</code> L118 与 L363），说明它是一个容易被后人改错的契约。</p>
+
+      <h3>第 2 段　书签：<code>prompt_starts</code> 让截断变成 O(1)</h3>
+
+      <p>过滤器的核心是一个数组 <code>prompt_starts</code>：每遇到一个「计数轮次」的用户消息块，就把当前 <code>result</code> 的长度压进去。于是 <code>prompt_starts[k]</code> 恰好是第 k 轮在结果数组里的起点。读到标记 <code>Rewind { target }</code> 时，取 <code>prompt_starts[target]</code> 截断，再把这个表也截到 <code>target</code>，两行代码完成回退。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这个技巧值得记住：它把「回退到第 N 轮」从「找到第 N 轮的第一条消息」变成了「查一次表」。表是在顺序扫描时顺手建的，没有额外遍历。代价是内存里多一个 <code>Vec&lt;usize&gt;</code>，长度等于轮次数——相对于整份日志，可以忽略。</p>
+
+      <p>入口的预检是在原始字符串上做 <code>contains</code>，所以只要某条用户消息的正文里恰好出现了标记的名字，就会误走慢路径。这个误判没有正确性代价：慢路径照样会完整分类每一行，只是多花一次解析。用一次可能误命中的子串扫描换掉「每个会话都全量解析」，是很划算的交易。</p>
+
+      <p>越界处理是一个容易被忽略的细节：<code>prompt_starts.get(target)</code> 取不到时，<code>unwrap_or(result.len())</code> 会把截断点设为「当前长度」，也就是<b>什么都不截</b>。这是 fail-open：标记损坏、轮次对不上、旧版本写的标记指向了不存在的轮次，结果都是「保留全部」而不是「清空」。对一个删除操作来说，这个方向选对了——宁可回退失败，也不能误删用户的对话。</p>
+
+      <p>另一个细节是 <code>tracker.on_non_user()</code>：标记之后立刻把「是否在 user run 中」置为 false。这一步保证标记后面的第一条用户消息一定开启新轮次，而不是被当成上一轮的续写。如果没有它，回退之后再提问，新问题可能被算进旧轮次，<code>prompt_starts</code> 就会错位。</p>
+
+      <p>顺带看一眼分类器。原始行路径的 <code>rewind_step_for_line</code> 并不完整反序列化，它只窥探三个位置：外层 <code>method</code>、<code>params.update.sessionUpdate</code>、以及 <code>_meta</code> 里的 <code>promptIndex</code> 与 <code>hostTurn</code>。只有「xai 方法 + <code>sessionUpdate</code> 等于 rewind 标记 + 带 <code>target_prompt_index</code>」三个条件同时成立才算 <code>Rewind</code>；ACP 的用户消息块只有在 <code>_meta.promptIndex</code> 存在时才被计为一轮，<code>hostTurn</code> 为真的块被排除（它不是人说的话，是宿主注入的轮次）。其余一律 <code>Other</code>。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这套分类解释了为什么过滤器能同时处理「很老的日志」和「刚写的日志」：早期版本的日志里没有 <code>promptIndex</code> 标记，<code>UserRunTurnTracker</code> 就用「第一次见到带标记的块之前，所有 user run 都计数」的渐进规则兼容它们。兼容逻辑写在 tracker 里，而不是散在驱动里，所以驱动本身只有「记账 + 截断」两件事。</p>
+
+      <h3>第 3 段　写标记：为什么放在最后一行</h3>
+
+      <p><code>handle_rewind()</code> 的顺序是：先算要保留多少条、截断内存会话、替换 chat state、取消正在进行的采样与图片剥离、清理压缩抑制状态、重新公告失败的服务端，然后才写标记。<span class="tag tag--ok">已核实</span>标记放在最后，理由和「事务提交」一样：它是这次回退的「已生效」信号。如果进程在写标记之前崩了，磁盘上就没有这条回退，下次恢复会回到回退前的状态——一致，只是白做了一次操作。如果先写标记再截内存，中途崩溃就会留下「磁盘说回退了、内存没退」的分叉。</p>
+
+      <p>标记里只有两个字段：<code>target_prompt_index</code> 与 <code>created_at</code>。没有「回退原因」、没有「操作者」、没有「被丢弃的消息 id 列表」。这是有意的极小化：过滤器只需要目标位置；其余信息如果写进去，就要保证所有读者都理解它们，否则等于给格式加了负担。</p>
+
+      <p>写标记用的是 <code>persist_xai_update_only</code>，一个「只写 Xai 扩展 update、不改变 ACP 会话状态」的通道。这解释了为什么标记不会出现在模型可见的历史里：它是一条日志记录，不是一条消息。</p>
+
+      <p>同一段代码里还有一个值得注意的动作：回退会把「因预算导致的压缩抑制」清掉，但保留 credit / auth 这类账号级抑制。原因是清楚的——历史变短了，之前「压不动」的理由可能不成立了，应该给压缩一次新机会；而「余额不足」「登录过期」跟上下文长度无关，清掉只会让下一次请求再失败一次。<span class="tag tag--ok">已核实</span>这种「按失败原因决定是否随状态变化而重置」的思路，在所有自动重试机制里都适用。</p>
+
+      <h3>第 4 段　重放：三处调用点，一个算法</h3>
+
+      <p>过滤器不是只在一个地方用。至少三条读路径都要过它：初次重放（<code>prepare_replay_lines</code>，<code>replay.rs</code> L485）、增量重放（<code>filter_delta_replay_lines</code>，L559）、以及会话更新流（<code>extensions/session_updates.rs</code> L150）。三处都调用同一个 <code>filter_rewind_lines</code>，所以「当前时间线」的定义只有一份。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这里有一处设计值得学：<code>filter_rewind_by</code> 是一个泛型驱动，通过 <code>classify</code> 闭包适配两种输入。原始 JSONL 路径用 <code>rewind_step_for_line</code>，它先窥探 <code>params.update.sessionUpdate</code> 与 <code>_meta.promptIndex</code>，避免完整反序列化；typed 路径用 <code>rewind_step_for_update</code>，直接匹配枚举。两条路径共用同一份截断逻辑，测试里还有一条用例专门断言两者输出一致（<code>via_lines</code> 与 <code>via_updates</code> 对比）。<span class="tag tag--ok">已核实</span></p>
+
+      <p>这也是「一个算法、两种表示」的标准写法：把「是什么」交给调用方，把「怎么累积、怎么截断」留在驱动里。如果复制两份逻辑，早晚会出现「原始行路径修了、typed 路径忘了修」的 bug。</p>
+
+      <p>「分支」在磁盘上的样子也值得看一眼。假设原始文件是四行：<code>轮0</code>、<code>轮1</code>、<code>轮2</code>、<code>轮3</code>；用户回退到轮 1，文件末尾追加 <code>marker→1</code>；然后继续对话，写入 <code>轮4</code>。磁盘上现在是六行，过滤器读出来的时间线是「轮0、轮4」。如果再回退到轮 0，就再追加一条 <code>marker→0</code>，文件七行，时间线只剩「轮0」。</p>
+
+      <p>注意这里没有任何一行被改写。旧时间线（轮0…轮3）与新时间线（轮0、轮4）共存于同一个文件，边界就是标记。要恢复旧分支，理论上只需去掉后面的标记；但 Grok Build 没有提供这个操作，TUI 里的 <code>/rewind</code> 只往前走。真正的「多分支」能力在 pi 的树结构里，不在这个线性标记模型里。</p>
+
+      <h3>第 5 段　与压缩的冲突：为什么回退前必须重放</h3>
+
+      <p>会话一旦压缩过，<code>prompt_index</code> 就不能再用来直接截断内存里的对话了。原因很直白：压缩把 N+1 条用户消息合并成了一份摘要，内存里剩下的 User 项数量远小于 <code>prompt_index</code>。如果还按「数到第 N 条 User」来截，切点会落在错误的位置。</p>
+
+      <p>源码为此写了一个专门的判定 <code>needs_compaction_replay()</code>：只要 <code>last_compaction_prompt_index</code> 有值，就认为「发生过压缩」，回退必须走重放路径。<span class="tag tag--ok">已核实</span>注释把原因说得很清楚：<q>Compaction collapses N+1 user messages into ~3, so the conversation in memory no longer has the User count prompt_index implies.</q></p>
+
+      <p>重放时还要处理一个更细的问题：压缩后的历史里，系统消息与 <code>&lt;user_info&gt;</code> 前缀是重建出来的，可能与检查点里的原文不同。代码的做法是尽量用检查点里的 <code>original_user_info</code> 替换，拿不到就保留当前的。<span class="tag tag--ok">已核实</span>这又是一次 fail-open：宁可前缀略有偏差，也不要因为找不到原文而中断回退。</p>
+
+      <p>压缩与回退能共存，靠的是同一套「日志里留原文」的约定：压缩不会删除被遮蔽的原事件，只是让它们不再进入当前历史。所以重放到压缩点时，仍然能复现出同一份压缩后历史。<span class="tag tag--ok">已核实</span>反过来说，如果压缩是「删掉旧行、写一份摘要」，回退到压缩点之前就不可能了——这也是 append-only 最实际的收益之一。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">普通回退与压缩后回退的两条分支</title>
+          <desc id="fig-2-desc">上半部分：未压缩时直接按用户消息数量截断内存。下半部分：压缩后必须先重放 updates.jsonl，用过滤器重建到目标轮次，再载入内存。</desc>
+          <text class="svg-note" x="8" y="18">情况 A：没压缩过</text>
+          <rect class="svg-track" x="8" y="28" width="180" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="98" y="52" text-anchor="middle">数 User 项截断</text>
+          <text class="svg-note" x="204" y="52">→ 快，O(n)</text>
+
+          <line class="svg-rule" x1="8" y1="84" x2="632" y2="84"/>
+
+          <text class="svg-note" x="8" y="108">情况 B：压缩过</text>
+          <rect class="svg-seg--c" x="8" y="118" width="150" height="38" rx="8"/>
+          <text class="svg-label" x="83" y="142" text-anchor="middle">重放日志</text>
+          <rect class="svg-seg--b" x="170" y="118" width="170" height="38" rx="8"/>
+          <text class="svg-label" x="255" y="142" text-anchor="middle">按 marker 截断</text>
+          <rect class="svg-track" x="352" y="118" width="150" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="427" y="142" text-anchor="middle">重建会话</text>
+          <text class="svg-note" x="516" y="142">→ 慢，但正确</text>
+
+          <line class="svg-rule" x1="8" y1="176" x2="632" y2="176"/>
+          <text class="svg-note" x="8" y="200">判据只有一条：last_compaction_prompt_index 是否有值。</text>
+          <text class="svg-note" x="8" y="224">压缩把「User 项数量」与「prompt index」的对应关系打断了，所以不能再用快路径。</text>
+        </svg>
+        <figcaption>图 2　两条分支。左边是常规路径，按 User 项数直接截断；右边是压缩后的路径，必须先重放日志、用同一套过滤器重建时间线。判据是「这个会话压缩过没有」，不是「历史有多长」。</figcaption>
+      </figure>
+
+      <h3>第 6 段　三种回退模式：对话、文件、两者</h3>
+
+      <p>标记只管对话。文件是否回滚是另一个维度，由 <code>RewindMode</code> 决定：<code>All</code> 同时回滚对话与文件，<code>FilesOnly</code> 只回滚文件，<code>ConversationOnly</code> 只回滚对话。TUI 发出的请求固定是 <code>conversation_only</code> 且带 <code>force: true</code>，所以命令行里的 <code>/rewind</code> 默认不动磁盘文件。<span class="tag tag--ok">已核实</span></p>
+
+      <p>回滚文件时会先做只读预览，检测三种冲突：文件被外部修改（<code>modified_externally</code>）、被外部删除（<code>deleted_externally</code>）、被外部创建（<code>created_externally</code>）。有冲突就不写，交给用户决定。<span class="tag tag--ok">已核实</span>这一段逻辑比对话回退复杂得多，因为文件没有「追加标记」这种便宜的抽象——只能真的写回旧内容。</p>
+
+      <p>入口还有两个小细节：<code>/rewind</code> 的别名是 <code>/undo</code>；在空闲、输入框为空时快速按两次 <code>Esc</code>（800 毫秒内）等价于执行一次 <code>/rewind</code>。<span class="tag tag--ok">已核实</span>这些是交互层的约定，不影响存储语义，但能解释为什么用户会觉得「回退很轻」——它被做成了一个不需要打命令的动作。</p>
+
+      <p>这形成一个有意思的对比：对话侧用「不删、只标记」实现了零风险回退；文件侧仍然要真的改文件，所以必须加预览与冲突检测。同一个功能，两种介质，成本差了一个数量级。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>回退不删行：在 <code>updates.jsonl</code> 末尾追加 <code>RewindMarker{target_prompt_index}</code>。</li>
+            <li>重放时用 <code>prompt_starts</code> 把累积列表截到目标轮次之前；越界则保留全部（fail-open）。</li>
+            <li>检查点就是每个用户请求，不需要额外记录；回退粒度是一条 prompt。</li>
+            <li>压缩过的会话不能按 User 项数快截，必须先重放日志。</li>
+            <li>对话回滚零风险，文件回滚要预览与冲突检测——介质决定成本。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>四种「回到过去」的写法</h2>
+
+      <p>会话回退的设计空间比想象中大：可以删记录、可以标记、可以分叉、也可以干脆不提供。四家工具各选了一种，代价完全不同。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">回退机制</th>
+              <th scope="col">磁盘动作</th>
+              <th scope="col">分支能力</th>
+              <th scope="col">主要代价</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>追加 <code>RewindMarker</code>，重放时截断</td>
+              <td>只追加，不删不改</td>
+              <td>同一文件多段被标记隔开的时间线</td>
+              <td>每个读路径都必须过滤</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>无回退；只能分叉</td>
+              <td>前缀复制成新会话</td>
+              <td>分叉（<code>session/end-seed</code>）</td>
+              <td>没有 undo，只能新开一条</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>树导航（<code>parentId</code>）</td>
+              <td>追加 <code>BranchSummaryEntry</code></td>
+              <td>原生树，可任意跳转</td>
+              <td>需要为离开的分支写摘要</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>选择器 + 文件快照</td>
+              <td>不改写历史文件</td>
+              <td>靠 <code>parentUuid</code> 链</td>
+              <td>每轮快照，最多 100 份</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：Grok Build 见本节 permalink；dsh 见 <code>research/dsh.md</code> 第 11 节（明确「无 rewind / undo / 树状多分支」）；pi 见 <code>research/pi.md</code> 第 11 节（<code>CURRENT_SESSION_VERSION = 3</code>）；Claude Code 为 v2.1.88 源码（<code>sessionStorage.ts</code> 的 <code>parentUuid</code> 链、<code>fileHistory.ts</code> 的快照上限 100）。</p>
+
+      <p><b>对照一：标记 vs 分叉。</b>Grok Build 的标记让「旧时间线」与「新时间线」共享一个文件，靠过滤器区分；它省掉了复制整个会话的成本，但要求所有读者都遵守同一条规则。DeepSeek Harness 反过来：没有回退，只有 <code>buildForkSeed(events, boundary)</code> 把前缀复制成一个新会话，再补一条 <code>session/end-seed</code> 与合成的 closers。前者的风险是「有人绕过过滤器」，后者的风险是「每次分叉都要复制一份历史」。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>对照二：线性回退 vs 树。</b>Grok Build 的时间线是线性的：回退到第 2 轮会丢掉第 2 轮之后的全部内容，之后的新对话接在第 2 轮后面，旧的第 3 轮永久不可达（除非手动去文件里找）。pi 用 <code>parentId</code> 把会话组织成树，回退只是「移动叶子」，旧分支还在，下次可以再跳回去，并为离开的分支写一份 <code>BranchSummaryEntry</code>。<span class="tag tag--ok">已核实</span>树更灵活，但每次跳转都要决定「要不要摘要」，而这个决定会影响上下文。</p>
+
+      <p><b>对照三：对话回退 vs 文件回退。</b>四家里只有 Grok Build 与 Claude Code 明确区分这两件事。Claude Code 的做法是「每轮给被跟踪的文件建快照，最多 100 份」，回退时把文件恢复到对应版本；Grok Build 则是「三模式 + 冲突预览」。两者都承认同一个事实：对话可以靠标记 cheaply 回退，文件不能——文件系统没有 append-only 的语义，写回就是覆盖。</p>
+
+      <p>最后说这套设计的两个代价，值得在设计自己的会话层时提前想清楚。<b>一是文件只增不减</b>：每次回退都追加一条标记，被丢弃的分支永远留在文件里，长期会话的文件会包含大量不再可见的历史。Grok Build 没有做压缩或归档，清理需要外部工具。<b>二是正确性依赖纪律</b>：只要有一个人新写了一个读 <code>updates.jsonl</code> 的函数而忘了过 <code>filter_rewind_lines</code>，被回退的内容就会重新出现。这类 bug 很难在测试里发现，因为「多读了一点」通常不会报错。</p>
+
+      <p>作为对照，DeepSeek Harness 干脆不做回退，只做分叉。这个选择看起来是功能缺失，实际上是把「时间线」这件事变成了「多个会话」：每条会话的日志都是线性且不可变的，不需要过滤器，也不存在「绕过」的可能。代价是用户想撤销一句话时，得到的是一个新会话，而不是原会话回到过去。两家在同一个问题上的分歧，本质是「一条日志装多条时间线」还是「一条日志只装一条时间线」。</p>
+
+      <p>没有绝对的对错。前者适合需要完整审计轨迹、又希望磁盘上只有一份文件的团队；后者适合把「会话」当成不可变事实、宁可多复制几份也不愿引入隐式规则的架构。判断依据是同一个问题：<b>你更怕文件膨胀，还是更怕有人读到了不该读的历史？</b></p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从推演到设计</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">日志依次是：轮 0、轮 1、轮 2、marker→1、轮 3、marker→1。过滤后剩下哪几轮？如果把最后一条换成 marker→9（不存在），又会剩下哪几轮？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>顺序扫描，维护 <code>result</code> 与 <code>prompt_starts</code>。第一个 marker 把 <code>result</code> 截到轮 1 的起点，<code>prompt_starts</code> 也截到长度 1（只剩轮 0 的起点）。</p>
+          <p>之后轮 3 被压进 <code>prompt_starts</code>，成为新的第 1 项。所以第二个 marker→1 截的是轮 3 的起点——它把轮 3 也丢掉了。</p>
+          <p>越界那条看 <code>unwrap_or(result.len())</code>：取不到就截到当前长度，等于不截。此时 <code>prompt_starts</code> 长度是 2，<code>get(9)</code> 取不到，所以轮 0 与轮 3 都留下。</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">如果去掉 <code>filter_rewind_lines</code> 开头的子串预检，功能还正确吗？会损失什么？如果去掉 <code>tracker.on_non_user()</code> 呢？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>预检只是跳过解析，不改变结果——它是一道性能优化。想一下：一个没有回退的普通会话，每次恢复要解析多少行 JSON？这个预检把它降到了多少次字符串比较？</p>
+          <p><code>on_non_user</code> 影响的是「run 的边界」。去掉它，marker 之后的第一条用户消息会被当成上一轮的续写，<code>on_user_chunk</code> 返回 false，<code>prompt_starts</code> 少压一项。这个错位会在什么时候暴露？</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你要给自己的 Agent 加回退。选「删日志」「追加标记」「复制分叉」中的哪一种？请给出你的选择，以及你会怎么防止「绕过过滤器」这个坑。</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>三个维度打分：实现成本、磁盘成本、误用风险。删日志最省空间但不可审计；标记最省空间且可审计，但所有读路径都要遵守约定；分叉最安全（互不影响），但每次复制。</p>
+          <p>防绕过的常见手段有三种：把「读日志」收敛成一个返回「当前时间线」的函数，不暴露原始行；在文件名或目录上区分「原始日志」与「视图」；或者像 dsh 那样，让模型可见历史完全由 <code>deriveMessages()</code> 派生，根本没有第二条读路径。</p>
+          <p>最后想一个反例：如果你把过滤器放在「写」的路径上（回退时重写文件），会失去什么？</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-dsh-01.html">DeepSeek Harness · 日志与 surface 两层结构</a></p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

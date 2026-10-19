@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>失败案例分析：五次事故，一条因果链 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本页专用：因果链图与“多次压缩”演示。选择器都带章节或演示前缀。 */
+  body[data-chapter="adv-02"] .fc-box {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-02"] .fc-hot {
+    fill: var(--orange-soft);
+    stroke: var(--orange);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-02"] .fc-risk {
+    fill: var(--red-soft);
+    stroke: var(--red);
+    stroke-width: 1.2;
+  }
+  body[data-chapter="adv-02"] .fc-line {
+    fill: none;
+    stroke: var(--border-strong);
+    stroke-width: 1.5;
+  }
+  body[data-chapter="adv-02"] .fc-arrow {
+    fill: var(--border-strong);
+  }
+  body[data-chapter="adv-02"] .fc-feedback {
+    fill: none;
+    stroke: var(--red);
+    stroke-dasharray: 5 4;
+    stroke-width: 1.4;
+  }
+  body[data-chapter="adv-02"] .fc-arrow--red {
+    fill: var(--red);
+  }
+  body[data-chapter="adv-02"] .fc-title {
+    fill: var(--text);
+    font-size: 14px;
+    font-weight: 650;
+  }
+  body[data-chapter="adv-02"] .fc-note {
+    fill: var(--muted);
+    font-size: 10.5px;
+  }
+  body[data-chapter="adv-02"] .fc-loop {
+    fill: var(--red);
+    font-size: 10.5px;
+  }
+
+  #demo-compaction-drift .cd-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  #demo-compaction-drift .cd-kpi {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #demo-compaction-drift .cd-kpi__k {
+    color: var(--muted);
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+  }
+  #demo-compaction-drift .cd-kpi__v {
+    overflow: hidden;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #demo-compaction-drift .cd-kpi__s {
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  #demo-compaction-drift .cd-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin-bottom: 10px;
+    color: var(--muted);
+    font-size: 10.5px;
+  }
+  #demo-compaction-drift .cd-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  #demo-compaction-drift .cd-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+  #demo-compaction-drift .cd-dot--keep { background: var(--green); }
+  #demo-compaction-drift .cd-dot--drift { background: var(--orange); }
+  #demo-compaction-drift .cd-dot--lost { background: var(--red); }
+
+  #demo-compaction-drift .cd-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 12px;
+    align-items: start;
+  }
+  #demo-compaction-drift .cd-pane {
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+  #demo-compaction-drift .cd-pane__title {
+    margin: 0;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 10.5px;
+    font-weight: 650;
+    letter-spacing: 0.03em;
+  }
+  #demo-compaction-drift .cd-facts {
+    max-height: 430px;
+    overflow-y: auto;
+  }
+  #demo-compaction-drift .cd-fact {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 7px;
+    align-items: start;
+    padding: 7px 9px;
+    border-bottom: 1px solid var(--border);
+    border-left: 3px solid transparent;
+  }
+  #demo-compaction-drift .cd-fact:last-child { border-bottom: 0; }
+  #demo-compaction-drift .cd-fact--keep {
+    border-left-color: var(--green);
+    background: var(--green-soft);
+  }
+  #demo-compaction-drift .cd-fact--drift {
+    border-left-color: var(--orange);
+    background: var(--orange-soft);
+  }
+  #demo-compaction-drift .cd-fact--lost {
+    border-left-color: var(--red);
+    background: var(--red-soft);
+  }
+  #demo-compaction-drift .cd-fact__no {
+    padding-top: 1px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+  }
+  #demo-compaction-drift .cd-fact__body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+  #demo-compaction-drift .cd-fact__top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  #demo-compaction-drift .cd-fact__kind {
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+  #demo-compaction-drift .cd-fact__hard {
+    padding: 0 3px;
+    border: 1px solid var(--red);
+    border-radius: 3px;
+    color: var(--red);
+    font-size: 8.5px;
+    font-weight: 650;
+  }
+  #demo-compaction-drift .cd-fact__text {
+    overflow-wrap: anywhere;
+    color: var(--text-2);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  #demo-compaction-drift .cd-chip {
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 8.5px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  #demo-compaction-drift .cd-chip--keep {
+    background: var(--green-soft);
+    color: var(--green);
+  }
+  #demo-compaction-drift .cd-chip--drift {
+    background: var(--orange-soft);
+    color: var(--orange);
+  }
+  #demo-compaction-drift .cd-chip--lost {
+    background: var(--red-soft);
+    color: var(--red);
+  }
+
+  #demo-compaction-drift .cd-stream {
+    max-height: 430px;
+    overflow-y: auto;
+    padding: 8px 10px 12px;
+    scroll-behavior: smooth;
+  }
+  #demo-compaction-drift .cd-round {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 7px 8px 8px 11px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+  }
+  #demo-compaction-drift .cd-round::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    content: "";
+  }
+  #demo-compaction-drift .cd-round:last-child { margin-bottom: 0; }
+  #demo-compaction-drift .cd-round__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  #demo-compaction-drift .cd-round__no {
+    color: var(--accent-strong);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+  }
+  #demo-compaction-drift .cd-round__len {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+  }
+  #demo-compaction-drift .cd-sec {
+    margin: 6px 0 2px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  #demo-compaction-drift .cd-line {
+    margin: 0;
+    padding: 1px 0 1px 6px;
+    border-left: 2px solid transparent;
+    overflow-wrap: anywhere;
+    font-size: 10.5px;
+    line-height: 1.5;
+  }
+  #demo-compaction-drift .cd-line--meta {
+    color: var(--muted);
+    font-size: 9.5px;
+  }
+  #demo-compaction-drift .cd-line--keep {
+    border-left-color: var(--green);
+    color: var(--text-2);
+  }
+  #demo-compaction-drift .cd-line--drift {
+    border-left-color: var(--orange);
+    color: var(--orange);
+  }
+  #demo-compaction-drift .cd-line--drop {
+    margin-top: 4px;
+    border-left-color: var(--red);
+    color: var(--red);
+    font-size: 9.5px;
+    text-decoration: line-through;
+  }
+  #demo-compaction-drift .cd-status {
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+  #demo-compaction-drift .cd-check {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  #demo-compaction-drift .cd-check input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+  }
+  #demo-compaction-drift select {
+    width: 100%;
+    padding: 5px 6px;
+    border: 1px solid var(--border-strong);
+    border-radius: 5px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+  }
+  #demo-compaction-drift :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (max-width: 900px) {
+    #demo-compaction-drift .cd-grid { grid-template-columns: minmax(0, 1fr); }
+    #demo-compaction-drift .cd-facts,
+    #demo-compaction-drift .cd-stream { max-height: 360px; }
+  }
+  @media (max-width: 760px) {
+    #demo-compaction-drift .cd-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #demo-compaction-drift .cd-fact__text { font-size: 11.5px; }
+    #demo-compaction-drift .cd-line { font-size: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #demo-compaction-drift .cd-stream { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body data-chapter="adv-02">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第三部分 · 进阶</b><span>·</span><span>第 02 章</span></p>
+      <h1>失败：五次事故，一条因果链</h1>
+      <p class="lede">上下文事故很少是“模型变笨了”。它们通常有一个可复现的起点：一条约束没进规则文件，一个切点拆散了工具对，一处易变内容站在缓存前缀里，一次子代理返回太长，或者一次回退只退回了一半。这一页复盘五次事故，并把每次事故拆成可操作的修复。</p>
+      <ul class="meta">
+        <li>约 26 分钟</li>
+        <li>1 个交互</li>
+        <li>L4</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>用“现场 → 症状 → 根因 → 修复 → 预防”五段，复盘任意一次上下文事故。</li>
+          <li>把症状映射回 16 类中的至少一类，并给出配置、流程、代码三档修复。</li>
+          <li>为每个案例设一个可观测指标，在下一次事故前报警。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 ========== -->
+    <section id="how-to-review">
+      <p class="sec-no">01 · 复盘的方法</p>
+      <h2>不要从“模型错了”开始</h2>
+      <p>周五下午五点二十，团队把一个月里的五次事故摆到桌上。五次都发生在同一套工具上，五次都有人说过“这次模型不太行”。但把日志摊开看，五次都能找到一个具体的上下文变化：一条约束被摘要改写，一个切点落在工具调用中间，一段日期被塞进系统提示，一个子代理返回了 9k 字，一次回退只退了对话。</p>
+      <p>这一页用固定五段复盘：</p>
+      <ol>
+        <li><strong>现场</strong>：具体时间、任务、轮次、窗口占用。</li>
+        <li><strong>症状</strong>：能看见、能计数、能复现的现象。</li>
+        <li><strong>根因</strong>：回到 16 类中的哪一类，必要时给两个类。</li>
+        <li><strong>修复</strong>：配置、流程、代码三档，从便宜到贵。</li>
+        <li><strong>预防</strong>：一个指标或一个检查项，能提前报警。</li>
+      </ol>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（因果链图）。第 03 节另有第 3 级（交互演示）。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">先记住这条因果链</p>
+        <p>案例一不是“模型忘了”，而是“约束从来没进过一个不会被压缩的地方”。下面这条链把五个环节连起来；后面四个案例，只是把其中某一环换掉。</p>
+      </div>
+
+      <figure class="fig" id="fig-failure-chain">
+        <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-chain-title fig-chain-desc">
+          <title id="fig-chain-title">压缩导致硬约束丢失的因果链</title>
+          <desc id="fig-chain-desc">四步纵向因果链：长任务与工具输出膨胀，越过触发线启动压缩，摘要只保留用户消息且模板只要四类信息，硬约束没进规则文件因而丢失。右侧红色虚线表示再次压缩会形成摘要套摘要。</desc>
+          <rect class="fc-box" x="40" y="14" width="470" height="48" rx="6"/>
+          <text class="fc-title" x="56" y="34">① 长任务：18 万 token，工具输出占七成</text>
+          <text class="fc-note" x="56" y="50">第 6 类 · 单次工具输出控制</text>
+
+          <line class="fc-line" x1="275" y1="62" x2="275" y2="84"/>
+          <polygon class="fc-arrow" points="275,90 270,82 280,82"/>
+
+          <rect class="fc-hot" x="40" y="90" width="470" height="48" rx="6"/>
+          <text class="fc-title" x="56" y="110">② 越过触发线，压缩启动</text>
+          <text class="fc-note" x="56" y="126">第 8 类 · 触发条件与时机</text>
+
+          <line class="fc-line" x1="275" y1="138" x2="275" y2="160"/>
+          <polygon class="fc-arrow" points="275,166 270,158 280,158"/>
+
+          <rect class="fc-box" x="40" y="166" width="470" height="48" rx="6"/>
+          <text class="fc-title" x="56" y="186">③ 摘要只留用户消息；模板只要四类信息</text>
+          <text class="fc-note" x="56" y="202">第 8 类 · 候选选择、摘要模板、多次累积</text>
+
+          <line class="fc-line" x1="275" y1="214" x2="275" y2="236"/>
+          <polygon class="fc-arrow" points="275,242 270,234 280,234"/>
+
+          <rect class="fc-risk" x="40" y="242" width="470" height="48" rx="6"/>
+          <text class="fc-title" x="56" y="262">④ 硬约束没进规则文件，也没被逐字保留</text>
+          <text class="fc-note" x="56" y="278">第 2 类 · 规则文件缺位 + 第 8 类 · 摘要改写</text>
+
+          <path class="fc-feedback" d="M532 266 L600 266 L600 114 L518 114"/>
+          <polygon class="fc-arrow--red" points="512,114 520,109 520,119"/>
+          <text class="fc-loop" x="538" y="150" transform="rotate(90 538 150)">再压缩：摘要套摘要</text>
+          <text class="fc-note" x="538" y="286">损失累积</text>
+        </svg>
+        <figcaption>图 02-1　案例一的因果链。四个环节分别落在第 6、8、2 类；右侧红色回边表示第二次压缩会把第一次的摘要再摘要一次。位置与文字为示意，不对应任何单一工具的真实实现。</figcaption>
+      </figure>
+    </section>
+
+    <!-- ========== 02 ========== -->
+    <section id="case-constraint">
+      <p class="sec-no">02 · 案例一</p>
+      <h2>压缩后，三条硬约束只剩下一条</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（因果链图）。</p>
+
+      <h3>现场</h3>
+      <p>周四 15:40，一个“把导出模块拆成独立包”的任务跑到第 41 轮。窗口占用 18.2 万 token，期间压缩了 6 次。开工时用户说过三条硬约束：不要改 public API；测试命令是 <code>pnpm test:unit</code>；保留 export 的命名。三条都只出现在对话里，没进 <code>AGENTS.md</code>。</p>
+
+      <h3>症状</h3>
+      <ul>
+        <li>模型把 <code>src/index.ts</code> 的三个导出名改成了新包的命名。</li>
+        <li>它把测试命令写成 <code>npm test</code>，并说“项目里没有 <code>test:unit</code>”。</li>
+        <li>问它为什么改，它回答：“摘要里没有看到这条限制。”</li>
+        <li>压缩记录显示：第 6 次压缩后，摘要只有 1.1k 字，三条约束一条都不在。</li>
+      </ul>
+
+      <h3>根因</h3>
+      <p><strong>第 8 类（压缩）</strong>是直接原因。Codex 本地压缩只把“真实用户消息”纳入候选，预算 20k，从新到旧累加，放不下就停；最新一条长指令自己放不下时，会被截到剩余预算。<a href="main-08.html#codex-candidates">主线第 8 章 2.2</a> 摘要模板只要求四类信息：进度与决策、重要上下文与偏好、待办、关键数据与引用。<a href="main-08.html#codex-summary">主线第 8 章 2.3</a> “不要改 public API”既不是进度，也不是待办，很容易被写成一句“保持 API 稳定”。</p>
+      <p><strong>第 2 类（规则文件）</strong>是结构性原因。三条约束都只在对话里，而对话正是压缩的对象。规则文件会作为系统提示或项目上下文重新注入，不进入压缩候选；Codex 压缩后还会把初始上下文重新放回。<a href="main-08.html#codex-rebuild">主线第 8 章 2.4</a> 约束没进规则，就等于把唯一的副本放在会被改写的地方。</p>
+      <p>还有一层<strong>累积效应</strong>：第 2 次压缩的输入里已经包含第 1 次的摘要，第 3 次又包含第 2 次的摘要。每一轮都可能丢掉上一版摘要里的一点细节，而没有任何一步会把它补回来。<sup class="fn-ref"><a href="#fn-adv-02-1" id="fnref-adv-02-1">1</a></sup></p>
+
+      <h3>修复（三档）</h3>
+      <p><strong>改配置。</strong>把三条约束写进 <code>AGENTS.md</code> 或 <code>CLAUDE.md</code>，放在文件最前面。Codex 的规则文件总量默认 32 KiB，三条约束只占几十字节，完全放得下。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a> <span class="tag tag--ok">已核实</span> 同时把压缩保留预算调高，或开启压缩后重附文件。</p>
+      <p><strong>改流程。</strong>长任务每压缩两次，就把三条约束原样复述成一条短消息，放在最新一条用户消息里；压缩后立刻跑一次约束检查，不合格就补一条。不要等模型改完代码再发现。</p>
+      <p><strong>改代码。</strong>在摘要提示词里加一段固定要求：“以下约束必须逐字保留，不得改写。”压缩后用脚本做字符串比对；三条里少一条就重试，或拒绝这次压缩。代码改动最贵，但它把“靠模型自觉”换成了“靠检查失败”。</p>
+
+      <h3>怎么预防</h3>
+      <p>设一个指标：<code>hard_constraint_retention</code> = 摘要中逐字出现的硬约束数 ÷ 硬约束总数。目标 100%，低于 100% 就报警。再设一个二级指标：<code>first_constraint_loss_round</code>，记录第一次丢失硬约束发生在第几次压缩；它比“本次是否丢失”更早暴露趋势。</p>
+
+      <p><strong>如果你只能改一件事：</strong>把三条约束从对话搬进规则文件。它最便宜，也最不容易被下一次压缩吃掉。</p>
+    </section>
+
+    <!-- ========== 03 DEMO ========== -->
+    <section id="drift-demo">
+      <p class="sec-no">03 · 交互演示</p>
+      <h2>把案例一放大到六次压缩</h2>
+      <p class="muted small">Karpathy 输出级别：第 3 级（交互 HTML）。前两节是第 1 级文字与第 2 级图表；这里让参数动起来。</p>
+      <p>下面这个演示不调用模型。它用一张手写的“示意衰减表”，让 12 条事实在每次压缩后进入保留、变形、丢失三种状态。左侧是控件；画布内左栏是 12 条事实（3 条硬约束），右栏是每次压缩后的摘要。</p>
+      <p>建议按三个实验看：第一，保持“标准”模板，把压缩次数从 1 拉到 6，观察第一条硬约束在第几次消失；第二，切到“精简”，看它提前到第几次；第三，打开“重附文件”，观察文件类事实恢复、硬约束不恢复。</p>
+
+      <div class="demo" id="demo-compaction-drift">
+        <div class="demo__head">
+          <span class="demo__tag">交互演示</span>
+          <h3 class="demo__title">多次压缩：摘要累积与事实丢失</h3>
+        </div>
+        <div class="demo__body">
+          <div class="demo__controls">
+            <label class="field" for="cd-rounds">
+              <span class="field__label">
+                <span>压缩次数</span>
+                <output class="field__value" id="cd-rounds-out" for="cd-rounds">4 次</output>
+              </span>
+              <input id="cd-rounds" type="range" min="1" max="6" step="1" value="4">
+            </label>
+            <label class="field" for="cd-template">
+              <span class="field__label"><span>摘要模板</span></span>
+              <select id="cd-template">
+                <option value="slim">精简</option>
+                <option value="standard" selected>标准</option>
+                <option value="detail">详细</option>
+              </select>
+            </label>
+            <label class="field cd-check" for="cd-reattach">
+              <span class="field__label"><span>压缩后重附文件</span></span>
+              <input id="cd-reattach" type="checkbox">
+            </label>
+            <button class="btn btn--ghost btn--small" type="button" id="cd-reset">重置</button>
+            <p class="demo__hint">拖动滑块，或聚焦后按左右方向键。右侧摘要区可用 Tab 聚焦后滚动。</p>
+            <p class="demo__readout">保留 = 逐字在摘要里<br>变形 = 意思接近、细节变了<br>丢失 = 摘要中不再出现</p>
+          </div>
+          <div class="demo__canvas">
+            <div class="cd-kpis" id="cd-kpis" role="group" aria-label="关键读数"></div>
+            <div class="cd-legend">
+              <span><i class="cd-dot cd-dot--keep" aria-hidden="true"></i>保留原文</span>
+              <span><i class="cd-dot cd-dot--drift" aria-hidden="true"></i>变形</span>
+              <span><i class="cd-dot cd-dot--lost" aria-hidden="true"></i>丢失</span>
+            </div>
+            <div class="cd-grid">
+              <section class="cd-pane" aria-label="原始会话事实">
+                <h4 class="cd-pane__title">原始会话的 12 条事实（3 条硬约束）</h4>
+                <div class="cd-facts" id="cd-facts" role="list"></div>
+              </section>
+              <section class="cd-pane" aria-label="每次压缩后的摘要">
+                <h4 class="cd-pane__title">每次压缩后的摘要：累积、变形、丢失</h4>
+                <div class="cd-stream" id="cd-stream" role="region" aria-label="每次压缩后的摘要文本" tabindex="0"></div>
+              </section>
+            </div>
+            <p class="cd-status" id="cd-status" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+        <p class="demo__note">教学模型，不是任何工具的真实摘要算法。12 条事实与衰减表都是手写示意；“字数”是渲染文本的字符数，不是 token 实测。硬约束只判保留或丢失，不判变形。后期摘要可能更短，因为事实被丢掉了，不代表更安全。</p>
+      </div>
+
+      <h3>三个读数</h3>
+      <p><strong>第一，精简模板的损失不是线性的。</strong> 默认“标准”模板、4 次压缩时，三条硬约束还剩两条；切到“精简”，第一条硬约束会在第 3 次就消失，因为精简只保留“约束”和“进度”两段，文件、状态、待办都不记录。</p>
+      <p><strong>第二，重附文件救不了约束。</strong> 打开“重附文件”后，已读文件和新建的 <code>package.json</code> 会按磁盘原文恢复，摘要长度也会增加；但三条硬约束仍然按原表衰减。文件里没有“不要改 public API”，重附再多次也补不回来。</p>
+      <p><strong>第三，摘要变长不等于更安全。</strong> “详细”模板保留的事实更多，摘要通常也更长；但它只是把丢失推迟，并把更多事实写进摘要，不能保证关键约束逐字保留。长度是成本指标，不是保真指标。</p>
+    </section>
+
+    <!-- ========== 04 ========== -->
+    <section id="case-pairing">
+      <p class="sec-no">04 · 案例二</p>
+      <h2>切点落在工具调用和结果之间</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）。</p>
+
+      <h3>现场</h3>
+      <p>周二 11:05，一个“找出所有旧导出入口”的任务跑到第 18 轮。一次 <code>grep</code> 返回了 60k 字符，压缩在第 12 轮和第 13 轮之间触发。切点正好落在一次工具调用和它的结果之间：调用进了摘要，结果留在保留段。</p>
+
+      <h3>症状</h3>
+      <ul>
+        <li>下一次请求直接返回 400，错误指出 <code>tool_result</code> 没有对应的 <code>tool_use</code>。</li>
+        <li>换一个宽松的 provider 后请求通过了，但模型说“搜索结果为空”，然后重复执行同一个 <code>grep</code>。</li>
+        <li>重复搜索又产生 60k 输出，窗口再次到线，形成循环。</li>
+      </ul>
+
+      <h3>根因</h3>
+      <p><strong>第 8 类（压缩切点）</strong>是直接原因。切点选在了“结果之前、调用之后”，这在消息层面看是一个合法边界，在工具协议层面却不是。工具调用和结果是一条原子记录，拆开就得到一条“有结果、没有调用”的历史。<a href="main-08.html#pairing">主线第 8 章第 04 节</a></p>
+      <p><strong>第 1 类（请求组装）</strong>是协议原因。严格 API 会直接拒绝这种历史；宽松模型会把结果当成新的事实，开始编造它为什么存在。</p>
+      <p><strong>第 14 类（失败恢复）</strong>是放大原因。压缩失败后没有回落，下一次请求继续用同一份坏历史；重复搜索又把窗口推回触发线。</p>
+
+      <h3>修复（三档）</h3>
+      <p><strong>改配置。</strong>打开成对切点。pi 的 <code>findCutPoint</code> 明确规定“绝不切在 toolResult”，切在带工具调用的 assistant 时，其结果会随后保留；DeepSeek Harness 的 <code>selectCompactableRange</code> 会从预算位置往前挪到工具配对平衡处。<a href="main-08.html#pairing">主线第 8 章第 04 节</a></p>
+      <p><strong>改流程。</strong>压缩前做一次 dry-run：列出切点两侧的消息类型，确认没有孤立的调用或结果。把这一步写进发版检查，和“跑测试”放在同一张清单上。</p>
+      <p><strong>改代码。</strong>在两个位置兜底：切点选择时，如果落在结果之前，就前移到调用之前；历史重建后，如果发现孤立结果，就删除它或补一个占位调用。前移会多保留一对结果，后移会丢掉最近的工作状态；多数工具选前移。</p>
+
+      <h3>怎么预防</h3>
+      <p>设指标 <code>orphan_tool_results</code> = 压缩后历史中“没有配对调用的结果”数量。目标恒为 0；大于 0 就拒绝提交这次压缩。再加一条 <code>pairing_repair_count</code>，记录切点被修复的次数；它持续上升，说明预算或切点算法需要调整。</p>
+
+      <p><strong>如果你只能改一件事：</strong>让切点只能落在合法的消息边界，并且工具调用与结果整对保留。</p>
+    </section>
+
+    <!-- ========== 05 ========== -->
+    <section id="case-cache">
+      <p class="sec-no">05 · 案例三</p>
+      <h2>缓存失效，把账单推高三倍</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）。</p>
+
+      <h3>现场</h3>
+      <p>月末对账，团队发现这个月的模型账单是上个月的三倍。任务量只涨了 20%，代码没大改。排查后发现：系统提示词的第一段放了 <code>git status</code>，第二段放了当前时间，第三段放了 todo 列表；分支名每天变十几次，todo 每轮都变。同期，团队把自动压缩阈值从 90% 调到了 75%。</p>
+
+      <h3>症状</h3>
+      <ul>
+        <li><code>cached_input_tokens ÷ 总输入 token</code> 从 78% 掉到 12%。</li>
+        <li>每轮首 token 延迟明显上升，长会话更明显。</li>
+        <li>成本曲线和“压缩次数”高度同步：压得越勤，账单越高。</li>
+        <li>删掉很多工具输出后，token 总量下降了，账单却没降。</li>
+      </ul>
+
+      <h3>根因</h3>
+      <p><strong>第 13 类（缓存友好设计）</strong>是主因。缓存按前缀匹配，从第一个不同的字节起失效。把 <code>git status</code>、时间、todo 放在系统提示词最前面，等于每一轮都从第一个字节起重算。<a href="main-13.html#why-cache">主线第 13 章</a></p>
+      <p><strong>第 4 类（动态注入）</strong>是结构原因。易变内容不是不能注入，而是不该注入到稳定前缀里。oh-my-pi 把日期与 cwd 提醒移到首个用户轮；Grok Build 把日期固定在会话启动值，跨午夜才追加一次 reminder；DeepSeek Harness 用新增 user 消息承载时间。<a href="main-13.html#tradeoffs">主线第 13 章第 06 节</a></p>
+      <p><strong>第 8 类（压缩）</strong>是放大器。每次压缩都会替换历史中段，从被替换的第一个 token 起失效；压缩越频繁，失效越频繁。早压本身没错，错在“早压 + 易变前缀 + 高价值缓存”三件事同时发生。</p>
+
+      <h3>修复（三档）</h3>
+      <p><strong>改配置。</strong>把系统提示词改成“稳定段在前、易变段在后”：静态规则、工具定义、项目约定在前；日期、分支、todo 放到首个用户轮或尾部提醒。工具定义按名字排序，避免顺序漂移。</p>
+      <p><strong>改流程。</strong>把压缩安排在任务边界，不要每小时压一次；长停顿前手动压一次，比每分钟自动压更省。每次压缩后记录“失效了多少 token”，把它当成一项成本，而不是免费操作。</p>
+      <p><strong>改代码。</strong>加一层缓存归因：每次请求记录系统提示词哈希、工具表哈希、压缩事件；把 <code>cached_tokens</code> 和这些事件对齐。Claude Code 有专门的 <code>promptCacheBreakDetection</code> 模块做归因，可以作为设计参考。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/promptCacheBreakDetection.ts#L31">promptCacheBreakDetection.ts#L31</a> <span class="tag tag--src">源码 v2.1.88</span></p>
+
+      <h3>怎么预防</h3>
+      <p>设三个指标：<code>cache_read_ratio</code>（缓存读 ÷ 总输入）、<code>invalidation_tokens_per_compaction</code>（每次压缩造成失效的 token 数）、<code>cost_per_successful_task</code>（每个成功任务的成本）。第一个看趋势，第二个看单次质量，第三个看最终账单。只看第一个，容易为了命中率不敢压缩；三个一起看，才能判断“这次压缩值不值”。</p>
+
+      <p><strong>如果你只能改一件事：</strong>别让易变内容站在缓存前缀里。把它移到尾部，或者移到首个用户轮。</p>
+    </section>
+
+    <!-- ========== 06 ========== -->
+    <section id="case-subagent">
+      <p class="sec-no">06 · 案例四</p>
+      <h2>三个子代理，把父上下文撑爆</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）。</p>
+
+      <h3>现场</h3>
+      <p>周三 16:20，一个“审查 120 个文件的导出使用”的任务。主会话派了 3 个只读子代理，分别看 <code>src/</code>、<code>packages/</code>、<code>tests/</code>。每个子代理返回 8k–12k 字的自由文本，包含文件清单、逐条引用和推理过程。父上下文从 60k 涨到 190k，下一轮就触发了压缩。</p>
+
+      <h3>症状</h3>
+      <ul>
+        <li>父上下文单轮增加约 90k，其中 85% 是子代理返回。</li>
+        <li>下一轮触发压缩，压缩后的摘要只剩“三个子任务都完成了”。</li>
+        <li>三个子代理的结论互相矛盾：一个说“没有循环依赖”，一个说“有两处”。父模型无法判断谁对。</li>
+        <li>父模型再派子代理复核，又产生一轮长返回，形成循环。</li>
+      </ul>
+
+      <h3>根因</h3>
+      <p><strong>第 10 类（子代理隔离）</strong>是主因。子代理的中间过程被隔离了，但返回没有隔离。Claude Code 默认给子代理全新上下文，只读代理还省掉 <code>CLAUDE.md</code> 与 <code>gitStatus</code>；返回给父代理的是最终内容块 + <code>agentId</code> + 用量尾注。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L370-L410">runAgent.ts#L370-L410</a> <span class="tag tag--src">源码 v2.1.88</span> 这条路径没有显式的“返回长度上限”。<sup class="fn-ref"><a href="#fn-adv-02-2" id="fnref-adv-02-2">2</a></sup></p>
+      <p><strong>第 5 类（预算）</strong>是放大器。父上下文本来只剩 140k 空间，三个 10k 字返回就吃掉了大部分余量；再加上工具结果，必然到线。</p>
+      <p><strong>第 8 类（压缩）</strong>是二次伤害。压缩把子代理返回的细节删掉，只留下“完成了”；父模型失去了判断矛盾结论的依据。</p>
+
+      <h3>修复（三档）</h3>
+      <p><strong>改配置。</strong>给子代理设输出上限；只读任务用只读代理；限制并发数。oh-my-pi 的 <code>task</code> 子会话要求 schema 校验返回，深度默认 2；opencode v1/v2 默认深度 1；Grok Build 默认后台执行，可选 worktree 隔离。<a href="main-10.html#tradeoffs">主线第 10 章</a></p>
+      <p><strong>改流程。</strong>给子代理一个固定返回模板：结论（一句话）、证据（文件:行）、置信度、待确认项。全文写进文件，父会话只收模板和文件路径。三个子代理的返回先合并去重，再交给父模型。</p>
+      <p><strong>改代码。</strong>父端做两层限制：单次返回超过 2k token 就截断，并附全文路径；合并阶段按“文件:行”去重，冲突项单独列出。不要让父模型自己从 30k 字里找矛盾。</p>
+
+      <h3>怎么预防</h3>
+      <p>设两个指标：<code>subagent_return_tokens</code>（单次返回 token）和 <code>parent_context_delta</code>（父上下文单轮增量）。建议上限分别是 2k token 和父窗口的 15%。超过就报警，并检查返回模板是否被绕过。</p>
+
+      <p><strong>如果你只能改一件事：</strong>让子代理回“结论 + 指路”，不要回“全文”。</p>
+    </section>
+
+    <!-- ========== 07 ========== -->
+    <section id="case-rewind">
+      <p class="sec-no">07 · 案例五</p>
+      <h2>回退到第 12 轮，文件却停在第 30 轮</h2>
+      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）。</p>
+
+      <h3>现场</h3>
+      <p>周五 10:30，一个重构任务跑到第 30 轮，中间压缩过 2 次。团队决定回退到第 12 轮，换一个方案。回退后，对话历史回到了第 12 轮，但工作区文件仍然是第 30 轮的状态；当前上下文里还留着第 2 次压缩生成的摘要。</p>
+
+      <h3>症状</h3>
+      <ul>
+        <li>模型说“我们还没改过 <code>export.ts</code>”，但磁盘上的 <code>export.ts</code> 已经是改过的版本。</li>
+        <li>它把第 13–30 轮已经做过的修改又做了一遍，产生重复代码。</li>
+        <li>测试结果与对话状态不一致：摘要说“测试通过”，实际跑出来是失败的。</li>
+        <li><code>git diff</code> 里既有第 12 轮之前的改动，也有第 30 轮的改动，无法判断哪些该保留。</li>
+      </ul>
+
+      <h3>根因</h3>
+      <p><strong>第 11 类（会话时间线）</strong>是主因。回退通常只回退“对话历史”，文件回退是另一条链路。Claude Code 的 <code>/rewind</code> 会打开消息选择器，真正的文件恢复由 <code>fileHistoryRewind</code> 执行，依赖每轮对话前创建的文件快照，最多保留 100 个；对话侧与文件侧必须一起回退。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/fileHistory.ts#L54-L57">fileHistory.ts#L54-L57</a> <span class="tag tag--src">源码 v2.1.88</span></p>
+      <p><strong>第 8 类（压缩）</strong>是残留原因。压缩只替换内存历史，原始记录仍在存档里；但回退到压缩前，模型看到的是“旧摘要 + 新文件”，而不是“旧原文 + 旧文件”。摘要不可逆，这一步无法靠回退修复。<a href="main-11.html#codex-checkpoint">主线第 11 章 2.2</a><sup class="fn-ref"><a href="#fn-adv-02-3" id="fnref-adv-02-3">3</a></sup></p>
+      <p><strong>第 6、7 类（工具输出控制与裁剪）</strong>是次要原因。回退后重新读文件，读到的是磁盘上的新版本；旧版本的工具结果已经被裁剪或替换，模型没有对照物。</p>
+
+      <h3>修复（三档）</h3>
+      <p><strong>改配置。</strong>开启文件快照或检查点；保留原始 transcript；压缩时不要删存档。Claude Code 的快照上限是 100 个，超过后最旧的会被淘汰，长任务要配合分支使用。</p>
+      <p><strong>改流程。</strong>回退前先建一个新分支或 <code>git stash</code>；回退后先跑 <code>git status</code> 和测试，再让模型继续。不要在压缩后回退到压缩前；如果必须回退，先重新读一遍关键文件，并把摘要标记为“可能过期”。</p>
+      <p><strong>改代码。</strong>回退时同时恢复对话与文件，并生成一份“状态对账”摘要：哪些文件改了、测试现在是什么状态、摘要里的文件清单与磁盘是否一致。对账不通过就阻止继续。</p>
+
+      <h3>怎么预防</h3>
+      <p>回退后跑三项检查：<code>git status</code> 是否只剩预期改动；测试是否与摘要描述一致；摘要里的文件清单是否都能在磁盘上找到对应版本。再加一个指标 <code>duplicate_edit_rate</code>（回退后重复修改的比例），它持续上升，说明回退链路没有对齐。</p>
+
+      <p><strong>如果你只能改一件事：</strong>回退时同时回退对话和文件。只回退一半，比不回退更危险。</p>
+    </section>
+
+    <!-- ========== 08 ========== -->
+    <section id="synthesis">
+      <p class="sec-no">08 · 把五次事故放在一起</p>
+      <h2>五个症状，四类根因，一组指标</h2>
+      <p>五次事故看起来各不相同，根因却集中在四类：约束没进规则（第 2 类）、切点不合法（第 8 类）、前缀不稳定（第 13 类）、边界不闭合（第 10、11 类）。它们都通过同一个放大器起作用：压缩。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">案例</th>
+              <th scope="col">根因类</th>
+              <th scope="col">最早信号</th>
+              <th scope="col">最便宜的修复</th>
+              <th scope="col">指标</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">约束丢失</th>
+              <td>第 8 + 2 类</td>
+              <td>摘要里找不到原话</td>
+              <td>约束写进规则文件</td>
+              <td>硬约束保留率</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">工具对断开</th>
+              <td>第 8 + 1 类</td>
+              <td>400 或重复搜索</td>
+              <td>成对切点</td>
+              <td>孤立结果数</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">缓存失效</th>
+              <td>第 13 + 4 类</td>
+              <td>命中率骤降</td>
+              <td>易变内容移出前缀</td>
+              <td>缓存读占比</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">父上下文被撑爆</th>
+              <td>第 10 + 5 类</td>
+              <td>单轮增量异常</td>
+              <td>返回模板与上限</td>
+              <td>子代理返回 token</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">回退不一致</th>
+              <td>第 11 + 8 类</td>
+              <td>摘要与文件冲突</td>
+              <td>同时回退对话与文件</td>
+              <td>重复修改率</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：根因列只列主因；“+”后面的类是放大器。指标列给的是最小可观测项，不是完整评测体系。</p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">如果整页只能改一件事</p>
+        <p>把硬约束移出对话，写进规则文件；然后给每次压缩加一道断言：三条约束必须逐字出现。前者消除根因，后者兜住漏网。两件事加起来，比换模型、加窗口、调阈值都便宜。</p>
+      </div>
+
+      <h3>一张五分钟检查清单</h3>
+      <ol>
+        <li>这次任务的硬约束，是否有一条不在规则文件里？</li>
+        <li>上一次压缩的切点，是否落在工具调用与结果之间？</li>
+        <li>系统提示词的最前面，是否有每轮都会变的内容？</li>
+        <li>子代理的返回，是否有 schema、字数上限和全文落盘？</li>
+        <li>回退时，对话与文件是否在同一条链路上？</li>
+      </ol>
+      <p>五个问题里有一个答“否”，就先修那一项，再谈调参。上下文事故的修复顺序，永远是先修结构，再修参数。</p>
+
+      <p class="footer-note">下一章：<a href="adv-03.html">架构对比</a>。这一页的五次事故，会在架构对比里被归入四种不同的上下文架构。</p>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-adv-02-1">
+          本条为【推断】。已核对 Grok Build 的“继承上一次摘要并合并”、pi 的 UPDATE 摘要提示词、opencode v2 的“新历史优先”规则；三处都说明多次压缩会以旧摘要为输入，但没有公开的“第 N 次压缩后事实保留率”评测。缺的是定量数据。因此正文只写“可能逐轮丢失”，演示中的衰减表也是手写示意，不是实测。
+          <a class="footnotes__back" href="#fnref-adv-02-1">↩</a>
+        </li>
+        <li id="fn-adv-02-2">
+          本条为【推断】。已核对 Claude Code <code>runAgent</code> 的返回路径（最终内容块 + <code>agentId</code> + <code>&lt;usage&gt;</code> 尾注）与 oh-my-pi 的 schema 校验返回，没有找到“子代理返回 token 上限”的显式常量；缺的是 provider 侧或上层调度器的截断逻辑。因此正文只写“没有显式上限”，不写“一定不截断”。返回是否撑爆父上下文，仍取决于父窗口和父端预算。
+          <a class="footnotes__back" href="#fnref-adv-02-2">↩</a>
+        </li>
+        <li id="fn-adv-02-3">
+          本条为【推断】。已核对 Claude Code 的 <code>fileHistoryRewind</code> 与快照上限、Codex 的检查点与后缀回放；没有逐行阅读 <code>/rewind</code> 的选择器 UI，也没有在所有工具上实测“回退是否同时恢复文件”。缺的是跨工具行为对照。因此正文把“只回退一半”写成一种常见风险，不写成所有工具的必然行为。
+          <a class="footnotes__back" href="#fnref-adv-02-3">↩</a>
+        </li>
+      </ol>
+    </div>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+<script src="../assets/js/demos/compaction-drift.js"></script>
+</body>
+</html>

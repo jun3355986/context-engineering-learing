@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>规则文件的发现与合并 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  body[data-chapter="main-02"] .prose :not(pre) > code,
+  body[data-chapter="main-02"] .modal :not(pre) > code {
+    overflow-wrap: anywhere;
+  }
+  body[data-chapter="main-02"] .modal .kv dd { min-width: 0; }
+  body[data-chapter="main-02"] #matrix .data-table { min-width: 1040px; }
+
+
+  /* 规则文件查找路径对比图 */
+  body[data-chapter="main-02"] .pathmap text {
+    font-family: var(--font-sans);
+  }
+  body[data-chapter="main-02"] .pathmap .pm-tool {
+    fill: var(--text-2);
+    font-size: 9.5px;
+    font-weight: 650;
+  }
+  body[data-chapter="main-02"] .pathmap .pm-col {
+    fill: var(--muted);
+    font-size: 8px;
+  }
+  body[data-chapter="main-02"] .pathmap .pm-rowbg { fill: var(--surface); }
+  body[data-chapter="main-02"] .pathmap .pm-line {
+    stroke: var(--border-strong);
+    stroke-width: 1.5;
+  }
+  body[data-chapter="main-02"] .pathmap .pm-line--dash { stroke-dasharray: 3 3; }
+  body[data-chapter="main-02"] .pathmap .pm-node { fill: var(--accent); }
+  body[data-chapter="main-02"] .pathmap .pm-node--reach {
+    fill: var(--bg);
+    stroke: var(--accent);
+    stroke-width: 1.3;
+    stroke-dasharray: 2 2;
+  }
+  body[data-chapter="main-02"] .pathmap .pm-node--off {
+    fill: var(--bg);
+    stroke: var(--border-strong);
+    stroke-width: 1;
+  }
+  body[data-chapter="main-02"] .pathmap .pm-note {
+    fill: var(--muted);
+    font-size: 8px;
+  }
+  body[data-chapter="main-02"] .pathmap .pm-note--strong { fill: var(--text-2); }
+  body[data-chapter="main-02"] .pathmap .pm-rule { stroke: var(--border); stroke-width: 1; }
+</style>
+</head>
+<body data-chapter="main-02">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 02 章</span></p>
+      <h1>规则文件的发现与合并</h1>
+      <p class="lede">你写了规则，Agent 也读了，但最后生效的可能不是你以为的那一条。规则文件从哪个目录开始找、往上找到哪里为止、几份文件怎么拼、超长时先砍谁——四步里任何一步不同，模型看到的就是另一段文字。</p>
+      <ul class="meta">
+        <li>约 19 分钟</li>
+        <li>1 张对比图</li>
+        <li>L2 → L3</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>给定一棵目录树和一份 32 KiB 预算，算出最终进入上下文的是哪几段、哪一段被砍掉。</li>
+          <li>解释为什么所有工具都选择“拼接”而不是“覆盖”，以及这样做的代价。</li>
+          <li>说出 include 深度上限与循环风险的关系，并指出两家在文档与源码上的口径差异。</li>
+        </ol>
+      </div>
+    </header>
+
+    <!-- ========== 01 ========== -->
+    <section id="why-rules">
+      <p class="sec-no">01 · 一条没有生效的规则</p>
+      <h2>“我明明写在 AGENTS.md 里了”</h2>
+      <p>下午两点，团队把“所有新接口必须带 <code>request_id</code>”写进了仓库根目录的 <code>AGENTS.md</code>。三天后，Agent 生成的新接口还是没有这个字段。你打开文件确认了一遍，内容在。你在仓库根目录启动 Agent，它也能复述这条规则。</p>
+      <p>问题出在另一台机器上：那位同事是在 <code>services/payments/</code> 子目录里启动的。他的项目里另有一份 <code>services/AGENTS.md</code>，里面写着“本目录遵循旧版接口规范”。两份文件都进了上下文，但后一份更长、更具体、位置更靠后，模型照着它做了。根目录那条没有消失，只是被淹没了。</p>
+      <p class="lead-in">规则文件的难点不是“写什么”，而是“哪几份会同时到场、按什么顺序说话”。</p>
+      <p>这一章把“发现与合并”拆成四个决定：</p>
+      <ol>
+        <li><strong>从哪开始找</strong>：cwd、项目根，还是用户主目录。</li>
+        <li><strong>找到哪里为止</strong>：项目根标记是什么，能不能越过它。</li>
+        <li><strong>几份怎么拼</strong>：拼接、覆盖、去重、还是分桶。</li>
+        <li><strong>太长怎么办</strong>：先砍宽的还是先砍窄的，砍到多少。</li>
+      </ol>
+      <p>四个决定组合起来，就有了八个工具八种行为。下一节先看 Codex，因为它的四步写得最直白，也最容易复现。</p>
+    </section>
+
+    <!-- ========== 02 ========== -->
+    <section id="codex">
+      <p class="sec-no">02 · Codex 主线</p>
+      <h2>从根往下一级一级拼，拼到 32 KiB 为止</h2>
+
+      <h3 id="codex-root">2.1 先定项目根，再决定往哪走</h3>
+      <p>Codex 从当前工作目录向上找项目根，默认以 <code>.git</code> 为标记。找到之后，它把“根 → 当前目录”沿途每一级的 <code>AGENTS.md</code> 按<strong>从浅到深</strong>的顺序拼接；不遍历子树，也不越过项目根。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L1-L18">agents_md.rs#L1-L18</a> <span class="tag tag--ok">已核实</span></p>
+      <p>这里有两个可配置项。第一个是 <code>project_root_markers</code>，未设置时默认 <code>[".git"]</code>；把它设成空列表，等于禁用向上遍历，只在 cwd 找。第二个是 <code>project_doc_fallback_filenames</code>，默认空，可以追加候选名；带路径分隔符的候选会被忽略，避免有人用 <code>../secret.md</code> 把规则指到仓库外。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L225-L285">agents_md.rs#L225-L285</a> <span class="tag tag--ok">已核实</span></p>
+      <p>项目根标记本身也是从配置层合并来的，但合并时<strong>显式跳过 Project 层</strong>。原因很实际：如果项目里的配置能改“根标记”，一个不可信仓库就可以把根目录往上挪两层，让 Agent 去读你主目录里的规则文件。跳过 Project 层，等于把“根在哪”这个权力留在受管层、用户层和系统层。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L190-L220">agents_md.rs#L190-L220</a> <span class="tag tag--ok">已核实</span></p>
+
+      <h3 id="codex-candidates">2.2 每级目录只取一份，但有优先顺序</h3>
+      <p>到了某一级目录，Codex 不是把所有候选都读进来，而是<strong>按顺序找第一个存在的</strong>：<code>AGENTS.local.md</code> → <code>AGENTS.md</code> → 自定义候选。这个顺序把“本地覆盖”放在了最前面：同一目录下，<code>AGENTS.local.md</code> 通常被 <code>.gitignore</code> 忽略，适合放个人偏好；它一旦存在，同目录的 <code>AGENTS.md</code> 就不再参与。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L225-L285">agents_md.rs#L225-L285</a> <span class="tag tag--ok">已核实</span></p>
+      <p>注意这是“每级取一份”，不是“全局取一份”。团队规则、模块规则、子目录规则仍然会同时到场，只是同一级不会出现两份互相打架的文件。这是拼接与覆盖的折中：层级之间拼接，层级内部择一。</p>
+
+      <h3 id="codex-budget">2.3 32 KiB 是硬的，砍的是尾巴</h3>
+      <p>合并后的总字节数受 <code>project_doc_max_bytes</code> 约束，默认 <code>32 KiB</code>（源码注释直接写了 <code>// 32 KiB</code>）。超出的部分<strong>从尾部截掉</strong>，而且是按“剩余字节”逐份分配的：先装根目录，剩余额度给下一级，装不下就在这一份的中间截断，后面的目录一份都进不来。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a> <span class="tag tag--ok">已核实</span></p>
+      <p>这个顺序有一个反直觉的后果：<strong>越具体、越贴近当前目录的规则，越容易被砍掉</strong>。假设根目录的 <code>AGENTS.md</code> 有 20 KB，中间层 20 KB，cwd 10 KB，预算 32 KiB，那么根目录全留，中间层只剩约 12 KB，cwd 的 10 KB 一点都不剩。模型看到的是“团队通则 + 半份模块规则”，完全看不到当下这个目录的特殊约定。</p>
+      <p>Codex 没有为这个后果做特殊处理。它的假设是：根目录的规则最重要，应该优先保证；子目录规则是补充，丢了不至于出错。<strong>代价</strong>是当根目录文件膨胀时（很多团队会把它写成一本手册），子目录规则会静默失效，而且没有任何告警。</p>
+      <div class="callout callout--warn">
+        <p class="callout__title">当心</p>
+        <p>“规则写了没生效”最常见的原因不是模型忽略，而是它根本没进上下文。把 <code>project_doc_max_bytes</code> 调大只能缓解，不能根治；更稳的做法是让根目录文件保持短，把模块细节放到子目录，并定期检查总字节数。</p>
+      </div>
+
+      <h3 id="codex-diff">2.4 拼好之后，还要决定“这次发不发”</h3>
+      <p>规则不是一次性塞进历史。Codex 把它作为 <code>WorldState</code> 的一个 section，逐轮计算快照并与上次比较：没变不发，变了发“替换通知 + 新全文”，删了发“不再适用”通知。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/agents_md.rs#L36-L80">world_state/agents_md.rs#L36-L80</a> <span class="tag tag--ok">已核实</span></p>
+      <p>这个设计把“规则内容”与“规则传输”分开了：内容是拼出来的文本，传输是按 section 的差分。好处是改了子目录规则，只需要发那一段；坏处是模型看到的规则是“一条条补丁”而不是一份完整文档，出现冲突时它未必能重建全貌。第 04 章会展开差分的细节。</p>
+
+      <h3 id="codex-noinclude">2.5 Codex 没有文件内 include</h3>
+      <p>Codex 的规则文件就是纯文本，卡片里没有描述任何“在文件里引用另一个文件”的语法。想让多个文件生效，只能靠目录层级，不能靠 <code>@import</code>。这个选择让发现逻辑保持在“路径 + 字节”层面，代价是无法把一份共享规范放在仓库外再引用进来——你只能复制，或者用符号链接（而符号链接的行为不在本卡片的核实范围内）。</p>
+      <p>这一点很重要，因为下一节要讲的 include 深度、循环、递归展开，在 Codex 这里统统不存在。它的复杂度全部押在“层级 + 预算”上。</p>
+    </section>
+
+    <!-- ========== 03 ========== -->
+    <section id="merge">
+      <p class="sec-no">03 · 合并的四个机制</p>
+      <h2>拼接、包含、上限、截断</h2>
+      <p>八个工具的做法看起来五花八门，其实都在回答四个问题。先把这四个机制讲清楚，后面的图和表就只是“各家选了哪一档”。</p>
+
+      <h3 id="merge-concat">3.1 拼接不是覆盖：所有约束同时在场</h3>
+      <p>没有一家真正做“后一份覆盖前一份”。它们做的都是拼接：把每份文件渲染成一段，按某个顺序连起来。Claude Code 会给每份文件加一行 <code>Contents of &lt;path&gt; (说明)</code>，最后拼成一段统一文本，并在开头加一句“这些指令覆盖默认行为”；opencode v1 用 <code>Instructions from: &lt;path&gt;</code>；pi 给每份包一层 <code>&lt;project_instructions path="…"&gt;</code>。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/claudemd.ts#L1153-L1195">claudemd.ts#L1153-L1195</a> <span class="tag tag--src">源码 v2.1.88</span></p>
+      <p>为什么不覆盖？因为覆盖需要一个“键”。规则是自然语言，没有字段名，你无法判断“这两句话说的是同一件事”。强行覆盖只能按文件粒度做，结果是子目录的一句话会把根目录的十条规范整份作废，这显然更糟。</p>
+      <p>拼接的代价是<strong>冲突显性化</strong>：两份规则说反话时，模型必须自己裁决。常见的裁决依据是“更靠后、更具体、语气更强”。所以顺序本身就是优先级：越晚出现的，越容易被当成更具体的要求。Claude Code 的顺序是受管 → 用户 → 项目根 → cwd，pi 的顺序是远 → 近，Grok Build 也是 home → 项目根 → cwd，都遵循“越近越后”。</p>
+
+      <h3 id="merge-include">3.2 include：展开、深度与循环</h3>
+      <p>Claude Code 支持在规则文件里用 <code>@path</code> 引用另一个文件，递归展开，深度上限 <code>MAX_INCLUDE_DEPTH = 5</code>；只允许文本类扩展名，避免把二进制读进上下文。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/claudemd.ts#L537">claudemd.ts#L537</a> <span class="tag tag--src">源码 v2.1.88</span></p>
+      <p>这里有一处必须并列写的差异：<strong>源码是 5 层，官方文档写的是“递归最多 4 跳”</strong>。两个数字不是笔误，而是版本口径不同——文档描述的是某个已发布版本的行为，源码是 v2.1.88 的实现。本教程采用源码的 5，同时标注【可能已变化】，因为新版本完全可能改回 4 或改成别的值。<span class="tag tag--doc">官方文档</span> <span class="tag tag--src">源码 v2.1.88</span> 【可能已变化】</p>
+      <p>深度上限同时承担了两个职责：限制体积，以及<strong>兜住循环</strong>。A 引用 B、B 又引用 A 时，如果没有独立的 visited 集合，递归会一直走到深度上限才停。本快照里能确认的只有深度判断，没有看到单独的循环检测逻辑<sup class="fn-ref"><a href="#fn-main-02-1" id="fnref-main-02-1">1</a></sup>。这意味着一个三层循环会被展开三次，产生重复内容，而不是被识别成环。</p>
+      <p>其他工具的 include 形态不同：pi 把文件路径写进提示词，模型用 <code>read</code> 自己去读；omp 用 <code>rule://</code> 内部 URL，按需读取正文；opencode v2 的就近发现是在 <code>read</code> 工具被调用时，把沿途的 <code>AGENTS.md</code> 作为 synthetic 消息注入。它们把“展开”换成了“按需取”，代价是模型必须主动去读。</p>
+
+      <h3 id="merge-cap">3.3 体积上限：硬上限、软告警、没有上限</h3>
+      <p>八家里只有两家给出明确的硬上限：Codex 32 KiB，DeepSeek Harness 64 KiB（整条基线消息）加单文件 1 MiB。Claude Code 有一个 <code>MAX_MEMORY_CHARACTER_COUNT = 40_000</code>，但它只用于告警和状态栏提示，<strong>不是硬截断</strong>——超过 4 万字符，规则仍然全部进上下文，只是你会看到一个警告。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/doctorContextWarnings.ts#L44-L66">doctorContextWarnings.ts#L44-L66</a> <span class="tag tag--src">源码 v2.1.88</span></p>
+      <p>其余几家在源码里没有找到截断逻辑：pi、omp、opencode v1/v2<sup class="fn-ref"><a href="#fn-main-02-3" id="fnref-main-02-3">3</a></sup>、Grok Build。Grok Build 甚至在用户手册里明确写“no character cap and no truncation”，把体积成本完全交给用户。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/12-project-rules.md#L183-L186">12-project-rules.md#L183-L186</a> <span class="tag tag--ok">已核实</span></p>
+      <p>“没有上限”不等于安全。规则文件进的是一段固定预算的窗口，规则占得多，对话就剩得少；而且它通常在历史最前面，一旦超过某个点，压缩会优先把它当成“旧历史”处理。没有硬截断，只是把问题推迟到压缩阶段。</p>
+
+      <h3 id="merge-truncate">3.4 截断顺序：牺牲宽的还是牺牲窄的</h3>
+      <p>Codex 从尾部截，等于牺牲窄的（更具体的）。DeepSeek Harness 反过来：超预算时<strong>先整份省略更宽的（更靠上的）文件，再截断最具体的那个文件</strong>。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/context/agent-instructions/README.md#L12">agent-instructions/README.md#L12</a> <span class="tag tag--guess">推断</span></p>
+      <p>两种顺序对应两种价值观。Codex 假设“通则比例外重要”，宁可让子目录规则消失，也要保证团队底线在场。dsh 假设“越具体越相关”，宁可丢掉根目录的手册，也要保住当下目录的约定。没有哪种一定对：在规范统一的团队里，前者更安全；在 monorepo 里各模块差异很大时，后者更实用。</p>
+      <p>真正危险的是“没有告警的截断”。两家都没有在截断时主动告诉模型“这里少了一段”，模型会以为自己看到了全部规则。如果你的规则文件经常接近上限，正确做法不是调大预算，而是拆文件、删重复、把细节移到按需加载（第 03 章）。</p>
+    </section>
+
+    <!-- ========== 04 ========== -->
+    <section id="pathmap">
+      <p class="sec-no">04 · 八工具查找路径</p>
+      <h2>从全局到子目录，谁扫了哪几层</h2>
+      <p>下面这张图是本票的硬要求：把八个工具的查找范围横向排开，看它们分别扫了哪几层、哪一层是启动时全量加载、哪一层要等到“读到这个目录”才补进来。实心点＝启动时参与合并；空心虚线点＝触达时才加载；没有点＝不参与。</p>
+
+      <figure class="fig" id="fig-rule-paths">
+        <svg class="pathmap" viewBox="0 0 640 486" role="img" aria-labelledby="fig-path-title fig-path-desc">
+          <title id="fig-path-title">八个工具的规则文件查找路径与层级对比</title>
+          <desc id="fig-path-desc">横轴五列，依次是全局或用户目录、项目根、中间目录、当前工作目录、更深的子目录。八行分别对应 Codex、Claude Code、pi、oh-my-pi、opencode v1、opencode v2、Grok Build、DeepSeek Harness。实心点表示启动时加载，空心虚线点表示触达时才加载，空位表示不参与。Codex 不读全局层，Claude Code 和 Grok Build 覆盖最广，pi、omp、dsh 会按层级排序后拼接。</desc>
+
+          <text class="pm-col" x="128" y="30" text-anchor="middle">全局 / 用户</text>
+          <text class="pm-col" x="208" y="30" text-anchor="middle">项目根</text>
+          <text class="pm-col" x="288" y="30" text-anchor="middle">中间目录</text>
+          <text class="pm-col" x="368" y="30" text-anchor="middle">cwd</text>
+          <text class="pm-col" x="448" y="30" text-anchor="middle">更深子目录</text>
+          <line class="pm-rule" x1="8" y1="38" x2="632" y2="38"/>
+
+          <!-- Codex -->
+          <rect class="pm-rowbg" x="8" y="44" width="624" height="50" rx="4"/>
+          <text class="pm-tool" x="14" y="72">Codex</text>
+          <line class="pm-line" x1="208" y1="69" x2="368" y2="69"/>
+          <circle class="pm-node" cx="208" cy="69" r="4.5"/>
+          <circle class="pm-node" cx="288" cy="69" r="4.5"/>
+          <circle class="pm-node" cx="368" cy="69" r="4.5"/>
+          <circle class="pm-node--off" cx="128" cy="69" r="4"/>
+          <text class="pm-note" x="470" y="66">根→cwd 逐级拼接，不越根</text>
+          <text class="pm-note" x="470" y="78">32 KiB，尾部截断</text>
+
+          <!-- Claude Code -->
+          <text class="pm-tool" x="14" y="124">Claude Code</text>
+          <line class="pm-line" x1="128" y1="121" x2="368" y2="121"/>
+          <circle class="pm-node" cx="128" cy="121" r="4.5"/>
+          <circle class="pm-node" cx="208" cy="121" r="4.5"/>
+          <circle class="pm-node" cx="288" cy="121" r="4.5"/>
+          <circle class="pm-node" cx="368" cy="121" r="4.5"/>
+          <text class="pm-note" x="470" y="118">Managed→User→根→cwd</text>
+          <text class="pm-note" x="470" y="130">@ 引用 5 层（文档写 4）</text>
+
+          <!-- pi -->
+          <rect class="pm-rowbg" x="8" y="146" width="624" height="50" rx="4"/>
+          <text class="pm-tool" x="14" y="176">pi</text>
+          <line class="pm-line" x1="128" y1="173" x2="368" y2="173"/>
+          <circle class="pm-node" cx="128" cy="173" r="4.5"/>
+          <circle class="pm-node" cx="208" cy="173" r="4.5"/>
+          <circle class="pm-node" cx="288" cy="173" r="4.5"/>
+          <circle class="pm-node" cx="368" cy="173" r="4.5"/>
+          <text class="pm-note" x="470" y="170">全局 agent 目录 + 祖先链</text>
+          <text class="pm-note" x="470" y="182">每级 5 候选取首个</text>
+
+          <!-- omp -->
+          <text class="pm-tool" x="14" y="228">oh-my-pi</text>
+          <line class="pm-line" x1="128" y1="225" x2="368" y2="225"/>
+          <circle class="pm-node" cx="128" cy="225" r="4.5"/>
+          <circle class="pm-node" cx="208" cy="225" r="4.5"/>
+          <circle class="pm-node" cx="288" cy="225" r="4.5"/>
+          <circle class="pm-node" cx="368" cy="225" r="4.5"/>
+          <text class="pm-note" x="470" y="222">6 个 provider，按 depth 排</text>
+          <text class="pm-note" x="470" y="234">内容包含去重</text>
+
+          <!-- opencode v1 -->
+          <rect class="pm-rowbg" x="8" y="248" width="624" height="50" rx="4"/>
+          <text class="pm-tool" x="14" y="278">opencode v1</text>
+          <line class="pm-line" x1="128" y1="275" x2="368" y2="275"/>
+          <line class="pm-line pm-line--dash" x1="368" y1="275" x2="448" y2="275"/>
+          <circle class="pm-node" cx="128" cy="275" r="4.5"/>
+          <circle class="pm-node" cx="208" cy="275" r="4.5"/>
+          <circle class="pm-node" cx="288" cy="275" r="4.5"/>
+          <circle class="pm-node" cx="368" cy="275" r="4.5"/>
+          <circle class="pm-node--reach" cx="448" cy="275" r="4.5"/>
+          <text class="pm-note" x="470" y="272">首个命中类型生效</text>
+          <text class="pm-note" x="470" y="284">read 时就近追加</text>
+
+          <!-- opencode v2 -->
+          <text class="pm-tool" x="14" y="330">opencode v2</text>
+          <line class="pm-line" x1="128" y1="327" x2="368" y2="327"/>
+          <line class="pm-line pm-line--dash" x1="368" y1="327" x2="448" y2="327"/>
+          <circle class="pm-node" cx="128" cy="327" r="4.5"/>
+          <circle class="pm-node" cx="208" cy="327" r="4.5"/>
+          <circle class="pm-node" cx="288" cy="327" r="4.5"/>
+          <circle class="pm-node" cx="368" cy="327" r="4.5"/>
+          <circle class="pm-node--reach" cx="448" cy="327" r="4.5"/>
+          <text class="pm-note" x="470" y="324">只有 AGENTS.md</text>
+          <text class="pm-note" x="470" y="336">watcher 100ms 热更新</text>
+
+          <!-- Grok Build -->
+          <rect class="pm-rowbg" x="8" y="350" width="624" height="50" rx="4"/>
+          <text class="pm-tool" x="14" y="380">Grok Build</text>
+          <line class="pm-line" x1="128" y1="377" x2="368" y2="377"/>
+          <circle class="pm-node" cx="128" cy="377" r="4.5"/>
+          <circle class="pm-node" cx="208" cy="377" r="4.5"/>
+          <circle class="pm-node" cx="288" cy="377" r="4.5"/>
+          <circle class="pm-node" cx="368" cy="377" r="4.5"/>
+          <text class="pm-note" x="470" y="374">同名文件全部加载</text>
+          <text class="pm-note" x="470" y="386">.grok/.claude/.cursor 三套 rules</text>
+
+          <!-- dsh -->
+          <text class="pm-tool" x="14" y="432">DeepSeek</text>
+          <text class="pm-tool" x="14" y="444">Harness</text>
+          <line class="pm-line" x1="128" y1="429" x2="368" y2="429"/>
+          <line class="pm-line pm-line--dash" x1="368" y1="429" x2="448" y2="429"/>
+          <circle class="pm-node" cx="128" cy="429" r="4.5"/>
+          <circle class="pm-node" cx="208" cy="429" r="4.5"/>
+          <circle class="pm-node" cx="288" cy="429" r="4.5"/>
+          <circle class="pm-node" cx="368" cy="429" r="4.5"/>
+          <circle class="pm-node--reach" cx="448" cy="429" r="4.5"/>
+          <text class="pm-note" x="470" y="426">AGENTS / CLAUDE + local</text>
+          <text class="pm-note" x="470" y="438">64 KiB，先省宽再截窄</text>
+
+          <line class="pm-rule" x1="8" y1="466" x2="632" y2="466"/>
+          <circle class="pm-node" cx="16" cy="477" r="4"/>
+          <text class="pm-note" x="26" y="480">启动时加载</text>
+          <circle class="pm-node--reach" cx="106" cy="477" r="4"/>
+          <text class="pm-note" x="116" y="480">触达时才加载</text>
+          <circle class="pm-node--off" cx="206" cy="477" r="4"/>
+          <text class="pm-note" x="216" y="480">不参与（未找到该层）</text>
+        </svg>
+        <figcaption>图 02-1　八个工具的规则文件查找路径。按本页核对的卡片口径，Codex 是唯一完全不读全局层的一家——它只看项目根到 cwd。Claude Code 与 Grok Build 覆盖最广：前者从受管策略一直到 cwd，后者把 home 规则根和三套 <code>rules</code> 目录一起扫。pi、omp、dsh 都是“宽→窄”排序后拼接，差别只在去重方式。虚线点表示“读到更深目录时才补进来”，不是启动时加载。图中只画层级，不画文件数量与体积；示意，非真实比例。</figcaption>
+      </figure>
+
+      <p>图里最值得记住的不是“谁扫得多”，而是<strong>扫描范围与合并顺序是两件事</strong>。扫描范围决定“哪些文件有机会进来”，合并顺序决定“进来之后谁最后说话”。pi 用 <code>unshift</code> 收集祖先链，所以离 cwd 越近的越靠后；omp 按 <code>depth</code> 排序，远的先、近的后；Grok Build 也是 home 先、项目根后、cwd 最后。三家扫描范围不同，但“近者后置”的结论一致。</p>
+      <p>Codex 是例外：它从根往 cwd 拼，顺序上也是“近者后置”，但它只有项目层，没有全局层。这意味着你在 <code>~/.codex/</code> 里写的偏好不会自动生效，必须放进仓库。<strong>代价</strong>是跨项目的个人习惯无处安放；<strong>好处</strong>是同一份仓库在任何机器上看到的规则完全一致，便于复现。</p>
+    </section>
+
+    <!-- ========== 05 ========== -->
+    <section id="tools">
+      <p class="sec-no">05 · 七个工具</p>
+      <h2>同一棵树，七种走法</h2>
+      <p>下面七个弹窗各自写清四块：做法、关键参数与默认值、设计意图、来源。读的时候对照上图，看它落在哪几列、走的是“每级择一”还是“全部加载”。</p>
+      <div class="tool-grid">
+        <button class="tool-btn" type="button" data-modal="claude-code">
+          <span class="tool-btn__name">Claude Code</span>
+          <span class="tool-btn__id">claude-code</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="pi">
+          <span class="tool-btn__name">pi</span>
+          <span class="tool-btn__id">pi</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="omp">
+          <span class="tool-btn__name">oh-my-pi</span>
+          <span class="tool-btn__id">omp</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v1">
+          <span class="tool-btn__name">opencode v1</span>
+          <span class="tool-btn__id">opencode-v1</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="opencode-v2">
+          <span class="tool-btn__name">opencode v2</span>
+          <span class="tool-btn__id">opencode-v2</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="grok-build">
+          <span class="tool-btn__name">Grok Build</span>
+          <span class="tool-btn__id">grok-build</span>
+        </button>
+        <button class="tool-btn" type="button" data-modal="dsh">
+          <span class="tool-btn__name">DeepSeek Harness</span>
+          <span class="tool-btn__id">dsh</span>
+        </button>
+      </div>
+      <p class="small muted">键盘：<kbd>Esc</kbd> 关闭；<kbd>Tab</kbd> 在弹窗内循环。Claude Code 结论来自非官方 v2.1.88 源码。</p>
+    </section>
+
+    <!-- ========== 06 ========== -->
+    <section id="matrix">
+      <p class="sec-no">06 · 八工具对比</p>
+      <h2>五列看清合并策略</h2>
+      <p>先看“查找层级”和“优先级”两列，它们决定谁最后说话；再看“体积上限”和“截断行为”，它们决定说完之后还剩多少。最后一列“合并方式”是各家的性格：择一、全收、还是去重。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">查找层级</th>
+              <th scope="col">合并方式</th>
+              <th scope="col">优先级</th>
+              <th scope="col">体积上限</th>
+              <th scope="col">截断行为</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex<span>codex</span></th>
+              <td>项目根 → cwd，每级一级；不越根、不下子树。<span class="tag tag--ok">已核实</span></td>
+              <td>每级按 <code>AGENTS.local.md → AGENTS.md → 自定义</code> 取首个，再逐级拼接。<span class="tag tag--ok">已核实</span></td>
+              <td>浅 → 深，深层在后；同目录 local 优先。<span class="tag tag--ok">已核实</span></td>
+              <td><code>project_doc_max_bytes</code> 默认 32 KiB。<span class="tag tag--ok">已核实</span></td>
+              <td>按剩余字节从尾部截，深层规则可能整份丢失。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>受管策略 → 用户 → 项目根 → cwd，每级含 4 类文件与 rules 目录。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>全部拼接为一段文本，每份加 <code>Contents of &lt;path&gt;</code>；<code>@path</code> 递归展开。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>受管 → 用户 → 根 → cwd，近者后置；<code>paths:</code> 规则命中才加载。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>无硬上限；<code>MAX_MEMORY_CHARACTER_COUNT = 40_000</code> 只告警。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>不截断；超 4 万字符只提示，内容仍全量进入。<span class="tag tag--both">两者一致</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>全局 agent 目录 + cwd 祖先链；不遍历子树。<span class="tag tag--ok">已核实</span></td>
+              <td>每级 5 个候选取首个；<code>seenPaths</code> 去重，排除 worktree 遮蔽副本。<span class="tag tag--ok">已核实</span></td>
+              <td>远 → 近；近者更靠提示词尾部。<span class="tag tag--ok">已核实</span></td>
+              <td>未找到上限。<span class="tag tag--todo">待核实</span></td>
+              <td>未找到截断逻辑。<span class="tag tag--todo">待核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td>6 类 provider：AGENTS、CLAUDE、自定义、Gemini、Copilot、opencode。<span class="tag tag--ok">已核实</span></td>
+              <td>按 <code>depth</code> 排序合并；内容包含去重，被更近文件完全覆盖的丢弃。<span class="tag tag--ok">已核实</span></td>
+              <td>远 → 近；近者更权威；workspace tree 截到 200 个 AGENTS.md。<span class="tag tag--ok">已核实</span></td>
+              <td>单文件未找到上限；tree 层有 200 条上限。<span class="tag tag--ok">已核实</span></td>
+              <td>只在 workspace tree 渲染层截断，规则正文不截。<span class="tag tag--todo">待核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td>全局首个 + 项目层 <code>findUp</code>；项目候选按类型择一后全收。<span class="tag tag--ok">已核实</span></td>
+              <td>简单拼接，<code>Instructions from: &lt;path&gt;</code>；<code>config.instructions</code> 可加文件与 URL。<span class="tag tag--ok">已核实</span></td>
+              <td>全局 → 项目，按 Set 插入序；无覆盖、无去重。<span class="tag tag--ok">已核实</span></td>
+              <td>未找到上限。<span class="tag tag--guess">推断</span></td>
+              <td>未找到截断；URL 抓取 5 秒超时。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
+              <td>全局一份 + 项目祖先链全部；只有 <code>AGENTS.md</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>指令源统一合并，顺序 <code>codeMode → mcp → references → skills → discovery → builtins → entries</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>全局 → 最近 → 最远；改动用 diff 渲染。<span class="tag tag--ok">已核实</span></td>
+              <td>未找到上限。<span class="tag tag--guess">推断</span></td>
+              <td>无截断；watcher 100 ms 防抖后重扫。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>home 规则根 → 项目根 → cwd；6 个具名候选 + 三套 rules 目录。<span class="tag tag--ok">已核实</span></td>
+              <td>同目录命中的文件全部加载；canonical path 去重；跨目录重复不折叠。<span class="tag tag--ok">已核实</span></td>
+              <td>home → 项目 → cwd；越深越靠后，冲突时后者胜。<span class="tag tag--ok">已核实</span></td>
+              <td>无字符上限、无截断（用户手册明示）。<span class="tag tag--ok">已核实</span></td>
+              <td>不截断；<code>grok inspect</code> 只显示路径与近似 token。<span class="tag tag--ok">已核实</span></td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td><code>$DSH_HOME</code> → <code>~/.agents</code> → 项目根 → cwd，宽到窄。<span class="tag tag--guess">推断</span></td>
+              <td>候选组内 trim 后同内容只渲染一次；不是持续 watch，触达更深目录才补。<span class="tag tag--guess">推断</span></td>
+              <td>宽 → 窄；窄者更具体；重复文件产生移除通知。<span class="tag tag--guess">推断</span></td>
+              <td><code>maxBytes</code> 65536；单文件 <code>maxSourceBytes</code> 1 MiB。<span class="tag tag--ok">已核实</span></td>
+              <td>先整份省略更宽的文件，再截断最具体的那个。<span class="tag tag--guess">推断</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；dsh <code>5719020</code>。【待核实】的两格是“源码里没找到上限”，不等于一定没有<sup class="fn-ref"><a href="#fn-main-02-2" id="fnref-main-02-2">2</a></sup>。</p>
+    </section>
+
+    <!-- ========== 07 ========== -->
+    <section id="tradeoffs">
+      <p class="sec-no">07 · 设计取舍</p>
+      <h2>为什么没有人做真正的覆盖</h2>
+
+      <h3>取舍一：每级择一，还是同级全收</h3>
+      <p><strong>择一派</strong>（Codex、pi、opencode v1）在每一级只取一个文件，理由是“同一目录里两份规则必然打架，不如让用户自己决定留哪份”。<strong>全收派</strong>（Grok Build）把同目录命中的 <code>AGENTS.md</code>、<code>Claude.md</code>、<code>CLAUDE.md</code>、<code>AGENT.md</code> 全部读进来，理由是“多生态兼容，别人家的规则也应该生效”。</p>
+      <p>代价很清楚：择一派在迁移工具时会丢规则——你把 <code>CLAUDE.md</code> 改名为 <code>AGENTS.md</code> 却没删旧的，新的可能永远不生效。全收派则会把同一套规则的两份副本都读进来，体积翻倍，还可能因为措辞差异让模型无所适从。</p>
+
+      <h3>取舍二：拼接，还是去重后拼接</h3>
+      <p>opencode v1 是最纯粹的拼接：按插入顺序连起来，不去重、不折叠。omp 和 dsh 多做了一步：如果一份文件的规范化内容完全被另一份更近、更权威的文件包含，就丢掉前者。opencode v2 则在“读取时就近发现”这一层用 synthetic 消息的 <code>metadata.instruction.paths</code> 做台账，防止同一条规则重复注入。</p>
+      <p>去重的收益是体积，代价是<strong>判断本身可能出错</strong>。omp 的规则是“完全包含才丢”，改写、交错都不算包含，所以措辞稍变就失去去重效果；而“完全包含”也可能误伤——一份文件被另一份包含，但它的位置本来更靠前，删掉之后顺序语义变了。</p>
+
+      <h3>取舍三：截断时牺牲宽，还是牺牲窄</h3>
+      <p>Codex 牺牲窄的：预算从根开始分，分到后面没了就没了。dsh 牺牲宽的：先整份省略靠上的文件，再截最具体的。前者假设“通则必须保住”，后者假设“当下目录最相关”。</p>
+      <p><strong>代价</strong>：Codex 在 monorepo 里容易让子模块规则静默失效；dsh 在规范集中的团队里可能丢掉最关键的安全条款。两种都可能出问题，区别是“丢掉的那部分你知不知道”。dsh 至少在文件消失时产生一条移除通知，Codex 是纯截断，没有任何提示。</p>
+
+      <h3>取舍四：文件内 include，还是按需读取</h3>
+      <p>Claude Code 选择在加载时递归展开 <code>@path</code>，深度 5 层。好处是模型一次就能看到全部内容，不需要额外工具调用；坏处是体积不可控，循环只能靠深度兜住。pi、omp 选择把路径留在提示词里，让模型用 <code>read</code> 或 <code>rule://</code> 去取：体积可控，但多一次往返，而且模型可能不去取。</p>
+      <p>这条取舍和第 03 章的“渐进披露”是同一条线：你到底相信“一次给全”，还是相信“模型会按需来拿”。规则文件通常很短，所以展开派居多；但一旦允许 include，长度就不再由文件数决定，而是由引用图决定。</p>
+
+      <h3>取舍五：启动快照，还是运行时热更新</h3>
+      <p>Codex 每轮算 <code>WorldState</code> 快照、只发差异；opencode v2 用文件 watcher，100 ms 防抖后重扫并发出指令 diff；opencode v1 每步从磁盘重读、整段重拼；dsh 不在启动后持续监听，只有 <code>read</code>/<code>write</code>/<code>edit</code> 触达更深目录时才补进来。</p>
+      <p>热更新让“改完规则立刻生效”，代价是每次改动都可能打断缓存，而且“什么时候算改完”需要防抖。快照派按轮比较，天然有边界，但用户在会话中途改规则时，要等到下一轮才生效。dsh 的折中最小：只在真正触达时加载，既不做全局监听，也不保证立刻生效。</p>
+    </section>
+
+    <!-- ========== 08 ========== -->
+    <section id="quiz">
+      <p class="sec-no">08 · 小测验</p>
+      <h2>三道题，检验你是否真的会算</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">Codex，<code>project_doc_max_bytes</code> 默认 32 KiB。根目录 <code>AGENTS.md</code> 20,000 字节，<code>services/AGENTS.md</code> 20,000 字节，<code>services/payments/AGENTS.md</code> 10,000 字节，你在 <code>services/payments/</code> 启动。三段各有多少进入上下文？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>根目录 20,000 全留，剩 12,768 字节；<code>services</code> 那份被截到 12,768 字节；<code>payments</code> 那份一字不进。总计不超过 32,768。这就是<a href="#codex-budget">2.3 预算</a>说的“牺牲窄的”：越贴近当前目录的规则越容易被砍掉，而且没有任何告警。实际使用中应把根目录文件压短，或调大 <code>project_doc_max_bytes</code> 并定期核对总量。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">Claude Code 里 A 引用 B，B 引用 A，各写了一次。最终会发生什么？源码和官方文档在深度上分别怎么说？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>没有独立循环检测时，递归会一直走到深度上限才停，于是 A、B 的内容会重复若干次，而不是报“发现循环”。深度口径：源码 <code>MAX_INCLUDE_DEPTH = 5</code>，官方文档写“最多 4 跳”，两者不一致，本教程以源码为准并标【可能已变化】。见<a href="#merge-include">3.2 include</a>。</p>
+        </div>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">一个 monorepo 有 40 个服务，每个服务目录都有自己的规则，根目录的 <code>AGENTS.md</code> 已经很厚。你会选 Codex 式的“截尾”，还是 dsh 式的“先省宽再截窄”？为什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>选 dsh 式。40 个服务的差异大于共性，根目录那份厚文件里大部分内容对当前服务无关；先省宽能保证“当下目录的约定”完整到场。代价是可能丢掉根目录里的安全条款，所以要把安全条款单独拆成一份短文件，放在每个服务都会读到的位置。若团队规范高度统一、子目录规则只是补充，Codex 式更安全。见<a href="#merge-truncate">3.4 截断顺序</a>与<a href="#tradeoffs">取舍三</a>。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footnotes">
+      <p class="footnotes__title">脚注</p>
+      <ol>
+        <li id="fn-main-02-1">
+          事实卡片标【待核实】：<code>claudemd.ts</code> 里能确认 <code>MAX_INCLUDE_DEPTH = 5</code> 与递归展开，但通读该文件的 include 分支后没有找到独立的 visited 集合或环检测。缺的是“递归入口是否在别处做过路径去重”的证据。因此正文只写“深度上限是已知护栏”，不断言“存在环检测”。
+          <a class="footnotes__back" href="#fnref-main-02-1">↩</a>
+        </li>
+        <li id="fn-main-02-2">
+          多份卡片把“无体积上限”标为【待核实】或【推断】：pi、omp、opencode v1/v2 都是“通读加载路径后未发现截断”，属于否定式证据，只能证明“本快照没找到”，不能证明“永远不存在”。Grok Build 是例外，用户手册明确写了 no character cap and no truncation，按【已核实】处理。表中据此分列两种标签。
+          <a class="footnotes__back" href="#fnref-main-02-2">↩</a>
+        </li>
+        <li id="fn-main-02-3">
+          事实卡片标【待核实】：pi、omp 的“单文件无字节上限”同样是否定式结论。已检查 pi 的 <code>resource-loader.ts</code> 加载路径与 <code>system-prompt.ts</code> 的 <code>renderProjectContext</code>、omp 的 <code>discovery/</code> 六个 provider 与 <code>rule-buckets.ts</code>，均未见按字节或行数截断。缺的是运行期是否由上层再包一层限制。
+          <a class="footnotes__back" href="#fnref-main-02-3">↩</a>
+        </li>
+      </ol>
+    </div>
+
+    <p class="footer-note">下一章：按需加载与渐进披露。</p>
+
+  </article>
+</main>
+
+<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+
+<div class="modal" id="modal-claude-code" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><code>getMemoryFiles()</code> 按固定顺序收集：受管策略文件 → 受管 <code>.claude/rules/*.md</code> → 用户 <code>~/.claude/CLAUDE.md</code> 与用户 rules → 从<strong>项目根向下到 cwd</strong> 的每一级（<code>CLAUDE.md</code> → <code>.claude/CLAUDE.md</code> → <code>.claude/rules/*.md</code> → <code>CLAUDE.local.md</code>）。各层是<strong>拼接而非覆盖</strong>：<code>getClaudeMds</code> 把每个文件渲染成「Contents of &lt;path&gt;（说明）」段落，拼成一段统一文本，并在开头加一句「这些指令覆盖默认行为」的总提示。<code>@path</code> 引用递归展开，深度上限 <code>MAX_INCLUDE_DEPTH = 5</code>；只允许文本类扩展名。带 <code>paths:</code> frontmatter 的规则<strong>不预先加载</strong>，只有读、写、编辑命中匹配路径时才作为嵌套记忆追加。合并结果不进系统提示，而是作为一条 <code>isMeta</code> 用户消息，用 <code>&lt;system-reminder&gt;</code> 包裹后前插到消息列表头部。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>MAX_MEMORY_CHARACTER_COUNT = 40_000</code>（字符），只用于 <code>doctorContextWarnings</code> 与状态栏告警，<strong>不是硬截断</strong>；<code>MAX_INCLUDE_DEPTH = 5</code>（源码），官方文档口径为 4 跳；条件规则用 <code>ignore()</code> 做 glob 匹配，相对 <code>.claude</code> 的父目录；单文件 4 MiB 跳过在本次核对的源码中未找到。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dt>设计意图</dt>
+        <dd>用“受管 → 用户 → 根 → cwd”的顺序保证组织策略先于个人偏好、通则先于例外；用 <code>paths:</code> 条件规则把“只在特定目录生效”的规则推迟到命中时再加载，省体积。代价是四万字符只是个警告，规则总量仍可能挤占窗口；<code>@</code> 递归让体积不可预测。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/claudemd.ts#L790-L950">utils/claudemd.ts#L790-L950</a>（收集顺序）·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/claudemd.ts#L1153-L1195">claudemd.ts#L1153-L1195</a>（拼成一段）·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/claudemd.ts#L537">claudemd.ts#L537</a>（include 深度）·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/doctorContextWarnings.ts#L44-L66">doctorContextWarnings.ts#L44-L66</a>（40k 仅告警）
+        </dd>
+      </dl>
+      <p class="modal__note">来源类型：<span class="tag tag--src">源码 v2.1.88</span> <span class="tag tag--doc">官方文档</span>。官方文档的四级作用域与“互相不覆盖”与源码一致；<strong>“递归最多 4 跳”与源码 5 层不一致</strong>，本页并列写出，以源码为准并标【可能已变化】。本源码为非官方泄露版本，函数名可能由 source map 还原。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-pi" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · pi</p>
+        <h2 class="modal__title" id="modal-pi-title">pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">规则文件按固定候选名查找：<code>AGENTS.override.md → AGENTS.md → AGENTS.MD → CLAUDE.md → CLAUDE.MD</code>，每个目录只取<strong>命中顺序中的第一个</strong>。发现范围是「全局 agent 目录 + 从 cwd 逐级向上的祖先链」，不遍历子树。祖先链收集时用 <code>unshift</code> 插入，因此离 cwd 越近的文件排在越后面，语义上更具体。同一物理文件用 <code>seenPaths</code> 去重；对 <code>git worktree</code> 嵌套场景，还会排除被 worktree 副本遮蔽的主仓库同名文件，避免同一份规则注入两次。命中的内容渲染进 <code>&lt;project_context&gt;</code> section，每个文件包一层 <code>&lt;project_instructions path="…"&gt;</code>。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>候选名 5 个；<code>--no-context-files</code> / <code>-nc</code> 可整体关闭发现与加载；体积上限与截断<strong>未在源码中找到</strong>——通读 <code>resource-loader.ts</code> 的加载路径与 <code>system-prompt.ts</code> 的 <code>renderProjectContext</code>，未见按字节或行截断。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>用“每级择一 + 近者后置”把冲突压到最小：同一目录不会有两份规则打架，跨层冲突则交给顺序。worktree 去重是为多工作树场景准备的，避免同一份规则出现两次。代价是没有体积保护，规则总量完全由用户控制。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/resource-loader.ts#L184-L274">resource-loader.ts#L184-L274</a>（候选与祖先链）·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/resource-loader.ts#L214-L230">resource-loader.ts#L214-L230</a>（worktree 遮蔽）·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/system-prompt.ts#L173">system-prompt.ts#L173</a>（project_context 位置）·
+          <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/cli/args.ts#L216-L217">cli/args.ts#L216-L217</a>（关闭开关）
+        </dd>
+      </dl>
+      <p class="modal__note">“无体积上限”是【待核实】：只证明本次快照未找到截断逻辑，不证明运行时一定不截。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-omp" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · omp</p>
+        <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">omp 的规则发现是<strong>多生态兼容</strong>：<code>discovery/</code> 下注册了 6 个上下文文件 provider——<code>AGENTS.md</code>（含向上查找）、<code>CLAUDE.md</code>、自定义 <code>contextFiles.extra</code>、Gemini、GitHub <code>copilot-instructions.md</code>、opencode。每个 provider 把结果交给 capability 层合并：按 <code>depth</code> 排序（离 cwd 越远越先、越近越后），并做<strong>内容包含去重</strong>——某个文件的规范化段落如果完全被另一个更近、更权威的文件包含，就丢掉前者；仅改写或交错的不算包含，保留。workspace 树收集 <code>AGENTS.md</code> 路径，去重排序后截到 200 个，最终统一渲染进 <code>&lt;project-context&gt;</code>。此外还有独立的 rule capability（Cursor <code>.mdc</code>、Windsurf、Cline、Claude 插件、omp 插件、内置规则），统一过 <code>bucketRules()</code> 按固定优先级分桶。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>6 个上下文 provider；rule provider 至少 7 个；分桶顺序 <code>disabled → builtin toggle → agents 作用域 → TTSR → alwaysApply → rulebook</code>；<code>AGENTS_MD_LIMIT = 200</code>（workspace tree）；额外文件名由 <code>contextFiles.extra</code> 提供，值是文件名而非路径；单文件字节上限未找到，截断只发生在 tree 渲染层。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>不要求用户迁移格式：Cursor、Windsurf、Claude 的规则都能读。代价是“同一件事有三条路径”——静态 <code>&lt;project-context&gt;</code>、条件触发 TTSR、按需 <code>rule://</code>；排障时必须先判断某条规则走了哪条路径，而不同路径的生效时机完全不同。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/discovery/agents-md.ts#L15-L28">discovery/agents-md.ts#L15-L28</a>（AGENTS 向上查找）·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/capability/rule-buckets.ts#L1-L85">capability/rule-buckets.ts#L1-L85</a>（分桶）·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/workspace-tree.ts#L16">workspace-tree.ts#L16</a>（200 条上限）·
+          <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/system-prompt.ts#L323-L342">system-prompt.ts#L323-L342</a>（project-context 渲染）
+        </dd>
+      </dl>
+      <p class="modal__note">omp 是 pi 的 fork，但规则发现已经改写：pi 是“5 个候选取首个”，omp 是“6 个 provider 合并 + 包含去重”。不要互相外推。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v1" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">全局层只取<strong>首个存在</strong>的文件：<code>~/.config/opencode/AGENTS.md</code>，退而 <code>~/.claude/CLAUDE.md</code>。项目层按候选名顺序 <code>AGENTS.md → CLAUDE.md → CONTEXT.md（已废弃）</code> 逐类 <code>findUp</code>，<strong>第一个有命中的类型生效</strong>，并把这一个类型沿目录向上找到的<strong>所有</strong>匹配文件都加入——不是只取最近一个。源码注释写明这是为了避免“把每一级祖先的 AGENTS.md/CLAUDE.md 都堆进来”。<code>config.instructions</code> 可以追加文件（绝对路径、<code>~/</code>、相对 glob）和 <code>http(s)</code> URL，URL 抓取有 5 秒超时。合并就是<strong>简单拼接</strong>：每个文件渲染成 <code>Instructions from: &lt;path&gt;\n&lt;content&gt;</code>，按 Set 插入顺序连接，没有优先级覆盖，没有去重。另有“就近规则”：<code>read</code> 每读一个文件，从该文件目录向上找到项目根（不含），把沿途规则以 <code>&lt;system-reminder&gt;</code> 追加进<strong>这次工具输出</strong>。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>全局候选 2 个（首个存在者生效）；项目候选 3 个（按序首个命中类型生效）；<code>OPENCODE_DISABLE_PROJECT_CONFIG</code> 关闭项目层，<code>disableClaudeCodePrompt</code> 关闭 <code>CLAUDE.md</code> 候选；URL 超时 5000 ms，并发文件 8 / URL 4；体积上限与截断未找到。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>“首个命中类型 + 沿途全收”是一个折中：既不让三种命名格式互相叠加，又不至于只读最近一份而丢掉上层约束。代价是优先级完全由插入顺序决定，用户很难预测最终文本；URL 规则还会引入网络不确定性。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/instruction.ts#L60-L68">session/instruction.ts#L60-L68</a>（候选清单）·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/instruction.ts#L110-L153">instruction.ts#L110-L153</a>（全局 / 项目 / config）·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/instruction.ts#L155-L169">instruction.ts#L155-L169</a>（拼接与 URL）·
+          <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/instruction.ts#L179-L221">instruction.ts#L179-L221</a>（就近规则）
+        </dd>
+      </dl>
+      <p class="modal__note">就近规则注入的是<strong>工具输出</strong>，不是系统提示；这意味着它只在那一次读取之后可见，后续是否保留取决于历史裁剪。第 03 章会把它和 v2 的 synthetic 消息做法对比。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-opencode-v2" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">v2 把规则、技能、MCP 指令、参考资料、code mode 目录、内置指引统一抽象成<strong>有序指令源</strong>（<code>Instructions.List</code>），每个源有 <code>read / initial / changed / removed</code> 四个渲染函数，按“最共享 → 最不共享”排序合成：<code>codeModeCatalog → mcp → references → skills → discovery(AGENTS.md) → builtins → entries</code>，注释说明目的是让基线成为可复用的 prompt-cache 前缀。<code>AGENTS.md</code> 的发现由配置插件完成：全局 <code>&lt;config&gt;/AGENTS.md</code> 一份，项目侧从 location 目录沿祖先链一直走到 project root，<strong>收集沿途所有</strong> <code>AGENTS.md</code>（没有 <code>CLAUDE.md</code> / <code>CONTEXT.md</code> 候选），顺序是“全局 → 最近 → 最远”。文件被 watcher 监听，编辑后 100 ms 防抖重扫，变更以 <code>Instructions.diff</code> 计算，再由 <code>renderUpdate</code> 生成“新增/删除/改动 diff，补丁过长则整段替换”的增量文本。<code>read</code> 触达新文件时还会就近发现，命中路径以 <strong>synthetic 消息</strong>注入，并用历史里的 <code>metadata.instruction.paths</code> 做去重台账。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>候选只有 <code>AGENTS.md</code>；指令源顺序固定 7 段；diff 用 <code>createPatch(..., {context: 3})</code>，diff 文本比整段替换长时改整段替换；watcher 防抖 100 ms；去重靠 synthetic 消息台账 + 进程内 in-flight claim；体积上限未找到。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把“规则”降级为众多指令源中的一类，统一走差分渲染，这样规则改一个字不必重发整段系统基线。代价是顺序被固化在代码里，用户无法插入自己的源；而且只有 <code>AGENTS.md</code> 一个候选，从 Claude Code 迁移过来的人会丢规则。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/context.ts#L144-L160">session/context.ts#L144-L160</a>（顺序与注释）·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/config/plugin/instruction.ts#L38-L79">config/plugin/instruction.ts#L38-L79</a>（全局 + 祖先链）·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/instruction-discovery.ts#L123-L149">instruction-discovery.ts#L123-L149</a>（初始 / 增量）·
+          <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/instructions.ts#L46-L112">session/instructions.ts#L46-L112</a>（就近注入与台账）
+        </dd>
+      </dl>
+      <p class="modal__note">v2 是 beta <code>v2.0.29</code>，字段与默认值可能在下个版本变化；顺序注释是理解它的关键，不要按 v1 的“四类块”去套。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-grok-build" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead">每个目录按固定候选名探测，<strong>同一目录命中的文件全部加载</strong>（不是只取第一个）：<code>Agents.md</code>、<code>Claude.md</code>、<code>CLAUDE.md</code>、<code>CLAUDE.local.md</code>、<code>AGENT.md</code>、<code>AGENTS.md</code>；Claude 兼容开启时追加 <code>.claude/CLAUDE.md</code> 与 <code>.claude/CLAUDE.local.md</code>。除具名文件外，还扫描规则目录里的<strong>所有 <code>*.md</code></strong>：<code>&lt;dir&gt;/.grok/rules/</code> 恒扫，<code>.claude/rules/</code>、<code>.cursor/rules/</code> 受兼容开关控制，目录内按字母序。home 级根先加载（<code>$GROK_HOME</code> / <code>~/.grok</code>、<code>~/.claude</code>、<code>~/.cursor</code>、<code>[paths] extra_rule_dirs</code>），随后是项目根到 cwd 的逐级目录——<strong>越深的文件越靠后，冲突时后者胜出</strong>。项目级来源受 folder trust 门禁，未信任则整段丢弃；<code>.gitignore</code> 命中则跳过；同一物理文件用 canonical path 去重。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd>具名候选 6 个（按序）；规则目录 3 套；home 规则根 4 类；<strong>每个文件全文加载，没有字符上限、没有截断</strong>（用户手册明示“no character cap and no truncation”）；<code>grok inspect</code> 只展示路径与近似 token 数；另有 <code>--rules</code>（追加，包 <code>&lt;human_rules&gt;</code>）与 <code>--system-prompt-override</code>（整段替换）。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>“全收”优先保证兼容性：团队里有人用 Cursor、有人用 Claude，规则都能生效。代价是同一套规范的多份副本会一起进上下文，体积翻倍；且没有任何上限兜底，规则膨胀直接挤压对话空间。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-config/src/compat.rs#L311-L318">compat.rs#L311-L318</a>（候选名）·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-config/src/compat.rs#L418-L438">compat.rs#L418-L438</a>（rules 目录）·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-agent/src/prompt/agents_md.rs#L225-L362">prompt/agents_md.rs#L225-L362</a>（发现与排序）·
+          <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/12-project-rules.md#L183-L186">12-project-rules.md#L183-L186</a>（无上限）
+        </dd>
+      </dl>
+      <p class="modal__note">Grok Build 只对应仓库提交 <code>2bdd1d6</code>，没有语义化版本号。<code>.gitignore</code> 命中会跳过，但 <code>extra_rule_dirs</code> 例外。</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-dsh" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
+      </div>
+      <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
+    </div>
+    <div class="modal__body">
+      <p class="modal__lead"><code>dsh-agent-instructions</code> 在<strong>首个请求前</strong>加载一条链：先用户全局——<code>$DSH_HOME/AGENTS.md</code>，再 <code>&lt;agentsHome&gt;/AGENTS.md</code>（<code>$DSH_AGENTS_HOME</code> 或 <code>~/.agents</code>）；再项目链——从项目根（由 <code>.git</code> 等 marker 判定）逐级到会话 cwd 的每个候选文件，<strong>由宽到窄</strong>排列。每个目录的候选是 <code>AGENTS.md</code>、<code>CLAUDE.md</code>，加 <code>AGENTS.local.md</code>、<code>CLAUDE.local.md</code> 作为本地覆盖。同一候选组内，trim 后内容相同的文件只渲染一次（<code>CLAUDE.md</code> 复制 <code>AGENTS.md</code> 不会重复）。<strong>不是持续 watch</strong>：只有 <code>read</code>/<code>write</code>/<code>edit</code> 成功触达更深目录时才把新适用的文件带进下一次请求；文件改动替换原内容，文件消失或与更早候选重复则产生一条移除通知；resume 时对账基线。</p>
+      <dl class="kv">
+        <dt>关键参数与默认值</dt>
+        <dd><code>maxBytes</code> 必填，<code>dsh-base</code> 设 <code>65536</code>（整条基线消息）；单文件 <code>maxSourceBytes = 1048576</code>；<code>projectRootMarkers = ['.git']</code>；基础候选 <code>AGENTS.md</code>、<code>CLAUDE.md</code>，本地候选 <code>AGENTS.local.md</code>、<code>CLAUDE.local.md</code>；超预算时<strong>先整份省略更宽的（更靠上的）文件，再截断最具体的那个</strong>。<span class="tag tag--ok">已核实</span></dd>
+        <dt>设计意图</dt>
+        <dd>把预算优先给“最具体”的规则，而不是“最通用”的规则——这与 Codex 正好相反。按需发现（只在触达时加载）避免了启动时扫描整棵树，代价是第一次进入新目录时规则可能还没到，模型已经先做了一步。<span class="tag tag--guess">推断</span></dd>
+        <dt>来源</dt>
+        <dd>
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/context/agent-instructions/README.md#L12">agent-instructions/README.md#L12</a>（加载链与去重）·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/context/agent-instructions/README.md#L50-L68">同文#L50-L68</a>（配置表）·
+          <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/bundle/base/cordis.patch.yml#L303-L306">bundle/base/cordis.patch.yml#L303-L306</a>（实际预算）
+        </dd>
+      </dl>
+      <p class="modal__note">dsh 的结论来自同仓文档与包 README，未逐行核对源码，按【推断】处理；“maxBytes 65536”是源码配置，按【已核实】处理。</p>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

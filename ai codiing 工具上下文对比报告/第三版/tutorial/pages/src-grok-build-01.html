@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Grok Build · 自动压缩与 7 段装配 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+  /* 本页专属：思考题提示折叠块（未新增 class，仅给 <details> 加页面内样式） */
+  #src-grok-build-01 details {
+    margin: 10px 0 2px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+  #src-grok-build-01 details > summary {
+    color: var(--accent-strong);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #src-grok-build-01 details > p {
+    margin: 8px 0 0;
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  /* 长路径、长哈希在 375px 下允许断行，避免撑破卡片 */
+  #src-grok-build-01 .path-card code,
+  #src-grok-build-01 .callout code,
+  #src-grok-build-01 .quiz__q code,
+  #src-grok-build-01 details code {
+    overflow-wrap: anywhere;
+  }
+  /* 行内代码里的长路径/长哈希允许断行，避免 375px 横向溢出 */
+  #src-grok-build-01 code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body data-chapter="src-grok-build-01">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="../index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose" id="src-grok-build-01">
+
+    <header class="page-head">
+      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Grok Build</span><span>·</span><span>第 01 节</span></p>
+      <h1>自动压缩与 7 段装配</h1>
+      <p class="lede">别的工具压缩时想的是「保住哪一段尾巴」，Grok Build 想的是「把整段历史扔掉，再从零件箱里重新装一份」。这份新历史只有七个插槽，顺序还被刻意安排过。这一节读两段代码：什么时候决定压，以及压完到底装了什么。</p>
+      <ul class="meta">
+        <li>约 17 分钟</li>
+        <li>3 张图</li>
+        <li>L3 → L4</li>
+        <li>源码 <code>2bdd1d6</code></li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说出自动压缩的五条触发路径，以及每条路径在链路上的位置。</li>
+          <li>按顺序背出压缩后历史的七个插槽，并解释「最近消息为什么排在摘要之前」。</li>
+          <li>解释 9 段摘要里「继承上一次摘要」那一句为什么是多次压缩不丢信息的关键。</li>
+          <li>对比 Codex、Claude Code、pi、DeepSeek Harness 的压缩产物，指出 full-replace 的代价。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div class="callout callout--quiet">
+      <p class="callout__title">读之前</p>
+      <p>这一节读的是 Rust 源码，函数名与字段名都是原始命名，没有经过打包还原。所有行号对应提交 <code>2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8</code>。仓库没有发布 tag，<code>SOURCE_REV</code> 记录的是上游 monorepo 的提交，不是语义化版本号，所以文中一律用提交号定位。</p>
+    </div>
+
+    <!-- ================= 01 功能说明 ================= -->
+    <section id="s1">
+      <p class="sec-no">01 · 功能说明</p>
+      <h2>先决定「该压了」，再决定「压完长什么样」</h2>
+
+      <p>Grok Build 的压缩叫 <b>full-replace</b>：它不挑一段尾巴保留，而是把整段对话交给模型写摘要，然后用一份全新的历史替换掉旧历史。源码注释写得很直白——<q>grok-build does not select a tail to keep; it summarizes the whole conversation and rebuilds a fresh history from scratch</q>（<code>code_compaction/compact.rs</code> 文件头）。<span class="tag tag--ok">已核实</span></p>
+
+      <p class="lead-in">「整段替换」听起来很粗暴，但它把一个问题拆成了两个可以分别验证的小问题：什么时候该压，以及压完的历史由哪几块拼成。</p>
+
+      <p>第一个问题由 <code>check_auto_compact_needed()</code> 回答，它在每次采样前被调用一次，返回 <code>Some</code> 就立刻压缩。第二个问题由 <code>assemble_compacted_history()</code> 回答，它是一个纯函数：输入七个已经准备好的片段，输出一个新的消息数组，不读磁盘、不发请求、不碰会话状态。这种「判定」与「装配」彻底分开的写法，让装配部分可以单独写单元测试——仓库里确实有一组测试专门断言插槽顺序（<code>grok_build_order_recent_before_summary</code>）。</p>
+
+      <p>把整条链路摊开，压缩一共有五步。本节讲第 1 步和第 4 步：一头一尾，正好是「要不要压」和「压成什么样」。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 268" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">Grok Build 压缩链路的五个步骤，本节讲第 1 步和第 4 步</title>
+          <desc id="fig-1-desc">五条横向色带从上到下排列：触发判定、准备待摘要历史、生成九段摘要、装配七段历史、替换并落盘。第一条和第四条为橙色，标注本节范围；其余为浅色底。</desc>
+          <rect class="svg-seg--c" x="8" y="10" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="26" y="35" text-anchor="middle">1</text>
+          <text class="svg-label" x="48" y="35">触发判定：五条路径</text>
+          <text class="svg-label" x="620" y="35" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="56" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="81" text-anchor="middle">2</text>
+          <text class="svg-label svg-label--dark" x="48" y="81">准备待摘要历史</text>
+          <text class="svg-note" x="620" y="81" text-anchor="end">图片预算 + 输入降级阶梯</text>
+
+          <rect class="svg-track" x="8" y="102" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="127" text-anchor="middle">3</text>
+          <text class="svg-label svg-label--dark" x="48" y="127">生成摘要：9 段 + 3 次重试</text>
+          <text class="svg-note" x="620" y="127" text-anchor="end">短于 500 字符算退化</text>
+
+          <rect class="svg-seg--c" x="8" y="148" width="624" height="38" rx="8"/>
+          <text class="svg-label" x="26" y="173" text-anchor="middle">4</text>
+          <text class="svg-label" x="48" y="173">装配七段历史</text>
+          <text class="svg-label" x="620" y="173" text-anchor="end">← 本节</text>
+
+          <rect class="svg-track" x="8" y="194" width="624" height="38" rx="8"/>
+          <text class="svg-label svg-label--dark" x="26" y="219" text-anchor="middle">5</text>
+          <text class="svg-label svg-label--dark" x="48" y="219">替换历史 + 写检查点</text>
+          <text class="svg-note" x="620" y="219" text-anchor="end">起点之后缓存全部失效</text>
+
+          <text class="svg-note" x="8" y="256">第 2、3 步在 xai-grok-shell 里；第 4 步在 xai-grok-compaction 里，是纯函数。</text>
+        </svg>
+        <figcaption>图 1　压缩的五个步骤。本节只讲橙色的第 1 步和第 4 步：前者决定「压不压」，后者决定「压完留下什么」。中间的摘要生成是另一套代码，本节只在需要解释字段含义时引用。</figcaption>
+      </figure>
+
+      <p>为什么要先看这两步？因为大多数关于压缩的困惑都出在这里。用户看到的是「压完之后我的需求还在，但文件内容没了」；工程师要能回答的是「它在第 1 步用什么数做的判断，在第 4 步按什么顺序拼的零件」。这两件事都能从源码里读出来，不需要猜。</p>
+
+      <p>有一个前提要先说清：压缩的产物<b>不是</b>「旧历史加一段摘要」，而是「一份全新的历史」。旧的工具结果、旧的助手回复、旧的推理过程，一条都不会进新历史。它们唯一的存在方式是摘要里的一句话。这一点决定了后面所有的顺序问题。</p>
+    </section>
+
+    <!-- ================= 02 链接 ================= -->
+    <section id="s2">
+      <p class="sec-no">02 · 固定到提交的链接</p>
+      <h2>四个位置，覆盖「判定」与「装配」</h2>
+
+      <p>下面四条链接都固定到同一个提交。写之前用 <code>wc -l</code> 和 <code>sed -n</code> 逐条核对过：文件存在、起止行与正文描述一致、浏览器打开后高亮的就是这几行。</p>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>① 采样前的判定入口</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/compaction.rs#L2151-L2206">crates/codegen/xai-grok-shell/src/session/compaction.rs#L2151-L2206</a><br>
+          <code>check_auto_compact_needed()</code>：读窗口、取估算 token、刷新状态栏、检查抑制状态，最后交给阈值比较。</p>
+        </div>
+        <div class="path-card">
+          <h3>② 阈值比较本体</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/compaction.rs#L2095-L2117">…/session/compaction.rs#L2095-L2117</a><br>
+          <code>should_auto_compact()</code>：调用 <code>exceeds_threshold()</code>，整数运算、边界取 <code>&gt;=</code>，命中就返回一个带百分比的触发信息。</p>
+        </div>
+        <div class="path-card">
+          <h3>③ 七段装配（本节主角）</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/common/xai-grok-compaction/src/code_compaction/assemble.rs#L62-L102">crates/common/xai-grok-compaction/src/code_compaction/assemble.rs#L62-L102</a><br>
+          <code>assemble_compacted_history()</code>：41 行，七个可选/必选插槽，没有 I/O。</p>
+        </div>
+        <div class="path-card">
+          <h3>④ 摘要内容如何被包装</h3>
+          <p><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/common/xai-grok-compaction/src/code_compaction/summary.rs#L130-L146">…/code_compaction/summary.rs#L130-L146</a><br>
+          <code>format_compact_summary_content()</code> 加固定前言；<code>wrap_user_query()</code> 给最后一条请求重新套标签。</p>
+        </div>
+      </div>
+
+      <p class="small muted">补充证据（正文会引用）：9 段摘要提示词在 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/common/xai-grok-compaction/src/code_compaction/templates/full_replace_summary_prompt.txt#L1-L19">full_replace_summary_prompt.txt#L1-L19</a>；阈值的五级覆盖在 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/util/config/resolve/compaction.rs#L39-L89">util/config/resolve/compaction.rs#L39-L89</a>。</p>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">【订正】与大纲、事实卡片的三处出入</p>
+        <p>一、大纲把 <code>check_auto_compact_needed</code> 标在 <code>compaction.rs:2095</code>，实际 L2095 是它调用的 <code>should_auto_compact</code>；判定入口在 L2151。二、事实卡片把装配函数标为 <code>assemble.rs:60-L115</code>，函数体实际是 L62-L102，L104 之后是单元测试。三、卡片说装配结果是「7 段」，这个说法只在插槽意义上成立：生产路径上 <code>recent_messages</code> 一般是空的（见第 4 节第 5 小节的【订正】），运行时通常只有 4 到 6 条消息。</p>
+      </div>
+    </section>
+
+    <!-- ================= 03 源码摘录 ================= -->
+    <section id="s3">
+      <p class="sec-no">03 · 源码摘录</p>
+      <h2>两段代码：一个判断，一次装配</h2>
+
+      <p>第一段是判定入口，为了篇幅省略了 16 行调试用的强制压缩分支（它只影响开发构建，由 <code>force_compact</code> 原子标志触发）；省略处已标注行号与原因，语义没有改动。第二段是装配函数本体，一行未删。</p>
+
+      <p class="small muted">文件：<code>crates/codegen/xai-grok-shell/src/session/compaction.rs</code>　行号：L2151-L2206（节选 26 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line">pub(crate) async fn check_auto_compact_needed(&amp;self) -&gt; Option&lt;AutoCompactTriggerInfo&gt; {</span>
+<span class="code__line">    if self.memory.is_flushing.load(Relaxed) { <span class="cmt">// 原为 5 行链式调用，此处合并</span></span>
+<span class="code__line">        return None; <span class="cmt">// 记忆 flush 正在写，先别动历史</span></span>
+<span class="code__line">    }</span>
+<span class="code__line">    let sampling_cfg = self.chat_state_handle.get_sampling_config().await;</span>
+<span class="code__line">    let context_window = sampling_cfg.as_ref().map(|c| c.context_window)?; <span class="cmt">// 没配窗口=不压</span></span>
+<span class="code__line">    let cw = context_window.get();</span>
+<span class="code__line">    let estimated_total = self.chat_state_handle.get_estimated_total_tokens().await;</span>
+<span class="code__line">    self.signals_handle().update_context_usage(estimated_total, cw); <span class="cmt">// 顺手刷新状态栏</span></span>
+<span class="code__line">    if self.compaction.is_suppressed() {</span>
+<span class="code__line">        return None; <span class="cmt">// 上次失败且在抑制期内：这一轮不再试</span></span>
+<span class="code__line">    }</span>
+<span class="code__line code__line--cmt">// …（省略 30 行：debug 强制触发分支 23 行 + 两处 tracing 日志 7 行）</span>
+<span class="code__line">    if let Some(trigger_info) = self.should_auto_compact(estimated_total, context_window) {</span>
+<span class="code__line">        return Some(trigger_info);</span>
+<span class="code__line">    }</span>
+<span class="code__line">    None</span>
+<span class="code__line">}</span>
+<span class="code__line">pub(crate) fn should_auto_compact(&amp;self, total_tokens: u64, context_window: NonZeroU64)</span>
+<span class="code__line">    -&gt; Option&lt;AutoCompactTriggerInfo&gt; {</span>
+<span class="code__line">    let cw = context_window.get();</span>
+<span class="code__line">    if xai_token_estimation::exceeds_threshold(total_tokens, cw,</span>
+<span class="code__line">            self.compaction.threshold_percent.get()) { <span class="cmt">// used*100 &gt;= cw*pct</span></span>
+<span class="code__line">        let percentage = xai_token_estimation::usage_percentage_u8(total_tokens, cw);</span>
+<span class="code__line">        Some(AutoCompactTriggerInfo { tokens_used: total_tokens, context_window: cw,</span>
+<span class="code__line">            percentage, reason_override: None })</span>
+<span class="code__line">    } else { None } <span class="cmt">// 没到线，什么都不做</span></span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">文件：<code>crates/common/xai-grok-compaction/src/code_compaction/assemble.rs</code>　行号：L62-L102（全文 32 行）</p>
+      <div class="codeblock" data-lang="rs">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">Rust</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line code__line--cmt">// 输入是七个已经准备好的片段，输出一份新历史；没有 I/O，没有分支副作用</span>
+<span class="code__line">pub fn assemble_compacted_history&lt;T: CompactionItemFactory&gt;(</span>
+<span class="code__line">    parts: CompactedHistoryParts&lt;T&gt;,</span>
+<span class="code__line">) -&gt; Vec&lt;T&gt; {</span>
+<span class="code__line">    let mut compacted: Vec&lt;T&gt; = vec![</span>
+<span class="code__line">        parts.system_message, <span class="cmt">// 1. 原系统提示词，原样带过</span></span>
+<span class="code__line">        T::new_user_meta(parts.user_message_prefix), <span class="cmt">// 2. &lt;user_info&gt; 前缀，不包 &lt;user_query&gt;</span></span>
+<span class="code__line">    ];</span>
+<span class="code__line">    if let Some(ref reminder) = parts.agents_md_reminder { <span class="cmt">// 3. AGENTS.md 原文重注，不经摘要</span></span>
+<span class="code__line">        compacted.push(T::new_project_instructions(reminder.clone()));</span>
+<span class="code__line">    }</span>
+<span class="code__line code__line--cmt">// 4. 最后一条真实用户请求，重新包一层 &lt;user_query&gt;（L78-L81）</span>
+<span class="code__line">    if let Some(ref last_query) = parts.last_user_query {</span>
+<span class="code__line">        compacted.push(T::new_user(wrap_user_query(last_query.as_str())));</span>
+<span class="code__line">    }</span>
+<span class="code__line">    let mut formatted_summary <span class="cmt">// 摘要先清洗，再拼 transcript 指针</span></span>
+<span class="code__line">        = format_compact_summary_content(&amp;parts.compaction_summary); = format_compact_summary_content(&amp;parts.compaction_summary);</span>
+<span class="code__line">    if let Some(ref hint) = parts.transcript_hint {</span>
+<span class="code__line">        formatted_summary.push_str(hint);</span>
+<span class="code__line">    }</span>
+<span class="code__line">    let summary_item = T::new_user_meta(formatted_summary);</span>
+<span class="code__line code__line--cmt">// 5 与 6：最近消息在前，摘要在后 —— 顺序反直觉，注释专门写明了（L91-L95）</span>
+<span class="code__line">    for msg in parts.recent_messages {</span>
+<span class="code__line">        compacted.push(msg);</span>
+<span class="code__line">    }</span>
+<span class="code__line">    compacted.push(summary_item);</span>
+<span class="code__line code__line--cmt">// 7. 状态提醒（改过的文件、运行中的任务、子代理…）永远在最后（L97-L99）</span>
+<span class="code__line">    if let Some(ref reminder) = parts.system_reminder {</span>
+<span class="code__line">        compacted.push(T::new_system_reminder(reminder.clone()));</span>
+<span class="code__line">    }</span>
+<span class="code__line">    compacted</span>
+<span class="code__line">}</span>
+</code></pre>
+      </div>
+
+      <p class="small muted">两段合计 58 行（26 + 32），都在 60 行以内。第一段省略 16 行调试分支，用「…（省略 N 行：原因）」标注；第二段是完整函数体。</p>
+    </section>
+
+    <!-- ================= 04 逐段解读 ================= -->
+    <section id="s4">
+      <p class="sec-no">04 · 逐段解读</p>
+      <h2>五个决定，从「什么时候」到「什么顺序」</h2>
+
+      <h3>第 1 段　估算值：不是上一次的 usage，而是 usage 加增量</h3>
+
+      <p>判定的输入只有一个数：<code>get_estimated_total_tokens()</code>。它不是「上一次模型返回的 total_tokens」，而是<b>上一次上报值加上此后新增项的字节估算</b>。源码里的字段叫 <code>total_tokens + estimated_tokens_since_model</code>，意思很明确：工具结果刚写进历史、模型还没看过，这段时间的增量必须自己估，否则压缩永远慢一轮。</p>
+
+      <p>估算函数在 <code>xai-token-estimation</code> 里，规则是 <code>字节数 / 4</code>（整数除法，向下取整），图片每张记 765 token。<span class="tag tag--ok">已核实</span>这里有个容易被忽略的细节：<code>s.len()</code> 是 UTF-8 字节数，不是字符数。一段中文按 3 字节一个字算，会被估成 0.75 token/字；而真实分词器对中文大约是 1 到 1.5 token/字。也就是说，<b>中文内容会被这套估算系统性低估</b>。对英文为主的代码仓库问题不大，对中文长文档就是风险。</p>
+
+      <p>阈值本身不是硬编码的 85。解析顺序是五级覆盖加一个常量兜底：环境变量 <code>GROK_AUTO_COMPACT_THRESHOLD_PERCENT</code> → 用户配置的 <code>[model.&lt;id&gt;]</code> → 用户配置的 <code>[session]</code> → 远端下发的 per-model 值 → 远端全局值 → 常量 <code>85</code>。<span class="tag tag--ok">已核实</span>实际使用时，模型目录常常会下发一个更保守的值，比如 <code>grok-4.6</code> 是 80。所以「Grok Build 在 85% 压缩」这句话只在没有其他配置时成立。</p>
+
+      <p>比较用的是整数运算：<code>used * 100 &gt;= cw * pct</code>。边界取 <code>&gt;=</code>，1000 token 的窗口、85% 的阈值，850 token 就触发，849 不触发。源码里有一条测试专门钉住这个语义，注释还说明它比旧版的 <code>&gt;</code> 早一个 token 触发。<span class="tag tag--ok">已核实</span></p>
+
+      <div class="callout callout--info">
+        <p class="callout__title">注意：这套判定没有「输出预留」</p>
+        <p>阈值只按 <code>total_tokens / context_window</code> 算，不扣 max_output。也就是说，它假设「历史装到 85% 时，剩下的 15% 够模型写回复」。这一点和 DeepSeek Harness 的公式（阈值取 <code>0.8W</code> 与 <code>W − O − B</code> 的较小值，显式扣掉输出预留和 headroom）是两种哲学：前者简单、把风险留给请求失败后的恢复路径；后者保守、在触发前就把空间算清。</p>
+      </div>
+
+      <h3>第 2 段　五条触发路径：同一条压缩，五个入口</h3>
+
+      <p>第 1 段讲的是其中一条路径。完整清单有五条，分别落在链路的不同位置：</p>
+
+      <p><b>① 采样前阈值触发。</b><code>check_auto_compact_needed()</code> 在每次采样前运行，估算值到线就压。这是最常见的一条，也是唯一一条「按比例」的路径。</p>
+
+      <p><b>② 预检溢出。</b><code>check_preflight_overflow()</code> 在工具循环的末尾运行：工具结果刚写进历史，估算值可能直接越过 100%。这时不等采样失败，先压一次再 <code>continue</code> 回到循环开头。<span class="tag tag--ok">已核实</span>它和①的区别是判据：①看比例，②看「是否已经超过窗口」。</p>
+
+      <p><b>③ 采样报错后压缩重发。</b>请求发出去，服务端返回上下文超限，<code>should_compact_on_error()</code> 先确认错误信息里的窗口确实小于本地估算，再压一次、重发。这条路径的存在说明前两条都可能漏：估算偏低、服务端窗口比本地认为的小、或者单条工具结果一次塞爆。</p>
+
+      <p><b>④ 手动 <code>/compact</code>。</b>用户主动触发。这一版 TUI 明确拒绝任何参数（<code>/compact takes no arguments.</code>），但压缩提示词的构建器仍然保留了 <code>user_context</code> 插槽——协议层支持「带指令压缩」，只是当前前端没开放。<span class="tag tag--ok">已核实</span></p>
+
+      <p><b>⑤ 模型切换。</b><code>maybe_compact_on_model_switch()</code> 在换模型后比较新旧窗口，只有窗口变小才压；同时清掉「因预算导致的抑制」，保留 credit / auth 这类与窗口无关的抑制。<span class="tag tag--ok">已核实</span></p>
+
+      <p>五条路径最后都汇到同一个函数，产出的都是一个 <code>AutoCompactTriggerInfo</code>（token 数、窗口、百分比、可选的 reason 覆盖）。后面所有步骤不再关心「是谁触发的」。这种「多入口、单出口」的结构值得学：触发条件可以有很多个，压缩实现只应该有一份。</p>
+
+      <p>判定入口里还有一个顺序细节值得注意：<code>is_flushing</code> 的检查排在读窗口之前，而「抑制状态」的检查排在估算之后。前者是「别和记忆写入抢历史」，后者是「压不压得起」。这两个判断分开写，是因为它们的解除条件不同——flush 结束就自动解除，压缩抑制则可能一直持续到上下文预算发生变化。源码里 <code>size</code> 与 <code>schema</code> 两类失败被标成「粘性抑制」，只有预算变化才解除。<span class="tag tag--ok">已核实</span></p>
+
+      <h3>第 3 段　摘要：9 段结构，以及那句「继承上一次」</h3>
+
+      <p>摘要提示词是一个 19 行的文本文件，正文要求模型按 9 个编号段落输出：Primary Request and Intent、Key Technical Concepts、Files and Code Sections、Errors and Fixes、Problem Solving、All User Messages、Pending Tasks、Current Work、Optional Next Step。<span class="tag tag--ok">已核实</span>每一段都要求「即使为空也要写标题并填 None」，这样格式稳定，后续解析和继承都不会因为缺段而错位。</p>
+
+      <p>九个段落里有三个是为「下一次压缩」准备的，不是为这一次：</p>
+
+      <p><b>第 3 段「Files and Code Sections」</b>要求给出完整路径、为什么重要、以及改过的代码全文（最近一次修改要完整）。工具结果在压缩后全没了，这份清单是模型以后想回到某个文件时唯一的线索。</p>
+
+      <p><b>第 6 段「All User Messages」</b>要求按顺序列出所有非工具结果的用户消息，并特别注明「不要把这段压缩指令本身算进去」。它防的是模型把系统生成的压缩提示当成用户说过的话。</p>
+
+      <p><b>第 9 段「Optional Next Step」</b>要求引用最近一条消息的原文，说明「你停在哪」。这条是为了压缩后能无缝续跑，而不是重新规划。</p>
+
+      <p>真正的关键是提示词第 3 行，原文是：<q>If earlier turns include a prior compaction summary ... treat it as authoritative for the early history and carry its still-relevant information forward into your new summary so nothing important is lost across successive compactions.</q><span class="tag tag--ok">已核实</span></p>
+
+      <p class="lead-in">这句话把「压缩」从一次性操作变成了可迭代操作：第二次压缩的输入里包含第一次的摘要，模型被要求把旧摘要的事实合并进新摘要，而不是重新概括一遍对话。</p>
+
+      <p>没有这句话会发生什么？第一次压缩把 100 轮压成 2,000 字；第二次压缩时，模型看到的是「摘要 + 最近 20 轮」，它会把摘要当成一段普通背景，重新写一份「最近 20 轮的摘要」。早期那 80 轮的信息在第二次压缩时就悄悄消失了。这就是「压缩漂移」：每一轮都看起来合理，几轮之后关键约束不见了。</p>
+
+      <p>提示词还有三道保险：禁止调用工具；只输出一个 <code>&lt;summary&gt;</code> 块；不输出单独的分析段。输出之后，代码还会清洗：剥掉 <code>&lt;analysis&gt;</code> 草稿、把正文里的控制标签插入零宽空格「拆掉」、压缩多余空行。清洗后的字符数如果小于 <code>MIN_SUMMARY_SEED_CHARS = 500</code>，视为退化，按瞬时失败重试。<span class="tag tag--ok">已核实</span>最多 3 次尝试，每次超时 120 秒，间隔 3 秒。</p>
+
+      <h3>第 4 段　七个插槽：为什么最近消息在摘要之前</h3>
+
+      <p>装配函数的输出顺序是：系统提示词 → 用户信息前缀 → AGENTS.md → 最后一条真实用户请求 → 最近消息 → 摘要 → 状态提醒。源码注释把它写成 <code>[SP, UP', AGENTS_MD?, UQ_last?, recent…, summary, reminder?]</code>，问号表示可选。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 372" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">压缩后历史的七个插槽与排列顺序</title>
+          <desc id="fig-2-desc">七个从上到下排列的方块：系统提示词、用户信息前缀、AGENTS.md 原文、最后一条用户请求、最近消息、摘要、状态提醒。摘要标为橙色并标注必须贴着对话尾部；AGENTS.md 标为青色并标注原文重注。</desc>
+          <text class="svg-note" x="8" y="18">压缩后历史，从上到下就是模型读到的顺序</text>
+
+          <rect class="svg-seg--a" x="40" y="30" width="470" height="34" rx="7"/>
+          <text class="svg-label" x="58" y="53">1　系统提示词</text>
+          <text class="svg-note" x="524" y="53">原样带过</text>
+
+          <rect class="svg-seg--a" x="40" y="70" width="470" height="34" rx="7"/>
+          <text class="svg-label" x="58" y="93">2　&lt;user_info&gt; 前缀</text>
+          <text class="svg-note" x="524" y="93">OS / shell / cwd</text>
+
+          <rect class="svg-seg--b" x="40" y="110" width="470" height="34" rx="7"/>
+          <text class="svg-label" x="58" y="133">3　AGENTS.md 原文</text>
+          <text class="svg-note" x="524" y="133">不经摘要</text>
+
+          <rect class="svg-seg--a" x="40" y="150" width="470" height="34" rx="7"/>
+          <text class="svg-label" x="58" y="173">4　最后一条用户请求</text>
+          <text class="svg-note" x="524" y="173">重包 &lt;user_query&gt;</text>
+
+          <rect class="svg-track" x="40" y="190" width="470" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark" x="58" y="213">5　最近消息（通常为空）</text>
+          <text class="svg-note" x="524" y="213">生产路径见第 5 小节</text>
+
+          <rect class="svg-seg--c" x="40" y="230" width="470" height="34" rx="7"/>
+          <text class="svg-label" x="58" y="253">6　摘要（带固定前言）</text>
+          <text class="svg-note" x="524" y="253">必须贴着尾部</text>
+
+          <rect class="svg-track" x="40" y="270" width="470" height="34" rx="7"/>
+          <text class="svg-label svg-label--dark" x="58" y="293">7　状态提醒</text>
+          <text class="svg-note" x="524" y="293">改过的文件 / 任务</text>
+
+          <line class="svg-rule" x1="8" y1="322" x2="632" y2="322"/>
+          <text class="svg-note" x="8" y="346">摘要放在最近消息之后，是因为它描述「更早的全部内容」。</text>
+          <text class="svg-note" x="8" y="366">放在中间，模型会把摘要当成一句刚说过的话，而不是背景。</text>
+        </svg>
+        <figcaption>图 2　七个插槽的实际顺序。青色是「原文重注」：AGENTS.md 不经过摘要，压缩后逐字放回；橙色是摘要，它必须紧贴历史尾部，后面只剩一条状态提醒。</figcaption>
+      </figure>
+
+      <p>「最近消息在摘要之前」是这份代码里最反直觉的一处，源码注释只写了 <q>Recent messages come first, then the summary.</q>，没有解释。合理的解释是角色定位：摘要描述的是「更早发生的一切」，它应该出现在被它概括的内容之后；如果摘要排在最近消息之前，模型读到的顺序就变成「先看总结，再看几轮具体对话」，很容易把那几轮对话当成摘要之后的续写，而不是摘要所覆盖的范围。</p>
+
+      <p>第二处反直觉的是 AGENTS.md。它不是「保留」下来的，而是<b>重新注入</b>的：压缩前从 agent 里重新取一次渲染好的 <code>&lt;system-reminder&gt;</code> 块，压缩后原样放进第 3 个插槽。源码注释写明理由：项目指令不能依赖摘要模型，它必须逐字存活。<span class="tag tag--ok">已核实</span>这条设计解决了一个常见故障：压缩后模型突然「忘了」项目里的命名规范，因为那段规则只存在于被摘要掉的系统提醒里。</p>
+
+      <p>第三处是摘要的包装。摘要正文不是裸文本，前面固定加一段前言：<q>This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.</q><span class="tag tag--ok">已核实</span>这段前言有两个作用：告诉模型「这是续接，不是新任务」；给下一次压缩一个可识别的标记（提示词里提到的 <code>"This session is being continued" preamble</code> 就是它）。</p>
+
+      <p>还有一个容易忽略的细节：摘要用的是 <code>T::new_user_meta(...)</code>，不是 <code>new_user</code>，也不是 assistant 消息。它是一条「用户角色、但不是用户原话」的消息。这个选择在三家实现里高度一致——Codex 的摘要也是用户消息，DeepSeek Harness 的压缩检查点同样是 <code>user/message</code>。原因不是审美，而是协议约束：多数模型的对话模板要求「最后一条是用户消息」才能续写；把摘要放进 assistant 角色，下一次请求就变成「助手刚说完一段总结，用户没说话」，模型容易把它当成待续写的半成品。</p>
+
+      <p>最后一条状态提醒（<code>system_reminder</code>）装的是「压缩这一刻的环境事实」：改过哪些文件、有哪些后台任务在跑、有哪些子代理没结束、哪些 MCP 服务器连着。它放在最后，因为它是「现在」而不是「过去」，而且每次压缩都要重新生成。注意它排在摘要之后，也就是说，模型读到的最后一句不是总结，而是「当前环境」——这又一次说明顺序是被刻意设计的，不是随手拼的。</p>
+
+      <h3>第 5 段　【订正】生产路径上的「7 段」通常只有 4 到 6 条</h3>
+
+      <p>上面的七个插槽来自通用装配器 <code>xai-grok-compaction</code>。但 Grok Build 的 shell 实际调用的是 <code>xai-chat-state</code> 里的 <code>build_compacted_history()</code>（<code>compaction_utils.rs</code> L920-L991），它是同一套顺序的超集：多了一个「agent message anchor」插槽，还可以通过 <code>summary_before_recent</code> 开关把摘要提到最近消息之前。</p>
+
+      <p>更关键的是 <code>for_compaction()</code>（L691-L710）：它把 <code>recent_messages</code> 直接置空。源码注释给出的理由是 <q>For a single-real-user-turn sub-agent, keeping recent_messages frees almost nothing and re-cues the model to re-read the same files.</q><span class="tag tag--ok">已核实</span>回归测试的名字更直白：<code>grok_build_compaction_drops_working_tail_regression_206460</code>，注释说保留的尾巴最后只剩下 <q>Tool call omitted...</q> 这种死 token。</p>
+
+      <p class="lead-in">所以准确的表述是：装配器有七个插槽，但 Grok Build 在压缩时主动放弃了第 5 个。真实产物通常是「系统提示词 + 前缀 + AGENTS.md + 最后请求 + 摘要 + 状态提醒」，六条；没有 AGENTS.md 或状态提醒时更少。</p>
+
+      <p>这个订正不影响理解顺序，但影响你读压缩后的会话：如果你在日志里数出六条消息，那不是实现漏了一段，而是设计上就不要那段尾巴。放弃尾巴的代价很实在——压缩前最后几轮的工具结果（比如刚读到的文件内容）不会保留，模型只能靠摘要里的「Files and Code Sections」重建。</p>
+
+      <h3>第 6 段　代价：一次替换，缓存从切点开始失效</h3>
+
+      <p>full-replace 的缓存代价可以精确描述：新历史的前两个插槽（系统提示词、用户前缀）与旧历史逐字节相同，可以命中缓存；从第三个插槽开始就分叉了——旧历史那里是第一条用户消息，新历史那里是 AGENTS.md 或最后一条请求。所以<b>缓存的有效前缀大约只到系统提示词结束</b>。</p>
+
+      <p>这也是为什么装配顺序把最稳定的东西放前面：系统提示词、用户前缀、AGENTS.md 都是「会话内基本不变」的内容。理论上它们可以形成一段较长的可复用前缀，但压缩把中间的历史抽走了，后续请求的前缀仍然对不上——除非下一次压缩又生成同样的开头。源码没有为压缩做「暖前缀」的特殊处理（DeepSeek Harness 会逐字节复用被遮蔽区间来暖摘要请求），所以压缩后的第一次请求基本是全价。</p>
+
+      <div class="hf hf--takeaway">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
+        <div class="hf__body">
+          <ul>
+            <li>五条触发路径，最后都汇成一个 <code>AutoCompactTriggerInfo</code>；阈值默认 85，可被五级配置覆盖。</li>
+            <li>估算 = 上次上报值 + 新增字节数 ÷ 4；中文按字节算，会被低估。</li>
+            <li>摘要是 9 段固定结构；「继承上一次摘要」是多次压缩不丢信息的关键一句。</li>
+            <li>七段装配：SP → 前缀 → AGENTS.md → 最后请求 → 最近消息 → 摘要 → 提醒；摘要贴尾。</li>
+            <li>生产路径主动丢掉最近消息，所以实际通常只有 4 到 6 条；缓存从第三个插槽起失效。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 05 差异 ================= -->
+    <section id="s5">
+      <p class="sec-no">05 · 与其他工具的差异</p>
+      <h2>同样是「压缩后留一点」，五家留的东西完全不同</h2>
+
+      <p>把五个工具放在一张表里，分歧点立刻显现：Grok Build 和 DeepSeek Harness 都是「整段替换」，但一个重新装配七段、一个只落一条替换消息；Codex 和 pi 都是「保留一段」，但一个只留用户消息、一个留连续尾巴；Claude Code 干脆不留对话，改留「文件与技能清单」。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">压缩产物</th>
+              <th scope="col">保留预算</th>
+              <th scope="col">摘要结构</th>
+              <th scope="col">代价</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td>整段替换，重新装配 7 个插槽</td>
+              <td>无「尾巴预算」；最近消息实际置空</td>
+              <td>9 段，要求继承旧摘要</td>
+              <td>工具细节全丢，缓存从第 3 槽失效</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td>初始上下文 + 选中的用户消息 + 摘要</td>
+              <td><code>20_000</code>（远端 <code>64_000</code>）</td>
+              <td>4 段式模板</td>
+              <td>助手与工具内容只剩摘要</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td>边界消息 + 摘要 + 重附清单</td>
+              <td>文件 <code>50_000</code>、技能 <code>25_000</code></td>
+              <td><code>&lt;analysis&gt;</code> + <code>&lt;summary&gt;</code></td>
+              <td>清单之外的对话全丢</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td>摘要 + 切点之后的连续尾巴</td>
+              <td><code>keepRecentTokens</code> <code>20_000</code></td>
+              <td>历史摘要 + 可选轮前缀摘要</td>
+              <td>切点搜索复杂，尾巴占预算</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td>一条 <code>user/message</code> 替换一个区间</td>
+              <td><code>(W − O) × 16%</code> 保留尾部</td>
+              <td>8 段，要求合并旧摘要</td>
+              <td>尾部之外全被子树遮蔽</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表注：Grok Build 数据来自本节 permalink；Codex 来自 <code>research/codex.md</code> 第 8 节（提交 <code>76ed3b4</code>）；Claude Code 来自 v2.1.88 源码（<code>compact.ts</code> 的重附常量与 <code>prompt.ts</code> 的摘要格式）；pi 来自 <code>research/pi.md</code> 第 8 节（提交 <code>b45e0eb</code>）；DeepSeek Harness 来自 <code>research/dsh.md</code> 第 8 节（提交 <code>5719020</code>）。</p>
+
+      <p>三个值得单独说的对照：</p>
+
+      <p><b>一是「保留」的语义。</b>Codex 的 20,000 token 预算装的是用户原话，所以压缩后模型还能看到你三小时前那句「不要改 public API」；Grok Build 没有这个预算，它把这些话交给摘要的第 6 段「All User Messages」。前者保真度高、占空间；后者省空间、但依赖摘要模型愿不愿意逐条抄。Grok Build 的提示词用全大写 <code>List ALL messages</code> 来强调，说明这件事确实容易被偷懒。</p>
+
+      <p><b>二是「原文重注」的范围。</b>Grok Build 只重注 AGENTS.md 与用户信息前缀；Claude Code 重注的是「最近改过的 5 个文件 + 用过的技能正文 + plan」。前者假设「规则比代码重要」，后者假设「代码比规则重要」。这个假设直接决定压缩后模型的第一反应：是先去读文件，还是先遵守规则。</p>
+
+      <p><b>三是摘要的继承方式。</b>Grok Build 在提示词里要求「把旧摘要的事实带过来」；DeepSeek Harness 在提示词里要求「合并旧 <code>&lt;compacted-summary&gt;</code>、丢弃过时项」；pi 则把上一次摘要作为 <code>previousSummary</code> 传入并切换成 UPDATE 版提示词。三家做法不同，但都承认同一件事：<b>不显式要求继承，模型就会重新概括，早期信息一定漂移。</b></p>
+
+      <p>最后说 full-replace 的结构性代价。它无法处理「单个不可分割单元超过窗口」的情况：一条巨长的工具结果或一条超长用户消息，压缩只会把它写进摘要，而摘要请求本身也会超窗。Grok Build 的应对是在压缩请求前做图片预算整形、并保留「逐级降级输入」的阶梯（verbatim → fitted → lossy），但阶梯的实现在 shell 侧，不在这个纯函数里。这也是为什么第 3 步「准备待摘要历史」在图上被单独列成一步。</p>
+    </section>
+
+    <!-- ================= 06 思考题 ================= -->
+    <section id="s6">
+      <p class="sec-no">06 · 思考题</p>
+      <h2>三道题，从读代码到改设计</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">窗口 200,000，阈值取默认 85，当前估算 169,000。会触发压缩吗？如果这段历史是纯中文，你的判断需要修正吗？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先算 <code>200000 × 85 / 100</code>，再看比较符是 <code>&gt;</code> 还是 <code>&gt;=</code>（<code>xai-token-estimation</code> 的测试钉住了边界）。</p>
+          <p>再想估算的单位：<code>estimate_tokens</code> 用的是 <code>s.len()</code>（UTF-8 字节）还是字符数？中文一个字几字节？这意味着 169,000 这个「估算值」对应的真实 token 是更多还是更少？</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">如果把 <code>assemble_compacted_history</code> 里的 <code>summary_item</code> 移到 <code>recent_messages</code> 之前，会发生什么？请从「模型如何理解顺序」和「缓存前缀」两个角度各说一条。</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>摘要的固定前言是「This session is being continued…」，它是一段「对更早内容的概括」。如果它出现在最近两轮具体对话之前，模型读到的因果顺序是什么？</p>
+          <p>缓存角度：摘要文本每次压缩都不同（模型输出），把它前移会让「稳定前缀」变长还是变短？</p>
+        </details>
+      </div>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你的任务是「连续改 8 个文件，最后统一 review」。Grok Build 的 full-replace 会在哪里让你难受？只允许改一个地方，你改哪里、代价是什么？</p>
+        </div>
+        <details>
+          <summary>提示（不给答案）</summary>
+          <p>先看第 5 小节：生产路径把 <code>recent_messages</code> 置空，理由是「留着也只是 Tool call omitted 这种死 token」。如果你的任务恰恰依赖最近几轮的工具结果，这个理由还成立吗？</p>
+          <p>再对照 pi：它保留「切点之后的连续尾巴」，并且绝不切在 <code>toolResult</code> 上。如果照搬，Grok Build 需要在装配前多做哪一件事（提示：谁来保证工具调用和结果成对）？</p>
+          <p>最后想清楚：只改装配、不改「收集待摘要历史」那一步，够不够？</p>
+        </details>
+      </div>
+    </section>
+
+    <p class="footer-note">下一节：<a href="src-grok-build-02.html">Grok Build · 零成本裁剪：软裁剪与硬清空</a></p>
+
+  </article>
+</main>
+
+<script src="../assets/js/toc.js"></script>
+<script src="../assets/js/search-index.js"></script>
+<script src="../assets/js/app.js"></script>
+</body>
+</html>

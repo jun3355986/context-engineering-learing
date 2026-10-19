@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>第 0 章 导读 · AI Coding Agent 上下文管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
+<script>
+  try {
+    var t = localStorage.getItem("ctx-theme");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="./assets/css/main.css">
+</head>
+<body data-chapter="intro-00">
+<a class="skip-link" href="#main">跳到正文</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+  </button>
+  <a class="brand" href="./index.html">
+    <span class="brand__mark" aria-hidden="true">ctx</span>
+    <span class="brand__text">AI Coding Agent 上下文管理</span>
+  </a>
+  <div class="topbar__tools">
+    <div class="search" role="search">
+      <svg class="search__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+      <input class="search__input" id="search-input" type="search" placeholder="搜索章节" autocomplete="off" aria-label="搜索章节" aria-controls="search-results" aria-expanded="false">
+      <div class="search__results" id="search-results" hidden></div>
+    </div>
+    <button class="icon-btn theme-btn" id="theme-btn" type="button" aria-label="切换到深色模式">
+      <svg class="ico ico--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 12.5A6.5 6.5 0 0 1 7.5 4a6.5 6.5 0 1 0 8.5 8.5Z"/></svg>
+      <svg class="ico ico--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<aside class="sidebar" id="sidebar" aria-label="教程目录">
+  <div class="sidebar__inner">
+    <div class="recent" id="recent" hidden></div>
+    <nav class="nav" id="nav" aria-label="章节导航"></nav>
+    <div class="sidebar__foot">
+      <a href="./pages/_components.html">组件示范页</a> · 版本 2026-10-18<br>
+      纯静态页面，可离线阅读
+    </div>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <article class="prose">
+
+    <header class="page-head">
+      <p class="kicker"><b>第 0 章 · 导读</b><span>·</span><span>第三版</span><span>·</span><span>2026-10-18</span></p>
+      <h1>先看地图，再决定怎么读</h1>
+      <p class="lede">这套教程讲一件事：AI 编程工具的「上下文」是怎么被装进去、用掉、压缩和隔离的。读完入门部分，你能看懂工具在做什么；读完进阶部分，你能为不同场景设计策略，并说清代价。</p>
+      <ul class="meta">
+        <li>16 类上下文管理能力</li>
+        <li>8 个工具</li>
+        <li>L1–L5 五级能力</li>
+        <li>入门 7 章 + 主线 16 章</li>
+      </ul>
+      <div class="learn">
+        <h2>读完你能做到</h2>
+        <ol>
+          <li>说清一次请求里到底装了哪些东西，各自占多少。</li>
+          <li>判断一个工具在压缩、裁剪、隔离上做了什么取舍。</li>
+          <li>为自己的项目写一套上下文策略，并用评测数据证明它更好。</li>
+        </ol>
+      </div>
+    </header>
+
+    <div data-recent-slot></div>
+
+    <section id="map">
+      <p class="sec-no">01 · 教程地图</p>
+      <h2>五个部分，一条从「会用」到「能评估」的路线</h2>
+      <p>整套教程按能力层级组织，而不是按工具逐个介绍。每个工具的做法都放在同一类问题下对比，这样你能看到「同一个麻烦，各家怎么解」。</p>
+
+      <div class="map-grid">
+        <div class="map-card">
+          <p class="map-card__part">PART 1</p>
+          <h3>入门</h3>
+          <p class="map-card__count">7 章 · L1–L2</p>
+          <p>先建立直觉：窗口里装了什么、为什么会满、满了之后模型为什么变笨。</p>
+          <p class="map-card__sample">上下文窗口是什么 · 一次请求里装了什么 · Prompt cache 与成本</p>
+        </div>
+        <div class="map-card">
+          <p class="map-card__part">PART 2</p>
+          <h3>主线</h3>
+          <p class="map-card__count">16 章 · L2→L3</p>
+          <p>16 类能力逐类拆开：Codex 主线讲解、8 个工具弹窗、对比表、设计取舍、小测验。</p>
+          <p class="map-card__sample">规则文件 · 按需加载 · 压缩 · 子代理隔离 · 会话时间线</p>
+        </div>
+        <div class="map-card">
+          <p class="map-card__part">PART 3</p>
+          <h3>进阶</h3>
+          <p class="map-card__count">5 章 · L4–L5</p>
+          <p>不再问「怎么做」，改问「为什么这样选、代价是什么、怎么证明」。</p>
+          <p class="map-card__sample">设计取舍 · 失败案例 · 架构对比 · 评估方法</p>
+        </div>
+        <div class="map-card">
+          <p class="map-card__part">PART 4</p>
+          <h3>源码</h3>
+          <p class="map-card__count">8 个工具 · 固定提交</p>
+          <p>每段解读固定到提交和行号，摘录不超过 60 行，逐行加中文注释。</p>
+          <p class="map-card__sample">Codex CLI · Claude Code · pi · opencode · Grok Build · dsh</p>
+        </div>
+        <div class="map-card">
+          <p class="map-card__part">APPENDIX</p>
+          <h3>附录</h3>
+          <p class="map-card__count">5 篇 · 速查</p>
+          <p>术语、参数、16 类总表、推荐阅读，以及视频分镜脚本。</p>
+          <p class="map-card__sample">术语表 · 参数速查 · 16 类 × 8 工具总表 · 推荐阅读</p>
+        </div>
+      </div>
+
+      <p class="small muted">源码各章的具体篇目由 06 号票确定后补入导航；当前显示为占位标题。</p>
+    </section>
+
+    <section id="levels">
+      <p class="sec-no">02 · 能力分级</p>
+      <h2>L1 到 L5，每一级差在哪</h2>
+      <p>分级不是为了考试，而是帮你判断「这一章现在要不要读」。L1–L2 在入门部分完成，L3 靠主线和源码，L4–L5 在进阶部分。</p>
+
+      <div class="level-list">
+        <div class="level-row">
+          <div><span class="level-badge">L1</span></div>
+          <div>
+            <h3>会用</h3>
+            <p>会写规则文件；知道什么时候该 <code>/compact</code>、<code>/clear</code>，什么时候该开子代理。</p>
+          </div>
+          <div class="level-where">入门 1–3 章<br>主线 6–8 章的操作部分</div>
+        </div>
+        <div class="level-row">
+          <div><span class="level-badge">L2</span></div>
+          <div>
+            <h3>懂原理</h3>
+            <p>知道上下文由哪些部分组成、各占多少；理解 prompt cache、context rot、lost in the middle。</p>
+          </div>
+          <div class="level-where">入门 4–7 章<br>主线各章的概念部分</div>
+        </div>
+        <div class="level-row">
+          <div><span class="level-badge">L3</span></div>
+          <div>
+            <h3>能实现</h3>
+            <p>能自己写一个 agent 循环，实现计数、截断、压缩、子代理和会话持久化。</p>
+          </div>
+          <div class="level-where">主线 16 章<br>源码解读</div>
+        </div>
+        <div class="level-row">
+          <div><span class="level-badge">L4</span></div>
+          <div>
+            <h3>能权衡</h3>
+            <p>能针对具体场景设计策略，并说清每种取舍的代价，而不是照抄某一家的默认值。</p>
+          </div>
+          <div class="level-where">进阶 1–4 章</div>
+        </div>
+        <div class="level-row">
+          <div><span class="level-badge">L5</span></div>
+          <div>
+            <h3>能评估</h3>
+            <p>能设计评测，用数据证明一种策略比另一种好，而不是靠感觉判断。</p>
+          </div>
+          <div class="level-where">进阶 5 章<br>附录 16 类总表</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="howto">
+      <p class="sec-no">03 · 阅读方法</p>
+      <h2>三种读法，按你手上的时间选</h2>
+      <p>这套教程不要求从头读到尾。每一章都能单独打开，章内的小测验也是「先猜再看答案」，适合碎片时间。</p>
+
+      <div class="path-list">
+        <div class="path-card">
+          <h3>只有 15 分钟：先建立框架</h3>
+          <p>读第 0 章 → <code>intro-01</code> 上下文窗口 → <code>intro-07</code> 总流程图 → <code>main-08</code> 压缩。目标不是记住细节，而是知道「上下文会满，满了要减量」。</p>
+        </div>
+        <div class="path-card">
+          <h3>系统学：按部分顺序</h3>
+          <p>入门 7 章连着读，每章的「动动脑」先自己想一遍；再进主线，一章只解决一类能力。每章末尾的要点可以单独复制成笔记。</p>
+        </div>
+        <div class="path-card">
+          <h3>当手册查：带着问题跳读</h3>
+          <p>用顶部搜索找章节，或直接翻附录的参数速查表和 16 类总表。查到某个工具的做法后，记得看它旁边的可信度标签。</p>
+        </div>
+      </div>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">读法上的一个建议</p>
+        <p>遇到「动动脑」先停十秒，把答案写在纸上或心里过一遍，再往下看。直接读答案会很快，但记不住。</p>
+      </div>
+    </section>
+
+    <section id="versions">
+      <p class="sec-no">04 · 版本表</p>
+      <h2>本版分析的源码快照</h2>
+      <p>所有关于工具行为的结论，都对应下表中的某一个快照。opencode v2 目前是 beta，结论只代表 <code>v2.0.29</code> 这个标签。</p>
+
+      <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">工具</th>
+              <th scope="col">版本 / 提交号</th>
+              <th scope="col">快照日期</th>
+              <th scope="col">依据</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="cell-tool">Codex CLI<span>codex</span></th>
+              <td><code>main@76ed3b4</code></td>
+              <td>2026-10-14</td>
+              <td>源码 + 官方文档</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
+              <td><code>v2.1.88@988438a</code></td>
+              <td>2026-10-18</td>
+              <td>非官方源码 + 官方文档交叉核对</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">pi<span>pi</span></th>
+              <td><code>main@b45e0eb</code></td>
+              <td>2026-10-14</td>
+              <td>源码</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
+              <td><code>main@f979f46</code></td>
+              <td>2026-10-14</td>
+              <td>源码</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
+              <td><code>v1.19.0@733b2c6</code></td>
+              <td>2026-10-14</td>
+              <td>源码</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">opencode v2（beta）<span>opencode-v2</span></th>
+              <td><code>v2.0.29@042d083</code></td>
+              <td>2026-10-14</td>
+              <td>源码 + v2 文档</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
+              <td><code>main@2bdd1d6</code></td>
+              <td>2026-10-18</td>
+              <td>源码 + docs.x.ai</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
+              <td><code>master@5719020</code></td>
+              <td>2026-10-14</td>
+              <td>源码</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-caption">表内为短 SHA。各章来源链接会固定到完整提交与行号；日期为快照拉取日期。</p>
+    </section>
+
+    <section id="claude">
+      <p class="sec-no">05 · 使用边界</p>
+      <h2>关于 Claude Code 源码的声明</h2>
+
+      <div class="callout callout--warn">
+        <p class="callout__title">请先读这段</p>
+        <p>本教程的 Claude Code 部分，基于非官方渠道获得的 <strong>v2.1.88</strong> 源码快照分析，仅供学习参考，<strong>不代表 Anthropic 的官方实现，也不代表当前版本</strong>。源码与官方文档不一致时，教程会两边都写并标明差异；可能已经改变的行为标【可能已变化】。</p>
+        <p>这份源码可能经过打包或压缩后还原，函数名、变量名未必是原始命名。因此教程只做结构和行为层面的解读，不把变量名当作官方 API。每段原文摘录不超过 15–20 行，其余用伪代码、流程图和文字说明。</p>
+      </div>
+    </section>
+
+    <section id="legend">
+      <p class="sec-no">06 · 符号约定</p>
+      <h2>看到这些标签，知道该信几分</h2>
+      <p>教程里每个关于工具行为的说法都会带来源。标签不是装饰，它告诉你这条结论的证据强度。</p>
+
+      <div class="tag-row">
+        <span class="tag tag--ok">已核实</span>
+        <span class="tag tag--guess">推断</span>
+        <span class="tag tag--todo">待核实</span>
+      </div>
+      <ul class="small">
+        <li><span class="tag tag--ok">已核实</span>：在源码或官方文档里直接看到，并附了链接。</li>
+        <li><span class="tag tag--guess">推断</span>：根据代码结构或运行行为推断，没有直接文字依据。</li>
+        <li><span class="tag tag--todo">待核实</span>：还没核对，或两处来源冲突、暂未定论。</li>
+      </ul>
+
+      <p>Claude Code 的结论还会额外标来源类型：</p>
+      <div class="tag-row">
+        <span class="tag tag--src">源码 v2.1.88</span>
+        <span class="tag tag--doc">官方文档</span>
+        <span class="tag tag--both">两者一致</span>
+      </div>
+
+      <p class="small muted">60 章正文已全部上线。若后续新增章节，导航会先显示「待写」，点击给出提示，不会跳到空页面。</p>
+    </section>
+
+    <p class="footer-note">下一步：从「第一部分 入门」的 <code>intro-01</code>「上下文窗口是什么」开始。左侧目录会记住你的折叠状态和上次读到的章节。</p>
+  </article>
+</main>
+
+<script src="./assets/js/toc.js"></script>
+<script src="./assets/js/search-index.js"></script>
+<script src="./assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,607 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>样章 02 · 压缩之后，它还记得你的哪句话？— Codex CLI</title><style>:root{--text:#2C2C2B;--muted:#6F6C67;--canvas:#FFFFFF;--soft:#F9F8F7;--surface:#F0EFED;--border:#E6E5E3;--blue:#2783DE;--blue-s:#E5F2FC;--green:#2F7D55;--green-s:#E8F1EC;--orange:#B4621F;--orange-s:#FBEBDE;--red:#C9473B;--red-s:#FCE9E7;--code:#F4F3F1;--blue-t:#1F6FBF}
+@media (prefers-color-scheme:dark){:root{--text:#FFFFFF;--muted:rgba(255,255,255,.68);--canvas:#191919;--soft:#202020;--surface:#2a2a29;--border:rgba(255,255,255,.20);--blue:#5E9FE8;--blue-s:rgba(94,159,232,.12);--green:#72BC8F;--green-s:rgba(114,188,143,.12);--orange:#DE9255;--orange-s:rgba(222,146,85,.12);--red:#E97366;--red-s:rgba(233,115,102,.12);--code:#262626;--blue-t:#8DBBF0}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--canvas);color:var(--text);font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;-webkit-font-smoothing:antialiased}
+code,pre,.mono{font-family:Menlo,Consolas,"SFMono-Regular",monospace;font-size:.88em}
+code{background:var(--code);padding:1px 6px;border-radius:4px}
+a{color:var(--blue-t)}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible+span,label:focus-within{outline:3px solid var(--blue);outline-offset:2px;border-radius:6px}
+.wrap{max-width:760px;margin:0 auto;padding:0 24px}
+.wide{max-width:1000px;margin:0 auto;padding:0 24px}
+header.hero{padding:56px 0 32px;border-bottom:1px solid var(--border);background:var(--soft)}
+.kicker{display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--muted);letter-spacing:.02em}
+.kicker b{color:var(--blue-t);font-weight:600}
+h1{font-size:36px;line-height:1.3;margin:12px 0 12px;letter-spacing:-.01em}
+.lede{font-size:18px;color:var(--muted);margin:0 0 24px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px;padding:0;list-style:none}
+.meta li{font-size:14px;padding:4px 12px;border:1px solid var(--border);border-radius:999px;background:var(--canvas);color:var(--muted)}
+.learn{margin:0;padding:16px 20px;border:1px solid var(--border);border-radius:12px;background:var(--canvas)}
+.learn h2{font-size:15px;margin:0 0 8px;color:var(--muted);font-weight:600}
+.learn ol{margin:0;padding-left:20px}
+section{padding:48px 0;border-bottom:1px solid var(--border)}
+section:last-of-type{border-bottom:0}
+.sec-no{font-size:14px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+h2{font-size:26px;line-height:1.4;margin:4px 0 16px}
+h3{font-size:19px;margin:32px 0 8px}
+p{margin:0 0 16px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+/* chat */
+.chat{display:flex;flex-direction:column;gap:12px;margin:24px 0}
+.bubble{max-width:88%;padding:12px 16px;border-radius:12px;border:1px solid var(--border)}
+.bubble .who{display:block;font-size:13px;color:var(--muted);margin-bottom:2px;font-weight:600}
+.me{align-self:flex-end;background:var(--blue-s);border-color:transparent}
+.ai{align-self:flex-start;background:var(--soft)}
+.sys{align-self:center;font-size:14px;color:var(--muted);background:transparent;border:1px dashed var(--border);border-radius:999px;padding:4px 14px}
+.gap{align-self:center;font-size:14px;color:var(--muted)}
+.punch{font-size:20px;font-weight:600;margin:24px 0 8px}
+/* callouts */
+.callout{border:1px solid var(--border);border-left:4px solid var(--blue);border-radius:8px;padding:16px 20px;margin:24px 0;background:var(--soft)}
+.callout.green{border-left-color:var(--green)}
+.callout.orange{border-left-color:var(--orange)}
+.callout h4{margin:0 0 6px;font-size:16px}
+.callout p:last-child,.callout ul:last-child{margin-bottom:0}
+.oneline{font-size:20px;line-height:1.6;font-weight:600;padding:20px 24px;border-radius:12px;background:var(--green-s);border:1px solid var(--border);margin:24px 0}
+.oneline small{display:block;font-size:14px;font-weight:600;color:var(--green);margin-bottom:4px}
+/* guess */
+.guess{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:16px 0}
+.gcard{text-align:left;font:inherit;color:inherit;min-height:88px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--canvas);cursor:pointer;position:relative}
+.gcard[aria-pressed=true]{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);background:var(--blue-s)}
+.gcard .g-t{font-weight:600;display:block}
+.gcard .g-d{font-size:14px;color:var(--muted)}
+.gcard .g-a{display:none;margin-top:8px;font-size:14px;font-weight:600}
+.revealed .gcard .g-a{display:block}
+.g-a.keep{color:var(--green)} .g-a.lose{color:var(--red)} .g-a.maybe{color:var(--orange)}
+.btn{font:inherit;font-size:15px;font-weight:600;min-height:44px;padding:10px 18px;border-radius:8px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--blue-t)}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.score{font-weight:600}
+/* stack */
+.stack{display:grid;gap:8px;margin:24px 0}
+.layer{display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:center;padding:16px 20px;border-radius:10px;border:1px solid var(--border)}
+.layer .tag{font-size:13px;font-weight:700;letter-spacing:.04em}
+.layer h4{margin:0 0 2px;font-size:17px}
+.layer p{margin:0;font-size:15px;color:var(--muted)}
+.l1{background:var(--blue-s)} .l1 .tag{color:var(--blue-t)}
+.l2{background:var(--green-s)} .l2 .tag{color:var(--green)}
+.l3{background:var(--orange-s)} .l3 .tag{color:var(--orange)}
+.l0{background:transparent;border-style:dashed} .l0 .tag{color:var(--red)} .l0 h4{text-decoration:line-through;text-decoration-thickness:1px;color:var(--muted)}
+/* simulator */
+.sim{border:1px solid var(--border);border-radius:12px;background:var(--soft);padding:24px;margin:24px 0}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px;margin-bottom:20px}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-size:14px;font-weight:600;color:var(--muted);margin-bottom:6px;padding:0}
+.opt{display:flex;gap:10px;align-items:flex-start;min-height:44px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--canvas);cursor:pointer;margin-bottom:8px;font-size:15px;line-height:1.5}
+.opt input{margin:3px 0 0;width:18px;height:18px;flex:none;accent-color:var(--blue)}
+.opt:has(input:checked){border-color:var(--blue);background:var(--blue-s)}
+.simgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px}
+.panel{background:var(--canvas);border:1px solid var(--border);border-radius:10px;padding:16px}
+.panel h4{margin:0 0 12px;font-size:15px;display:flex;justify-content:space-between;gap:8px}
+.msgs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.msg{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:start;padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;line-height:1.5;transition:background .2s,border-color .2s}
+.msg .no{color:var(--muted);font-variant-numeric:tabular-nums}
+.msg .tk{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.msg.constraint .tx{font-weight:600}
+.msg.scan{border-color:var(--blue);background:var(--blue-s)}
+.msg.keep{border-color:var(--green);background:var(--green-s)}
+.msg.cut{border-color:var(--orange);background:var(--orange-s)}
+.msg.drop{opacity:.55;border-style:dashed}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.b-keep{background:var(--green-s);color:var(--green);border:1px solid var(--green)}
+.b-cut{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange)}
+.b-drop{background:transparent;color:var(--red);border:1px dashed var(--red)}
+.budget{margin:4px 0 16px}
+.bar{height:12px;border-radius:6px;background:var(--surface);overflow:hidden;border:1px solid var(--border)}
+.fill{height:100%;width:0;background:var(--green);transition:width .3s}
+.blabel{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.newctx{display:flex;flex-direction:column;gap:8px}
+.nc{border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.55;border:1px solid var(--border)}
+.nc b{display:block;font-size:12px;letter-spacing:.04em;margin-bottom:2px}
+.nc.l1 b{color:var(--blue-t)} .nc.l2 b{color:var(--green)} .nc.l3 b{color:var(--orange)} .nc.l0 b{color:var(--red)}
+.fate{margin-top:16px;padding:14px 16px;border-radius:10px;font-weight:600;line-height:1.6;border:1px solid var(--border)}
+.fate.ok{background:var(--green-s)} .fate.warn{background:var(--orange-s)} .fate.bad{background:var(--red-s)}
+.fate span{display:block;font-weight:400;font-size:14px;color:var(--muted);margin-top:4px}
+/* prompt */
+.prompt{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:16px 0 24px}
+.prompt .ph{display:flex;justify-content:space-between;gap:12px;padding:8px 16px;background:var(--surface);font-size:13px;color:var(--muted)}
+.prompt .pb{display:grid;grid-template-columns:1fr 1fr}
+.prompt pre{margin:0;padding:16px;white-space:pre-wrap;line-height:1.6;font-size:13.5px;border-right:1px solid var(--border)}
+.prompt .zh{padding:16px;font-size:15px;line-height:1.7}
+.prompt .zh ul{margin:6px 0;padding-left:20px}
+/* qa */
+.qa{margin:24px 0;border:1px solid var(--border);border-radius:12px;padding:8px 20px;background:var(--soft)}
+.qa h3{margin:12px 0 4px;font-size:16px;color:var(--muted)}
+.qa dl{margin:0}
+.qa dt{font-weight:600;margin-top:16px}
+.qa dt::before{content:"问 ";color:var(--blue-t)}
+.qa dd{margin:4px 0 16px 0;padding-left:24px}
+.qa dd::before{content:"答 ";margin-left:-24px;color:var(--green);font-weight:600}
+/* tables */
+.tbl{overflow-x:auto;margin:16px 0 24px;border:1px solid var(--border);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border)}
+th{background:var(--surface);font-size:14px;font-weight:600}
+tr:last-child td{border-bottom:0}
+td.pick{background:var(--green-s)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.tab{font:inherit;font-size:15px;min-height:44px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--canvas);color:var(--text);cursor:pointer}
+.tab[aria-selected=true]{border-color:var(--blue);background:var(--blue-s);color:var(--blue-t);font-weight:600}
+.tabpanel{border:1px solid var(--border);border-radius:10px;padding:20px;background:var(--canvas)}
+.tabpanel h4{margin:0 0 8px;font-size:17px}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+.pc div{padding:12px 14px;border-radius:8px;font-size:15px}
+.pc .pro{background:var(--green-s)} .pc .con{background:var(--orange-s)}
+.pc b{display:block;font-size:13px;margin-bottom:4px}
+/* quiz */
+.quiz fieldset{border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:0 0 16px;background:var(--canvas)}
+.quiz legend{font-size:16px;color:var(--text);font-weight:600;padding:0 4px;margin-bottom:8px}
+.quiz .opt{margin-bottom:6px}
+.fb{display:none;font-size:15px;padding:10px 14px;border-radius:8px;margin-top:8px}
+.fb.show{display:block}
+.fb.right{background:var(--green-s)} .fb.wrong{background:var(--red-s)}
+/* card */
+.cheat{border:2px solid var(--text);border-radius:12px;padding:24px;margin:24px 0}
+.cheat h3{margin:0 0 16px;font-size:18px}
+.cheat .cg{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px}
+.cheat .cg div{font-size:15px}
+.cheat .cg b{display:block;margin-bottom:2px}
+/* details */
+details{border:1px solid var(--border);border-radius:10px;margin:12px 0;background:var(--canvas)}
+summary{cursor:pointer;padding:14px 18px;font-weight:600;min-height:44px;list-style-position:inside}
+details[open] summary{border-bottom:1px solid var(--border)}
+details .db{padding:16px 20px}
+details .db ul{padding-left:20px;margin:0}
+details .db li{margin-bottom:10px}
+.status{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:4px;margin-right:6px;vertical-align:1px;white-space:nowrap}
+.s-src{background:var(--blue-s);color:var(--blue-t)} .s-run{background:var(--green-s);color:var(--green)} .s-inf{background:var(--orange-s);color:var(--orange)} .s-no{background:var(--surface);color:var(--muted)}
+.src li{font-size:15px}
+.src a{word-break:break-all}
+.lab{border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 0}
+.lab h3{margin-top:0}
+.lab pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6}
+footer{padding:40px 0 64px;color:var(--muted);font-size:14px}
+.next{display:block;padding:20px 24px;border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--text);margin-top:24px}
+.next small{color:var(--muted);display:block}
+.next b{font-size:18px}
+@media (max-width:760px){
+ h1{font-size:28px} h2{font-size:22px}
+ .wrap,.wide{padding:0 16px}
+ .guess,.controls,.simgrid,.pc,.cheat .cg,.prompt .pb{grid-template-columns:1fr}
+ .prompt pre{border-right:0;border-bottom:1px solid var(--border)}
+ .layer{grid-template-columns:1fr;gap:4px}
+ .bubble{max-width:100%}
+ .sim{padding:16px}
+ .msg{grid-template-columns:36px 1fr;}
+ .msg .tk{grid-column:2}
+}
+
+.wide>.wrap{max-width:712px;padding:0}
+@media (max-width:760px){.wide>.wrap{max-width:none}}
+@media (prefers-color-scheme:dark){.btn{color:#191919}.btn.ghost{color:var(--blue-t)}}
+.quiz legend{float:left;width:100%;padding:0;margin-bottom:12px}.quiz legend+*{clear:both}
+</style></head><body><header class="hero">
+ <div class="wrap">
+  <div class="kicker"><b>Codex CLI 上下文管理</b><span>·</span><span>样章 02</span></div>
+  <h1>压缩之后，它还记得你的哪句话？</h1>
+  <p class="lede">你第一句就说了“不许改方法签名”，聊了一下午之后，Codex 还是改了。这一章把压缩后的新上下文拆开给你看：哪些东西原样留下，哪些只剩一句转述，以及你该把重要的要求放在哪里。</p>
+  <ul class="meta" aria-label="本章信息">
+   <li>约 15 分钟</li><li>3 个交互</li><li>前置：样章 01「压缩后旧历史还在不在」</li><li>源码快照 a07c8eb</li>
+  </ul>
+  <div class="learn">
+   <h2>读完你能做到</h2>
+   <ol>
+    <li>说出压缩后 Codex 原样带上的三样东西。</li>
+    <li>解释为什么“粘贴一大段日志”会把你更早的要求挤掉。</li>
+    <li>为一条要求选对位置：规则文件、任务笔记，还是最新一条消息。</li>
+   </ol>
+  </div>
+ </div>
+</header>
+
+<main>
+<section id="s0">
+ <div class="wrap">
+  <div class="sec-no">01 · 一个真实会发生的下午</div>
+  <h2>“我第一句话就说过了啊”</h2>
+  <p>小周在一个老 Java 项目里让 Codex 重构 <code>UserService</code>。下面是这次会话的主要节点。</p>
+  <div class="chat" role="list" aria-label="对话示例">
+   <div class="bubble me" role="listitem"><span class="who">小周 · 第 1 条</span>重构 UserService。注意：public 方法签名一个都不许改，<code>getUser(id)</code> 必须兼容老客户端。</div>
+   <div class="bubble ai" role="listitem"><span class="who">Codex</span>明白。我先读一下 UserService 和它的调用方。</div>
+   <div class="gap" role="listitem">⋯ 小周粘贴了三大段 Maven 测试日志和堆栈，Codex 跑了几十条命令 ⋯</div>
+   <div class="sys" role="listitem">Codex 自动压缩了一次上下文</div>
+   <div class="bubble me" role="listitem"><span class="who">小周 · 第 7 条</span>好，接下来把缓存接上，用 Caffeine。</div>
+   <div class="bubble ai" role="listitem"><span class="who">Codex</span>已完成。为了传入缓存策略，我把 <code>getUser(id)</code> 改成了 <code>getUser(id, CacheOptions)</code>，并更新了 12 处调用。</div>
+  </div>
+  <p class="punch">它没有“变笨”。是第 1 条消息没能进入压缩后的新上下文。</p>
+  <p class="muted">这段对话是为教学编写的情景，后面的模拟器会用同一组消息复现它。</p>
+ </div>
+</section>
+
+<section id="s1">
+ <div class="wrap">
+  <div class="sec-no">02 · 先猜一下</div>
+  <h2>压缩之后，哪些东西会<em>原样</em>回到上下文？</h2>
+  <p>点选你认为会<strong>原样保留</strong>的卡片，然后揭晓。“原样”指一字不差地放回去，不是被别人转述。</p>
+  <div class="guess" id="guess">
+   <button class="gcard" aria-pressed="false" data-k="1"><span class="g-t">AGENTS.md 里的规则</span><span class="g-d">项目根目录的规则文件</span><span class="g-a keep">✓ 原样：压缩后重新装入</span></button>
+   <button class="gcard" aria-pressed="false" data-k="1"><span class="g-t">你最近说的那句“继续”</span><span class="g-d">最新一条用户消息</span><span class="g-a keep">✓ 原样：最近的原话优先保留</span></button>
+   <button class="gcard" aria-pressed="false" data-k="0"><span class="g-t">你很早说的“不许改签名”</span><span class="g-d">第 1 条用户消息</span><span class="g-a maybe">△ 不一定：要看后面的原话有多长</span></button>
+   <button class="gcard" aria-pressed="false" data-k="0"><span class="g-t">Codex 说过的“我已修好 NPE”</span><span class="g-d">助手自己的回答</span><span class="g-a lose">× 不原样：最多出现在摘要里</span></button>
+   <button class="gcard" aria-pressed="false" data-k="0"><span class="g-t">mvn test 的 300 行输出</span><span class="g-d">Codex 运行命令得到的结果</span><span class="g-a lose">× 不原样：最多出现在摘要里</span></button>
+   <button class="gcard" aria-pressed="false" data-k="1"><span class="g-t">一份交接摘要</span><span class="g-d">压缩时新写出来的</span><span class="g-a keep">✓ 新增：每次压缩都会放进去</span></button>
+  </div>
+  <div class="row"><button class="btn" id="reveal">揭晓答案</button><span class="score" id="gscore" aria-live="polite"></span></div>
+ </div>
+</section>
+
+<section id="s2">
+ <div class="wrap">
+  <div class="sec-no">03 · 一张图看懂</div>
+  <h2>压缩后的新上下文只有三层</h2>
+  <p>压缩时，Codex 把旧的活动历史换成一份新材料。新材料只由下面三层组成：</p>
+  <div class="stack" aria-label="压缩后新上下文的结构">
+   <div class="layer l1"><span class="tag">① 重建</span><div><h4>当前的指令和规则</h4><p>系统与开发者指令、AGENTS.md、环境信息。按“现在”重新生成，不是从旧历史里抄。</p></div></div>
+   <div class="layer l2"><span class="tag">② 原话</span><div><h4>你最近说的话</h4><p>只收你发出的消息，从最新往回装，装满预算就停。边界那条只留头尾。</p></div></div>
+   <div class="layer l3"><span class="tag">③ 摘要</span><div><h4>一份交接摘要</h4><p>模型按固定提示写的“进展、决定、约束、下一步”。</p></div></div>
+   <div class="layer l0"><span class="tag">不原样带上</span><div><h4>Codex 的回答、命令和输出、推理过程</h4><p>它们还在磁盘的会话记录里（见样章 01），但不再原样进入新上下文。</p></div></div>
+  </div>
+  <div class="oneline"><small>一句人话</small>压缩后，Codex 原样带上的只有「规则文件 + 你最近的话 + 一份摘要」。它自己说过的话、跑过的命令输出，都只剩摘要里的转述。</div>
+  <p>第 ② 层的预算叫<strong>原话预算</strong>。在本章主讲的文字摘要路线里，它是 <strong>20,000 token</strong>。Codex 用字节估算 token：大约 4 个字节算 1 个。所以 20,000 token 约等于 8 万个英文字符，或 2.6 万个汉字。</p>
+  <div class="callout orange">
+   <h4>别把它和“什么时候压缩”混在一起</h4>
+   <p>20,000 不是“聊到 2 万 token 就压缩”。什么时候压缩由上下文窗口和自动压缩线决定；20,000 只决定压缩<em>之后</em>留下多少原话。</p>
+  </div>
+ </div>
+</section>
+
+<section id="s3">
+ <div class="wide">
+  <div class="wrap" style="padding:0">
+   <div class="sec-no">04 · 动手：原话装箱模拟器</div>
+   <h2>亲手压缩一次小周的会话</h2>
+   <p>左边是小周发过的消息（只列用户消息）。点「开始压缩」，看 Codex 怎样从最新一条往回装预算。然后改一下左上角的选项，再压一次。</p>
+  </div>
+  <div class="sim" id="sim">
+   <div class="controls">
+    <fieldset>
+     <legend>压缩路线</legend>
+     <label class="opt"><input type="radio" name="route" value="20000" checked><span><b>文字摘要路线</b> · 原话预算 20,000<br><span class="small muted">摘要是可读文字</span></span></label>
+     <label class="opt"><input type="radio" name="route" value="64000"><span><b>远端压缩路线</b> · 保留预算 64,000<br><span class="small muted">摘要是加密块，你读不到</span></span></label>
+    </fieldset>
+    <fieldset>
+     <legend>小周的做法</legend>
+     <label class="opt"><input type="checkbox" id="optCmd"><span>日志不粘贴，改成让 Codex 自己跑命令读</span></label>
+     <label class="opt"><input type="checkbox" id="optAgents"><span>把“不许改签名”写进 AGENTS.md</span></label>
+     <label class="opt"><input type="checkbox" id="optLong"><span>再多聊一阵（又粘了 3 段压测日志）</span></label>
+    </fieldset>
+   </div>
+   <div class="simgrid">
+    <div class="panel">
+     <h4><span>会话里的用户消息</span><span class="muted small" id="totalTk"></span></h4>
+     <div class="budget"><div class="bar" role="progressbar" aria-label="原话预算使用量" aria-valuemin="0" id="bar"><div class="fill" id="fill"></div></div><div class="blabel"><span id="used">已用 0</span><span id="cap">预算 20,000</span></div></div>
+     <ol class="msgs" id="msgs"></ol>
+     <div class="row" style="margin-top:16px"><button class="btn" id="run">开始压缩</button><button class="btn ghost" id="reset">重置</button></div>
+    </div>
+    <div class="panel">
+     <h4><span>压缩后的新上下文</span></h4>
+     <div class="newctx" id="newctx"><p class="muted small" style="margin:0">还没有压缩。点左边的「开始压缩」。</p></div>
+     <div id="fate" aria-live="polite"></div>
+    </div>
+   </div>
+   <p class="small muted" style="margin:16px 0 0">消息内容和 token 数为教学设定；“从新到旧装、边界截头尾、装不下就停”依据源码。远端路线的候选还包括少数其他条目，这里只画用户消息。</p>
+  </div>
+  <div class="wrap" style="padding:0">
+   <h3>你应该看到了三件事</h3>
+   <ol>
+    <li><strong>粘贴进对话的日志，算作你的原话。</strong>它们离压缩最近，最先装进预算，把第 1 条挤了出去。</li>
+    <li><strong>让 Codex 自己读日志，第 1 条就留下了。</strong>命令输出不进原话预算，压缩后需要时再跑一次就行。</li>
+    <li><strong>写进 AGENTS.md 的要求，不参与这场竞争。</strong>它在第 ① 层，每次压缩都重新装入。</li>
+   </ol>
+   <p>远端路线预算更大，短会话里第 1 条能留下；勾上「再多聊一阵」，它一样会被挤出去。预算大只是推迟问题。</p>
+  </div>
+ </div>
+</section>
+
+<section id="s4">
+ <div class="wrap">
+  <div class="sec-no">05 · 第 ③ 层是怎么写出来的</div>
+  <h2>摘要是同一个模型，按一段固定提示写的</h2>
+  <p>压缩时，Codex 把当前历史连同下面这段提示发给模型，让它写一份“交给下一个模型”的交接摘要。这是源码里的原文：</p>
+  <div class="prompt">
+   <div class="ph"><span>压缩提示原文</span><span class="mono">prompts/templates/compact/prompt.md</span></div>
+   <div class="pb">
+<pre>You are performing a CONTEXT CHECKPOINT COMPACTION. Create a handoff summary for another LLM that will resume the task.
+
+Include:
+- Current progress and key decisions made
+- Important context, constraints, or user preferences
+- What remains to be done (clear next steps)
+- Any critical data, examples, or references needed to continue
+
+Be concise, structured, and focused on helping the next LLM seamlessly continue the work.</pre>
+    <div class="zh"><b>中文意思</b><br>你在做一次上下文检查点压缩。为接手任务的另一个模型写一份交接摘要，包含：
+     <ul><li>当前进展和关键决定</li><li>重要背景、<strong>约束</strong>或用户偏好</li><li>还剩什么要做</li><li>继续工作需要的关键数据、例子或引用</li></ul>
+     要简洁、有结构，帮下一个模型无缝接上。</div>
+   </div>
+  </div>
+  <p>提示里明确要求写“约束”。所以小周那句话<em>可能</em>出现在摘要里。但这是对模型的要求，不是程序的保证：摘要要压得很短，模型会自己挑重点。</p>
+  <div class="qa">
+   <h3>没有愚蠢的问题</h3>
+   <dl>
+    <dt>写摘要时，模型能看到我的第 1 条消息吗？</dt>
+    <dd>通常能，因为写摘要的请求带着当前历史。但如果历史已经长到连这次请求都放不下，Codex 会从这份副本里删掉<strong>最早</strong>的一项再试。最早的内容最容易在这一步消失。</dd>
+    <dt>摘要会不会把上次的摘要当成我的原话保留？</dt>
+    <dd>不会。旧摘要带着固定前缀，挑原话时会被认出来并跳过。</dd>
+    <dt>能改这段提示吗？</dt>
+    <dd>源码里有一个配置项 <code>compact_prompt</code>，设置后替换这段默认提示。你可以要求“逐字保留用户提出的所有约束”。摘要仍由模型来写，只是要求变了。</dd>
+    <dt>压缩多了会怎样？</dt>
+    <dd>文字路线每次压缩成功后，Codex 会提示：长会话和多次压缩会降低准确性，能开新会话就开。上一份摘要不会原样留下，只作为写新摘要的材料。转述的转述，细节容易越来越少。</dd>
+   </dl>
+  </div>
+ </div>
+</section>
+
+<section id="s5">
+ <div class="wrap">
+  <div class="sec-no">06 · 如果你来设计</div>
+  <h2>换你做 Codex：压缩时该留什么？</h2>
+  <p>先别看 Codex 的答案。假设你要设计这一步，手上有三个方案。点开看各自的代价。</p>
+  <div class="tabs" role="tablist" aria-label="压缩保留方案">
+   <button class="tab" role="tab" aria-selected="true" aria-controls="pA" id="tA">A · 留最近 N 轮完整对话</button>
+   <button class="tab" role="tab" aria-selected="false" aria-controls="pB" id="tB">B · 只留摘要</button>
+   <button class="tab" role="tab" aria-selected="false" aria-controls="pC" id="tC">C · 用户原话 + 摘要</button>
+  </div>
+  <div class="tabpanel" role="tabpanel" id="pA" aria-labelledby="tA">
+   <h4>最近 N 轮的用户消息、回答、命令输出全部原样保留</h4>
+   <div class="pc"><div class="pro"><b>好处</b>最近的细节一点不丢，模型接着干最顺。</div><div class="con"><b>代价</b>一次命令输出可能就有上万 token。留下的大多是能重新读到的日志，压缩省下的空间很快又被占满。</div></div>
+  </div>
+  <div class="tabpanel" role="tabpanel" id="pB" aria-labelledby="tB" hidden>
+   <h4>旧历史全部换成一份摘要</h4>
+   <div class="pc"><div class="pro"><b>好处</b>最省空间，压缩后上下文非常干净。</div><div class="con"><b>代价</b>你说过的每一句话都要靠模型转述。转述漏一句，就再也没有原文可以对照。</div></div>
+  </div>
+  <div class="tabpanel" role="tabpanel" id="pC" aria-labelledby="tC" hidden>
+   <h4>原样保留用户说的话（有预算），其余交给摘要 —— Codex 的选择</h4>
+   <div class="pc"><div class="pro"><b>好处</b>你的意图有原文；日志和文件能重新读，不必原样保留。</div><div class="con"><b>代价</b>预算是按“新到旧”花的，不看内容重要不重要。早期的关键要求最先被挤掉。</div></div>
+  </div>
+  <div class="callout">
+   <h4>为什么这样分？<span class="status s-inf">设计推断</span></h4>
+   <p>源码没有写理由。一个说得通的解释是：<strong>按“能不能重新取得”来分。</strong>命令输出和文件内容可以重新跑、重新读；Codex 自己的回答可能含有中途的错误判断；只有你的话是任务意图的唯一来源，丢了就找不回来。</p>
+  </div>
+  <p>方案 C 留下了一个漏洞：它保护“你说过的话”，但不分轻重。下一节就是补这个漏洞的办法。</p>
+ </div>
+</section>
+
+<section id="s6">
+ <div class="wrap">
+  <div class="sec-no">07 · 你能做什么</div>
+  <h2>按“要活多久”给要求找位置</h2>
+  <div class="tbl"><table>
+   <thead><tr><th>放在哪里</th><th>适合什么</th><th>为什么能活下来</th><th>代价</th></tr></thead>
+   <tbody>
+    <tr><td class="pick"><b>AGENTS.md</b></td><td>整个项目都成立的规则：不改公共 API、用哪个测试命令</td><td>属于第 ① 层，每次压缩都重新装入</td><td>所有项目文档共享一个默认 32&nbsp;KiB 预算，超出的尾部不加载；写多了反而丢</td></tr>
+    <tr><td><b>任务笔记文件</b><br><span class="small muted">例如 PLAN.md</span></td><td>这次任务的进度、决定、待办</td><td>存在磁盘上，压缩碰不到；要用时重新读</td><td>Codex 要主动去读。在 AGENTS.md 里写一句“开始前先读 PLAN.md”</td></tr>
+    <tr><td><b>最新一条消息里重申</b></td><td>眼下这一步最怕违反的约束</td><td>最新原话最先装进预算</td><td>要靠你记得每次说</td></tr>
+    <tr><td><b>让 Codex 自己读日志</b></td><td>测试输出、堆栈、构建日志</td><td>不占原话预算，给更早的要求留位置</td><td>命令输出会更快填满窗口，压缩可能更早发生</td></tr>
+    <tr><td><b>开一个新会话</b></td><td>任务换了方向，或已经压缩过好几次</td><td>从干净的上下文开始，配合笔记文件交接</td><td>要手动交接：先让 Codex 把进度写进笔记</td></tr>
+   </tbody>
+  </table></div>
+  <div class="callout green">
+   <h4>小周的会话应该这样开头</h4>
+   <p>AGENTS.md 里写：<code>public 方法签名不得修改；开始前先读 PLAN.md。</code><br>第 1 条消息只说任务：“重构 UserService，进度记在 PLAN.md。”<br>测试挂了就说“你跑一下 mvn test 看看”，不贴日志。</p>
+  </div>
+ </div>
+</section>
+
+<section id="s7">
+ <div class="wrap">
+  <div class="sec-no">08 · 带去看其他工具</div>
+  <h2>四个问题，看懂任何一个工具的压缩</h2>
+  <p>Claude Code、Gemini CLI 等工具也会压缩，答案各不相同。拿这四个问题去问，比记结论有用：</p>
+  <ol>
+   <li><strong>压缩后原样留下什么？</strong>Codex：规则、近期用户原话、摘要。</li>
+   <li><strong>规则文件会不会重新装入？</strong>Codex：会。</li>
+   <li><strong>摘要你能不能读、能不能改提示？</strong>Codex：文字路线能读，可用 <code>compact_prompt</code> 改提示；远端路线是加密块。</li>
+   <li><strong>压缩失败时丢的是什么？</strong>Codex：写摘要的请求超窗时，只从这份请求副本里删最早的条目再试；压缩没成功，就不替换旧历史。</li>
+  </ol>
+  <p class="muted">对比篇会逐个工具回答这四个问题，每个答案都附源码或实验。</p>
+ </div>
+</section>
+
+<section id="s8">
+ <div class="wrap">
+  <div class="sec-no">09 · 自测</div>
+  <h2>四道题，检查你真的懂了</h2>
+  <form class="quiz" id="quiz" onsubmit="return false">
+   <fieldset data-ans="b"><legend>1. 压缩后，Codex 上一轮说的“我已把 NPE 修好了”会怎样？</legend>
+    <label class="opt"><input type="radio" name="q1" value="a"><span>作为最近的消息原样保留</span></label>
+    <label class="opt"><input type="radio" name="q1" value="b"><span>不原样保留，最多出现在摘要里</span></label>
+    <label class="opt"><input type="radio" name="q1" value="c"><span>彻底从磁盘删除</span></label>
+    <div class="fb" data-r="对。原话预算只收用户消息，助手的回答靠摘要转述。磁盘记录里它还在。" data-w="原话预算只收你发出的消息。助手的回答不原样保留，但磁盘记录里还在（样章 01）。"></div></fieldset>
+   <fieldset data-ans="a"><legend>2. 你在第 3 条消息里粘贴了 1.2 万 token 的日志。这对第 1 条消息有什么影响？</legend>
+    <label class="opt"><input type="radio" name="q2" value="a"><span>它占掉原话预算，第 1 条更可能被挤出去</span></label>
+    <label class="opt"><input type="radio" name="q2" value="b"><span>没影响，日志会被识别成工具输出</span></label>
+    <label class="opt"><input type="radio" name="q2" value="c"><span>Codex 会判断日志不重要，优先丢日志</span></label>
+    <div class="fb" data-r="对。粘贴的内容就是你的原话。程序按新到旧装，不判断哪句重要。" data-w="粘贴进对话的内容算你的原话。挑选时只看新旧和长度，不判断重要性。"></div></fieldset>
+   <fieldset data-ans="c"><legend>3. “任何时候都不许改公共 API”这条要求，放哪里最稳？</legend>
+    <label class="opt"><input type="radio" name="q3" value="a"><span>第一条消息，开门见山</span></label>
+    <label class="opt"><input type="radio" name="q3" value="b"><span>每次压缩后手动再说一遍</span></label>
+    <label class="opt"><input type="radio" name="q3" value="c"><span>AGENTS.md</span></label>
+    <div class="fb" data-r="对。AGENTS.md 在每次压缩后重新装入，不和原话抢预算。注意别写太长。" data-w="第一条消息最容易被挤掉；手动重申可行但靠记性。全项目长期成立的规则放 AGENTS.md。"></div></fieldset>
+   <fieldset data-ans="b"><legend>4. 20,000 这个数字控制的是什么？</legend>
+    <label class="opt"><input type="radio" name="q4" value="a"><span>聊到 20,000 token 就触发压缩</span></label>
+    <label class="opt"><input type="radio" name="q4" value="b"><span>压缩后最多原样带上多少用户原话</span></label>
+    <label class="opt"><input type="radio" name="q4" value="c"><span>摘要的最大长度</span></label>
+    <div class="fb" data-r="对。它是文字摘要路线的原话预算。何时压缩由窗口和自动压缩线决定。" data-w="20,000 是压缩后原话的保留预算，和触发时机、摘要长度都无关。"></div></fieldset>
+   <div class="row"><button class="btn" id="check" type="button">检查答案</button><span class="score" id="qscore" aria-live="polite"></span></div>
+  </form>
+ </div>
+</section>
+
+<section id="s9">
+ <div class="wrap">
+  <div class="sec-no">10 · 速查卡</div>
+  <h2>截图存下这张</h2>
+  <div class="cheat">
+   <h3>Codex CLI 压缩后留下什么</h3>
+   <div class="cg">
+    <div><b>原样留下</b>① 当前规则（含 AGENTS.md，重新装入）<br>② 你最近的话（新到旧装满预算）<br>③ 一份新摘要</div>
+    <div><b>只剩转述</b>Codex 的回答、命令和输出、推理过程。磁盘记录里还在。</div>
+    <div><b>两个数字</b>文字路线原话预算 20,000 token；远端路线保留预算 64,000。约 4 字节算 1 token。</div>
+    <div><b>最常见的坑</b>粘贴大段日志＝花掉原话预算，把早期要求挤出去。</div>
+    <div><b>放对位置</b>长期规则 → AGENTS.md<br>任务进度 → 笔记文件<br>眼前约束 → 最新消息</div>
+    <div><b>该开新会话的信号</b>已经压缩过好几次，或任务换了方向。</div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section id="s10">
+ <div class="wrap">
+  <div class="sec-no">11 · 真实运行</div>
+  <h2>在你自己的电脑上看见它</h2>
+  <div class="lab">
+   <h3><span class="status s-run">已实测</span>压缩发生在任务中途，任务照样完成</h3>
+   <p>环境：codex-cli 0.152.0，模型 gpt-5.6-sol，ChatGPT 登录，2026-10-14。为了用少量资料触发压缩，把窗口设为 100,000、自动压缩线设为 22,000（配置项 <code>model_auto_compact_token_limit</code>；这是实验配置，不是默认值）。</p>
+   <p>任务：依次读取 A、B、C 三份资料，再按提示里的约束输出 JSON。读完第三份后自动压缩发生；会话记录里写入一个压缩检查点，新上下文有 6 项：5 条消息加 1 个服务端压缩块。压缩后的请求输入为 12,460 token，最终 JSON 里三份资料各自的结尾标记全部正确。</p>
+   <p class="small muted">“1 个服务端压缩块”说明这次走的是远端压缩路线。</p>
+  </div>
+  <div class="lab">
+   <h3><span class="status s-no">待运行</span>要求放在哪里，压缩后还守不守</h3>
+   <p>这个实验验证本章的核心结论，还没有跑过。步骤已经写好，你可以先跑。</p>
+   <pre>准备：一个小 Java 项目，含 UserService.getUser(id) 及其调用方
+配置：调低 model_auto_compact_token_limit，让压缩在第 5～6 轮前发生
+三组，同一任务，每组至少跑 3 次：
+  组 1  要求只写在第 1 条消息；中途粘贴日志，总量超过保留预算
+  组 2  同组 1，但日志改为让 Codex 自己跑 mvn test 读取
+  组 3  要求写进 AGENTS.md；第 1 条消息不提
+检查：
+  ① 会话记录里压缩检查点的新上下文，是否含那条要求的原文
+  ② git diff 里 getUser 的签名是否被改</pre>
+   <p class="small muted">远端路线的摘要是加密的，只能检查 ①里“原话”那部分；判断以 ② 为准。要让组 1 的要求被挤出，粘贴总量需要超过 64,000 token。</p>
+  </div>
+ </div>
+</section>
+
+<section id="s11">
+ <div class="wrap">
+  <div class="sec-no">12 · 留给想深挖的你</div>
+  <h2>边界、依据与事实状态</h2>
+  <details>
+   <summary>适用边界：本章的简化在哪里</summary>
+   <div class="db"><ul>
+    <li><b>两条路线。</b>本章以文字摘要路线讲解，因为它的每一步都能在源码里读到。远端路线的候选还包括扩展钩子注入的提示、另一个代理发来的消息等；部分工具输出和开发者消息需要功能开关才会保留。远端摘要是加密内容，客户端保存并传递，但读不到。</li>
+    <li><b>哪条路线生效</b>取决于提供方和配置。本章没有核对完整的选择条件。</li>
+    <li><b>边界截断。</b>放不下的那条消息会裁成头尾两段，中间删掉，按字节估算。之后不会再回头装更早的短消息。</li>
+    <li><b>图片。</b>文字路线里，带图片的消息只留文字部分，图片不保留。</li>
+    <li><b>插入位置。</b>重建的规则实际插在“最后一条用户消息”之前，摘要放在最后。三层图为了好懂按类别画。</li>
+    <li><b>压缩前后钩子。</b>源码里压缩前后会运行钩子，钩子可以中止这次压缩。本章没有展开配置方式。</li>
+    <li><b>AGENTS.md 的尾部。</b>超出 32 KiB 共享预算的部分不加载，压缩后重建也不会补回。</li>
+    <li><b>版本。</b>源码讲解固定在提交 a07c8eb；实验用的 CLI 是 0.152.0。两者不保证每个内部函数完全相同。</li>
+   </ul></div>
+  </details>
+  <details>
+   <summary>源码依据（openai/codex · 提交 a07c8eb）</summary>
+   <div class="db"><ul class="src" id="srclist"></ul></div>
+  </details>
+  <details>
+   <summary>本章事实状态清单</summary>
+   <div class="db"><ul>
+    <li><span class="status s-src">源码核对</span>三层结构、20,000 原话预算、新到旧挑选与边界截断、旧摘要不算原话、规则重建、压缩提示原文、<code>compact_prompt</code> 覆盖、超窗删最早项、多次压缩提醒、64,000 远端预算、约 4 字节算 1 token。</li>
+    <li><span class="status s-run">已实测</span>任务中途自动压缩后继续完成（远端路线，codex-cli 0.152.0）。</li>
+    <li><span class="status s-inf">设计推断</span>“按能否重新取得来分”的设计理由；任务笔记文件和“开始前先读”的做法。</li>
+    <li><span class="status s-no">待运行</span>要求放置位置对比实验。</li>
+    <li><span class="status s-no">教学设定</span>小周的会话、消息内容和 token 数。</li>
+   </ul></div>
+  </details>
+  <div class="next"><small>下一章（规划中）</small><b>样章 03 · 把活交给子代理：它带走了什么，又带回了什么</b></div>
+ </div>
+</section>
+</main>
+<footer><div class="wrap">Codex CLI 上下文管理 · 样章 02 · 源码讲解基于 openai/codex 提交 a07c8ebd57feedc4cf5dfe854c8e9101de54186b</div></footer>
+<script>(function(){
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt=n=>n.toLocaleString('en-US');
+// guess
+const guess=document.getElementById('guess');
+guess.querySelectorAll('.gcard').forEach(c=>c.addEventListener('click',()=>{if(guess.classList.contains('revealed'))return;c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true')}));
+document.getElementById('reveal').addEventListener('click',e=>{guess.classList.add('revealed');let ok=0,all=0;guess.querySelectorAll('.gcard').forEach(c=>{all++;const p=c.getAttribute('aria-pressed')==='true';if(p===(c.dataset.k==='1'))ok++;});document.getElementById('gscore').textContent=`你判断对了 ${ok} / ${all} 张。第 3 张最容易猜错，下面的模拟器会告诉你为什么。`;e.target.disabled=true;});
+// tabs
+const tabs=[...document.querySelectorAll('.tab')];
+tabs.forEach((t,i)=>{t.addEventListener('click',()=>sel(i));t.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const j=(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length;sel(j);tabs[j].focus();}})});
+function sel(i){tabs.forEach((t,k)=>{t.setAttribute('aria-selected',k===i);t.tabIndex=k===i?0:-1;document.getElementById(t.getAttribute('aria-controls')).hidden=k!==i;});}
+sel(0);
+// simulator
+const base=[
+ {text:'重构 UserService。注意：public 方法签名一个都不许改，getUser(id) 必须兼容老客户端。',t:60,c:true,a:'重构 UserService，进度记在 PLAN.md。',at:20},
+ {text:'先跑一下 mvn test，看看现在挂了几个。',t:20},
+ {text:'粘贴：mvn test 完整输出，约 4.8 万个英文字符',t:12000,p:'测试挂了，你跑一下 mvn test 看输出。',pt:20},
+ {text:'这个 NullPointerException 是哪来的？',t:20},
+ {text:'粘贴：堆栈 + UserRepository.java 全文',t:6000,p:'堆栈在 target/surefire-reports 里，你自己看。',pt:25},
+ {text:'粘贴：修完后又跑了一次的测试日志',t:4500,p:'修好了，再跑一次测试确认。',pt:15},
+ {text:'好，接下来把缓存接上，用 Caffeine。',t:20},
+ {text:'继续。',t:5}];
+const extra=[
+ {text:'粘贴：缓存压测日志，第 1 轮',t:15000,p:'跑一下压测脚本 bench.sh，看命中率。',pt:20},
+ {text:'为什么命中率这么低？',t:15},
+ {text:'粘贴：缓存压测日志，第 2 轮',t:15000,p:'改完再压一轮。',pt:10},
+ {text:'粘贴：GC 日志',t:15000,p:'顺便看下 logs/gc.log。',pt:15},
+ {text:'继续优化。',t:5}];
+const $=id=>document.getElementById(id);
+let running=false,timer=null;
+function state(){return{cap:+document.querySelector('input[name=route]:checked').value,cmd:$('optCmd').checked,ag:$('optAgents').checked,long:$('optLong').checked}}
+function build(s){const arr=(s.long?base.concat(extra):base).map((m,i)=>{let text=m.text,t=m.t;if(s.cmd&&m.p){text=m.p;t=m.pt}if(s.ag&&m.c){text=m.a;t=m.at}return{n:i+1,text,t,c:m.c&&!s.ag}});return arr}
+function render(){clearTimeout(timer);running=false;$('run').disabled=false;const s=state(),arr=build(s);const ul=$('msgs');ul.innerHTML='';arr.forEach(m=>{const li=document.createElement('li');li.className='msg'+(m.c?' constraint':'');li.id='m'+m.n;li.innerHTML=`<span class="no">#${m.n}</span><span class="tx">${m.text}<span class="st"></span></span><span class="tk">${fmt(m.t)}</span>`;ul.appendChild(li)});
+ $('totalTk').textContent='合计 '+fmt(arr.reduce((a,m)=>a+m.t,0))+' token';$('cap').textContent='预算 '+fmt(s.cap);$('used').textContent='已用 0';$('fill').style.width='0';$('bar').setAttribute('aria-valuemax',s.cap);$('bar').setAttribute('aria-valuenow',0);
+ $('newctx').innerHTML='<p class="muted small" style="margin:0">还没有压缩。点左边的「开始压缩」。</p>';$('fate').innerHTML='';}
+function run(){if(running)return;render();running=true;$('run').disabled=true;const s=state(),arr=build(s);let rem=s.cap,used=0,i=arr.length-1;const res={};
+ function mark(m,cls,label){const li=$('m'+m.n);li.classList.remove('scan');li.classList.add(cls);li.querySelector('.st').innerHTML=` <span class="badge b-${cls}">${label}</span>`;}
+ function step(){if(i<0){return finish()}const m=arr[i];const li=$('m'+m.n);
+  if(rem===0){for(let k=i;k>=0;k--){mark(arr[k],'drop','不再原样带上');res[arr[k].n]='drop'}return finish()}
+  li.classList.add('scan');
+  const go=()=>{if(m.t<=rem){rem-=m.t;used+=m.t;mark(m,'keep','完整保留');res[m.n]='keep';i--;upd();timer=setTimeout(step,reduce?0:380)}else{used+=rem;mark(m,'cut',`截成头尾 ${fmt(rem)}`);res[m.n]='cut';rem=0;upd();i--;for(let k=i;k>=0;k--){mark(arr[k],'drop','不再原样带上');res[arr[k].n]='drop'}finish()}};
+  if(reduce)go();else timer=setTimeout(go,260)}
+ function upd(){$('used').textContent='已用 '+fmt(used);$('fill').style.width=(used/s.cap*100)+'%';$('bar').setAttribute('aria-valuenow',used)}
+ function finish(){running=false;$('run').disabled=false;show(s,arr,res)}
+ step();}
+function show(s,arr,res){const kept=arr.filter(m=>res[m.n]!=='drop');const cnt={keep:0,cut:0,drop:0};arr.forEach(m=>cnt[res[m.n]]++);
+ const remote=s.cap===64000;
+ let h=`<div class="nc l1"><b>① 重建</b>系统与开发者指令 · 环境信息 · AGENTS.md${s.ag?'（含：<strong>public 方法签名不得修改</strong>）':''}</div>`;
+ h+=`<div class="nc l2"><b>② 原话 · ${kept.length} 条</b>${kept.map(m=>'#'+m.n+(res[m.n]==='cut'?'（截断）':'')).join('、')||'无'}</div>`;
+ h+=`<div class="nc l3"><b>③ 摘要</b>${remote?'服务端返回的加密压缩块。内容你读不到。':'模型写的交接摘要（可读）。它有没有写到那条要求，要打开看才知道。'}</div>`;
+ h+=`<div class="nc l0"><b>不原样带上</b>${cnt.drop?cnt.drop+' 条更早的用户消息，以及':''} Codex 的全部回答、命令和输出</div>`;
+ $('newctx').innerHTML=h;
+ let f;const first=res[1];
+ if(s.ag)f=['ok','✓ 要求在第 ① 层，每次压缩都会重新装入。','它不和原话抢预算。第 1 条消息只剩任务说明，掉不掉都不要紧。'];
+ else if(first==='keep')f=['ok','✓ 第 1 条作为原话完整保留。',s.cmd?'日志没进原话预算，后面的消息加起来很短。':'这次后面的消息加起来没装满预算。会话再长一点就不一定了。'];
+ else if(first==='cut')f=['warn','△ 第 1 条被截成头尾两段。','要求那句可能正好在被删掉的中间。'];
+ else f=['bad','× 第 1 条不再原样带上，只能指望摘要里写到了它。',remote?'这次的摘要是加密的，你没法检查它写没写。':'打开摘要核对；如果没写，Codex 接下来就不知道这条要求。'];
+ $('fate').innerHTML=`<div class="fate ${f[0]}">${f[1]}<span>${f[2]}</span></div>`;}
+document.querySelectorAll('#sim input').forEach(x=>x.addEventListener('change',render));
+$('run').addEventListener('click',run);$('reset').addEventListener('click',render);render();
+// quiz
+$('check').addEventListener('click',()=>{let ok=0;const fs=[...document.querySelectorAll('#quiz fieldset')];fs.forEach(f=>{const v=(f.querySelector('input:checked')||{}).value;const fb=f.querySelector('.fb');fb.className='fb show '+(v===f.dataset.ans?'right':'wrong');fb.textContent=v?(v===f.dataset.ans?fb.dataset.r:'不对。'+fb.dataset.w):'这题还没选。';if(v===f.dataset.ans)ok++});$('qscore').textContent=`答对 ${ok} / ${fs.length}`});
+// sources
+const C='https://github.com/openai/codex/blob/a07c8ebd57feedc4cf5dfe854c8e9101de54186b/codex-rs/';
+const src=[
+ ['core/src/compact.rs',63,63,'原话预算常量 COMPACT_USER_MESSAGE_MAX_TOKENS = 20_000'],
+ ['prompts/templates/compact/prompt.md',1,9,'压缩提示原文'],
+ ['core/src/compact.rs',119,126,'配置 compact_prompt 存在时替换默认提示'],
+ ['core/src/compact.rs',338,349,'写摘要的请求超窗：从副本删最早一项再试'],
+ ['core/src/compact.rs',383,386,'摘要加前缀；收集用户原话；构建新历史'],
+ ['core/src/compact.rs',394,414,'重建当前指令与上下文，替换活动历史'],
+ ['core/src/compact.rs',421,424,'多次压缩会降低准确性的提醒'],
+ ['core/src/compact.rs',583,603,'只认真正的用户消息，跳过旧摘要'],
+ ['core/src/compact.rs',615,675,'重建内容的插入位置'],
+ ['core/src/compact.rs',690,770,'从新到旧装预算、边界截断、恢复顺序、追加摘要'],
+ ['utils/string/src/truncate.rs',62,113,'头尾截断与约 4 字节 / token 的估算'],
+ ['core/src/compact_remote_v2.rs',78,82,'远端路线保留预算常量 64,000'],
+ ['core/src/compact_remote_v2.rs',548,597,'远端路线的候选类型筛选'],
+ ['core/src/compact_remote_v2.rs',499,524,'远端路线：保留内容之后另加压缩块'],
+ ['protocol/src/models.rs',1269,1277,'远端压缩块的加密内容字段'],
+ ['core/src/agents_md.rs',56,178,'项目文档的共享字节预算与尾部截断']];
+$('srclist').innerHTML=src.map(([f,a,b,d])=>`<li>${d}<br><a href="${C}${f}#L${a}${a===b?'':'-L'+b}" target="_blank" rel="noopener noreferrer">${f} · ${a===b?a:a+'–'+b} 行</a></li>`).join('');
+})();
+</script></body></html>
