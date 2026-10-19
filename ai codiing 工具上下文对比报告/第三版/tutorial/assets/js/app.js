@@ -886,6 +886,349 @@
     });
   }
 
+  /* ---------- 版面增强（第三版改版） ----------
+   * 1. 本页目录：宽屏右侧显示各节标题，滚动时高亮当前节
+   * 2. SVG 图文字自适应：按实际字体测量，文字超出方框或行距过密时缩小字号；
+   *    内容超出画布时扩大 viewBox。不同系统字体（PingFang / 雅黑 / Noto）宽度不同，
+   *    所以必须在浏览器里按真实渲染结果调整，而不是靠写死的坐标。
+   * 3. 行内代码在 _ . / 等位置插入 <wbr>，长标识符只在自然断点换行
+   * 4. 对比表：可横向滚动时显示提示；“已核实”改为对勾并在表注加图例
+   * 5. 工具卡片显示弹窗首句作为一句话摘要；弹窗“关键参数”拆成列表
+   */
+
+  function buildPageToc() {
+    var main = $(".main");
+    var prose = $(".prose", main || document);
+    if (!main || !prose || $(".page-toc", main)) return;
+    var heads = $$(".prose > section > h2", main).filter(function (h) {
+      return h.parentElement.id;
+    });
+    if (heads.length < 3) return;
+
+    var nav = document.createElement("nav");
+    nav.className = "page-toc";
+    nav.setAttribute("aria-label", "本页目录");
+    var title = document.createElement("p");
+    title.className = "page-toc__title";
+    title.textContent = "本页目录";
+    nav.appendChild(title);
+    var ol = document.createElement("ol");
+    var links = [];
+    heads.forEach(function (h, i) {
+      var sec = h.parentElement;
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.href = "#" + sec.id;
+      var no = document.createElement("span");
+      no.className = "page-toc__no";
+      no.textContent = (i < 9 ? "0" : "") + (i + 1);
+      var label = document.createElement("span");
+      label.textContent = h.textContent.replace(/\s+/g, " ").trim();
+      a.appendChild(no);
+      a.appendChild(label);
+      li.appendChild(a);
+      ol.appendChild(li);
+      links.push({ a: a, sec: sec });
+    });
+    nav.appendChild(ol);
+    main.appendChild(nav);
+    main.classList.add("has-toc");
+
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var line = window.innerHeight * 0.3;
+      var current = links[0];
+      links.forEach(function (item) {
+        if (item.sec.getBoundingClientRect().top <= line) current = item;
+      });
+      links.forEach(function (item) {
+        item.a.classList.toggle("is-active", item === current);
+      });
+    }
+    window.addEventListener(
+      "scroll",
+      function () {
+        if (!ticking) {
+          ticking = true;
+          window.requestAnimationFrame(update);
+        }
+      },
+      { passive: true }
+    );
+    update();
+  }
+
+  var FIT_MIN = 0.72; // 字号最多缩到原来的 72%
+  var FIT_LINE = 1.3; // 同一方框内多行文字，行距至少 1.3 倍字号
+
+  function textLines(t) {
+    var spans = $$("tspan", t).filter(function (s) {
+      return s.getAttribute("x") !== null || s.getAttribute("dy") !== null || s.getAttribute("y") !== null;
+    });
+    if (spans.length < 2) return [t.getBoundingClientRect()];
+    return spans.map(function (s) {
+      return s.getBoundingClientRect();
+    });
+  }
+
+  function fitSvg(svg) {
+    if (svg.getAttribute("data-fitted")) return;
+    var vb = svg.viewBox && svg.viewBox.baseVal;
+    var sb = svg.getBoundingClientRect();
+    if (!vb || !vb.width || !sb.width) return; // 不可见（弹窗、折叠中），稍后再试
+    svg.setAttribute("data-fitted", "1");
+
+    var ppu = sb.width / vb.width; // 每个 viewBox 单位对应的像素
+    var pad = 6 * ppu;
+    var rects = $$("rect", svg)
+      .map(function (r) {
+        return { el: r, b: r.getBoundingClientRect(), texts: [] };
+      })
+      .filter(function (r) {
+        return r.b.width > 18 && r.b.height > 12;
+      });
+
+    var items = [];
+    $$("text", svg).forEach(function (t) {
+      var tb = t.getBoundingClientRect();
+      if (!tb.width) return;
+      var cs = window.getComputedStyle(t);
+      var anchor = cs.textAnchor;
+      var ax = anchor === "middle" ? tb.left + tb.width / 2 : anchor === "end" ? tb.right - 2 : tb.left + 2;
+      var ay = tb.top + tb.height / 2;
+      var box = null;
+      rects.forEach(function (r) {
+        var b = r.b;
+        if (ax >= b.left && ax <= b.right && ay >= b.top && ay <= b.bottom) {
+          if (!box || b.width * b.height < box.b.width * box.b.height) box = r;
+        }
+      });
+      var item = { t: t, tb: tb, anchor: anchor, fs: parseFloat(cs.fontSize) || 16, kw: 1, kl: 1, box: box };
+      if (box) {
+        var b = box.b;
+        var avail;
+        if (anchor === "middle") avail = b.width - 2 * pad;
+        else if (anchor === "end") avail = tb.right - (b.left + pad);
+        else avail = b.right - pad - tb.left;
+        if (avail > 0 && tb.width > avail) item.kw = avail / tb.width;
+        box.texts.push(item);
+      }
+      items.push(item);
+    });
+
+    /* 同一方框内的多行文字：行距不足时整体缩小 */
+    rects.forEach(function (r) {
+      if (!r.texts.length) return;
+      var lines = [];
+      r.texts.forEach(function (it) {
+        textLines(it.t).forEach(function (lb) {
+          if (lb.height) lines.push({ top: lb.top + lb.height / 2, left: lb.left, right: lb.right, it: it });
+        });
+      });
+      if (lines.length < 2) return;
+      lines.sort(function (a, b) {
+        return a.top - b.top;
+      });
+      var minGap = Infinity;
+      var fsPx = 0;
+      /* 只比较上下相邻、且水平方向有重叠的两行；同一行里的编号、标题、备注不算 */
+      for (var i = 0; i < lines.length; i++) {
+        for (var j = i + 1; j < lines.length; j++) {
+          var a = lines[i];
+          var c = lines[j];
+          var f = Math.max(a.it.fs, c.it.fs) * ppu;
+          var gap = c.top - a.top;
+          if (gap < 0.5 * f) continue;
+          if (Math.min(a.right, c.right) - Math.max(a.left, c.left) <= 0) continue;
+          if (gap < minGap) {
+            minGap = gap;
+            fsPx = f;
+          }
+          break;
+        }
+      }
+      if (minGap === Infinity || !fsPx) return;
+      if (minGap < FIT_LINE * fsPx) {
+        var k = minGap / (FIT_LINE * fsPx);
+        r.texts.forEach(function (it) {
+          it.kl = Math.min(it.kl, k);
+        });
+      }
+    });
+
+    items.forEach(function (it) {
+      var want = Math.min(it.kw, it.kl);
+      if (want >= 0.995) return;
+      var k = Math.max(FIT_MIN, want);
+      it.t.style.fontSize = (it.fs * k).toFixed(2) + "px";
+      /* 缩到下限仍放不下：单行文字用 textLength 压紧字距 */
+      if (it.kw < FIT_MIN && it.box && textLines(it.t).length < 2) {
+        var b = it.box.b;
+        var availPx = it.anchor === "middle" ? b.width - 2 * pad : it.anchor === "end" ? it.tb.right - (b.left + pad) : b.right - pad - it.tb.left;
+        if (availPx > 0) {
+          it.t.setAttribute("textLength", (availPx / ppu).toFixed(1));
+          it.t.setAttribute("lengthAdjust", "spacingAndGlyphs");
+        }
+      }
+    });
+
+    /* 内容超出画布：扩大 viewBox，四周留 8 个单位 */
+    try {
+      var bb = svg.getBBox();
+      var x0 = Math.min(vb.x, bb.x - 8);
+      var y0 = Math.min(vb.y, bb.y - 8);
+      var x1 = Math.max(vb.x + vb.width, bb.x + bb.width + 8);
+      var y1 = Math.max(vb.y + vb.height, bb.y + bb.height + 8);
+      var grow = x0 < vb.x - 0.5 || y0 < vb.y - 0.5 || x1 > vb.x + vb.width + 0.5 || y1 > vb.y + vb.height + 0.5;
+      if (grow) {
+        svg.setAttribute("viewBox", [x0, y0, x1 - x0, y1 - y0].map(function (n) {
+          return Math.round(n * 10) / 10;
+        }).join(" "));
+      }
+    } catch (e) {
+      /* getBBox 在不可见元素上会抛错，忽略 */
+    }
+  }
+
+  function fitFigures() {
+    $$(".prose svg[viewBox], .modal svg[viewBox]").forEach(function (svg) {
+      if (svg.closest(".demo") || svg.closest("button") || svg.closest(".topbar")) return;
+      if (svg.viewBox.baseVal.width < 120) return; // 图标
+      fitSvg(svg);
+    });
+  }
+
+  function bindFigureFit() {
+    var run = function () {
+      fitFigures();
+    };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(run);
+    window.addEventListener("load", run);
+    run();
+    /* 弹窗打开、答案展开后，原来不可见的图才有尺寸 */
+    document.addEventListener("click", function () {
+      window.setTimeout(run, 60);
+    });
+  }
+
+  function softBreakCode() {
+    $$(".prose code, .modal code").forEach(function (c) {
+      if (c.closest("pre") || c.children.length || c.getAttribute("data-wbr")) return;
+      var s = c.textContent;
+      if (s.length < 14 || !/[_./:,=(]/.test(s)) return;
+      c.setAttribute("data-wbr", "1");
+      var parts = s.split(/([_./:,=(]+)/);
+      c.textContent = "";
+      parts.forEach(function (p, i) {
+        if (!p) return;
+        c.appendChild(document.createTextNode(p));
+        if (i % 2 === 1) c.appendChild(document.createElement("wbr"));
+      });
+    });
+  }
+
+  function enhanceTables() {
+    $$(".table-wrap").forEach(function (wrap) {
+      var prev = wrap.previousElementSibling;
+      var hint = prev && prev.classList.contains("table-hint") ? prev : null;
+      var refresh = function () {
+        if (hint) hint.classList.toggle("is-on", wrap.scrollWidth > wrap.clientWidth + 4);
+      };
+      refresh();
+      window.addEventListener("resize", refresh);
+
+      var oks = $$(".data-table .tag--ok", wrap);
+      oks.forEach(function (t) {
+        var label = t.textContent.trim() || "已核实";
+        t.title = label;
+        t.setAttribute("aria-label", label);
+      });
+      if (oks.length) {
+        var next = wrap.nextElementSibling;
+        var legend = document.createElement("span");
+        legend.className = "table-legend";
+        legend.textContent = "✓ = 已核实";
+        if (next && next.classList.contains("table-caption")) {
+          next.insertBefore(legend, next.firstChild);
+        } else {
+          var p = document.createElement("p");
+          p.className = "table-caption";
+          p.appendChild(legend);
+          wrap.parentNode.insertBefore(p, wrap.nextSibling);
+        }
+      }
+    });
+  }
+
+  function firstSentence(text) {
+    var s = text.replace(/\s+/g, " ").trim();
+    var m = s.match(/^(.{8,80}?[。；！？])/);
+    return m ? m[1] : s.slice(0, 60);
+  }
+
+  function enhanceToolCards() {
+    $$(".tool-btn[data-modal]").forEach(function (btn) {
+      if ($(".tool-btn__sum", btn)) return;
+      var modal = document.getElementById("modal-" + btn.getAttribute("data-modal"));
+      var lead = modal && $(".modal__lead", modal);
+      if (!lead) return;
+      var sum = document.createElement("span");
+      sum.className = "tool-btn__sum";
+      sum.textContent = firstSentence(lead.textContent);
+      btn.appendChild(sum);
+    });
+  }
+
+  /* 弹窗里“关键参数与默认值”这一项：按“；”拆成列表，避免一长串行内代码挤成一团 */
+  function enhanceKv() {
+    $$(".modal .kv dd").forEach(function (dd) {
+      var dt = dd.previousElementSibling;
+      if (!dt || !/参数/.test(dt.textContent)) return;
+      if ($$("code", dd).length < 3 || dd.textContent.split("；").length < 3) return;
+      var groups = [[]];
+      Array.prototype.slice.call(dd.childNodes).forEach(function (node) {
+        if (node.nodeType === 3 && node.nodeValue.indexOf("；") !== -1) {
+          var bits = node.nodeValue.split("；");
+          bits.forEach(function (bit, i) {
+            if (i > 0) groups.push([]);
+            if (bit.trim()) groups[groups.length - 1].push(document.createTextNode(bit));
+          });
+        } else {
+          groups[groups.length - 1].push(node);
+        }
+      });
+      groups = groups.filter(function (g) {
+        return g.some(function (n) {
+          return (n.textContent || "").trim();
+        });
+      });
+      if (groups.length < 3) return;
+      var ul = document.createElement("ul");
+      ul.className = "kv-list";
+      groups.forEach(function (g) {
+        var li = document.createElement("li");
+        g.forEach(function (n) {
+          li.appendChild(n);
+        });
+        ul.appendChild(li);
+      });
+      dd.textContent = "";
+      dd.appendChild(ul);
+    });
+  }
+
+  function enhanceLayout() {
+    var steps = [buildPageToc, enhanceKv, softBreakCode, enhanceTables, enhanceToolCards, bindFigureFit];
+    steps.forEach(function (fn) {
+      try {
+        fn();
+      } catch (e) {
+        if (window.console) console.warn("[layout]", fn.name, e);
+      }
+    });
+  }
+
   /* ---------- 初始化 ---------- */
 
   function init() {
@@ -898,6 +1241,7 @@
     bindQuiz();
     bindCopy();
     bindRecent();
+    enhanceLayout();
   }
 
   window.CTX = {

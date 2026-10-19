@@ -2422,3 +2422,392 @@ pre.code code {
     color: inherit;
   }
 }
+
+/* ============================================================
+ * 11. 版面优化（第三版改版）
+ * 目标：宽屏不再留大块空白；正文保持舒适行宽；图表与演示放宽；
+ *       提高小字字号与行距；修正行内代码断行、表格挤压。
+ * 说明：本节放在文件末尾统一覆盖前面的规则，便于整体回退。
+ * ============================================================ */
+:root {
+  --sidebar-w: 268px;
+  --measure: 760px;   /* 正文行宽：约 44 个汉字 */
+  --wide: 1100px;     /* 表格、演示、代码、工具卡片的最大宽度 */
+  --toc-w: 228px;     /* 右侧本页目录 */
+}
+
+/* 11.1 基础排版：字号、行距、段距 */
+body {
+  font-size: 17px;
+  line-height: 1.82;
+}
+
+.prose p {
+  margin-bottom: 18px;
+}
+
+.prose li {
+  margin: 6px 0;
+}
+
+.prose > section + section {
+  margin-top: 72px;
+}
+
+.sec-no {
+  margin-bottom: 6px;
+  color: var(--accent-strong);
+  font-size: 12.5px;
+}
+
+.sec-no + h2 {
+  margin-top: 0;
+}
+
+h2 {
+  margin-top: 56px;
+  font-size: 26px;
+}
+
+h3 {
+  margin-top: 36px;
+  font-size: 19.5px;
+}
+
+.kicker { font-size: 13px; }
+.meta li { font-size: 13px; }
+.learn h2, .learn h3 { font-size: 13px; }
+.learn ol, .learn ul { font-size: 15.5px; }
+.small { font-size: 14px; }
+.footnotes { font-size: 14px; }
+.footer-note { font-size: 13px; }
+.tag { font-size: 12px; }
+.fig figcaption { font-size: 13.5px; }
+.codeblock__lang { font-size: 11px; }
+.modal__kicker { font-size: 11.5px; }
+
+/* 行内代码：只在标识符的自然断点换行（_ . / 等后由脚本插入 <wbr>），不再在单词中间硬断 */
+:not(pre) > code {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* 固定顶栏不再遮住跳转目标 */
+.prose [id],
+.footnotes li {
+  scroll-margin-top: calc(var(--topbar-h) + 20px);
+}
+
+/* 11.2 版心：正文窄、组件宽 */
+.prose {
+  max-width: calc(var(--wide) + 96px);
+  padding: 48px 48px 112px;
+}
+
+.prose > *,
+.prose > header > *,
+.prose > section > *,
+.prose > section > section > * {
+  max-width: var(--measure);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.prose > section,
+.prose > section > section,
+.prose > header {
+  max-width: none;
+}
+
+/* 这些组件放宽到 --wide */
+.prose > section > :is(.table-wrap, .table-hint, .table-caption, .demo, .tool-grid, .codeblock, .map-grid, .mm-grid),
+.prose > section > section > :is(.table-wrap, .table-hint, .table-caption, .demo, .tool-grid, .codeblock, .map-grid, .mm-grid) {
+  max-width: var(--wide);
+}
+
+/* SVG 图：保持正文宽度，避免整张图放大后字号失控 */
+.fig {
+  padding: 20px 20px 14px;
+}
+
+/* 11.3 右侧本页目录（≥1360px 显示，由 app.js 生成） */
+.page-toc {
+  display: none;
+}
+
+@media (min-width: 1360px) {
+  .main.has-toc {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--toc-w);
+    align-items: start;
+  }
+
+  .main.has-toc .prose {
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .page-toc {
+    position: sticky;
+    top: calc(var(--topbar-h) + 32px);
+    display: block;
+    max-height: calc(100vh - var(--topbar-h) - 64px);
+    overflow-y: auto;
+    margin: 48px 0 0;
+    padding: 0 24px 24px 18px;
+    border-left: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+}
+
+.page-toc__title {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.page-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page-toc li {
+  margin: 0;
+}
+
+.page-toc a {
+  display: flex;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.page-toc a:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.page-toc a.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.page-toc__no {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.95;
+}
+
+/* 11.4 对比表：列不再被压扁；可滚动时有提示与渐隐阴影 */
+.data-table {
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.data-table thead th {
+  font-size: 12px;
+}
+
+.data-table td {
+  min-width: 172px;
+}
+
+.data-table .cell-tool span {
+  font-size: 11px;
+}
+
+.table-caption {
+  font-size: 13px;
+}
+
+.table-wrap {
+  background:
+    linear-gradient(to left, var(--bg) 40%, transparent) right center / 32px 100% no-repeat local,
+    radial-gradient(farthest-side at 100% 50%, rgba(30, 28, 22, 0.16), transparent) right center / 14px 100% no-repeat scroll,
+    var(--bg);
+}
+
+.table-hint.is-on {
+  display: block;
+}
+
+/* 表格里的“已核实”只显示一个对勾，图例写在表注里；推断/待核实等例外照常显示 */
+.data-table .tag--ok {
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  gap: 0;
+  font-size: 0;
+  vertical-align: -3px;
+}
+
+.data-table .tag--ok::before {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  content: "✓";
+  opacity: 1;
+}
+
+.table-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* 11.5 工具卡片：显示一句话做法，不点开也能看出差异 */
+.tool-grid {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.tool-btn {
+  gap: 4px;
+  padding: 12px 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tool-btn:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.tool-btn__name {
+  font-size: 14.5px;
+}
+
+.tool-btn__id {
+  font-size: 11px;
+}
+
+.tool-btn__sum {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* 11.6 弹窗：加宽，参数改为列表 */
+.modal__panel {
+  width: min(820px, 100%);
+  max-height: min(88vh, 860px);
+}
+
+.modal__body {
+  padding: 22px 26px 26px;
+  font-size: 15.5px;
+}
+
+.kv {
+  grid-template-columns: 96px 1fr;
+  gap: 10px 16px;
+  margin: 18px 0;
+  font-size: 14.5px;
+}
+
+.kv dt {
+  font-size: 13px;
+}
+
+.kv-list {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.kv-list li {
+  margin: 2px 0;
+}
+
+/* 11.7 响应式 */
+@media (max-width: 1100px) {
+  :root {
+    --sidebar-w: 256px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .prose {
+    padding: 36px 28px 88px;
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    font-size: 16.5px;
+  }
+
+  .prose {
+    padding: 26px 18px 72px;
+  }
+
+  .prose > section + section {
+    margin-top: 56px;
+  }
+
+  h2 {
+    margin-top: 44px;
+    font-size: 23px;
+  }
+
+  /* 窄屏上图不再缩成 8px 小字：保持最小宽度，可横向滑动 */
+  .fig {
+    overflow-x: auto;
+    padding: 14px 12px 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fig svg {
+    min-width: 540px;
+  }
+
+  .fig figcaption {
+    position: sticky;
+    left: 0;
+    max-width: calc(100vw - 64px);
+  }
+
+  .data-table td {
+    min-width: 150px;
+  }
+
+  .modal__body {
+    padding: 18px 18px 22px;
+  }
+}
+
+@media print {
+  .page-toc {
+    display: none !important;
+  }
+
+  .prose,
+  .prose > *,
+  .prose > section > * {
+    max-width: none;
+  }
+
+  .fig svg {
+    min-width: 0;
+  }
+}
