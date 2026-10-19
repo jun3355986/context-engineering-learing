@@ -189,41 +189,41 @@
 
           <rect class="svg-track" x="0" y="26" width="140" height="92" rx="6"/>
           <rect class="svg-seg--a" x="0" y="26" width="140" height="5" rx="2"/>
-          <text class="svg-label--dark" x="14" y="52" font-size="18" font-weight="650">进入</text>
-          <text class="svg-note" x="14" y="74" font-size="13">缩放 / 归一化</text>
-          <text class="svg-note" x="14" y="92" font-size="13">体积与格式校验</text>
-          <text class="svg-note" x="14" y="110" font-size="13">摄取上限</text>
+          <text class="svg-label--dark" x="14" y="52" style="font-size:18px" font-weight="650">进入</text>
+          <text class="svg-note" x="14" y="74" style="font-size:13px">缩放 / 归一化</text>
+          <text class="svg-note" x="14" y="92" style="font-size:13px">体积与格式校验</text>
+          <text class="svg-note" x="14" y="110" style="font-size:13px">摄取上限</text>
 
           <rect class="svg-track" x="166" y="26" width="140" height="92" rx="6"/>
           <rect class="svg-seg--b" x="166" y="26" width="140" height="5" rx="2"/>
-          <text class="svg-label--dark" x="180" y="52" font-size="18" font-weight="650">保留</text>
-          <text class="svg-note" x="180" y="74" font-size="13">按张 / 按字节</text>
-          <text class="svg-note" x="180" y="92" font-size="13">按像素 / 固定估算</text>
-          <text class="svg-note" x="180" y="110" font-size="13">计入窗口或请求体</text>
+          <text class="svg-label--dark" x="180" y="52" style="font-size:18px" font-weight="650">保留</text>
+          <text class="svg-note" x="180" y="74" style="font-size:13px">按张 / 按字节</text>
+          <text class="svg-note" x="180" y="92" style="font-size:13px">按像素 / 固定估算</text>
+          <text class="svg-note" x="180" y="110" style="font-size:13px">计入窗口或请求体</text>
 
           <rect class="svg-track" x="332" y="26" width="140" height="92" rx="6"/>
           <rect class="svg-seg--c" x="332" y="26" width="140" height="5" rx="2"/>
-          <text class="svg-label--dark" x="346" y="52" font-size="18" font-weight="650">驱逐</text>
-          <text class="svg-note" x="346" y="74" font-size="13">请求体到上限</text>
-          <text class="svg-note" x="346" y="92" font-size="13">provider 张数超限</text>
-          <text class="svg-note" x="346" y="110" font-size="13">压缩 / 不支持模态</text>
+          <text class="svg-label--dark" x="346" y="52" style="font-size:18px" font-weight="650">驱逐</text>
+          <text class="svg-note" x="346" y="74" style="font-size:13px">请求体到上限</text>
+          <text class="svg-note" x="346" y="92" style="font-size:13px">provider 张数超限</text>
+          <text class="svg-note" x="346" y="110" style="font-size:13px">压缩 / 不支持模态</text>
 
           <rect class="svg-track" x="498" y="26" width="142" height="92" rx="6" stroke-dasharray="4 4"/>
           <rect class="svg-seg--free" x="498" y="26" width="142" height="5" rx="2"/>
-          <text class="svg-label--dark" x="512" y="52" font-size="18" font-weight="650">占位</text>
-          <text class="svg-note" x="512" y="74" font-size="13">附件名 + 路径</text>
-          <text class="svg-note" x="512" y="92" font-size="13">或“图已移出”</text>
-          <text class="svg-note" x="512" y="110" font-size="13">不要凭记忆描述</text>
+          <text class="svg-label--dark" x="512" y="52" style="font-size:18px" font-weight="650">占位</text>
+          <text class="svg-note" x="512" y="74" style="font-size:13px">附件名 + 路径</text>
+          <text class="svg-note" x="512" y="92" style="font-size:13px">或“图已移出”</text>
+          <text class="svg-note" x="512" y="110" style="font-size:13px">不要凭记忆描述</text>
 
           <polygon points="146,66 154,71 146,76" fill="var(--border-strong)"/>
           <polygon points="312,66 320,71 312,76" fill="var(--border-strong)"/>
           <polygon points="478,66 486,71 478,76" fill="var(--border-strong)"/>
 
-          <text class="svg-note" x="0" y="148" font-size="13">磁盘上的原图（始终保留，可再次读取）</text>
+          <text class="svg-note" x="0" y="148" style="font-size:13px">磁盘上的原图（始终保留，可再次读取）</text>
           <rect class="svg-track" x="0" y="156" width="640" height="22" rx="4"/>
           <rect class="svg-seg--a" x="3" y="159" width="634" height="16" rx="3" opacity="0.55"/>
-          <text class="svg-note" x="0" y="200" font-size="13">驱逐只改请求与投影；原图仍在磁盘</text>
-          <text class="svg-note" x="0" y="220" font-size="13">占位文本决定模型会不会凭记忆编造视觉细节</text>
+          <text class="svg-note" x="0" y="200" style="font-size:13px">驱逐只改请求与投影；原图仍在磁盘</text>
+          <text class="svg-note" x="0" y="220" style="font-size:13px">占位文本决定模型会不会凭记忆编造视觉细节</text>
         </svg>
         <figcaption>图 09-1　图片生命周期。进入阶段解决“能不能发”，保留阶段解决“占多少”，驱逐阶段解决“先删谁”，占位阶段解决“模型知不知道图没了”。四站的参数因工具而异，顺序基本一致。</figcaption>
       </figure>

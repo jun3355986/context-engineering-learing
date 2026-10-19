@@ -255,7 +255,7 @@
           <title id="fig-proj-title">同一份日志原文、裁剪后的投影与压缩后的历史</title>
           <desc id="fig-proj-desc">三行对照。第一行是磁盘原文的九个块，全部保留。第二行是裁剪后的投影，九个块里三个换成占位。第三行是压缩后的历史，前五个块被一条摘要替换，后四个块保留。</desc>
 
-          <text class="svg-note" x="0" y="16" font-size="13">磁盘原文（9 块，始终保留）</text>
+          <text class="svg-note" x="0" y="16" style="font-size:13px">磁盘原文（9 块，始终保留）</text>
           <rect class="svg-track" x="0" y="26" width="640" height="44" rx="5"/>
           <rect class="svg-seg--a" x="8" y="34" width="64" height="28" rx="3"/>
           <rect class="svg-seg--c" x="76" y="34" width="64" height="28" rx="3"/>
@@ -267,32 +267,32 @@
           <rect class="svg-seg--c" x="484" y="34" width="64" height="28" rx="3"/>
           <rect class="svg-seg--b" x="552" y="34" width="64" height="28" rx="3"/>
 
-          <text class="svg-note" x="0" y="92" font-size="13">裁剪后的投影（9 块，3 块换成占位）</text>
+          <text class="svg-note" x="0" y="92" style="font-size:13px">裁剪后的投影（9 块，3 块换成占位）</text>
           <rect class="svg-track" x="0" y="102" width="640" height="44" rx="5"/>
           <rect class="svg-seg--a" x="8" y="110" width="64" height="28" rx="3"/>
           <rect class="svg-seg--free" x="76" y="110" width="64" height="28" rx="3"/>
-          <text class="svg-note" x="108" y="129" font-size="12" text-anchor="middle">占位</text>
+          <text class="svg-note" x="108" y="129" style="font-size:12px" text-anchor="middle">占位</text>
           <rect class="svg-seg--a" x="144" y="110" width="64" height="28" rx="3"/>
           <rect class="svg-seg--c" x="212" y="110" width="64" height="28" rx="3"/>
           <rect class="svg-seg--free" x="280" y="110" width="64" height="28" rx="3"/>
-          <text class="svg-note" x="312" y="129" font-size="12" text-anchor="middle">占位</text>
+          <text class="svg-note" x="312" y="129" style="font-size:12px" text-anchor="middle">占位</text>
           <rect class="svg-seg--c" x="348" y="110" width="64" height="28" rx="3"/>
           <rect class="svg-seg--free" x="416" y="110" width="64" height="28" rx="3"/>
-          <text class="svg-note" x="448" y="129" font-size="12" text-anchor="middle">占位</text>
+          <text class="svg-note" x="448" y="129" style="font-size:12px" text-anchor="middle">占位</text>
           <rect class="svg-seg--a" x="484" y="110" width="64" height="28" rx="3"/>
           <rect class="svg-seg--b" x="552" y="110" width="64" height="28" rx="3"/>
 
-          <text class="svg-note" x="0" y="168" font-size="13">压缩后的历史（前 5 块被一条摘要替换）</text>
+          <text class="svg-note" x="0" y="168" style="font-size:13px">压缩后的历史（前 5 块被一条摘要替换）</text>
           <rect class="svg-track" x="0" y="178" width="640" height="44" rx="5"/>
           <rect class="svg-seg--c" x="8" y="186" width="336" height="28" rx="3"/>
-          <text class="svg-label" x="176" y="205" font-size="14" text-anchor="middle">一条摘要（模型生成）</text>
+          <text class="svg-label" x="176" y="205" style="font-size:14px" text-anchor="middle">一条摘要（模型生成）</text>
           <rect class="svg-seg--a" x="352" y="186" width="64" height="28" rx="3"/>
           <rect class="svg-seg--c" x="420" y="186" width="64" height="28" rx="3"/>
           <rect class="svg-seg--a" x="488" y="186" width="64" height="28" rx="3"/>
           <rect class="svg-seg--b" x="556" y="186" width="64" height="28" rx="3"/>
 
           <line class="svg-rule" x1="0" y1="240" x2="640" y2="240"/>
-          <text class="svg-note" x="0" y="260" font-size="13">裁剪只改“能不能看见”；压缩换掉“内容”本身。三行下方是同一份原文。</text>
+          <text class="svg-note" x="0" y="260" style="font-size:13px">裁剪只改“能不能看见”；压缩换掉“内容”本身。三行下方是同一份原文。</text>
         </svg>
         <figcaption>图 07-2　同一份日志的三种视图。第一行是磁盘原文；第二行裁剪后，块的数量与顺序不变，只有三块换成占位；第三行压缩后，前五块被一条模型生成的摘要替换。裁剪与压缩都只改“模型可见的投影”，第一行的原文始终保留。位置为示意。</figcaption>
       </figure>

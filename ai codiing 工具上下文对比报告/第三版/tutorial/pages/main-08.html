@@ -58,7 +58,7 @@
   #demo-compact-sim .cmp-bar-wrap {
     position: relative;
     margin: 4px 0 14px;
-    padding-bottom: 14px;
+    padding-bottom: 20px;
   }
   #demo-compact-sim .cmp-bar {
     display: flex;
@@ -114,7 +114,7 @@
     bottom: 0;
     color: var(--red);
     font-family: var(--font-mono);
-    font-size: 9.5px;
+    font-size: 11px;
   }
   #demo-compact-sim .cmp-legend {
     display: flex;
@@ -193,9 +193,9 @@
     font-weight: 400;
   }
   #demo-compact-sim .cmp-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
   }
   #demo-compact-sim .cmp-tok {
     color: var(--muted);
