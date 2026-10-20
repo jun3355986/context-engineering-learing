@@ -66,7 +66,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -76,9 +76,9 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>附录</b><span>·</span><span>速查</span></p>
+      <p class="kicker"><b>附录 B</b><span>·</span><span>速查</span></p>
       <h1>参数速查表</h1>
-      <p class="lede">只收正文讨论过的机制所对应的参数，且每个都能在事实卡片里找到依据。每个工具一张表，默认值加粗；源码与官方文档冲突的，不在这里挑一个，统一放到最后的「口径说明」里并列。</p>
+      <p class="lede">只收正文讨论过的机制所对应的参数，且每个都能在源码里找到依据。每个工具一张表，默认值加粗；源码与官方文档冲突的，不在这里挑一个，统一放到最后的「口径说明」里并列。</p>
       <ul class="meta">
         <li>8 个工具</li>
         <li>65 个参数</li>
@@ -87,7 +87,7 @@
       </ul>
       <div class="callout callout--quiet">
         <p class="callout__title">怎么读</p>
-        <p>「默认值」写的是<strong>代码里没有配置时的行为</strong>，不是推荐值。很多工具会按模型目录、环境变量或远端配置覆盖它；表里只给基线。标「必填」的参数没有代码默认值，不填就不工作。出处优先给固定提交的 permalink，其次是事实卡片的小节号。</p>
+        <p>「默认值」写的是<strong>代码里没有配置时的行为</strong>，不是推荐值。很多工具会按模型目录、环境变量或远端配置覆盖它；表里只给基线。标「必填」的参数没有代码默认值，不填就不工作。出处优先给固定提交的 permalink，其次是源码行号。</p>
       </div>
     </header>
 
@@ -96,7 +96,7 @@
       <!-- ========== Codex ========== -->
       <section id="params-codex">
         <h2>Codex CLI</h2>
-        <p class="small muted">提交 <code>76ed3b4</code>（main，2026-10-14 快照）· 8 个参数 · 事实卡片 <code>research/codex.md</code></p>
+        <p class="small muted">提交 <code>76ed3b4</code>（main，2026-10-14 快照）· 8 个参数 · 源码与官方文档</p>
 
         <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
         <div class="table-wrap">
@@ -244,7 +244,7 @@
       <!-- ========== pi ========== -->
       <section id="params-pi">
         <h2>pi</h2>
-        <p class="small muted">提交 <code>b45e0eb</code>（main）· 8 个参数 · 事实卡片 <code>research/pi.md</code></p>
+        <p class="small muted">提交 <code>b45e0eb</code>（main）· 8 个参数 · 源码与官方文档</p>
 
         <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
         <div class="table-wrap">
@@ -746,7 +746,7 @@
             <a class="footnotes__back" href="#fnref-appendix-params-2">↩</a>
           </li>
           <li id="fn-appendix-params-3">
-            dsh 的若干默认值（<code>maxBytes</code>、<code>maxInlineTokens</code>）来自 <code>packages/bundle/base/cordis.patch.yml</code>，属源码配置；技能描述 500、子代理深度 1、时间注入 600000 来自同仓包 README，事实卡片标为【推断】。查过 <code>packages/</code> 对应实现目录，未逐行核对每个默认值的读取路径；结论按「文档口径 + 源码配置」分开表述。
+            dsh 的若干默认值（<code>maxBytes</code>、<code>maxInlineTokens</code>）来自 <code>packages/bundle/base/cordis.patch.yml</code>，属源码配置；技能描述 500、子代理深度 1、时间注入 600000 来自同仓包 README，只能标为【推断】。查过 <code>packages/</code> 对应实现目录，未逐行核对每个默认值的读取路径；结论按「文档口径 + 源码配置」分开表述。
             <a class="footnotes__back" href="#fnref-appendix-params-3">↩</a>
           </li>
         </ol>

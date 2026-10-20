@@ -93,7 +93,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -103,7 +103,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 04 章</span></p>
+      <p class="kicker"><b>第 11 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>动态注入：提醒、状态与增量</h1>
       <p class="lede">Agent 运行中总有新事实要告诉模型：换了目录、过了午夜、待办完成了、规则改了。这些信息放哪里、什么时候放、放几次，决定了它是“被看见”还是“把缓存打穿”。</p>
       <ul class="meta">
@@ -511,7 +511,7 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-04-1">
-          事实卡片标【推断】：opencode v1 有 <code>todowrite</code> 工具，但在 <code>session/prompt.ts</code> 与 <code>session/system.ts</code> 的检索中没有找到把 todo 列表注入 system 或 reminder 的代码。缺的是 TUI 层是否另有展示逻辑。因此正文只写“核心路径不注入”，不断言“完全没有”。
+          【推断】：opencode v1 有 <code>todowrite</code> 工具，但在 <code>session/prompt.ts</code> 与 <code>session/system.ts</code> 的检索中没有找到把 todo 列表注入 system 或 reminder 的代码。缺的是 TUI 层是否另有展示逻辑。因此正文只写“核心路径不注入”，不断言“完全没有”。
           <a class="footnotes__back" href="#fnref-main-04-1">↩</a>
         </li>
         <li id="fn-main-04-2">
@@ -519,7 +519,7 @@
           <a class="footnotes__back" href="#fnref-main-04-2">↩</a>
         </li>
         <li id="fn-main-04-3">
-          dsh 的动态注入（<code>agent/pre-step</code> 瀑布、时间插件 10 分钟间隔、todo 整表替换）来自 <code>docs/architecture.md</code> 与各包 README，卡片标【推断】。其中 <code>refreshIntervalMs = 600000</code> 与 plan mode 的缓存注释是源码/配置，按【已核实】处理。
+          dsh 的动态注入（<code>agent/pre-step</code> 瀑布、时间插件 10 分钟间隔、todo 整表替换）来自 <code>docs/architecture.md</code> 与各包 README，标【推断】。其中 <code>refreshIntervalMs = 600000</code> 与 plan mode 的缓存注释是源码/配置，按【已核实】处理。
           <a class="footnotes__back" href="#fnref-main-04-3">↩</a>
         </li>
       </ol>
@@ -674,7 +674,7 @@
           <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/tool/plugin/shell.ts#L157-L185">shell.ts#L157-L185</a>（完成通知）
         </dd>
       </dl>
-      <p class="modal__note">v2 是 beta <code>v2.0.29</code>。它用“指令 diff”替代了 v1 的“模式提醒”，但计划模式提醒在本卡片范围内没有找到等价实现——这是从 v1 迁移时要特别注意的缺口。</p>
+      <p class="modal__note">v2 是 beta <code>v2.0.29</code>。它用“指令 diff”替代了 v1 的“模式提醒”，但计划模式提醒在本次核对范围内没有找到等价实现——这是从 v1 迁移时要特别注意的缺口。</p>
     </div>
   </div>
 </div>

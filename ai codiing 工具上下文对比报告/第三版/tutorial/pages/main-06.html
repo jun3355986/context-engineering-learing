@@ -53,7 +53,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -63,7 +63,7 @@
   <article class="prose" id="main-06">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 06 章</span></p>
+      <p class="kicker"><b>第 13 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>单次工具输出控制</h1>
       <p class="lede">上下文爆炸很少是“聊得太久”，更多是一次 <code>cat</code>、一次测试、一次 grep 把几兆字节塞进了历史。控制单次工具输出，是减量链里代价最低的一环：它不调模型，不改历史，只在“结果进入上下文”的那一刻做一次裁剪。</p>
       <ul class="meta">
@@ -334,7 +334,7 @@
       <p><strong>代价</strong>：字节制对中文与代码不敏感——50 KB 的中文可能只有 17k token，50 KB 的 JSON 可能有 30k token；行制对超长单行无效（一行 2 MB 的压缩 JSON 仍然是一行）；token 制最贴近窗口，但每次截断都要估算，且估算误差会直接变成预算误差。多数工具是“字节与行取先到者”，等于用两个便宜的量近似一个贵的量。</p>
 
       <h3>取舍五：默认值激进还是保守</h3>
-      <p>Claude Code 的源码给通用工具结果设了 <code>50,000</code> 字符的单条上限，<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/toolLimits.ts#L13-L49">toolLimits.ts#L13-L49</a> <span class="tag tag--src">源码 v2.1.88</span> 而官方文档说“工具或 hook 输出超过 10,000 字符落盘”。<span class="tag tag--doc">官方文档</span> 两者差五倍。本教程按 02 号票的裁决采用源码值：<strong>50,000 字符</strong>；文档的 10,000 可能是旧版本口径，标【可能已变化】。<sup class="fn-ref"><a href="#fn-main-06-3" id="fnref-main-06-3">3</a></sup></p>
+      <p>Claude Code 的源码给通用工具结果设了 <code>50,000</code> 字符的单条上限，<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/toolLimits.ts#L13-L49">toolLimits.ts#L13-L49</a> <span class="tag tag--src">源码 v2.1.88</span> 而官方文档说“工具或 hook 输出超过 10,000 字符落盘”。<span class="tag tag--doc">官方文档</span> 两者差五倍。本教程以源码为准，采用源码值：<strong>50,000 字符</strong>；文档的 10,000 可能是旧版本口径，标【可能已变化】。<sup class="fn-ref"><a href="#fn-main-06-3" id="fnref-main-06-3">3</a></sup></p>
       <p>这个冲突本身比数字更有意思。50k 字符约等于 12.5k token，在 200k 窗口上占 6%；10k 字符约 2.5k token，占 1.25%。前者更信任“模型能处理大块输出”，后者更信任“小步读取”。<strong>代价</strong>：默认值越大，单次输出越可能把窗口吃掉一大块，但模型一次能看到更多上下文；默认值越小，落盘越频繁，回读次数越多，任务被切得更碎。Claude Code 的折中在 Bash 上体现得最清楚：Bash 用 30,000（与文档一致），因为它知道命令输出最容易爆。</p>
 
       <p>还有一组横切的取舍：<strong>截断发生在哪一层</strong>。在工具实现里截（Grok 的 <code>read_file</code> 自带 1,000 行），最贴近数据源，但每个工具都要写一遍；在统一出口截（opencode 的 <code>Truncate.output</code>、omp 的 streaming-output），一致性好，但拿不到工具语义；在写入历史时截（Codex），能保证“活历史一定不超”，但已经把内容搬进内存。三层各有盲区，多数工具同时用了两层。</p>
@@ -385,15 +385,15 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-06-1">
-          事实卡片标【待核实】：opencode v2 的 shell 工具自带 <code>metadata.truncated</code>，会绕过通用 <code>ToolOutput</code> 通道，其截断方向（head 还是 tail）本次未定位到。表格按“通用通道只有 head”写，不把 shell 的行为算进去。
+          【待核实】：opencode v2 的 shell 工具自带 <code>metadata.truncated</code>，会绕过通用 <code>ToolOutput</code> 通道，其截断方向（head 还是 tail）本次未定位到。表格按“通用通道只有 head”写，不把 shell 的行为算进去。
           <a class="footnotes__back" href="#fnref-main-06-1">↩</a>
         </li>
         <li id="fn-main-06-2">
-          事实卡片把 dsh 的 spill 行为标为【推断】：结论来自 <code>packages/spill/spill-policy/README.md</code> 与 base 配置，未逐行核对实现。正文按“文档口径”表述，<code>maxInlineTokens = 12,500</code> 一项有源码配置佐证，标【已核实】。
+          dsh 的 spill 行为标【推断】：结论来自 <code>packages/spill/spill-policy/README.md</code> 与 base 配置，未逐行核对实现。正文按“文档口径”表述，<code>maxInlineTokens = 12,500</code> 一项有源码配置佐证，标【已核实】。
           <a class="footnotes__back" href="#fnref-main-06-2">↩</a>
         </li>
         <li id="fn-main-06-3">
-          事实卡片记录的口径冲突：源码 <code>DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000</code>（<code>constants/toolLimits.ts</code>），官方文档写“工具/hook 输出超过 10,000 字符落盘”。已核对 Bash 的 30,000 在两边一致，说明差异集中在“通用工具”这一项。按 02 号票裁决以源码为准，正文并列写出文档值并标【可能已变化】；若新版本改回 10,000，本章的结论“默认值差五倍”仍成立，只是方向相反。
+          一处口径冲突：源码 <code>DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000</code>（<code>constants/toolLimits.ts</code>），官方文档写“工具/hook 输出超过 10,000 字符落盘”。已核对 Bash 的 30,000 在两边一致，说明差异集中在“通用工具”这一项。正文并列写出文档值并标【可能已变化】；若新版本改回 10,000，本章的结论“默认值差五倍”仍成立，只是方向相反。
           <a class="footnotes__back" href="#fnref-main-06-3">↩</a>
         </li>
       </ol>

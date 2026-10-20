@@ -73,7 +73,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -83,7 +83,7 @@
   <article class="prose" id="src-grok-build-03">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Grok Build</span><span>·</span><span>第 03 节</span></p>
+      <p class="kicker"><b>第 51 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Grok Build</span></p>
       <h1>append-only 日志如何回退</h1>
       <p class="lede">回退的常规做法是删掉后面的记录，或者把文件重写成一份新的。Grok Build 两条都没走：日志一行不删，只追加一条「隧道标记」，等下次重放时按标记把列表截断。这一节读这条标记怎么写、怎么被读，以及为什么这个反直觉的设计值得学。</p>
       <ul class="meta">
@@ -198,8 +198,8 @@
       <p class="small muted">补充证据：回退后必须重放的判定在 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/rewind.rs#L97-L116">rewind.rs#L97-L116</a>（<code>needs_compaction_replay</code>）；三处调用点在 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/storage/replay.rs#L485">replay.rs#L485</a>、<code>#L559</code> 与 <code>extensions/session_updates.rs#L150</code>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】大纲把两件事写在了一起</p>
-        <p>大纲写「<code>filter_rewind_lines</code>（<code>storage/mod.rs:1655</code>）与 RewindMarker 追加（<code>rewind.rs:400</code>）」，两个行号基本准确（入口在 L1655，标记在 L403-L407），但容易读成「过滤器负责追加」。实际分工是：<code>rewind.rs</code> 负责<b>写</b>标记并立刻截断内存；<code>storage/mod.rs</code> 负责在<b>读</b>的时候按标记截断。两者之间隔着一次会话重启或一次重放。</p>
+        <p class="callout__title">【注意】两件事容易被读成一件</p>
+        <p>常见的引用把「<code>filter_rewind_lines</code>（<code>storage/mod.rs:1655</code>）与 RewindMarker 追加（<code>rewind.rs:400</code>）」并排写在一起，两个行号基本准确（入口在 L1655，标记在 L403-L407），但容易读成「过滤器负责追加」。实际分工是：<code>rewind.rs</code> 负责<b>写</b>标记并立刻截断内存；<code>storage/mod.rs</code> 负责在<b>读</b>的时候按标记截断。两者之间隔着一次会话重启或一次重放。</p>
       </div>
     </section>
 
@@ -432,7 +432,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：Grok Build 见本节 permalink；dsh 见 <code>research/dsh.md</code> 第 11 节（明确「无 rewind / undo / 树状多分支」）；pi 见 <code>research/pi.md</code> 第 11 节（<code>CURRENT_SESSION_VERSION = 3</code>）；Claude Code 为 v2.1.88 源码（<code>sessionStorage.ts</code> 的 <code>parentUuid</code> 链、<code>fileHistory.ts</code> 的快照上限 100）。</p>
+      <p class="table-caption">表注：Grok Build 见本节 permalink；dsh 见其会话实现（明确「无 rewind / undo / 树状多分支」）；pi 见 <code>CURRENT_SESSION_VERSION = 3</code>；Claude Code 为 v2.1.88 源码（<code>sessionStorage.ts</code> 的 <code>parentUuid</code> 链、<code>fileHistory.ts</code> 的快照上限 100）。</p>
 
       <p><b>对照一：标记 vs 分叉。</b>Grok Build 的标记让「旧时间线」与「新时间线」共享一个文件，靠过滤器区分；它省掉了复制整个会话的成本，但要求所有读者都遵守同一条规则。DeepSeek Harness 反过来：没有回退，只有 <code>buildForkSeed(events, boundary)</code> 把前缀复制成一个新会话，再补一条 <code>session/end-seed</code> 与合成的 closers。前者的风险是「有人绕过过滤器」，后者的风险是「每次分叉都要复制一份历史」。<span class="tag tag--ok">已核实</span></p>
 
@@ -491,7 +491,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-dsh-01.html">DeepSeek Harness · 日志与 surface 两层结构</a></p>
+    <p class="footer-note">下一章：<a href="src-dsh-01.html">DeepSeek Harness · 日志与 surface 两层结构</a></p>
 
   </article>
 </main>

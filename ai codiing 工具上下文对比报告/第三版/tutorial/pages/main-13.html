@@ -112,7 +112,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -122,7 +122,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 13 章</span></p>
+      <p class="kicker"><b>第 20 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>缓存友好设计：让前缀只增不改</h1>
       <p class="lede">上下文管理的成本大头，往往不是“装了多少”，而是“每次重装多少”。前缀缓存按字节从头匹配：开头改一个字符，后面的全部重算。本章讲三件事：怎么让前缀稳定、天生易变的内容该放哪、以及压缩这笔“用一次失效换长期变小”的交易什么时候划算。</p>
       <ul class="meta">
@@ -262,7 +262,7 @@
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
         <div class="hf__body">
           <p class="hf__q">问：那把系统提示词整个删短，不是每次都更省？</p>
-          <p class="hf__a">答：删短省的是“每次输入”，但如果因此改了前缀，第一次要付全量写入；更关键的是，删掉规则会让任务成功率下降。省下来的钱可能不够赔返工。缓存优化的目标是“单位成功任务成本”，不是“单位请求成本”。第 16 章会把这两个指标分开讲。</p>
+          <p class="hf__a">答：删短省的是“每次输入”，但如果因此改了前缀，第一次要付全量写入；更关键的是，删掉规则会让任务成功率下降。省下来的钱可能不够赔返工。缓存优化的目标是“单位成功任务成本”，不是“单位请求成本”。第 23 章会把这两个指标分开讲。</p>
         </div>
       </div>
 
@@ -284,15 +284,15 @@
     <section id="demo-guide">
       <p class="sec-no">03 · 动手与读图</p>
       <h2>演示在入门章，本章看失效点</h2>
-      <p>“改哪一段、改几个字节、命中多少”这件事，入门第 5 章有一个可以直接拖的演示。本章不重复实现它，只把结论落到真实工具的拼接位置上。</p>
+      <p>“改哪一段、改几个字节、命中多少”这件事，第 5 章有一个可以直接拖的演示。本章不重复实现它，只把结论落到真实工具的拼接位置上。</p>
 
       <div class="callout callout--info">
-        <p class="callout__title">动手 · 去入门第 5 章看缓存命中</p>
+        <p class="callout__title">动手 · 去第 5 章看缓存命中</p>
         <p>打开 <a href="intro-05.html#demo-cache-hit">Prompt cache 命中演示</a>，先按默认值看一次完整命中，再只改中间一段，观察命中长度从哪里断掉。看完再回来读下面的图，对照“演示里的第 k 块”和“真实请求里的系统提示 / 工具 / 历史”是怎么对应的。</p>
         <p><a class="btn btn--primary btn--small" href="intro-05.html#demo-cache-hit">打开演示</a></p>
       </div>
 
-      <p><strong>为什么同一个演示放在入门章更合适。</strong>三个理由。第一，演示要建立的是一个纯概念：前缀匹配。它不需要知道 Codex 的 <code>base_instructions</code> 在哪、Claude Code 的系统提示词怎么分块，放在 L2 的入门章正好。第二，主线第 13 章要回答的是另一个问题：这些块在真实工具里由谁生成、压缩和驱逐会让失效点落在哪。这个问题用静态图比用滑块更清楚。第三，两章各自维护同一个 DOM 契约，会让演示脚本同时依赖两页的结构，改一处坏两处；分开之后，入门章负责“看见”，主线章负责“定位”。</p>
+      <p><strong>为什么同一个演示放在入门章更合适。</strong>三个理由。第一，演示要建立的是一个纯概念：前缀匹配。它不需要知道 Codex 的 <code>base_instructions</code> 在哪、Claude Code 的系统提示词怎么分块，放在 L2 的入门章正好。第二，第 20 章要回答的是另一个问题：这些块在真实工具里由谁生成、压缩和驱逐会让失效点落在哪。这个问题用静态图比用滑块更清楚。第三，两章各自维护同一个 DOM 契约，会让演示脚本同时依赖两页的结构，改一处坏两处；分开之后，入门章负责“看见”，主线章负责“定位”。</p>
 
       <figure class="fig" id="fig-cache-invalidate">
         <svg viewBox="0 0 640 268" role="img" aria-labelledby="fig-ci-title fig-ci-desc">
@@ -472,7 +472,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗与事实卡片里。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
     </section>
 
     <!-- ========== 06 取舍 ========== -->
@@ -491,7 +491,7 @@
 
       <h3>取舍三：压缩早一点，还是晚一点</h3>
       <p><strong>早压</strong>：在 70%–80% 就压，压缩请求自己有足够空间，失败概率低，之后还有很长的路可以摊薄失效成本。<strong>晚压</strong>：逼近 90%–95% 才压，尽量少压几次，减少信息损失和摘要调用。<strong>不压</strong>：任务只剩最后一两轮时，宁可带着接近满的窗口跑完。</p>
-      <p><strong>代价</strong>：早压会在任务还没走完时丢掉细节，而且多一次摘要成本；晚压可能让压缩请求自己超窗，进入第 14 章的删最旧重试；不压则要承担溢出的风险。用 2.4 的公式看，这个取舍可以量化：<code>breakEven</code> 大于剩余轮数，就不该压；但若剩余轮数大于 0 且窗口已接近上限，溢出的代价通常高于一次失效。</p>
+      <p><strong>代价</strong>：早压会在任务还没走完时丢掉细节，而且多一次摘要成本；晚压可能让压缩请求自己超窗，进入第 21 章的删最旧重试；不压则要承担溢出的风险。用 2.4 的公式看，这个取舍可以量化：<code>breakEven</code> 大于剩余轮数，就不该压；但若剩余轮数大于 0 且窗口已接近上限，溢出的代价通常高于一次失效。</p>
 
       <h3>取舍四：摘要请求写缓存，还是明确不写</h3>
       <p><strong>不写派</strong>：pi 给摘要请求设 <code>cacheRetention: "none"</code>，因为摘要是一次性的，写进去只会挤占缓存页。<strong>复用派</strong>：dsh 与 Grok 让摘要请求复用系统提示词、工具定义与被遮蔽区间，使这次调用的输入尽量命中已有前缀，只有尾部指令是新的。</p>
@@ -501,7 +501,7 @@
       <p><strong>客户端派</strong>：Claude Code、opencode、Grok 都显式下发断点，能精确控制“哪一块值得缓存”。<strong>服务端派</strong>：Codex 只发 <code>prompt_cache_key</code>，断点、TTL、淘汰都由服务端决定。前者跨 provider 可移植性差（每家字段名不同），后者则完全依赖服务端的策略。</p>
       <p><strong>代价</strong>：客户端摆断点，控制力强，但要跟着 provider 协议走，字段一改就得适配；服务端托管，接入简单，但你看不见断点，也改不了 TTL。Codex 的 <code>cached_tokens</code> 只能告诉你“命中了多少”，不能告诉你“为什么没命中”；Claude Code 则专门写了失效归因模块。这是控制权换来的可观测性差异。</p>
 
-      <p>还有一组横切的取舍：<strong>命中率作为目标，还是作为诊断</strong>。把命中率当目标，容易走向“为了命中而不敢压缩、不敢裁剪”，最后窗口里塞满过期内容；把它当诊断，才会去问“这次失效是压缩造成的，还是日期变化造成的”。第 16 章会把这个问题展开成指标设计。</p>
+      <p>还有一组横切的取舍：<strong>命中率作为目标，还是作为诊断</strong>。把命中率当目标，容易走向“为了命中而不敢压缩、不敢裁剪”，最后窗口里塞满过期内容；把它当诊断，才会去问“这次失效是压缩造成的，还是日期变化造成的”。第 23 章会把这个问题展开成指标设计。</p>
     </section>
 
     <!-- ========== 07 测验 ========== -->
@@ -550,15 +550,15 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-13-1">
-          事实卡片只核实了 CLI 侧“发 <code>prompt_cache_key</code>、解析 cached/write 字段”，未找到断点位置、TTL、淘汰策略的客户端代码；已检查 <code>client.rs</code> 的请求构造与 <code>responses.rs</code> 的 usage 解析，缺失服务端实现。因此本章按“服务端决定、客户端不可见”表述，不给出具体 TTL 数值。
+          本次只核实了 CLI 侧“发 <code>prompt_cache_key</code>、解析 cached/write 字段”，未找到断点位置、TTL、淘汰策略的客户端代码；已检查 <code>client.rs</code> 的请求构造与 <code>responses.rs</code> 的 usage 解析，缺失服务端实现。因此本章按“服务端决定、客户端不可见”表述，不给出具体 TTL 数值。
           <a class="footnotes__back" href="#fnref-main-13-1">↩</a>
         </li>
         <li id="fn-main-13-2">
-          事实卡片把 opencode v1/v2 的“服务端命中率与 TTL”标为【待核实】：源码只能证明客户端下发了缓存标记与键，无法证明服务端如何命中。已检查 <code>cache-policy.ts</code> 与 <code>provider/transform.ts</code>，缺服务端侧证据。结论限于“客户端可观测到的字段”，跨工具比较命中率时需注明口径。
+          opencode v1/v2 的“服务端命中率与 TTL”标【待核实】：源码只能证明客户端下发了缓存标记与键，无法证明服务端如何命中。已检查 <code>cache-policy.ts</code> 与 <code>provider/transform.ts</code>，缺服务端侧证据。结论限于“客户端可观测到的字段”，跨工具比较命中率时需注明口径。
           <a class="footnotes__back" href="#fnref-main-13-2">↩</a>
         </li>
         <li id="fn-main-13-3">
-          “从第一个被替换 token 起失效”对 dsh 来自文档而非逐行源码，卡片标【推断】；对 Grok Build 与 pi 有源码或注释支持。已核对 dsh 的 <code>docs/subsystems/compaction.md</code> 与 compaction 包 README，缺运行时验证。结论按“替换语义的一般规律”表述，不当作所有 provider 的统一行为。
+          “从第一个被替换 token 起失效”对 dsh 来自文档而非逐行源码，标【推断】；对 Grok Build 与 pi 有源码或注释支持。已核对 dsh 的 <code>docs/subsystems/compaction.md</code> 与 compaction 包 README，缺运行时验证。结论按“替换语义的一般规律”表述，不当作所有 provider 的统一行为。
           <a class="footnotes__back" href="#fnref-main-13-3">↩</a>
         </li>
       </ol>
@@ -665,7 +665,7 @@
         <dt>来源</dt>
         <dd><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/provider/transform.ts#L357-L404">provider/transform.ts#L357-L404</a>、<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/provider/transform.ts#L1324-L1334">transform.ts#L1324-L1334</a></dd>
       </dl>
-      <p class="modal__note">服务端命中率与 TTL 不可观测，卡片标【待核实】；表里的“已核实”只指客户端确实下发了这些标记。</p>
+      <p class="modal__note">服务端命中率与 TTL 不可观测，标【待核实】；表里的“已核实”只指客户端确实下发了这些标记。</p>
     </div>
   </div>
 </div>

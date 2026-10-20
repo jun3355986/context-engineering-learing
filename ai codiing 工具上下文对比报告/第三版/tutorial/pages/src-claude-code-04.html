@@ -74,7 +74,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -84,7 +84,7 @@
   <article class="prose" id="src-claude-code-04">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Claude Code</span><span>·</span><span>第 04 节</span></p>
+      <p class="kicker"><b>第 36 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Claude Code</span></p>
       <h1>只注入变化的附件 delta</h1>
       <p class="lede">Claude Code 每轮会跑 37 个附件来源：日期、文件变更、技能列表、plan 模式、todo、诊断、token 用量……如果每个来源都整份重发，系统提示和工具描述早就被撑爆了。它挑了三类「会变化且必须让模型知道」的清单，做成 delta：只发新增与移除。这一节读 agent 列表 delta，也读那条「10.2% cache_creation」的教训。<span class="tag tag--src">源码 v2.1.88</span></p>
       <ul class="meta">
@@ -215,8 +215,8 @@
       <p class="small muted">补充证据：37 个 <code>maybe(...)</code> 的调用点分布在 L774-L986；超时设置在 L766-L768；返回前的过滤在 L998-L1002。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】「37 个附件源」是函数内计数，不是全局常量</p>
-        <p>事实卡片与大纲都写「37 个附件源」。这个数字来自 <code>getAttachments()</code> 函数体内 <code>maybe('...')</code> 的调用数，不是源码里的常量，也不等于「每次都会执行 37 个」——部分受 <code>feature()</code>、<code>isAgentSwarmsEnabled()</code>、环境变量门控。把它当成固定上限会误判实际开销。<span class="tag tag--src">源码 v2.1.88</span></p>
+        <p class="callout__title">【注意】「37 个附件源」是函数内计数，不是全局常量</p>
+        <p>常见资料会把附件源写成「37 个」。这个数字来自 <code>getAttachments()</code> 函数体内 <code>maybe('...')</code> 的调用数，不是源码里的常量，也不等于「每次都会执行 37 个」——部分受 <code>feature()</code>、<code>isAgentSwarmsEnabled()</code>、环境变量门控。把它当成固定上限会误判实际开销。<span class="tag tag--src">源码 v2.1.88</span></p>
       </div>
     </section>
 
@@ -477,7 +477,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 4 节（Claude Code v2.1.88 源码，Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，Grok Build 源码，omp 提交 <code>f979f46</code>）。</p>
+      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Claude Code v2.1.88 源码，Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，Grok Build 源码，omp 提交 <code>f979f46</code>）。</p>
 
       <p>第一个对照是<b>「状态存在消息里还是消息外」</b>。Claude Code 把状态存在消息里（旧 delta 本身就是消息），所以能随历史一起恢复、fork、压缩；Codex 把状态存在持久化快照 + rollout patch 里，消息里只有片段；pi 存在会话的 sections 里，系统提示是投影；Grok 存在公告快照文件里。消息内状态最自解释，但占上下文；消息外状态最省，但需要额外的恢复逻辑。<span class="tag tag--guess">推断</span></p>
 
@@ -536,7 +536,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-pi-01.html">pi · 切点、单回合拆分与文件跟踪</a>。</p>
+    <p class="footer-note">下一章：<a href="src-pi-01.html">pi · 切点、单回合拆分与文件跟踪</a>。</p>
 
   </article>
 </main>

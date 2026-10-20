@@ -74,7 +74,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -84,7 +84,7 @@
   <article class="prose" id="src-claude-code-01">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Claude Code</span><span>·</span><span>第 01 节</span></p>
+      <p class="kicker"><b>第 33 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Claude Code</span></p>
       <h1>系统提示的静态/动态分段</h1>
       <p class="lede">Claude Code 的系统提示不是一个字符串，而是一个字符串数组：前面七段静态内容，中间一个边界常量，后面一串由注册表管理的动态段。这一节只讲结构，不贴提示词原文；重点回答一个问题：为什么要把「不容易变」和「容易变」分开。<span class="tag tag--src">源码 v2.1.88</span></p>
       <ul class="meta">
@@ -113,7 +113,7 @@
       <p class="callout__title">来源类型对照</p>
       <p><span class="tag tag--src">源码 v2.1.88</span> 系统提示的分段、边界常量、缓存块数量，来自 <code>constants/prompts.ts</code> 与 <code>systemPromptSections.ts</code>。</p>
       <p><span class="tag tag--doc">官方文档</span> 把上下文概括为「system / project context / conversation」三层；<span class="tag tag--both">两者一致</span> 的是「静态内容在前、动态内容在后」的顺序。</p>
-      <p><b>注意：</b>文档的「三层」是缓存视角的概括，不等于系统提示的结构；CLAUDE.md 不在系统提示词里，走的是附件通道（见主线第 2 章）。</p>
+      <p><b>注意：</b>文档的「三层」是缓存视角的概括，不等于系统提示的结构；CLAUDE.md 不在系统提示词里，走的是附件通道（见第 9 章）。</p>
     </div>
 
     <!-- ================= 01 功能说明 ================= -->
@@ -213,7 +213,7 @@
 <p class="small muted">补充证据：边界常量的定义与「不要移动」警告在 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/prompts.ts#L105-L115">prompts.ts#L105-L115</a>；下游切块在 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L296-L320">utils/api.ts#L296-L320</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】「直到 /clear 或 /compact 才清空」不完整</p>
+        <p class="callout__title">【注意】「直到 /clear 或 /compact 才清空」并不完整</p>
         <p>源码注释写的是「Computed once, cached until /clear or /compact」，但实际调用点还包括：压缩后的 <code>postCompactCleanup</code>（compact.ts 之外的独立文件）、会话恢复（sessionRestore.ts）、进入与退出 worktree（EnterWorktreeTool / ExitWorktreeTool）、以及 setup 的某些分支。<code>/clear</code> 只是其中之一。把生命周期写成「两个时机」会漏掉恢复与工作区切换这两类会让缓存失效的路径。<span class="tag tag--src">源码 v2.1.88</span></p>
       </div>
     </section>
@@ -509,7 +509,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 1 节（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，dsh 为同仓文档口径，opencode v1 tag <code>v1.19.0</code>）。</p>
+      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，dsh 为同仓文档口径，opencode v1 tag <code>v1.19.0</code>）。</p>
 
       <p>第一个对照是<b>「段是数据结构还是拼接约定」</b>。Claude Code 与 pi 都把段当成真实对象：有名字、有计算函数、有缓存状态；opencode 只是把四类块拼成字符串，段本身不保留身份。前者能做「按段失效」，后者只能「整段重建」。这也解释了为什么 opencode 的缓存更脆弱：任何一块变化，整条 system 字符串都变。<span class="tag tag--guess">推断</span></p>
 
@@ -565,7 +565,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-claude-code-02.html">Claude Code · 只有一个消息级缓存断点</a>。</p>
+    <p class="footer-note">下一章：<a href="src-claude-code-02.html">Claude Code · 只有一个消息级缓存断点</a>。</p>
 
   </article>
 </main>

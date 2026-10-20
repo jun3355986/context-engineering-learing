@@ -568,11 +568,12 @@ hr {
 
 .nav__no {
   flex: none;
-  width: 17px;
+  width: 52px;
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 10.5px;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .nav__link.is-current .nav__no {

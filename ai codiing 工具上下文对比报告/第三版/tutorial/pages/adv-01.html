@@ -106,7 +106,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -116,7 +116,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第三部分 · 进阶</b><span>·</span><span>第 01 章</span></p>
+      <p class="kicker"><b>第 24 章</b><span>·</span><span>第三部分 · 进阶</span></p>
       <h1>取舍：没有最优解，只有代价清单</h1>
       <p class="lede">同一个模型、同一套工具，两个团队可以做出完全相反的选择，而且都能跑通。区别不在谁更先进，而在谁更清楚自己在为什么付费。这一页只讲六组选择的运行方式与代价。</p>
       <ul class="meta">
@@ -142,7 +142,7 @@
       <p>两家都没错。A 买“确定性”，B 买“保真度”。只问“哪个阈值更好”就问错了。该问：<strong>这个任务更怕丢细节，还是更怕跑不完？</strong></p>
       <p class="lead-in">取舍不是“好与坏”的选择，是“哪一种代价你现在付得起”的选择。</p>
       <p>六组取舍都按四段写：怎么跑；省什么、丢什么；什么场景选哪边；代价一句话。</p>
-      <p>本页以第 1 级（文字）和第 2 级（图表）为主；第 3 级交互在<a href="adv-02.html">第 02 章</a>；第 4 级视频只在附录分镜里。</p>
+      <p>本页以第 1 级（文字）和第 2 级（图表）为主；第 3 级交互在<a href="adv-02.html">第 25 章</a>；第 4 级视频只在附录分镜里。</p>
 
       <p>下面这张矩阵把六组选择放到同一张图上。横轴是“每次请求的平均上下文成本”，纵轴是“任务连续性”，也就是模型还能不能接着前面的细节干。位置是示意，不是实测；先判断自己站在哪个象限，再去看对应那一节。</p>
 
@@ -207,14 +207,14 @@
       <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（时间线图）。</p>
 
       <h3>怎么跑</h3>
-      <p><strong>早压</strong>在窗口用到 70%–85% 时就动手。DeepSeek Harness 的默认阈值是 <code>thresholdRatio 0.8</code>；Grok Build 用 <code>85</code> 常量、grok-4.6 目录用 <code>80</code>；Codex 的范围线默认取 <code>min(模型声明上限, 窗口 × 90%)</code>。<a href="main-08.html#codex-trigger">主线第 8 章 2.1</a> 这些数字不完全相同，但都在“还留得下一轮工具调用”的位置。</p>
-      <p><strong>晚压</strong>把阈值推到 90%–95%。Codex 的整段硬线是窗口 × 95%；Claude Code 的自动压缩线是“有效窗口减 13k”，200k 窗口、20k 输出上限时约为 167k，也就是 83.5%。<a href="main-08.html#codex-trigger">主线第 8 章 2.1</a> 真正的“晚”不是某个固定百分比，而是“尽量拖到任务快结束”。</p>
+      <p><strong>早压</strong>在窗口用到 70%–85% 时就动手。DeepSeek Harness 的默认阈值是 <code>thresholdRatio 0.8</code>；Grok Build 用 <code>85</code> 常量、grok-4.6 目录用 <code>80</code>；Codex 的范围线默认取 <code>min(模型声明上限, 窗口 × 90%)</code>。<a href="main-08.html#codex-trigger">第 15 章 2.1</a> 这些数字不完全相同，但都在“还留得下一轮工具调用”的位置。</p>
+      <p><strong>晚压</strong>把阈值推到 90%–95%。Codex 的整段硬线是窗口 × 95%；Claude Code 的自动压缩线是“有效窗口减 13k”，200k 窗口、20k 输出上限时约为 167k，也就是 83.5%。<a href="main-08.html#codex-trigger">第 15 章 2.1</a> 真正的“晚”不是某个固定百分比，而是“尽量拖到任务快结束”。</p>
 
       <h3>省什么、丢什么</h3>
       <p><strong>早压省的是失败概率。</strong>压缩请求本身也要装下待压缩的历史。越早压，待压缩的历史越短，压缩请求自己超窗的概率越低；压完之后，剩下的路还长，这一次前缀失效的成本可以被更多轮摊薄。</p>
       <p><strong>早压丢的是细节寿命。</strong>一段对话本来还能再活十轮，你提前把它换成摘要，后面十轮都只能看摘要。文件里的精确行号、测试输出的具体断言、你当时那句“别动 public API”，都可能提前消失。</p>
       <p><strong>晚压省的是摘要次数。</strong>每压一次，都要重发一段历史、生成一次摘要、制造一次前缀失效。晚压把次数压到最少，也让最近的工作状态保留得更久。</p>
-      <p><strong>晚压丢的是退路。</strong>压缩请求自己可能先撞墙。Codex 的处理是删掉最旧一条再重试；只剩一条时只能报错。<a href="main-08.html#codex-failure">主线第 8 章 2.5</a> 这时损失的不是钱，是历史。</p>
+      <p><strong>晚压丢的是退路。</strong>压缩请求自己可能先撞墙。Codex 的处理是删掉最旧一条再重试；只剩一条时只能报错。<a href="main-08.html#codex-failure">第 15 章 2.5</a> 这时损失的不是钱，是历史。</p>
 
       <p>粗算一下。设摘要请求重发 <code>H</code> 个 token，压缩后第一次请求要重算 <code>P</code> 个 token。压 <code>k</code> 次，账面成本约 <code>k × (H + P)</code>。晚压让 <code>k</code> 变小，却让“压缩请求超窗、被迫删历史”的概率变大。公式只是示意：<strong>压缩次数不是免费的，压得晚也不是免费的。</strong></p>
 
@@ -277,13 +277,13 @@
       <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（可逆性对照图）。</p>
 
       <h3>怎么跑</h3>
-      <p><strong>裁剪</strong>不调用模型。它只改“模型能看到的投影”：把旧工具结果换成占位符，把过期文件读取删掉，把空搜索折叠。原文还在会话日志里，需要时可以按路径重新读回。Claude Code 的 <code>microcompact</code> 有一条时间触发路径，<code>gapThresholdMinutes</code> 默认 60 分钟、<code>keepRecent</code> 默认 5 条，但整条路径默认 <code>disabled</code>；oh-my-pi 保护最近 40k、只有能省下 20k 才动；Grok Build 在超过 50% 窗口时做软裁剪，每次保留头尾各 1,500 字符，10 轮后硬清。<a href="main-07.html#tradeoffs">主线第 7 章</a></p>
-      <p><strong>摘要</strong>调用模型。它把一段历史交给另一个请求，生成一份交接笔记，再用笔记替换原文。摘要可以跨语义压缩：把“读了 20 个文件、跑了 3 次测试”写成一句“已完成依赖梳理，测试仍有两个失败”。代价是原文里的精确字符串、数字和行号通常不再回来。<a href="main-08.html#why-compaction">主线第 8 章</a></p>
+      <p><strong>裁剪</strong>不调用模型。它只改“模型能看到的投影”：把旧工具结果换成占位符，把过期文件读取删掉，把空搜索折叠。原文还在会话日志里，需要时可以按路径重新读回。Claude Code 的 <code>microcompact</code> 有一条时间触发路径，<code>gapThresholdMinutes</code> 默认 60 分钟、<code>keepRecent</code> 默认 5 条，但整条路径默认 <code>disabled</code>；oh-my-pi 保护最近 40k、只有能省下 20k 才动；Grok Build 在超过 50% 窗口时做软裁剪，每次保留头尾各 1,500 字符，10 轮后硬清。<a href="main-07.html#tradeoffs">第 14 章</a></p>
+      <p><strong>摘要</strong>调用模型。它把一段历史交给另一个请求，生成一份交接笔记，再用笔记替换原文。摘要可以跨语义压缩：把“读了 20 个文件、跑了 3 次测试”写成一句“已完成依赖梳理，测试仍有两个失败”。代价是原文里的精确字符串、数字和行号通常不再回来。<a href="main-08.html#why-compaction">第 15 章</a></p>
 
       <h3>省什么、丢什么</h3>
       <p><strong>裁剪省 token，不省语义。</strong>它最适合“体积大、价值低、可重新获取”的内容：整份 lockfile、一次 80k 的测试日志、已经读过的文件全文。它不改变模型的理解，只让模型暂时看不见细节；需要时可再读一次。</p>
       <p><strong>摘要省得更多，但不可逆。</strong>它能把 100k 的历史压到 2k，也能把散落在 40 轮里的决策收成一段。代价是“哪一句是原话”消失了。摘要模型可能把“不要改 public API”写成“保持 API 稳定”，意思接近，约束强度不同。</p>
-      <p><strong>先裁后压</strong>是常见的第三条路。DeepSeek Harness 在溢出恢复时先跑 pruner，再压缩；Claude Code 的文档也描述“先清旧工具输出、再摘要”，但源码里这条路径在外部构建默认不生效。<a href="main-07.html#tradeoffs">主线第 7 章</a> 先裁后压的好处是：压缩请求的输入更小，超窗概率更低；坏处是裁剪已经丢掉的东西，摘要也救不回来。</p>
+      <p><strong>先裁后压</strong>是常见的第三条路。DeepSeek Harness 在溢出恢复时先跑 pruner，再压缩；Claude Code 的文档也描述“先清旧工具输出、再摘要”，但源码里这条路径在外部构建默认不生效。<a href="main-07.html#tradeoffs">第 14 章</a> 先裁后压的好处是：压缩请求的输入更小，超窗概率更低；坏处是裁剪已经丢掉的东西，摘要也救不回来。</p>
 
       <figure class="fig" id="fig-trim-summary">
         <svg viewBox="0 0 640 160" role="img" aria-labelledby="fig-ts-title fig-ts-desc">
@@ -327,7 +327,7 @@
 
       <h3>怎么跑</h3>
       <p><strong>预加载</strong>把规则、技能正文、MCP 工具定义一次性放进请求。模型第一轮就能看到全部能力，不需要“先找工具、再调用”。代价是这些 token 每一轮都要付，而且工具表越大，模型越容易在无关工具上分心。</p>
-      <p><strong>按需加载</strong>先给目录，再给正文。Claude Code 的技能列表只放“名称 + 描述 + 何时使用”，每条描述硬截断 250 字符；MCP 工具默认延迟（<code>tst</code> 模式），另有按窗口 10% 触发的 <code>auto</code> 模式。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/SkillTool/prompt.ts#L20-L50">SkillTool/prompt.ts#L20-L50</a> <span class="tag tag--src">源码 v2.1.88</span> Codex 在模型支持 <code>supports_search_tool</code> 时，把 MCP 工具注册为延迟暴露，由 <code>tool_search</code> 拉取；Grok Build 则让 MCP 工具不进 <code>tools</code>，先 <code>search_tool</code> 再 <code>use_tool</code>。<a href="main-03.html#tradeoffs">主线第 3 章</a></p>
+      <p><strong>按需加载</strong>先给目录，再给正文。Claude Code 的技能列表只放“名称 + 描述 + 何时使用”，每条描述硬截断 250 字符；MCP 工具默认延迟（<code>tst</code> 模式），另有按窗口 10% 触发的 <code>auto</code> 模式。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/SkillTool/prompt.ts#L20-L50">SkillTool/prompt.ts#L20-L50</a> <span class="tag tag--src">源码 v2.1.88</span> Codex 在模型支持 <code>supports_search_tool</code> 时，把 MCP 工具注册为延迟暴露，由 <code>tool_search</code> 拉取；Grok Build 则让 MCP 工具不进 <code>tools</code>，先 <code>search_tool</code> 再 <code>use_tool</code>。<a href="main-03.html#tradeoffs">第 10 章</a></p>
 
       <h3>省什么、丢什么</h3>
       <p><strong>预加载省一次往返。</strong>模型不用先检索、再读正文，首轮就能行动；工具定义稳定时，它还是缓存友好的，因为前缀不变。它丢的是“注意力预算”：工具越多，模型越可能选错，或者在系统提示里迷路。</p>
@@ -377,7 +377,7 @@
       <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（上下文边界图）。</p>
 
       <h3>怎么跑</h3>
-      <p><strong>子代理</strong>开一份独立上下文。它有自己的系统提示、工具池、文件状态和预算；父会话只把任务描述送进去，子代理只把最终结果送回来。Claude Code 默认 <code>contextMessages = []</code>，也就是全新上下文；只读的 Explore / Plan 代理默认不注入 <code>CLAUDE.md</code>，也不注入 <code>gitStatus</code>。oh-my-pi 的 <code>task</code> 子会话默认深度 2，并要求 schema 校验返回；opencode v1/v2 默认深度 1；Grok Build 默认后台执行，可选 worktree 隔离。<a href="main-10.html#tradeoffs">主线第 10 章</a></p>
+      <p><strong>子代理</strong>开一份独立上下文。它有自己的系统提示、工具池、文件状态和预算；父会话只把任务描述送进去，子代理只把最终结果送回来。Claude Code 默认 <code>contextMessages = []</code>，也就是全新上下文；只读的 Explore / Plan 代理默认不注入 <code>CLAUDE.md</code>，也不注入 <code>gitStatus</code>。oh-my-pi 的 <code>task</code> 子会话默认深度 2，并要求 schema 校验返回；opencode v1/v2 默认深度 1；Grok Build 默认后台执行，可选 worktree 隔离。<a href="main-10.html#tradeoffs">第 17 章</a></p>
       <p><strong>单会话</strong>把一切留在同一份历史里。模型能看到你前面说过的每一句约束、每一次失败、每一个被否决的方案。没有交接，也没有“子代理不知道上下文”的问题。</p>
 
       <h3>省什么、丢什么</h3>
@@ -428,7 +428,7 @@
 
       <h3>怎么跑</h3>
       <p><strong>规则</strong>是确定性的文件。它按固定路径发现、按固定顺序合并、每次会话都注入。Codex 的 <code>AGENTS.md</code> 从项目根到 cwd 逐级拼接，总量受 <code>project_doc_max_bytes</code> 默认 32 KiB 约束，超出从尾部截断；DeepSeek Harness 的整条基线消息默认上限 64 KiB；Claude Code 的 <code>MEMORY.md</code> 入口限制 200 行 / 25,000 字节。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a> <span class="tag tag--ok">已核实</span></p>
-      <p><strong>记忆</strong>是学习出来的。它由模型或后台管线写入，按项目隔离，按相关性检索，允许不完整、允许过期。Claude Code 有 auto memory 与 session memory；Grok Build 用 <code>/flush</code> 在压缩前抢救、<code>/dream</code> 定期整理，session 记忆按 30 天半衰期衰减；oh-my-pi 有 5 个后端但默认关闭。<a href="main-12.html#tradeoffs">主线第 12 章</a></p>
+      <p><strong>记忆</strong>是学习出来的。它由模型或后台管线写入，按项目隔离，按相关性检索，允许不完整、允许过期。Claude Code 有 auto memory 与 session memory；Grok Build 用 <code>/flush</code> 在压缩前抢救、<code>/dream</code> 定期整理，session 记忆按 30 天半衰期衰减；oh-my-pi 有 5 个后端但默认关闭。<a href="main-12.html#tradeoffs">第 19 章</a></p>
       <p><strong>只留会话</strong>是第三条基线：什么都不持久化，只让这一次对话知道。它最干净，也最健忘。</p>
 
       <h3>省什么、丢什么</h3>
@@ -486,7 +486,7 @@
 
       <h3>怎么跑</h3>
       <p><strong>服务端压缩</strong>把“压什么、怎么压”交给 provider。客户端只发请求，拿回一段替换后的历史，或者一个 provider 自己维护的加密窗口。Codex 的远端 v2 压缩保留消息共享 64k 预算、单条上限 10k、流重试 2 次，并要求响应里的 <code>compaction_count</code> 恰好为 1；opencode v2 在模型元数据声明 <code>compaction.type === "native"</code> 时走原生压缩，拿回加密窗口；oh-my-pi 的默认方法链第一项就是 <code>remote</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L87-L91">compact_remote_v2.rs#L87-L91</a> <span class="tag tag--ok">已核实</span></p>
-      <p><strong>本地压缩</strong>由客户端自己选候选、写模板、拼摘要、决定重附什么。Codex 本地只把真实用户消息纳入候选，预算 20k；Claude Code 压缩后按固定清单重附最近 5 个文件（每个 5k、总 50k）和本会话用过的技能（每个 5k、总 25k）；pi 保留 20k；DeepSeek Harness 保留窗口的 16%。<a href="main-08.html#codex-candidates">主线第 8 章 2.2</a></p>
+      <p><strong>本地压缩</strong>由客户端自己选候选、写模板、拼摘要、决定重附什么。Codex 本地只把真实用户消息纳入候选，预算 20k；Claude Code 压缩后按固定清单重附最近 5 个文件（每个 5k、总 50k）和本会话用过的技能（每个 5k、总 25k）；pi 保留 20k；DeepSeek Harness 保留窗口的 16%。<a href="main-08.html#codex-candidates">第 15 章 2.2</a></p>
 
       <h3>省什么、丢什么</h3>
       <p><strong>服务端省维护。</strong>不用自己处理切点、工具配对、超窗重试、模板版本；provider 升级，客户端跟着受益。它丢的是控制权：你看不到候选选择，改不了摘要模板，也很难要求“这三条约束必须逐字保留”。<sup class="fn-ref"><a href="#fn-adv-01-3" id="fnref-adv-01-3">3</a></sup></p>

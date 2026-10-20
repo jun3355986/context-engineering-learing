@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-opencode-v1-03">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v1</span><span>·</span><span>第 03 节</span></p>
+      <p class="kicker"><b>第 45 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>opencode v1</span></p>
       <h1>filterCompacted 重排替代历史</h1>
       <p class="lede">v1 的磁盘上，消息永远按时间排列；模型看到的却不是。压缩之后，一条「压缩标记」和它的摘要会被搬到保留段前面，数组下标从此不再等于时间顺序。这一节读这个重排函数，以及它给后续代码留下的陷阱。</p>
       <ul class="meta">
@@ -196,7 +196,7 @@
       <p class="small muted">补充证据：写回 <code>tail_start_id</code> 的位置见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L461-L466">compaction.ts#L461-L466</a>；fork 时重映射 <code>tail_start_id</code> 见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/session.ts#L691-L731">session.ts#L691-L731</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】「只保留压缩后的历史」是误读</p>
+        <p class="callout__title">【注意】「只保留压缩后的历史」是误读</p>
         <p>函数名与注释容易让人以为它「过滤掉」了旧消息。实际它做的是<b>重排 + 可能的截断</b>：扫描阶段遇到没有 <code>tail_start_id</code> 的压缩标记会 <code>break</code>，那是截断；有 <code>tail_start_id</code> 时则把检查点搬到前面。最终数组仍可能包含更早的消息（取决于三个下标的关系）。真正决定「哪些进入请求」的是后续转换与 <code>head</code> 的使用。读这个函数时，先问「它返回什么顺序」，不要先问「它删了什么」。</p>
       </div>
     </section>
@@ -565,7 +565,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：opencode v2 · 三入口触发与 due 判定。</p>
+    <p class="footer-note">下一章：opencode v2 · 三入口触发与 due 判定。</p>
 
   </article>
 </main>

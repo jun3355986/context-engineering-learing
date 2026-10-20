@@ -73,7 +73,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -83,7 +83,7 @@
   <article class="prose" id="src-dsh-02">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>DeepSeek Harness</span><span>·</span><span>第 02 节</span></p>
+      <p class="kicker"><b>第 53 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>DeepSeek Harness</span></p>
       <h1>压缩选区的三个约束</h1>
       <p class="lede">压缩要回答一个问题：从哪一刀切下去，既能把预算降下来，又不会切出一段「有调用没结果」的残骸。DeepSeek Harness 的 <code>selectCompactableRange</code> 用 39 行同时满足三个约束：尾部预算、工具配对、系统提示词保护。这一节逐行读它怎么找那一刀。</p>
       <ul class="meta">
@@ -192,8 +192,8 @@
       </div>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】大纲的区间写小了，且漏了「起点是固定的」</p>
-        <p>大纲标 <code>region.ts#L117-L155</code>，这是函数体（含签名），文档注释从 L107 开始，两者都对。但大纲的要点「尾部累加到 retainTokens；退到配对平衡处；起点不能是 system」容易让人以为「起点也在移动」。实际只有<b>终点</b>在移动：起点由 <code>firstIdx</code>（0 或 1）固定，函数返回的 <code>start</code> 就是它。第 4 节会专门讲这个差别带来的后果。</p>
+        <p class="callout__title">【注意】容易看漏的一点：起点是固定的</p>
+        <p>常见引用写 <code>region.ts#L117-L155</code>，这是函数体（含签名），文档注释从 L107 开始，两者都对。但如果把要点概括成「尾部累加到 retainTokens；退到配对平衡处；起点不能是 system」，容易让人以为「起点也在移动」。实际只有<b>终点</b>在移动：起点由 <code>firstIdx</code>（0 或 1）固定，函数返回的 <code>start</code> 就是它。第 4 节会专门讲这个差别带来的后果。</p>
       </div>
     </section>
 
@@ -435,7 +435,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：dsh 见本节 permalink；Codex 见 <code>research/codex.md</code> 第 8 节（提交 <code>76ed3b4</code>）；pi 见 <code>research/pi.md</code> 第 8 节（<code>findCutPoint</code> 与 <code>isSplitTurn</code>）；opencode v1 见 <code>research/opencode-v1.md</code> 第 8 节（<code>select</code> 与 <code>splitTurn</code>）。</p>
+      <p class="table-caption">表注：dsh 见本节 permalink；Codex 见提交 <code>76ed3b4</code> 的压缩预算实现；pi 见 <code>findCutPoint</code> 与 <code>isSplitTurn</code>；opencode v1 见 <code>select</code> 与 <code>splitTurn</code>。</p>
 
       <p><b>对照一：前缀 vs 候选集。</b>dsh 的压缩区必须从第一个非 system 节点开始，所以它压的永远是「最早的连续一段」。Codex 不一样：它从历史里挑出真实用户消息，按 20,000 token 预算从新到旧装，装不下的那条截断后停止。挑出来的消息在时间上不连续——中间隔着助手回复与工具结果，但这些内容本来就不进候选。前者保留了「时间连续性」，后者保留了「用户原话」。<span class="tag tag--ok">已核实</span></p>
 
@@ -491,7 +491,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-dsh-03.html">DeepSeek Harness · 裁剪器与影子计价</a></p>
+    <p class="footer-note">下一章：<a href="src-dsh-03.html">DeepSeek Harness · 裁剪器与影子计价</a></p>
 
   </article>
 </main>

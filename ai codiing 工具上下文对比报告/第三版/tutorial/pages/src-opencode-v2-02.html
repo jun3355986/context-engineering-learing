@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-opencode-v2-02">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v2</span><span>·</span><span>第 02 节</span></p>
+      <p class="kicker"><b>第 47 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>opencode v2</span></p>
       <h1>检查点：一条消息 + seq 边界</h1>
       <p class="lede">v1 的检查点跨两条消息，靠一个 id 找到保留段；v2 把它压成一条消息，摘要和保留段都装在里面，再用单调的 seq 切出一段连续历史。这一节读这条消息长什么样，以及「按 seq 取段」为什么让顺序重新变得可信。</p>
       <ul class="meta">
@@ -189,8 +189,8 @@
       <p class="small muted">补充证据：原生窗口的可重放判定见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/history.ts#L16-L26">history.ts#L16-L26</a>；fork 继承指令基线见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session.ts#L319-L359">session.ts#L319-L359</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】<code>recent</code> 不是「保留段的消息」，是「保留段的文本」</p>
-        <p>事实卡片写「recent 以文本存进检查点」，代码与 schema 都一致。<span class="tag tag--ok">已核实</span>但这一点常被忽略：它意味着被保留的那一段历史<b>失去了消息结构</b>，模型只能读到拼好的文本，不能再对里面的工具调用做续接。v1 保留的是原始消息，结构完整；v2 用「结构」换「顺序可信 + 单条记录」。第 5 节会把两种代价并排。</p>
+        <p class="callout__title">【注意】<code>recent</code> 不是「保留段的消息」，是「保留段的文本」</p>
+        <p>代码与 schema 都写着「recent 以文本存进检查点」。<span class="tag tag--ok">已核实</span>但这一点常被忽略：它意味着被保留的那一段历史<b>失去了消息结构</b>，模型只能读到拼好的文本，不能再对里面的工具调用做续接。v1 保留的是原始消息，结构完整；v2 用「结构」换「顺序可信 + 单条记录」。第 5 节会把两种代价并排。</p>
       </div>
     </section>
 
@@ -552,7 +552,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：opencode v2 · 指令 epoch 推进。</p>
+    <p class="footer-note">下一章：opencode v2 · 指令 epoch 推进。</p>
 
   </article>
 </main>

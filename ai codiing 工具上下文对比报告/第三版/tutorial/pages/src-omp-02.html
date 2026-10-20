@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-omp-02">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>oh-my-pi</span><span>·</span><span>第 02 节</span></p>
+      <p class="kicker"><b>第 41 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>oh-my-pi</span></p>
       <h1>shake 的机械省略</h1>
       <p class="lede">有一种减量不需要模型：把大块工具输出和长代码块换成一个短占位符，原文塞进 artifact，占位符里留一句「要读回原文，去 artifact://xxx」。oh-my-pi 管这个动作叫 shake。它便宜、可逆、但会永久改写历史——这正是它的价值与风险所在。</p>
       <ul class="meta">
@@ -193,7 +193,7 @@
       <p class="small muted">补充证据：编排层的 <code>shake()</code> 在 <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L1018-L1046">session-maintenance.ts#L1018-L1046</a>：先 <code>structuredClone</code> 快照，再 <code>applyShakeRegions()</code>、<code>rewriteEntries()</code>，失败时逐条 <code>Object.assign</code> 回滚。三档配置的用途注释在同文件 L55-L76。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】shake 不是「裁剪投影」，它<b>改写原文</b></p>
+        <p class="callout__title">【注意】shake 不是「裁剪投影」，它<b>改写原文</b></p>
         <p>pi 的 <code>context_edit</code> 是追加一条编辑记录，只影响投影；omp 的 shake 直接改 <code>entry.message</code> 的 <code>content</code>，然后 <code>rewriteEntries()</code> 落盘。<span class="tag tag--ok">已核实</span>这意味着 shake 之后，即使你把会话切到别的分支，被省略的那条条目仍然是省略后的样子。原文只在 artifact 里，不在会话文件里。这个代价在第 5 节与 pi 对照时会展开。</p>
       </div>
     </section>
@@ -533,7 +533,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：oh-my-pi · snapcompact 把历史渲成图。</p>
+    <p class="footer-note">下一章：oh-my-pi · snapcompact 把历史渲成图。</p>
 
   </article>
 </main>

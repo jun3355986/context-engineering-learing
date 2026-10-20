@@ -171,7 +171,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -181,7 +181,7 @@
   <article class="prose" id="main-05">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 05 章</span></p>
+      <p class="kicker"><b>第 12 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>Token 计量与可视化</h1>
       <p class="lede">“还剩多少”是所有减量动作的前提。麻烦在于，同一段会话在不同口径下会给出三个不同的数字：服务端回报的 usage、客户端按字符除以四的估算、以及 /context 里按类别逐项计数的结果。理解这三个数字的来历，比记住任何一个阈值都重要。</p>
       <ul class="meta">
@@ -296,7 +296,7 @@
         <li><strong>中文</strong>：一个汉字通常接近一个 token，但只算 0.25 个（4 字节 ÷ 4）。估算会<strong>偏低</strong>，在中文为主的会话里偏差最大。</li>
         <li><strong>代码与 JSON</strong>：大量短标识符、标点、重复键名，tokenizer 的实际切分比 4 字节/token 更碎。估算也<strong>偏低</strong>，但幅度小于中文。</li>
         <li><strong>英文散文</strong>：接近 4 字节/token，误差最小。</li>
-        <li><strong>图片与音频</strong>：按字节折算几乎没有意义。Codex 对音频单独估算 token，不按字节折算；<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L160-L175">output-truncation/lib.rs#L160-L175</a> <span class="tag tag--ok">已核实</span> 其他工具各有自己的常数（第 9 章）。</li>
+        <li><strong>图片与音频</strong>：按字节折算几乎没有意义。Codex 对音频单独估算 token，不按字节折算；<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L160-L175">output-truncation/lib.rs#L160-L175</a> <span class="tag tag--ok">已核实</span> 其他工具各有自己的常数（第 16 章）。</li>
         <li><strong>缓存 token</strong>：算不算 <code>cache_read</code> 会直接改变分子。Claude Code 的计数把 <code>input + cache_creation + cache_read + output</code> 全部相加，<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/tokens.ts#L226-L261">tokens.ts#L226-L261</a> <span class="tag tag--src">源码 v2.1.88</span> 而有的实现只取 <code>input</code>。</li>
       </ul>
       <p>Codex 对这个偏差的处理不是“修正公式”，而是“留安全垫”：95% 与 90% 两条线都留了余量，截断时还会把预算乘 <code>1.2</code> 作为序列化余量。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L34">output-truncation/lib.rs#L17-L34</a> <span class="tag tag--ok">已核实</span> 这是工程上常见的选择：与其追求一个精确的估算器，不如承认它会错，并让阈值足够保守。</p>
@@ -367,7 +367,7 @@
 
       <h3 id="meter-switch">3.2 换窗口时，什么会动，什么不会</h3>
       <p>把窗口从 200k 换到 1M，已用的 132.4k 一点没变，变的是三样东西：预留从 30k 变成 150k，触发线从 170k 变成 850k，空闲从 37.6k 变成 717.6k。换句话说，<strong>换窗口不会让历史变短，只会让“还早”变得更早</strong>。</p>
-      <p>这正是“可切换窗口”最容易误导人的地方。用户看到空闲变多，以为可以塞进更多东西；但真正决定模型能不能用好的是有效上下文，而不是名义窗口。入门第 4 章讲过 context rot：窗口越大，中间位置的信息越容易被忽略。1M 窗口给了你更多“装得下”的空间，不等于给了你更多“用得好”的空间。</p>
+      <p>这正是“可切换窗口”最容易误导人的地方。用户看到空闲变多，以为可以塞进更多东西；但真正决定模型能不能用好的是有效上下文，而不是名义窗口。第 4 章讲过 context rot：窗口越大，中间位置的信息越容易被忽略。1M 窗口给了你更多“装得下”的空间，不等于给了你更多“用得好”的空间。</p>
       <p>也因此，阈值必须和窗口联动，而不是写死一个绝对 token 数。Grok 的阈值解析有六级：环境变量、用户模型级、用户会话级、远端 per-model、远端全局、常量 85，而且随模型目录下发的值优先于常量（<code>grok-4.6</code> 目录值是 80）。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/util/config/resolve/compaction.rs#L36-L89">compaction.rs#L36-L89</a> <span class="tag tag--ok">已核实</span> 这六级的存在说明一件事：阈值不是一个“正确值”，而是一个随模型、随任务、随用户偏好变化的策略参数。</p>
     </section>
 
@@ -494,7 +494,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表中只写结论，permalink 在弹窗与事实卡片里。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表中只写结论，permalink 在弹窗里。</p>
     </section>
 
     <section id="tradeoffs">
@@ -567,7 +567,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>会变的是预留（15% 从 30k 到 150k）、触发线（170k 到 850k）、空闲（37.6k 到 717.6k）与百分比（66.2% 到 13.2%）。不会变的是已用的四段内容。空闲变多只代表“名义窗口还有位置”，不代表模型能有效利用中间位置的信息——入门第 4 章的 context rot 与 lost in the middle 在更大窗口上依然成立。可以在<a href="#meter">第 03 节演示</a>里逐个切换验证。</p>
+          <p>会变的是预留（15% 从 30k 到 150k）、触发线（170k 到 850k）、空闲（37.6k 到 717.6k）与百分比（66.2% 到 13.2%）。不会变的是已用的四段内容。空闲变多只代表“名义窗口还有位置”，不代表模型能有效利用中间位置的信息——第 4 章的 context rot 与 lost in the middle 在更大窗口上依然成立。可以在<a href="#meter">第 03 节演示</a>里逐个切换验证。</p>
         </div>
       </div>
     </section>
@@ -576,27 +576,27 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-05-1">
-          事实卡片确认 Codex 有 <code>effective_context_window_percent</code>（默认 95）与两条压缩线，但没有独立的“输出预留”字段。正文把 5% 解释为“事实上充当预留”，属于根据阈值结构的外推：源码没有把它命名为预留，也没有按模型最大输出动态调整。若新版本引入显式预留，这条推断失效。
+          本次核对确认 Codex 有 <code>effective_context_window_percent</code>（默认 95）与两条压缩线，但没有独立的“输出预留”字段。正文把 5% 解释为“事实上充当预留”，属于根据阈值结构的外推：源码没有把它命名为预留，也没有按模型最大输出动态调整。若新版本引入显式预留，这条推断失效。
           <a class="footnotes__back" href="#fnref-main-05-1">↩</a>
         </li>
         <li id="fn-main-05-2">
-          事实卡片标【待核实】：源码只确认“用量以事件形式上报 TUI”，未定位到具体渲染组件与字段；已检查 <code>context_window.rs</code> 与 TUI 事件定义，未穷举前端。结论按“有总量、无分项视图；呈现细节未知”表述，不影响本章关于计量链路的判断。
+          【待核实】：源码只确认“用量以事件形式上报 TUI”，未定位到具体渲染组件与字段；已检查 <code>context_window.rs</code> 与 TUI 事件定义，未穷举前端。结论按“有总量、无分项视图；呈现细节未知”表述，不影响本章关于计量链路的判断。
           <a class="footnotes__back" href="#fnref-main-05-2">↩</a>
         </li>
         <li id="fn-main-05-3">
-          Codex 的事实卡片只写“窗口来自模型元数据”，没有说明是否存在用户切换窗口的配置；本章检索了 <code>context_window.rs</code> 与配置入口，未找到类似 Grok <code>/context-window</code> 的命令或环境变量，但未穷举全部 CLI 参数。结论按“未找到开关”表述，不声称绝对不存在。
+          关于 Codex，现有材料只写“窗口来自模型元数据”，没有说明是否存在用户切换窗口的配置；本章检索了 <code>context_window.rs</code> 与配置入口，未找到类似 Grok <code>/context-window</code> 的命令或环境变量，但未穷举全部 CLI 参数。结论按“未找到开关”表述，不声称绝对不存在。
           <a class="footnotes__back" href="#fnref-main-05-3">↩</a>
         </li>
         <li id="fn-main-05-4">
-          事实卡片把 chars/4 的误差方向标为需要实测的推断：本次只对照了 UTF-8 字节数与常见 tokenizer 的平均切分，没有用同一批中英文与代码语料跑对照实验。结论按“中文与代码偏低、英文接近”表述；具体偏差比例会随模型分词器变化。
+          chars/4 的误差方向只能标为需要实测的推断：本次只对照了 UTF-8 字节数与常见 tokenizer 的平均切分，没有用同一批中英文与代码语料跑对照实验。结论按“中文与代码偏低、英文接近”表述；具体偏差比例会随模型分词器变化。
           <a class="footnotes__back" href="#fnref-main-05-4">↩</a>
         </li>
         <li id="fn-main-05-5">
-          事实卡片标【待核实】：opencode v1 是否提供 <code>/context</code> 类视图，只检索了出货路径 <code>packages/opencode/src</code>，未穷举前端命令表。表格按“未找到”写，不排除桌面端另有入口。
+          【待核实】：opencode v1 是否提供 <code>/context</code> 类视图，只检索了出货路径 <code>packages/opencode/src</code>，未穷举前端命令表。表格按“未找到”写，不排除桌面端另有入口。
           <a class="footnotes__back" href="#fnref-main-05-5">↩</a>
         </li>
         <li id="fn-main-05-6">
-          事实卡片对 dsh 的两项结论都是<strong>否定式推断</strong>：只查看了 <code>ContextMeter.tsx</code> 与包目录，未见 <code>/context</code> 斜杠命令注册，也未见用户切换窗口的配置项；未穷举全部 UI 插件。表格按“有面板、无命令、不可切窗口”写，不排除插件市场另有实现。
+          dsh 的两项结论都是<strong>否定式推断</strong>：只查看了 <code>ContextMeter.tsx</code> 与包目录，未见 <code>/context</code> 斜杠命令注册，也未见用户切换窗口的配置项；未穷举全部 UI 插件。表格按“有面板、无命令、不可切窗口”写，不排除插件市场另有实现。
           <a class="footnotes__back" href="#fnref-main-05-6">↩</a>
         </li>
       </ol>

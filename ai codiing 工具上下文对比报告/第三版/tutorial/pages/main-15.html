@@ -99,7 +99,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -109,7 +109,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 15 章</span></p>
+      <p class="kicker"><b>第 22 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>扩展点：hooks 与插件</h1>
       <p class="lede">你不可能改每个 Agent 的源码，但几乎每个 Agent 都留了缝。缝的位置决定了你能做什么：有的缝能改提示词，有的能直接交出摘要，有的能整段换掉压缩实现。本章按“能改到多深”分三档，并说清每一档在升级时会不会悄悄坏掉。</p>
       <ul class="meta">
@@ -314,7 +314,7 @@
         <li><strong>插件</strong> 提供<strong>打包与挂载</strong>：把 skills、agents、hooks、MCP 服务器打成一个可安装单元，并允许在生命周期上挂钩。它让 Agent “按某种方式工作”，比如每次提交前跑一次检查、压缩后补一条清单。</li>
       </ul>
       <p>判据很简单：<strong>需要模型调用一个新能力，选 MCP；需要在某个时刻改变上下文或行为，选插件 / hook；需要长期存在的知识，选规则文件或技能。</strong>三者可以叠加，但不要用错层：把“必须遵守的规范”写成 hook 注入，压缩后可能就没了；把“一次性状态”写进系统提示，会破坏缓存。</p>
-      <p>还有一层容易被忽略的成本：MCP 的工具定义会进入工具表，而工具表通常位于请求前缀。装十个 MCP 服务器、每个暴露五个工具，前缀就可能多出几千 token；更麻烦的是，服务器重连或工具列表顺序变化，会让整张表重新排序，缓存从工具块开始失效。所以“按需加载 MCP”不只是省 token，也是保前缀（第 3 章）。插件如果顺带装了一组 MCP，效果一样：能力变多，前缀变重。</p>
+      <p>还有一层容易被忽略的成本：MCP 的工具定义会进入工具表，而工具表通常位于请求前缀。装十个 MCP 服务器、每个暴露五个工具，前缀就可能多出几千 token；更麻烦的是，服务器重连或工具列表顺序变化，会让整张表重新排序，缓存从工具块开始失效。所以“按需加载 MCP”不只是省 token，也是保前缀（第 10 章）。插件如果顺带装了一组 MCP，效果一样：能力变多，前缀变重。</p>
 
       <h3 id="stability">3.6 稳定性风险：五种会在升级时坏掉的地方</h3>
       <ol>
@@ -324,7 +324,7 @@
         <li><strong>延迟与超时</strong>：hook 是同步执行的，跑得慢就会拖住主循环。一个每次工具调用都查网络的 hook，会把延迟从毫秒级拉到秒级。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-15-2" id="fnref-main-15-2">2</a></sup></li>
         <li><strong>缓存副作用</strong>：在 <code>UserPromptSubmit</code> 里每轮注入 2k 上下文，看起来只是“多加一点”，实际上每轮都在改变历史尾部，可能让上一轮的缓存尾部失效，也可能让压缩更早触发。</li>
       </ol>
-      <p>降低风险的办法不是“不用扩展”，而是<strong>把扩展当成外部依赖来管</strong>：给它写契约测试（断言注入真的进了上下文）、给它加超时与降级（hook 失败时不阻断主流程）、给它记录版本（升级前后各跑一次同一任务）。这些做法会在第 16 章变成可观测指标。</p>
+      <p>降低风险的办法不是“不用扩展”，而是<strong>把扩展当成外部依赖来管</strong>：给它写契约测试（断言注入真的进了上下文）、给它加超时与降级（hook 失败时不阻断主流程）、给它记录版本（升级前后各跑一次同一任务）。这些做法会在第 23 章变成可观测指标。</p>
       <p>契约测试可以很小：准备一个固定任务，跑完后断言“上下文里出现了某个只有 hook 才会写入的标记字符串”，再断言“压缩后这个标记仍在”。这条测试不关心模型答得好不好，只关心扩展有没有生效。它能在升级当天抓到字段改名、事件未触发、注入被去重这三类问题，成本只有几分钟。</p>
     </section>
 
@@ -444,7 +444,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗与事实卡片里。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
     </section>
 
     <!-- ========== 06 取舍 ========== -->
@@ -513,7 +513,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>诊断：每轮都在历史尾部追加 2k，输入持续变大，压缩提前；如果注入位置影响到上一轮的缓存尾部，命中率也会下降。两个替代：一，把稳定部分移出 hook，写进规则文件或技能，只在变化时注入差分；二，把“必须每轮都在”的少量状态压缩到几百 token，并放在固定位置，避免每轮改变前缀。若只是偶尔需要，改成按需读取（工具或技能），不要每轮注入。见<a href="#stability">3.6 稳定性风险</a>与第 13 章的前缀三原则。</p>
+          <p>诊断：每轮都在历史尾部追加 2k，输入持续变大，压缩提前；如果注入位置影响到上一轮的缓存尾部，命中率也会下降。两个替代：一，把稳定部分移出 hook，写进规则文件或技能，只在变化时注入差分；二，把“必须每轮都在”的少量状态压缩到几百 token，并放在固定位置，避免每轮改变前缀。若只是偶尔需要，改成按需读取（工具或技能），不要每轮注入。见<a href="#stability">3.6 稳定性风险</a>与第 20 章的前缀三原则。</p>
         </div>
       </div>
     </section>
@@ -530,7 +530,7 @@
           <a class="footnotes__back" href="#fnref-main-15-2">↩</a>
         </li>
         <li id="fn-main-15-3">
-          dsh 的 hooks 兼容层“只支持 command 型”来自 <code>hook-protocol</code> 包 README，事实卡片把该节标为【推断】；已核对其支持矩阵，<code>http</code> / <code>mcp_tool</code> / <code>prompt</code> / <code>agent</code> 会被跳过并告警。缺少运行时验证，因此正文按“兼容层能力有限”表述，不把它当作所有 dsh 版本的统一行为。
+          dsh 的 hooks 兼容层“只支持 command 型”来自 <code>hook-protocol</code> 包 README，该节标【推断】；已核对其支持矩阵，<code>http</code> / <code>mcp_tool</code> / <code>prompt</code> / <code>agent</code> 会被跳过并告警。缺少运行时验证，因此正文按“兼容层能力有限”表述，不把它当作所有 dsh 版本的统一行为。
           <a class="footnotes__back" href="#fnref-main-15-3">↩</a>
         </li>
       </ol>
@@ -687,7 +687,7 @@
         <dt>来源</dt>
         <dd><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-hooks/src/event.rs#L78-L180">event.rs#L78-L180</a>、<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-agent/src/compaction.rs#L1-L34">compaction.rs#L1-L34</a></dd>
       </dl>
-      <p class="modal__note">“无自定义压缩接缝”是源码未找到，事实卡片标【推断】；插件还受信任模型约束，安装前要确认来源。</p>
+      <p class="modal__note">“无自定义压缩接缝”是源码未找到，只能标【推断】；插件还受信任模型约束，安装前要确认来源。</p>
     </div>
   </div>
 </div>
@@ -712,7 +712,7 @@
         <dt>来源</dt>
         <dd><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/compaction.md#L1-L5">compaction.md#L1-L5</a>、<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/src/index.ts#L237-L257">compaction-basic/src/index.ts#L237-L257</a></dd>
       </dl>
-      <p class="modal__note">hooks 兼容层的能力边界来自 <code>hook-protocol</code> README，卡片标【推断】<sup class="fn-ref"><a href="#fn-main-15-3" id="fnref-main-15-3">3</a></sup>；<code>http</code> / <code>mcp_tool</code> / <code>prompt</code> / <code>agent</code> 类型会被跳过并告警。</p>
+      <p class="modal__note">hooks 兼容层的能力边界来自 <code>hook-protocol</code> README，标【推断】<sup class="fn-ref"><a href="#fn-main-15-3" id="fnref-main-15-3">3</a></sup>；<code>http</code> / <code>mcp_tool</code> / <code>prompt</code> / <code>agent</code> 类型会被跳过并告警。</p>
     </div>
   </div>
 </div>

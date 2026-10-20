@@ -110,7 +110,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -120,7 +120,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 16 章</span></p>
+      <p class="kicker"><b>第 23 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>评估与可观测：指标与 A/B</h1>
       <p class="lede">你改了阈值、换了压缩模板、加了一个 hook，怎么证明它更好？本章给一份可以直接抄的指标清单、一套评测集设计、一套 A/B 分流方法，以及几个最容易把结论带偏的陷阱。</p>
       <ul class="meta">
@@ -168,7 +168,7 @@
       <p>这三样加起来，足够做“事后归因”：这次任务为什么多花了 30%？是压缩次数多了、缓存失效多了，还是工具输出变大了？但都不足以做“事前预测”：换一个阈值会怎样，必须自己跑对照实验。</p>
 
       <h3 id="codex-no-eval">2.2 为什么“工具不自带评测”是常态</h3>
-      <p>八份事实卡片里，有成型评测设施的只有 pi 与 omp：pi 有 <code>packages/evals</code>，用 <code>vitest-evals</code> 跑“有文档 / 无文档”的对照；omp 有 <code>snapcompact</code> 的研究评测（SQuAD 的 recall / F1）和 <code>packages/stats</code> 的本地观测面板。Grok 算半套：遥测字段齐全，但没有运行器。其余工具大多只有记账与事件。没有一家提供“压缩策略 A/B”这种开箱即用的能力。</p>
+      <p>八个工具里，有成型评测设施的只有 pi 与 omp：pi 有 <code>packages/evals</code>，用 <code>vitest-evals</code> 跑“有文档 / 无文档”的对照；omp 有 <code>snapcompact</code> 的研究评测（SQuAD 的 recall / F1）和 <code>packages/stats</code> 的本地观测面板。Grok 算半套：遥测字段齐全，但没有运行器。其余工具大多只有记账与事件。没有一家提供“压缩策略 A/B”这种开箱即用的能力。</p>
       <p>原因不难理解：上下文策略的效果高度依赖任务分布。一个在“读代码问答”上更好的压缩策略，可能在“跨文件重构”上更差；一个在短会话里省钱的阈值，在长会话里会让成功率下降。工具厂商很难替你定义“你的任务”，所以只能给你原始数据。</p>
       <p class="lead-in">评测不是工具的附属功能，是你对自己任务分布的理解。</p>
 
@@ -291,7 +291,7 @@
               <th scope="row">压缩失败率与熔断率</th>
               <td>压缩失败次数 ÷ 压缩次数；熔断会话数 ÷ 总会话数。</td>
               <td>从压缩事件、错误码、熔断标记统计；注意把“取消”排除在“失败”之外。</td>
-              <td>失败率高但熔断率低，说明重试在起作用；两者都高，说明有结构性问题（见第 14 章三种绝境）。</td>
+              <td>失败率高但熔断率低，说明重试在起作用；两者都高，说明有结构性问题（见第 21 章三种绝境）。</td>
               <td>C6</td>
             </tr>
             <tr>
@@ -615,7 +615,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗与事实卡片里。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
     </section>
 
     <!-- ========== 08 取舍 ========== -->
@@ -819,7 +819,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>因为命中率可以通过“不改前缀”来刷高：一直不压缩、不裁剪、不更新规则，命中率当然高，但窗口里塞满过期内容，模型更容易被旧信息带偏，成功率下降。压缩会主动制造一次失效，换来之后每次更小的输入；这时命中率下降是设计的一部分。正确用法是把它当诊断：突然下降时查失效原因，而不是设成 KPI。见 <a href="#metrics">C2</a> 与第 13 章。</p>
+          <p>因为命中率可以通过“不改前缀”来刷高：一直不压缩、不裁剪、不更新规则，命中率当然高，但窗口里塞满过期内容，模型更容易被旧信息带偏，成功率下降。压缩会主动制造一次失效，换来之后每次更小的输入；这时命中率下降是设计的一部分。正确用法是把它当诊断：突然下降时查失效原因，而不是设成 KPI。见 <a href="#metrics">C2</a> 与第 20 章。</p>
         </div>
       </div>
 
@@ -840,7 +840,7 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-16-1">
-          事实卡片把 opencode v1/v2 的“无评测能力”标为【推断】：已检索 <code>packages/</code> 下的命令与事件定义，只找到 per-step / per-compaction 的记账与 <code>Step.Ended</code>、<code>Compaction.*</code> 事件，没有找到评测集、指标定义或 A/B 分流。缺少对全部子命令的穷举，因此正文按“未提供开箱评测”表述，不外推为“永远不会有”。
+          opencode v1/v2 的“无评测能力”标【推断】：已检索 <code>packages/</code> 下的命令与事件定义，只找到 per-step / per-compaction 的记账与 <code>Step.Ended</code>、<code>Compaction.*</code> 事件，没有找到评测集、指标定义或 A/B 分流。缺少对全部子命令的穷举，因此正文按“未提供开箱评测”表述，不外推为“永远不会有”。
           <a class="footnotes__back" href="#fnref-main-16-1">↩</a>
         </li>
         <li id="fn-main-16-2">
@@ -852,7 +852,7 @@
           <a class="footnotes__back" href="#fnref-main-16-3">↩</a>
         </li>
         <li id="fn-main-16-4">
-          “探针法测信息保留率”是本章建议的评测方法，不是任何工具的内置指标；事实卡片里没有任何一家提供 <code>IRR</code> 这类字段。已核对 8 份卡片的第 16 节，确认只有记账、事件与遥测。探针问题的设计、评分口径需要自行制定并在实验记录里写明。
+          “探针法测信息保留率”是本章建议的评测方法，不是任何工具的内置指标；八个工具里没有任何一家提供 <code>IRR</code> 这类字段。已逐个核对八个工具的评测相关源码，确认只有记账、事件与遥测。探针问题的设计、评分口径需要自行制定并在实验记录里写明。
           <a class="footnotes__back" href="#fnref-main-16-4">↩</a>
         </li>
       </ol>

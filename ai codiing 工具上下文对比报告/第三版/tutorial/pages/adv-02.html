@@ -381,7 +381,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -391,7 +391,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第三部分 · 进阶</b><span>·</span><span>第 02 章</span></p>
+      <p class="kicker"><b>第 25 章</b><span>·</span><span>第三部分 · 进阶</span></p>
       <h1>失败：五次事故，一条因果链</h1>
       <p class="lede">上下文事故很少是“模型变笨了”。它们通常有一个可复现的起点：一条约束没进规则文件，一个切点拆散了工具对，一处易变内容站在缓存前缀里，一次子代理返回太长，或者一次回退只退回了一半。这一页复盘五次事故，并把每次事故拆成可操作的修复。</p>
       <ul class="meta">
@@ -485,8 +485,8 @@
       </ul>
 
       <h3>根因</h3>
-      <p><strong>第 8 类（压缩）</strong>是直接原因。Codex 本地压缩只把“真实用户消息”纳入候选，预算 20k，从新到旧累加，放不下就停；最新一条长指令自己放不下时，会被截到剩余预算。<a href="main-08.html#codex-candidates">主线第 8 章 2.2</a> 摘要模板只要求四类信息：进度与决策、重要上下文与偏好、待办、关键数据与引用。<a href="main-08.html#codex-summary">主线第 8 章 2.3</a> “不要改 public API”既不是进度，也不是待办，很容易被写成一句“保持 API 稳定”。</p>
-      <p><strong>第 2 类（规则文件）</strong>是结构性原因。三条约束都只在对话里，而对话正是压缩的对象。规则文件会作为系统提示或项目上下文重新注入，不进入压缩候选；Codex 压缩后还会把初始上下文重新放回。<a href="main-08.html#codex-rebuild">主线第 8 章 2.4</a> 约束没进规则，就等于把唯一的副本放在会被改写的地方。</p>
+      <p><strong>第 8 类（压缩）</strong>是直接原因。Codex 本地压缩只把“真实用户消息”纳入候选，预算 20k，从新到旧累加，放不下就停；最新一条长指令自己放不下时，会被截到剩余预算。<a href="main-08.html#codex-candidates">第 15 章 2.2</a> 摘要模板只要求四类信息：进度与决策、重要上下文与偏好、待办、关键数据与引用。<a href="main-08.html#codex-summary">第 15 章 2.3</a> “不要改 public API”既不是进度，也不是待办，很容易被写成一句“保持 API 稳定”。</p>
+      <p><strong>第 2 类（规则文件）</strong>是结构性原因。三条约束都只在对话里，而对话正是压缩的对象。规则文件会作为系统提示或项目上下文重新注入，不进入压缩候选；Codex 压缩后还会把初始上下文重新放回。<a href="main-08.html#codex-rebuild">第 15 章 2.4</a> 约束没进规则，就等于把唯一的副本放在会被改写的地方。</p>
       <p>还有一层<strong>累积效应</strong>：第 2 次压缩的输入里已经包含第 1 次的摘要，第 3 次又包含第 2 次的摘要。每一轮都可能丢掉上一版摘要里的一点细节，而没有任何一步会把它补回来。<sup class="fn-ref"><a href="#fn-adv-02-1" id="fnref-adv-02-1">1</a></sup></p>
 
       <h3>修复（三档）</h3>
@@ -584,12 +584,12 @@
       </ul>
 
       <h3>根因</h3>
-      <p><strong>第 8 类（压缩切点）</strong>是直接原因。切点选在了“结果之前、调用之后”，这在消息层面看是一个合法边界，在工具协议层面却不是。工具调用和结果是一条原子记录，拆开就得到一条“有结果、没有调用”的历史。<a href="main-08.html#pairing">主线第 8 章第 04 节</a></p>
+      <p><strong>第 8 类（压缩切点）</strong>是直接原因。切点选在了“结果之前、调用之后”，这在消息层面看是一个合法边界，在工具协议层面却不是。工具调用和结果是一条原子记录，拆开就得到一条“有结果、没有调用”的历史。<a href="main-08.html#pairing">第 15 章第 4 节</a></p>
       <p><strong>第 1 类（请求组装）</strong>是协议原因。严格 API 会直接拒绝这种历史；宽松模型会把结果当成新的事实，开始编造它为什么存在。</p>
       <p><strong>第 14 类（失败恢复）</strong>是放大原因。压缩失败后没有回落，下一次请求继续用同一份坏历史；重复搜索又把窗口推回触发线。</p>
 
       <h3>修复（三档）</h3>
-      <p><strong>改配置。</strong>打开成对切点。pi 的 <code>findCutPoint</code> 明确规定“绝不切在 toolResult”，切在带工具调用的 assistant 时，其结果会随后保留；DeepSeek Harness 的 <code>selectCompactableRange</code> 会从预算位置往前挪到工具配对平衡处。<a href="main-08.html#pairing">主线第 8 章第 04 节</a></p>
+      <p><strong>改配置。</strong>打开成对切点。pi 的 <code>findCutPoint</code> 明确规定“绝不切在 toolResult”，切在带工具调用的 assistant 时，其结果会随后保留；DeepSeek Harness 的 <code>selectCompactableRange</code> 会从预算位置往前挪到工具配对平衡处。<a href="main-08.html#pairing">第 15 章第 4 节</a></p>
       <p><strong>改流程。</strong>压缩前做一次 dry-run：列出切点两侧的消息类型，确认没有孤立的调用或结果。把这一步写进发版检查，和“跑测试”放在同一张清单上。</p>
       <p><strong>改代码。</strong>在两个位置兜底：切点选择时，如果落在结果之前，就前移到调用之前；历史重建后，如果发现孤立结果，就删除它或补一个占位调用。前移会多保留一对结果，后移会丢掉最近的工作状态；多数工具选前移。</p>
 
@@ -617,8 +617,8 @@
       </ul>
 
       <h3>根因</h3>
-      <p><strong>第 13 类（缓存友好设计）</strong>是主因。缓存按前缀匹配，从第一个不同的字节起失效。把 <code>git status</code>、时间、todo 放在系统提示词最前面，等于每一轮都从第一个字节起重算。<a href="main-13.html#why-cache">主线第 13 章</a></p>
-      <p><strong>第 4 类（动态注入）</strong>是结构原因。易变内容不是不能注入，而是不该注入到稳定前缀里。oh-my-pi 把日期与 cwd 提醒移到首个用户轮；Grok Build 把日期固定在会话启动值，跨午夜才追加一次 reminder；DeepSeek Harness 用新增 user 消息承载时间。<a href="main-13.html#tradeoffs">主线第 13 章第 06 节</a></p>
+      <p><strong>第 13 类（缓存友好设计）</strong>是主因。缓存按前缀匹配，从第一个不同的字节起失效。把 <code>git status</code>、时间、todo 放在系统提示词最前面，等于每一轮都从第一个字节起重算。<a href="main-13.html#why-cache">第 20 章</a></p>
+      <p><strong>第 4 类（动态注入）</strong>是结构原因。易变内容不是不能注入，而是不该注入到稳定前缀里。oh-my-pi 把日期与 cwd 提醒移到首个用户轮；Grok Build 把日期固定在会话启动值，跨午夜才追加一次 reminder；DeepSeek Harness 用新增 user 消息承载时间。<a href="main-13.html#tradeoffs">第 20 章第 6 节</a></p>
       <p><strong>第 8 类（压缩）</strong>是放大器。每次压缩都会替换历史中段，从被替换的第一个 token 起失效；压缩越频繁，失效越频繁。早压本身没错，错在“早压 + 易变前缀 + 高价值缓存”三件事同时发生。</p>
 
       <h3>修复（三档）</h3>
@@ -655,7 +655,7 @@
       <p><strong>第 8 类（压缩）</strong>是二次伤害。压缩把子代理返回的细节删掉，只留下“完成了”；父模型失去了判断矛盾结论的依据。</p>
 
       <h3>修复（三档）</h3>
-      <p><strong>改配置。</strong>给子代理设输出上限；只读任务用只读代理；限制并发数。oh-my-pi 的 <code>task</code> 子会话要求 schema 校验返回，深度默认 2；opencode v1/v2 默认深度 1；Grok Build 默认后台执行，可选 worktree 隔离。<a href="main-10.html#tradeoffs">主线第 10 章</a></p>
+      <p><strong>改配置。</strong>给子代理设输出上限；只读任务用只读代理；限制并发数。oh-my-pi 的 <code>task</code> 子会话要求 schema 校验返回，深度默认 2；opencode v1/v2 默认深度 1；Grok Build 默认后台执行，可选 worktree 隔离。<a href="main-10.html#tradeoffs">第 17 章</a></p>
       <p><strong>改流程。</strong>给子代理一个固定返回模板：结论（一句话）、证据（文件:行）、置信度、待确认项。全文写进文件，父会话只收模板和文件路径。三个子代理的返回先合并去重，再交给父模型。</p>
       <p><strong>改代码。</strong>父端做两层限制：单次返回超过 2k token 就截断，并附全文路径；合并阶段按“文件:行”去重，冲突项单独列出。不要让父模型自己从 30k 字里找矛盾。</p>
 
@@ -684,7 +684,7 @@
 
       <h3>根因</h3>
       <p><strong>第 11 类（会话时间线）</strong>是主因。回退通常只回退“对话历史”，文件回退是另一条链路。Claude Code 的 <code>/rewind</code> 会打开消息选择器，真正的文件恢复由 <code>fileHistoryRewind</code> 执行，依赖每轮对话前创建的文件快照，最多保留 100 个；对话侧与文件侧必须一起回退。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/fileHistory.ts#L54-L57">fileHistory.ts#L54-L57</a> <span class="tag tag--src">源码 v2.1.88</span></p>
-      <p><strong>第 8 类（压缩）</strong>是残留原因。压缩只替换内存历史，原始记录仍在存档里；但回退到压缩前，模型看到的是“旧摘要 + 新文件”，而不是“旧原文 + 旧文件”。摘要不可逆，这一步无法靠回退修复。<a href="main-11.html#codex-checkpoint">主线第 11 章 2.2</a><sup class="fn-ref"><a href="#fn-adv-02-3" id="fnref-adv-02-3">3</a></sup></p>
+      <p><strong>第 8 类（压缩）</strong>是残留原因。压缩只替换内存历史，原始记录仍在存档里；但回退到压缩前，模型看到的是“旧摘要 + 新文件”，而不是“旧原文 + 旧文件”。摘要不可逆，这一步无法靠回退修复。<a href="main-11.html#codex-checkpoint">第 18 章 2.2</a><sup class="fn-ref"><a href="#fn-adv-02-3" id="fnref-adv-02-3">3</a></sup></p>
       <p><strong>第 6、7 类（工具输出控制与裁剪）</strong>是次要原因。回退后重新读文件，读到的是磁盘上的新版本；旧版本的工具结果已经被裁剪或替换，模型没有对照物。</p>
 
       <h3>修复（三档）</h3>

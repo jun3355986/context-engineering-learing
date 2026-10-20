@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>第 0 章 导读 · AI Coding Agent 上下文管理</title>
+<title>导读 · AI Coding Agent 上下文管理</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
 <script>
   try {
@@ -45,8 +45,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="./pages/_components.html">组件示范页</a> · 版本 2026-10-18<br>
-      纯静态页面，可离线阅读
+      更新于 2026-10-18 · 纯静态页面，可离线阅读
     </div>
   </div>
 </aside>
@@ -55,14 +54,14 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第 0 章 · 导读</b><span>·</span><span>第三版</span><span>·</span><span>2026-10-18</span></p>
+      <p class="kicker"><b>导读</b><span>·</span><span>2026-10-18</span></p>
       <h1>先看地图，再决定怎么读</h1>
       <p class="lede">这套教程讲一件事：AI 编程工具的「上下文」是怎么被装进去、用掉、压缩和隔离的。读完入门部分，你能看懂工具在做什么；读完进阶部分，你能为不同场景设计策略，并说清代价。</p>
       <ul class="meta">
         <li>16 类上下文管理能力</li>
         <li>8 个工具</li>
         <li>L1–L5 五级能力</li>
-        <li>入门 7 章 + 主线 16 章</li>
+        <li>54 章正文 + 5 篇附录</li>
       </ul>
       <div class="learn">
         <h2>读完你能做到</h2>
@@ -106,8 +105,8 @@
         <div class="map-card">
           <p class="map-card__part">PART 4</p>
           <h3>源码</h3>
-          <p class="map-card__count">8 个工具 · 固定提交</p>
-          <p>每段解读固定到提交和行号，摘录不超过 60 行，逐行加中文注释。</p>
+          <p class="map-card__count">26 章 · 8 个工具</p>
+          <p>每段解读固定到提交和行号，只摘关键片段，逐行加中文注释。</p>
           <p class="map-card__sample">Codex CLI · Claude Code · pi · opencode · Grok Build · dsh</p>
         </div>
         <div class="map-card">
@@ -118,8 +117,6 @@
           <p class="map-card__sample">术语表 · 参数速查 · 16 类 × 8 工具总表 · 推荐阅读</p>
         </div>
       </div>
-
-      <p class="small muted">源码各章的具体篇目由 06 号票确定后补入导航；当前显示为占位标题。</p>
     </section>
 
     <section id="levels">
@@ -134,7 +131,7 @@
             <h3>会用</h3>
             <p>会写规则文件；知道什么时候该 <code>/compact</code>、<code>/clear</code>，什么时候该开子代理。</p>
           </div>
-          <div class="level-where">入门 1–3 章<br>主线 6–8 章的操作部分</div>
+          <div class="level-where">第 1–3 章<br>第 13–15 章的操作部分</div>
         </div>
         <div class="level-row">
           <div><span class="level-badge">L2</span></div>
@@ -142,7 +139,7 @@
             <h3>懂原理</h3>
             <p>知道上下文由哪些部分组成、各占多少；理解 prompt cache、context rot、lost in the middle。</p>
           </div>
-          <div class="level-where">入门 4–7 章<br>主线各章的概念部分</div>
+          <div class="level-where">第 4–7 章<br>第 8–23 章的概念部分</div>
         </div>
         <div class="level-row">
           <div><span class="level-badge">L3</span></div>
@@ -150,7 +147,7 @@
             <h3>能实现</h3>
             <p>能自己写一个 agent 循环，实现计数、截断、压缩、子代理和会话持久化。</p>
           </div>
-          <div class="level-where">主线 16 章<br>源码解读</div>
+          <div class="level-where">第 23 章<br>第 29–54 章源码解读</div>
         </div>
         <div class="level-row">
           <div><span class="level-badge">L4</span></div>
@@ -158,7 +155,7 @@
             <h3>能权衡</h3>
             <p>能针对具体场景设计策略，并说清每种取舍的代价，而不是照抄某一家的默认值。</p>
           </div>
-          <div class="level-where">进阶 1–4 章</div>
+          <div class="level-where">第 24–27 章</div>
         </div>
         <div class="level-row">
           <div><span class="level-badge">L5</span></div>
@@ -166,7 +163,7 @@
             <h3>能评估</h3>
             <p>能设计评测，用数据证明一种策略比另一种好，而不是靠感觉判断。</p>
           </div>
-          <div class="level-where">进阶 5 章<br>附录 16 类总表</div>
+          <div class="level-where">第 28 章<br>附录 C · 16 类总表</div>
         </div>
       </div>
     </section>
@@ -179,7 +176,7 @@
       <div class="path-list">
         <div class="path-card">
           <h3>只有 15 分钟：先建立框架</h3>
-          <p>读第 0 章 → <code>intro-01</code> 上下文窗口 → <code>intro-07</code> 总流程图 → <code>main-08</code> 压缩。目标不是记住细节，而是知道「上下文会满，满了要减量」。</p>
+          <p>读导读 → 第 1 章「上下文窗口是什么」 → 第 7 章「总流程图」 → 第 15 章「压缩：把历史换成摘要」。目标不是记住细节，而是知道「上下文会满，满了要减量」。</p>
         </div>
         <div class="path-card">
           <h3>系统学：按部分顺序</h3>
@@ -199,7 +196,7 @@
 
     <section id="versions">
       <p class="sec-no">04 · 版本表</p>
-      <h2>本版分析的源码快照</h2>
+      <h2>本教程分析的源码快照</h2>
       <p>所有关于工具行为的结论，都对应下表中的某一个快照。opencode v2 目前是 beta，结论只代表 <code>v2.0.29</code> 这个标签。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
@@ -302,10 +299,9 @@
         <span class="tag tag--both">两者一致</span>
       </div>
 
-      <p class="small muted">60 章正文已全部上线。若后续新增章节，导航会先显示「待写」，点击给出提示，不会跳到空页面。</p>
     </section>
 
-    <p class="footer-note">下一步：从「第一部分 入门」的 <code>intro-01</code>「上下文窗口是什么」开始。左侧目录会记住你的折叠状态和上次读到的章节。</p>
+    <p class="footer-note">下一步：从第 1 章「上下文窗口是什么」开始。左侧目录会记住你的折叠状态和上次读到的章节。</p>
   </article>
 </main>
 

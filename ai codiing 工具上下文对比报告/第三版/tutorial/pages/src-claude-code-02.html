@@ -74,7 +74,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -84,7 +84,7 @@
   <article class="prose" id="src-claude-code-02">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Claude Code</span><span>·</span><span>第 02 节</span></p>
+      <p class="kicker"><b>第 34 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Claude Code</span></p>
       <h1>只有一个消息级缓存断点</h1>
       <p class="lede">很多教程说「Claude Code 有四个缓存断点」。这句话只对了一半：系统提示最多切成四块，但消息层<b>恰好只有一个</b> <code>cache_control</code> 标记。<span class="tag tag--src">源码 v2.1.88</span>这一节读 <code>addCacheBreakpoints</code>，看清「一个标记」如何覆盖整段前缀，以及 fork 为什么要把标记往前挪一位。</p>
       <ul class="meta">
@@ -207,7 +207,7 @@
       <p class="small muted">补充证据：系统提示的四块上限写在 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L296-L320">utils/api.ts#L296-L320</a>；真正套 <code>cache_control</code> 在 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L3213-L3237">claude.ts#L3213-L3237</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】「系统提示最多 4 块」不等于「4 个缓存断点」</p>
+        <p class="callout__title">【注意】「系统提示最多 4 块」不等于「4 个缓存断点」</p>
         <p>四块是 <code>splitSysPromptPrefix()</code> 的文本块上限；每块是否带 <code>cache_control</code> 取决于 <code>cacheScope</code> 是否为 null。全局缓存模式下，归属头与前缀都是 null，只有静态块带 <code>global</code>，动态块为 null，实际只有 1 个系统层标记；org 模式下前缀与其余各 1 个，共 2 个。再加消息层 1 个，总数是 2 或 3，不是 4。把「块数」当成「断点数」会高估缓存写入量。<span class="tag tag--src">源码 v2.1.88</span></p>
       </div>
     </section>
@@ -471,7 +471,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 13 节（Claude Code v2.1.88 源码，opencode v1 tag <code>v1.19.0</code>，Grok Build 源码，pi 提交 <code>b45e0eb</code>）。</p>
+      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Claude Code v2.1.88 源码，opencode v1 tag <code>v1.19.0</code>，Grok Build 源码，pi 提交 <code>b45e0eb</code>）。</p>
 
       <p>第一个对照是<b>「断点数量与服务端策略」</b>。Claude Code 的注释直接引用了服务端的驱逐实现，说明「一个标记」是针对 Mycro 的 KV 页回收策略做的优化；opencode 打四个点，是因为它要兼容多种 provider，无法假设某一种驱逐行为；Grok 留一个槽给网关，是因为网关可能自己加标记。断点数不是越多越好，而是要和「谁在回收、回收多快」匹配。<span class="tag tag--guess">推断</span></p>
 
@@ -528,7 +528,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-claude-code-03.html">Claude Code · 压缩后重附清单</a>。</p>
+    <p class="footer-note">下一章：<a href="src-claude-code-03.html">Claude Code · 压缩后重附清单</a>。</p>
 
   </article>
 </main>

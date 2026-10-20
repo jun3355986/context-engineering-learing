@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-opencode-v1-02">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v1</span><span>·</span><span>第 02 节</span></p>
+      <p class="kicker"><b>第 44 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>opencode v1</span></p>
       <h1>prune：默认关闭的旧结果擦除</h1>
       <p class="lede">v1 有一个不调模型的减量器，叫 prune。它从最新消息往回扫，保护最近 40k 的工具输出，只有能擦掉超过 20 000 token 时才真的动手。它默认是关的，调用点还在主循环退出之后。这一节读它为什么这么保守，以及 v2 为什么把它整个删掉。</p>
       <ul class="meta">
@@ -185,7 +185,7 @@
       <p class="small muted">补充证据：配置项与默认值注释见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/core/src/v1/config/config.ts#L149-L168">v1/config/config.ts#L149-L168</a>；擦除后的 <code>updatePart</code> 落盘见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L308-L316">compaction.ts#L308-L316</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】<code>PRUNE_PROTECT</code> 保护的是「累计值」，不是「每条消息」</p>
+        <p class="callout__title">【注意】<code>PRUNE_PROTECT</code> 保护的是「累计值」，不是「每条消息」</p>
         <p>代码里 <code>total += estimate</code> 之后才判断 <code>total &lt;= PRUNE_PROTECT</code>。所以前 40 000 token 可能是十几条小结果，也可能是一条大结果的一部分——但擦除的单位是「整条 part」，不是 part 内的片段。一旦 <code>total</code> 跨过 40 000，当前这条 part 就会整体进入候选，哪怕它只有 50 token 落在保护线之外。<span class="tag tag--ok">已核实</span></p>
       </div>
     </section>
@@ -525,7 +525,7 @@
       </ol>
     </div>
 
-    <p class="footer-note">下一节：opencode v1 · filterCompacted 重排替代历史。</p>
+    <p class="footer-note">下一章：opencode v1 · filterCompacted 重排替代历史。</p>
 
   </article>
 </main>

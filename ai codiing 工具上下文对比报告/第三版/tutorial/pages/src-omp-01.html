@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-omp-01">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>oh-my-pi</span><span>·</span><span>第 01 节</span></p>
+      <p class="kicker"><b>第 40 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>oh-my-pi</span></p>
       <h1>压缩方法链与回退</h1>
       <p class="lede">pi 只有一种压缩：调模型写摘要。oh-my-pi 把压缩做成了一条链——服务端压缩、历史转图、交接文档、机械省略、模型摘要，按顺序试，不可用就跳过，不够就往下走。这一节读这条链的选择逻辑，以及它为什么必须写成递归。</p>
       <ul class="meta">
@@ -202,7 +202,7 @@
       <p class="small muted">补充证据：<code>COMPACTION_METHOD_CHOICES</code> 的文案（每种方法一句人话）见 <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/compaction-methods.ts#L11-L38">compaction-methods.ts#L11-L38</a>；「方法 → 引擎策略」的映射见 <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/compaction-methods.ts#L79-L101">compaction-methods.ts#L79-L101</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】默认顺序与配置项顺序不是同一个数组</p>
+        <p class="callout__title">【注意】默认顺序与配置项顺序不是同一个数组</p>
         <p><code>COMPACTION_METHOD_CHOICES</code> 里 <code>soft</code> 排在 <code>shake</code> 前面（L28-L37），那是给设置界面用的展示顺序；真正的默认执行顺序是 <code>DEFAULT_COMPACTION_METHOD_ORDER</code>，<code>shake</code> 在 <code>soft</code> 之前（L44-L50）。看配置文档时容易把两者混为一谈：展示顺序不等于回退顺序，以常量数组为准。</p>
       </div>
     </section>
@@ -550,7 +550,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：oh-my-pi · shake 的机械省略。</p>
+    <p class="footer-note">下一章：oh-my-pi · shake 的机械省略。</p>
 
   </article>
 </main>

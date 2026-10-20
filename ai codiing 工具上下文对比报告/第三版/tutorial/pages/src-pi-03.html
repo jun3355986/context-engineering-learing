@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-pi-03">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>pi</span><span>·</span><span>第 03 节</span></p>
+      <p class="kicker"><b>第 39 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>pi</span></p>
       <h1>用 section 补丁保住前缀缓存</h1>
       <p class="lede">系统提示词最容易变成「每次都整段重发」的东西：换了个目录、装了个技能、规则文件改了一行，整块提示就变了，缓存从第一个字节开始失效。pi 的解法是把提示词拆成具名 section，变化时只写一条补丁，让旧的那几段字节原样不动。</p>
       <ul class="meta">
@@ -189,7 +189,7 @@
       <p class="small muted">本节只讨论系统提示词的 section 机制；工具增删走的是另一条通道（<code>toolsAdded</code> / <code>toolsRemoved</code>），见 <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/ai/src/utils/transcript.ts#L144-L160">transcript.ts#L144-L160</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】大纲说「只发变化」，准确说法是「只<b>存</b>变化」</p>
+        <p class="callout__title">【注意】「只发变化」的准确说法是「只<b>存</b>变化」</p>
         <p>补丁是写进转录的，不是直接写进请求。对支持中途系统消息的 provider，请求里确实只多了一小段更新说明；对不支持的 provider，请求前会把补丁重放成完整提示词，发出去的仍然是整段。所以「保住前缀缓存」不是无条件的：它取决于 provider 能否在对话中途接收系统消息。第 4 节会把两条路径画在一起。</p>
       </div>
     </section>
@@ -512,7 +512,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：oh-my-pi · 压缩方法链与回退。</p>
+    <p class="footer-note">下一章：oh-my-pi · 压缩方法链与回退。</p>
 
   </article>
 </main>

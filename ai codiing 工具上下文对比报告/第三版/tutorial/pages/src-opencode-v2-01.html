@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-opencode-v2-01">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v2</span><span>·</span><span>第 01 节</span></p>
+      <p class="kicker"><b>第 46 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>opencode v2</span></p>
       <h1>三入口触发与 due 判定</h1>
       <p class="lede">v2 把压缩拆成三个入口：每步开头的自动检查、溢出后的恢复、用户手动的命令。三个入口共用同一个 <code>compact()</code>，但预算与前置条件不同。真正决定「这一轮压不压」的不是阈值，而是 <code>due()</code> 里那两条不变量。</p>
       <ul class="meta">
@@ -208,7 +208,7 @@
       <p class="small muted">补充证据：手动入口的 inbox 消费见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/runner/llm.ts#L115-L163">runner/llm.ts#L115-L163</a>；<code>SHRINK_STEPS</code> 与 <code>RESERVE_MIN</code> 见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L94-L102">compaction.ts#L94-L102</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】<code>due()</code> 不是「阈值到了就压」</p>
+        <p class="callout__title">【注意】<code>due()</code> 不是「阈值到了就压」</p>
         <p><code>due()</code> 的最后一行才是阈值比较；前两行是「不该压」的否决条件。只读最后一行会得出错误结论：<code>estimateContext(context) &gt;= ceiling</code> 为真，也可能因为「最后一条是刚完成的压缩」或「测量锚点早于检查点」而返回 <code>false</code>。<span class="tag tag--ok">已核实</span>这两条例外不是优化，是正确性条件。</p>
       </div>
     </section>
@@ -577,7 +577,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：opencode v2 · 检查点：一条消息 + seq 边界。</p>
+    <p class="footer-note">下一章：opencode v2 · 检查点：一条消息 + seq 边界。</p>
 
   </article>
 </main>

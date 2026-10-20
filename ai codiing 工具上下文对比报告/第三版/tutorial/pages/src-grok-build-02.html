@@ -73,7 +73,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -83,7 +83,7 @@
   <article class="prose" id="src-grok-build-02">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Grok Build</span><span>·</span><span>第 02 节</span></p>
+      <p class="kicker"><b>第 50 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Grok Build</span></p>
       <h1>零成本裁剪：软裁剪与硬清空</h1>
       <p class="lede">压缩要调一次模型，慢且贵。Grok Build 在压缩之前还有一道完全不调模型的减量：按「轮龄」把老工具结果先砍一刀。规则只有三条——最近三轮不动，中年结果留头留尾，太老的整条清空。这一节逐行读这三条规则，以及它们为什么只作用在请求副本上。</p>
       <ul class="meta">
@@ -188,8 +188,8 @@
       </div>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】大纲的行号与「4000 字符」的口径</p>
-        <p>大纲把 <code>prune_conversation</code> 标在 <code>request_builder.rs:125</code>，实际 L125 是它的文档注释开头，函数签名在 L134。另外「超过 4000 字符软裁剪为 1500+1500」这句要补一个限定：<b>4000 与 1500 都按 Unicode 字符计</b>（<code>chars().count()</code> 与 <code>chars().skip()</code>），不是字节；而同一份代码里的 token 估算按字节 ÷ 4 算。两套口径混用会在中文内容上产生明显偏差，第 4 节会展开。</p>
+        <p class="callout__title">【注意】一处容易引错的行号，和「4000 字符」的口径</p>
+        <p>常见标注把 <code>prune_conversation</code> 放在 <code>request_builder.rs:125</code>，实际 L125 是它的文档注释开头，函数签名在 L134。另外「超过 4000 字符软裁剪为 1500+1500」这句要补一个限定：<b>4000 与 1500 都按 Unicode 字符计</b>（<code>chars().count()</code> 与 <code>chars().skip()</code>），不是字节；而同一份代码里的 token 估算按字节 ÷ 4 算。两套口径混用会在中文内容上产生明显偏差，第 4 节会展开。</p>
       </div>
     </section>
 
@@ -444,7 +444,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：Grok Build 见本节 permalink；dsh 见 <code>research/dsh.md</code> 第 7 节与 <code>compaction-tool-result-pruner/src/config.ts</code>；omp 见 <code>research/omp.md</code> 第 7 节；opencode v1 见 <code>research/opencode-v1.md</code> 第 7 节（<code>compaction.prune</code> 默认 false）；Claude Code 为 v2.1.88 源码，时间触发路径默认 disabled。</p>
+      <p class="table-caption">表注：Grok Build 见本节 permalink；dsh 见 <code>compaction-tool-result-pruner/src/config.ts</code>；omp 见其 prune 实现；opencode v1 见 <code>compaction.prune</code>（默认 false）；Claude Code 为 v2.1.88 源码，时间触发路径默认 disabled。</p>
 
       <p><b>分叉一：触发时机决定「这是常态还是应急」。</b>Grok Build 用 50% 这条线，意味着它只在会话过半后启动；DeepSeek Harness 更靠后，必须等压缩被确认后才跑裁剪器，低于压力的会话一个字节都不动；opencode v1 更晚，在任务循环退出后异步跑；Claude Code 的时间路径则是「缓存已经冷了，不如顺便清掉」。四种时机对应四种心态：Grok Build 是「提前削峰」，dsh 是「先削峰再决定要不要摘要」，opencode 是「收尾时打扫」，Claude Code 是「反正缓存没了」。</p>
 
@@ -516,7 +516,7 @@
       </ol>
     </div>
 
-    <p class="footer-note">下一节：<a href="src-grok-build-03.html">Grok Build · append-only 日志如何回退</a></p>
+    <p class="footer-note">下一章：<a href="src-grok-build-03.html">Grok Build · append-only 日志如何回退</a></p>
 
   </article>
 </main>

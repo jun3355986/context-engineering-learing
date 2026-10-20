@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-opencode-v2-03">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v2</span><span>·</span><span>第 03 节</span></p>
+      <p class="kicker"><b>第 48 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>opencode v2</span></p>
       <h1>指令 epoch 推进</h1>
       <p class="lede">规则文件每改一行，v1 就把整条系统提示重拼一遍；v2 把它拆成「基线 + 增量」，再给基线一个版本号。压缩完成时，版本号前移，之前所有增量一次性作废。这一节读这个版本号怎么观察、怎么提交、怎么推进。</p>
       <ul class="meta">
@@ -197,8 +197,8 @@
       <p class="small muted">补充证据：基线渲染（每次请求的 <code>initial</code>）见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/instruction-state.ts#L164-L174">instruction-state.ts#L164-L174</a>；fork 继承最新基线见 <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/session.ts#L341-L357">session.ts#L341-L357</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】<code>advanceEpoch</code> 在 <b>投影器</b> 里，不在压缩函数里</p>
-        <p>大纲把 <code>advanceEpoch</code> 与压缩写在一起。实际调用点是 <code>projector.ts#L731-L736</code>：它订阅 <code>Compaction.Ended</code> 事件，先 <code>run(db, event)</code> 写消息，再推进 epoch。<span class="tag tag--ok">已核实</span>放在投影器里的好处是「事件重放也会得到同样结果」——只要事件流一致，epoch 就一致，不依赖压缩函数当时的内存状态。</p>
+        <p class="callout__title">【注意】<code>advanceEpoch</code> 在 <b>投影器</b> 里，不在压缩函数里</p>
+        <p>常见资料把 <code>advanceEpoch</code> 与压缩写在一起。实际调用点是 <code>projector.ts#L731-L736</code>：它订阅 <code>Compaction.Ended</code> 事件，先 <code>run(db, event)</code> 写消息，再推进 epoch。<span class="tag tag--ok">已核实</span>放在投影器里的好处是「事件重放也会得到同样结果」——只要事件流一致，epoch 就一致，不依赖压缩函数当时的内存状态。</p>
       </div>
     </section>
 
@@ -570,7 +570,7 @@
       </div>
     </section>
 
-    <p class="footer-note">源码 · opencode v2 三节到此结束。</p>
+    <p class="footer-note">源码 · opencode v2 三章到此结束。</p>
 
   </article>
 </main>

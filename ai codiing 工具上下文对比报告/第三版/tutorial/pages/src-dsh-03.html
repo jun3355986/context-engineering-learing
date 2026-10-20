@@ -73,7 +73,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -83,7 +83,7 @@
   <article class="prose" id="src-dsh-03">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>DeepSeek Harness</span><span>·</span><span>第 03 节</span></p>
+      <p class="kicker"><b>第 54 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>DeepSeek Harness</span></p>
       <h1>裁剪器与影子计价</h1>
       <p class="lede">DeepSeek Harness 的裁剪器只做一件很小的事：把超长工具结果的中间挖掉，换成一句固定标记。但它做这件事的方式很讲究——先写一条「这个节点值多少 token」的日志，再写替换。这条影子事件是整个 O(1) 上下文计价的地基。</p>
       <ul class="meta">
@@ -191,7 +191,7 @@
       </div>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】<code>shadowedTokenCount</code> 不是「被删那段文本」的价格</p>
+        <p class="callout__title">【注意】<code>shadowedTokenCount</code> 不是「被删那段文本」的价格</p>
         <p>它记的是<b>被替换节点的整条消息估价</b>（<code>estimateMessage(original)</code>），包含角色框架与所有内容块；替换后的增量用 <code>estimateMessage(新消息)</code> 减去它。所以算出来的差值是「整条消息变短了多少」，不是「中间那段文本值多少」。这个区别在只有文本块时几乎看不出来，在结果里夹了图片或结构化块时就会差出不少——那些块的价格由 token meter 的块级规则决定，不由码点数决定。</p>
       </div>
     </section>
@@ -479,7 +479,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：dsh 见本节 permalink；Grok Build 见源码解读第 2 节；omp 见 <code>research/omp.md</code> 第 7 节；opencode v1 见 <code>research/opencode-v1.md</code> 第 7 节（默认关闭）。</p>
+      <p class="table-caption">表注：dsh 见本节 permalink；Grok Build 见源码解读第 2 节；omp 见其 prune 实现；opencode v1 见其 prune 实现（默认关闭）。</p>
 
       <p><b>对照一：按单条大小 vs 按轮龄/预算。</b>dsh 的判断只看这一条自己：超过 8,192 就裁，不管它多新、多旧、属于哪一轮。好处是规则简单、与顺序无关、可预测；坏处是「刚读到的关键文件」只要够长也会被裁。Grok Build 按轮龄，保护最近三轮，牺牲的是「老但仍有用的内容」；omp 与 opencode 按总预算，保护最近 40k token，牺牲的是「预算之外的旧内容」。三种维度对应三种「什么更可能还有用」的假设。</p>
 

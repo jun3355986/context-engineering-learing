@@ -73,7 +73,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -83,7 +83,7 @@
   <article class="prose" id="src-codex-01">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Codex CLI</span><span>·</span><span>第 01 节</span></p>
+      <p class="kicker"><b>第 29 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Codex CLI</span></p>
       <h1>压缩保留谁：候选与预算</h1>
       <p class="lede">压缩把几万 token 的历史换成一段摘要，但摘要不是全部。Codex 还会挑出一批用户原话，按 20 000 token 的预算塞回去。这一节逐行读这段挑人的代码，看清「保留」到底保留了谁、什么时候停。</p>
       <ul class="meta">
@@ -187,8 +187,8 @@
       <p class="small muted">补充证据（正文里会引用）：候选为什么只剩用户消息，看 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/event_mapping.rs#L128-L131">event_mapping.rs#L128-L131</a> 的隐藏片段过滤；远端压缩的另一套预算看 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L87-L91">compact_remote_v2.rs#L87-L91</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】与大纲、事实卡片的三处出入</p>
-        <p>一、大纲写「源码块 <code>compact()</code> 的候选选择循环」，实际执行这个循环的函数是 <code>build_compacted_history_with_limit()</code>（L715）；<code>compact</code> 只是同文件里的外层任务名。二、事实卡片把候选判定标在 L622-L643、循环标在 L723-L802，实际分别是 L604-L620 和 L715-L804，以源码为准。三、卡片说候选「排除 FINAL_ANSWER 类代理消息」，实际候选只接受 <code>TurnItem::UserMessage</code>，助手消息（<code>AgentMessage</code>）整类都进不来；<code>is_real_user_or_agent_message()</code> 判断的是「初始上下文插在哪」，不是候选筛选。</p>
+        <p class="callout__title">【注意】三处容易转述错的细节</p>
+        <p>一、容易把「源码块 <code>compact()</code> 的候选选择循环」记在 <code>compact()</code> 名下，实际执行这个循环的函数是 <code>build_compacted_history_with_limit()</code>（L715）；<code>compact</code> 只是同文件里的外层任务名。二、另一种常见标注把候选判定放在 L622-L643、循环放在 L723-L802；本提交实际分别是 L604-L620 和 L715-L804。三、也有说法认为候选「排除 FINAL_ANSWER 类代理消息」，实际候选只接受 <code>TurnItem::UserMessage</code>，助手消息（<code>AgentMessage</code>）整类都进不来；<code>is_real_user_or_agent_message()</code> 判断的是「初始上下文插在哪」，不是候选筛选。</p>
       </div>
     </section>
 
@@ -378,7 +378,7 @@
       <p>也就是说，边界那条消息不是被丢弃，也不是被跳过，而是「留半条」。<code>truncate_annotated_text()</code> 裁的是头尾保留、中间替换成 <code>…N tokens truncated…</code> 标记，所以读者仍能看到这句话的开头和结尾。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】大纲说「放不下立即停止」，源码是「先截断再停」</p>
+        <p class="callout__title">【注意】不是「放不下就停」，而是「先截断再停」</p>
         <p>两步差别在结果上：立即停止 → 边界那条整条消失；先截断再停 → 边界那条留半条。后者的代价是这条消息可能语义不完整（比如需求写了一半），好处是最新的一条总不至于一个字都留不下。<span class="tag tag--ok">已核实</span></p>
       </div>
 
@@ -463,7 +463,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 8 节（Codex 提交 <code>76ed3b4</code>，Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>）。Codex 与 pi 的保留预算都是 20 000，但装的不是同一种东西：Codex 只往里放用户消息，pi 放的是含工具结果的连续尾部，同数字不等于同容量。</p>
+      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>）。Codex 与 pi 的保留预算都是 20 000，但装的不是同一种东西：Codex 只往里放用户消息，pi 放的是含工具结果的连续尾部，同数字不等于同容量。</p>
 
       <p>两个值得记住的对照：</p>
 
@@ -515,7 +515,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-codex-02.html">Codex · 请求四块与增量工具</a>。</p>
+    <p class="footer-note">下一章：<a href="src-codex-02.html">Codex · 请求四块与增量工具</a>。</p>
 
   </article>
 </main>

@@ -301,7 +301,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -311,7 +311,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第一部分 · 入门</b><span>·</span><span>第 01 章</span></p>
+      <p class="kicker"><b>第 1 章</b><span>·</span><span>第一部分 · 入门</span></p>
       <h1>上下文窗口是什么</h1>
       <p class="lede">AI 没有突然变笨。它只是把你说过的话，挤出了那块看得见的地方。</p>
       <ul class="meta">
@@ -362,7 +362,7 @@
       <p>代码更阴：缩进、括号、重复的字段名，全都算。一个 500 行的配置文件，可能比一篇 3000 字的文章还重。</p>
 
       <div class="callout callout--quiet">
-        <p class="callout__title">事实卡片：工具自己也在估</p>
+        <p class="callout__title">对照：工具自己也在估</p>
         <ul>
           <li>Claude Code 的本地粗估是 <code>chars / 4</code>，只求快；精确值要等服务端返回 <code>usage</code>。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/tokenEstimation.ts#L203-L210">tokenEstimation.ts#L203-L210</a></li>
           <li>Codex 在截断工具输出时按 <code>bytes / 4</code> 估算，并另留 20% 序列化余量。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L17-L29">truncate.rs#L17-L29</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L34">lib.rs#L17-L34</a></li>
@@ -424,7 +424,7 @@
       <p>不同工具留法不一样：</p>
 
       <div class="callout callout--quiet">
-        <p class="callout__title">事实卡片：输出预留，各家怎么算</p>
+        <p class="callout__title">对照：输出预留，各家怎么算</p>
         <ul>
           <li><strong>Claude Code</strong>：有效窗口 = 模型窗口 − <code>min(模型最大输出, 20_000)</code>；后面的自动压缩线、阻塞线都在这条有效窗口上算。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L28-L49">autoCompact.ts#L28-L49</a></li>
           <li><strong>Codex CLI</strong>：用百分比余量：整段硬线取窗口的 95%，自动压缩软线取 90%。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L393-L395">openai_models.rs#L393-L395</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/context_window.rs#L60-L110">context_window.rs#L60-L110</a></li>
@@ -528,7 +528,7 @@
         <li><strong>截断</strong>：直接丢掉旧消息，或砍掉过长的工具输出。快，但丢掉的东西不会自己回来。</li>
         <li><strong>报错</strong>：什么都不做，请求被拒。最诚实，也最耽误事。</li>
       </ul>
-      <p>各家选的阈值不同：Codex 先在 90% 软线触发压缩，95% 是硬线（来源见上面的输出预留事实卡片）；Claude Code 在有效窗口下留 13,000 token 缓冲，再触发自动压缩<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">autoCompact.ts#L62-L91</a>）。</p>
+      <p>各家选的阈值不同：Codex 先在 90% 软线触发压缩，95% 是硬线（来源见上面的输出预留一节）；Claude Code 在有效窗口下留 13,000 token 缓冲，再触发自动压缩<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">autoCompact.ts#L62-L91</a>）。</p>
       <p>这些取舍会在第 6 章「用户侧怎么管理上下文」和主线「压缩」一章展开。现在只要记住：它们都是“把已经装进去的东西拿掉”，没有一种能凭空扩容。</p>
     </section>
 

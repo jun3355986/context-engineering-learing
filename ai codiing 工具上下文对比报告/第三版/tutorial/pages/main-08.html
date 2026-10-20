@@ -421,7 +421,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -431,7 +431,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 08 章</span></p>
+      <p class="kicker"><b>第 15 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>压缩：把历史换成摘要</h1>
       <p class="lede">窗口快满时，Agent 不会“忘记”，它会把前面的对话交给模型写成一份交接摘要，再删掉原文。真正难的不是写摘要，而是三个决定：什么时候压、从哪里切、切完还留什么。</p>
       <ul class="meta">
@@ -456,7 +456,7 @@
       <p>下午四点，你让 Agent 重构导出模块。它读了 20 个文件、跑了 3 次测试、改了 4 个调用方。第 40 轮，它突然把 <code>public API</code> 改了。你翻回去看：第 3 轮你明确说过“不要动 public API”。它当时还复述了一遍。</p>
       <p>这不是模型“没注意”，而是那段话已经不在它眼前了。上下文窗口装不下 40 轮工具输出，Agent 必须做一次减法。这里的减法有两种，代价完全不同：</p>
       <ul>
-        <li><strong>裁剪（trimming）</strong>：不调用模型，只改变“模型能看到的投影”。原文还在，随时可以还原。这是第 7 章的主题。</li>
+        <li><strong>裁剪（trimming）</strong>：不调用模型，只改变“模型能看到的投影”。原文还在，随时可以还原。这是第 14 章的主题。</li>
         <li><strong>压缩（compaction）</strong>：调用模型，把一段历史写成摘要，再用摘要替换原文。原文通常只留在会话日志里，模型看到的是“另一个模型写的交接笔记”。</li>
       </ul>
       <p class="lead-in">压缩的本质是一笔交易：用“信息”和“控制权”，换“空间”。</p>
@@ -491,7 +491,7 @@
 
       <div class="callout callout--warn">
         <p class="callout__title">压缩不是免费的</p>
-        <p>压缩本身是一次完整的模型请求：要把待压缩的历史再发一遍，还要生成摘要。它既花 token，也花时间；如果实现把摘要插在历史开头，还会让 prompt cache 的前缀失效。更糟的是，压缩请求自己也可能超窗——这是第 14 章“失败恢复”要处理的问题。</p>
+        <p>压缩本身是一次完整的模型请求：要把待压缩的历史再发一遍，还要生成摘要。它既花 token，也花时间；如果实现把摘要插在历史开头，还会让 prompt cache 的前缀失效。更糟的是，压缩请求自己也可能超窗——这是第 21 章“失败恢复”要处理的问题。</p>
       </div>
     </section>
 
@@ -530,7 +530,7 @@
       <h3 id="codex-summary">2.3 摘要：一次不带工具的独立请求</h3>
       <p>压缩请求复用当前历史，在末尾追加 <code>SUMMARIZATION_PROMPT</code>；请求的 <code>tools</code> 为空，避免模型在“写摘要”时顺手调用工具。模板只有 9 行，要四样东西：进度与关键决策、重要上下文与用户偏好、还没做完的事、继续工作所需的关键数据与引用。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/prompts/templates/compact/prompt.md#L1-L9">prompt.md#L1-L9</a> <span class="tag tag--ok">已核实</span></p>
       <p>生成的摘要不是裸文本，前面会拼一段固定前缀：<em>“另一个语言模型开始解决这个问题，并留下了思考摘要……请在此基础上继续，避免重复工作。”</em><a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/prompts/templates/compact/summary_prefix.md#L1">summary_prefix.md#L1</a> <span class="tag tag--ok">已核实</span> 这段话的作用不是装饰：它告诉下一个模型“这是交接笔记，不是用户的新指令”，同时提醒它“工具状态还在”。</p>
-      <p>手动 <code>/compact</code> 走 <code>tasks/compact.rs</code>，可以替换摘要模板（<code>compact_prompt</code> 配置）。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tasks/compact.rs#L63-L95">tasks/compact.rs#L63-L95</a> <span class="tag tag--ok">已核实</span> 但本快照的 <code>Op::Compact</code> 不带参数，任务入口也忽略了输入；事实卡片里“<code>/compact [附加说明]</code>”的说法在本快照找不到实现 <span class="tag tag--todo">待核实</span><sup class="fn-ref"><a href="#fn-main-08-1" id="fnref-main-08-1">1</a></sup>。</p>
+      <p>手动 <code>/compact</code> 走 <code>tasks/compact.rs</code>，可以替换摘要模板（<code>compact_prompt</code> 配置）。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tasks/compact.rs#L63-L95">tasks/compact.rs#L63-L95</a> <span class="tag tag--ok">已核实</span> 但本快照的 <code>Op::Compact</code> 不带参数，任务入口也忽略了输入；“<code>/compact [附加说明]</code>”的说法在本快照找不到实现 <span class="tag tag--todo">待核实</span><sup class="fn-ref"><a href="#fn-main-08-1" id="fnref-main-08-1">1</a></sup>。</p>
       <p><strong>为什么单独发一次请求，而不是让主模型“边干边总结”。</strong>压缩需要一个干净的输出契约：只要摘要，不要工具调用，不要继续任务。独立请求还能单独设模型、单独重试、单独计费。<strong>代价</strong>是这次请求本身也要装下待压缩的历史；历史太大时，压缩请求会先超窗，进入下一节的失败分支。</p>
 
       <h3 id="codex-rebuild">2.4 重建：替换内存历史，再写一个检查点</h3>
@@ -751,7 +751,7 @@
             <tr>
               <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
               <td>有效窗口 −13k 自动触发；手动 <code>/compact</code>；连续 3 次失败熔断。<span class="tag tag--src">源码 v2.1.88</span></td>
-              <td>卡片未给出尾段保留预算；摘要后重附 5 个文件（50k）与技能正文（25k）。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>本次核对未给出尾段保留预算；摘要后重附 5 个文件（50k）与技能正文（25k）。<span class="tag tag--src">源码 v2.1.88</span></td>
               <td>在 <code>compact_boundary</code> 处插入摘要，边界之后的消息保留。<span class="tag tag--src">源码 v2.1.88</span></td>
               <td>独立请求、发送前剥图；丢 <code>&lt;analysis&gt;</code> 只留 <code>&lt;summary&gt;</code>；重附文件、技能、计划、工具增量。<span class="tag tag--src">源码 v2.1.88</span></td>
               <td>压缩请求超窗重试 3 次、流重试 2 次；连续 3 次失败停止自动压缩。<span class="tag tag--src">源码 v2.1.88</span></td>
@@ -807,7 +807,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗与事实卡片里。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
     </section>
 
     <!-- ========== 07 取舍 ========== -->
@@ -836,7 +836,7 @@
       <p>pi 和 omp 用 <code>isSplitTurn</code>：切点落在回合中间时，把“用户消息到切点之前”的轮前缀单独摘要，再与历史摘要合并；前缀预算约为 <code>0.5 × reserveTokens</code>。Codex 不拆：最新用户消息放不下就截断文本，剩下的交给摘要。Grok Build 走另一条路：整段替换，但强制保留最后一条真实请求及其后的消息。</p>
       <p><strong>代价</strong>：拆分能同时保住“这轮要做什么”和“之前做了什么”，代价是两次摘要调用、一次合并，以及更长的压缩时间；截断最便宜，但可能正好切掉那句关键约束；整段替换实现简单，却依赖“最后一条真实请求”这一条规则，遇到一轮里多次改需求就会丢中间状态。</p>
 
-      <p>还有一个横切的取舍：<strong>兜底次数</strong>。opencode v1 压缩失败就直接停，pi 只给一次 compact-and-retry，opencode v2 用 0.7 / 0.5 / 0.35 三级收缩，omp 用五方法链逐级回退。次数越多，用户越少看到“压缩失败”，但每次重试都要再发一遍历史，成本和延迟都翻倍。这也是第 14 章的主题。</p>
+      <p>还有一个横切的取舍：<strong>兜底次数</strong>。opencode v1 压缩失败就直接停，pi 只给一次 compact-and-retry，opencode v2 用 0.7 / 0.5 / 0.35 三级收缩，omp 用五方法链逐级回退。次数越多，用户越少看到“压缩失败”，但每次重试都要再发一遍历史，成本和延迟都翻倍。这也是第 21 章的主题。</p>
     </section>
 
     <!-- ========== 08 测验 ========== -->
@@ -881,28 +881,13 @@
       </div>
     </section>
 
-    <!-- ========== 模板说明 ========== -->
-    <section id="template">
-      <p class="sec-no">09 · 写作模板</p>
-      <h2>后续主线章节怎么复用这一页</h2>
-      <div class="callout callout--info">
-        <p class="callout__title">给后续写作 agent 的可执行说明</p>
-        <p><strong>字数配比（按 9,000–12,000 字的目标，2026-10-19 上调）：</strong>① Codex 主线 3,200–4,200 字，占 35%–40%，必须写到“触发—候选—生成—重建—失败”五段，每段至少一句“为什么这样设计”和一句“代价”；② 七个弹窗合计 2,000–2,700 字，每个 280–380 字，四块固定为做法、关键参数与默认值、设计意图、来源；③ 对比表 8 行 × 5 列，每格一句话（20–40 字），句末放可信度标签；④ 设计取舍 4–6 组，每组 200–300 字，结构固定为“A 派怎么做 / B 派怎么做 / 为什么不同 / 代价是什么”；⑤ 测验 3 道，每题题干 40–80 字、解析 80–140 字，答案里必须有一个指回正文的锚点链接。剩余 5% 留给图示、提示框和过渡段。</p>
-        <p><strong>弹窗内容从哪来：</strong>只从对应事实卡片的同一节取，先抄“做法”里的动词和对象，再抄“关键参数与默认值”里的参数名与数字，最后从“设计意图”里提炼一句“和别家最大的差异”。不要在弹窗里引入卡片没有的新结论；卡片标【推断】的，弹窗也要标【推断】。来源放 2–4 条固定到提交的 permalink，优先选“能直接看到这个数字或这个分支”的行号，不要只放仓库首页。</p>
-        <p><strong>对比表列怎么定：</strong>先问“这一类的决策点有哪四个”，列名就用那四个，不要照抄本章。例如压缩的决策点是触发、保留预算、切点、摘要与重附、失败兜底；换成子代理，可能是隔离方式、工具池、返回格式、深度与并发。每格只写一个事实，能加数字就加数字；没有该能力写“无此能力”并给依据，不要留空。第一列固定工具名，最后不加“来源”列，把 permalink 留给弹窗。</p>
-        <p><strong>测验怎么出：</strong>三道题分别覆盖“算一个结果”“判一个边界”“选一个取舍”。第一题给具体数字，让读者预测切点、预算或阈值，答案必须能在一个演示里复现；第二题给一个非法或退化场景，问会发生什么、怎么修；第三题给两种路线，问代价和适用场景。不要考参数名默写，不要考“以下哪个说法正确”的多选。解析先给结论，再给因果，最后放锚点链接。</p>
-        <p><strong>演示怎么配：</strong>只有“参数变化能看见结果变化”的概念才做交互。一个演示最多三个滑块，默认值要能产生一个干净、无警告的结果；把会触发警告的参数写在提示里（例如“试试 70%”）。演示脚本一个文件一个 IIFE，不污染全局；画布内的颜色只用 <code>var(--...)</code>，并在 <code>demo__note</code> 里写明“教学模型，不是任何工具的真实算法”。</p>
-        <p><strong>交付前自检：</strong>五段顺序不变；七个弹窗 ID 唯一且能 Esc 关闭；表格每格有标签；每组取舍有“代价”句；三道测验的答案都能点回正文；<code>node --check</code> 通过；375px 无横向溢出；控制台无报错。</p>
-      </div>
-    </section>
-
     <p class="footer-note">下一章：<a href="main-09.html">多模态上下文</a>。</p>
 
     <div class="footnotes">
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-08-1">
-          事实卡片标【待核实】：本快照 `tasks/compact.rs` 的 `Op::Compact` 结构体不带参数字段，`compact.rs` 里的任务入口也没有读取用户附加文本；已检查该文件全文（L1–L180）与 `Op` 定义处。官方文档提到 `/compact` 可带说明，但源码不支持，可能是版本差。本章按“本快照无此入口”表述，不把带参数的用法写成事实。
+          【待核实】：本快照 `tasks/compact.rs` 的 `Op::Compact` 结构体不带参数字段，`compact.rs` 里的任务入口也没有读取用户附加文本；已检查该文件全文（L1–L180）与 `Op` 定义处。官方文档提到 `/compact` 可带说明，但源码不支持，可能是版本差。本章按“本快照无此入口”表述，不把带参数的用法写成事实。
           <a class="footnotes__back" href="#fnref-main-08-1">↩</a>
         </li>
       </ol>
@@ -1122,7 +1107,7 @@
           <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/README.md#L166-L225">README.md#L166-L225</a>（摘要模板）
         </dd>
       </dl>
-      <p class="modal__note">dsh 没有 rewind / undo，也没有跨会话记忆；压缩产物是一条 user 摘要 + 保留尾部，后续恢复靠日志重放与 surface 替换。部分结论来自同仓文档而非逐行源码，卡片已分别标注。</p>
+      <p class="modal__note">dsh 没有 rewind / undo，也没有跨会话记忆；压缩产物是一条 user 摘要 + 保留尾部，后续恢复靠日志重放与 surface 替换。部分结论来自同仓文档而非逐行源码，正文已分别标注。</p>
     </div>
   </div>
 </div>

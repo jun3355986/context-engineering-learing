@@ -1,7 +1,6 @@
 /* ============================================================
  * app.js —— 导航渲染、搜索、主题、弹窗、测验、复制
  * ------------------------------------------------------------
- * 01 号票创建；此后由主控统一维护。
  * 依赖：toc.js（先加载）
  * 约束：普通 script、无 ES module、无 fetch、无外部依赖；
  *       file:// 双击可运行；控制台不报错。
@@ -149,15 +148,10 @@
     return prefix + chapter.file;
   }
 
-  function chapterNo(chapter, index, group) {
-    if (group && group.numbering === "index") {
-      var n0 = String(index + 1);
-      return n0.length < 2 ? "0" + n0 : n0;
-    }
-    var m = /-(\d+)$/.exec(chapter.id || "");
-    if (m) return m[1].length < 2 ? "0" + m[1] : m[1];
-    var n = String(index + 1);
-    return n.length < 2 ? "0" + n : n;
+  function chapterNo(chapter) {
+    if (chapter.label) return chapter.label;
+    if (chapter.no) return "第 " + chapter.no + " 章";
+    return "";
   }
 
   /* ---------- 提示条 ---------- */
@@ -211,7 +205,7 @@
         '<span class="nav__chev" aria-hidden="true">' +
         '<svg viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
         "</span>" +
-        '<span class="nav__part">' + esc(group.part || "") + "</span>" +
+        (group.part ? '<span class="nav__part">' + esc(group.part) + "</span>" : "") +
         '<span class="nav__grouptitle">' + esc(group.title) + "</span>" +
         '<span class="nav__count">' + (group.chapters || []).length + "</span>" +
         "</button>" +
@@ -220,13 +214,14 @@
       (group.chapters || []).forEach(function (chapter, index) {
         var isCurrent = chapter.id === currentChapter;
         var todo = chapter.status === "todo";
+        var no = chapterNo(chapter);
         html +=
           "<li>" +
           '<a class="nav__link' + (isCurrent ? " is-current" : "") + '" href="' +
           esc(linkTo(chapter)) + '" data-chapter="' + esc(chapter.id) + '"' +
           (todo ? ' data-todo="1"' : "") +
           (isCurrent ? ' aria-current="page"' : "") + ">" +
-          '<span class="nav__no">' + chapterNo(chapter, index, group) + "</span>" +
+          (no ? '<span class="nav__no">' + esc(no) + "</span>" : "") +
           '<span class="nav__title">' + esc(chapter.title) + "</span>" +
           (todo ? '<span class="nav__badge">待写</span>' : "") +
           "</a></li>";
@@ -254,7 +249,18 @@
     try {
       saved = parseInt(sessionStorage.getItem(KEY.navScroll), 10) || 0;
     } catch (err) {}
-    if (!saved) return;
+    if (!saved) {
+      /* 没有历史滚动位置时，把当前章滚到导航中部，长目录也能看见自己在哪 */
+      var cur = $(".nav__link.is-current", nav);
+      if (cur) {
+        window.requestAnimationFrame(function () {
+          var nr = nav.getBoundingClientRect();
+          var cr = cur.getBoundingClientRect();
+          nav.scrollTop += cr.top - nr.top - nav.clientHeight / 2 + cr.height / 2;
+        });
+      }
+      return;
+    }
     nav.scrollTop = saved;
     /* 字体度量完成后高度可能变化，再对齐一次 */
     window.requestAnimationFrame(function () {
@@ -886,7 +892,7 @@
     });
   }
 
-  /* ---------- 版面增强（第三版改版） ----------
+  /* ---------- 版面增强 ----------
    * 1. 本页目录：宽屏右侧显示各节标题，滚动时高亮当前节
    * 2. SVG 图文字自适应：按实际字体测量，文字超出方框或行距过密时缩小字号；
    *    内容超出画布时扩大 viewBox。不同系统字体（PingFang / 雅黑 / Noto）宽度不同，

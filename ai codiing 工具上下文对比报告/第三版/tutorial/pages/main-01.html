@@ -71,7 +71,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -81,7 +81,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 01 章</span></p>
+      <p class="kicker"><b>第 8 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>请求组装：系统提示词与工具定义</h1>
       <p class="lede">模型每次只看到一段平铺的 token 序列。系统提示词、工具定义、环境说明、历史消息，都是这段序列里的片段，谁在前、谁在后、谁每次都变，决定了它能不能命中缓存，也决定了它会不会忽略你的规则。</p>
       <ul class="meta">
@@ -196,7 +196,7 @@
       <h3 id="codex-normalize">2.3 写进历史之前，先修一遍</h3>
       <p>历史不是“发生过什么就存什么”。Codex 在写入时执行一组固定不变量，<code>normalize_history</code> 负责四件事：给缺失的工具调用补上结果、删掉没有对应调用的孤立结果、剥离模型不支持的图片、剥离不支持的音频。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L968-L982">history.rs#L968-L982</a> <span class="tag tag--ok">已核实</span></p>
       <p>这四件事看起来像清理，实际上是<strong>协议适配</strong>：严格一点的 provider 会直接拒绝不配对的工具记录；宽松一点的会接受，但模型会把孤立结果当成新事实，开始编造它为什么存在。与其在每个 provider 分支里处理，不如在写入时统一成一种合法形状。</p>
-      <p><strong>代价</strong>是不可逆。被剥掉的图片不会在下一轮回来；被补上的空结果会让模型以为工具真的返回了空。这也是为什么“历史规范化”必须和会话日志分开：日志保留原样，活历史才是裁剪过的投影。第 11 章会展开这个区分。</p>
+      <p><strong>代价</strong>是不可逆。被剥掉的图片不会在下一轮回来；被补上的空结果会让模型以为工具真的返回了空。这也是为什么“历史规范化”必须和会话日志分开：日志保留原样，活历史才是裁剪过的投影。第 18 章会展开这个区分。</p>
 
       <h3 id="codex-incremental">2.4 incremental_tools：把“每次都发”改成“只发变化”</h3>
       <p>当 <code>incremental_tools = true</code> 时，本次请求把 <code>tools</code> 置空、<code>base_instructions</code> 置为空文本，改由历史里已经写入的工具与指令增量承担。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a> <span class="tag tag--ok">已核实</span></p>
@@ -209,7 +209,7 @@
         <li><strong>调试变难</strong>。你在请求体里看不到工具定义，只能看历史。抓包工具、日志查看器都要跟着改。</li>
         <li><strong>不适合短会话</strong>。首次请求仍要全量发；会话只有三五轮时，增量机制只增加了复杂度，没有省下什么。</li>
       </ul>
-      <p>本快照里 <code>build_prompt</code> 只接收这个开关，没有在函数内设默认值，默认值由调用方决定；事实卡片也没有找到统一的全局默认<sup class="fn-ref"><a href="#fn-main-01-1" id="fnref-main-01-1">1</a></sup>。所以“Codex 默认开增量工具”这个说法不成立，能不能用取决于上游怎么传。</p>
+      <p>本快照里 <code>build_prompt</code> 只接收这个开关，没有在函数内设默认值，默认值由调用方决定；本次也没有找到统一的全局默认<sup class="fn-ref"><a href="#fn-main-01-1" id="fnref-main-01-1">1</a></sup>。所以“Codex 默认开增量工具”这个说法不成立，能不能用取决于上游怎么传。</p>
 
       <p class="small muted">下面是 <code>build_prompt</code> 的简化摘录，重点看四块的赋值和 <code>incremental_tools</code> 的分支，省略了错误处理与工具过滤。</p>
       <div class="codeblock" data-lang="rust">
@@ -239,7 +239,7 @@
       <h3 id="codex-order">2.5 顺序：稳定在前，变化在后</h3>
       <p>把四块排成一条序列，Codex 的顺序是：<strong>instructions → tools → input（从旧到新）</strong>。这不是审美选择，而是缓存协议的要求：prompt cache 以“前缀完全相同”为命中条件，任何靠前的字节变化，都会让它后面的全部内容重新计费。</p>
       <p>所以“把规则文件放在系统提示里”和“把规则文件作为一条消息前插”不是等价方案。前者只要规则改一个字，整个前缀作废；后者只影响插入点之后的内容，而插入点通常在历史头部，仍然很贵，但至少工具表还在。真正便宜的位置是<strong>尾部</strong>：把易变信息追加在本轮输入之前，前面的东西一个字都不动。</p>
-      <p>这也是为什么几乎所有工具都会把“当前时间”做成一条独立提醒，而不是写进系统提示的第一段。Grok Build 甚至宁可加一条一次性的跨午夜提醒，也不肯改写启动时缓存的 <code>&lt;user_info&gt;</code> 日期。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs#L507-L522">reminders.rs#L507-L522</a> <span class="tag tag--ok">已核实</span> 第 04 章会专门讲这类注入。</p>
+      <p>这也是为什么几乎所有工具都会把“当前时间”做成一条独立提醒，而不是写进系统提示的第一段。Grok Build 甚至宁可加一条一次性的跨午夜提醒，也不肯改写启动时缓存的 <code>&lt;user_info&gt;</code> 日期。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs#L507-L522">reminders.rs#L507-L522</a> <span class="tag tag--ok">已核实</span> 第 11 章会专门讲这类注入。</p>
 
       <div class="hf hf--qa">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
@@ -389,7 +389,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。dsh 的结论来自同仓文档与生成式 API 目录，未逐行核对源码，按【推断】处理。permalink 在各弹窗与事实卡片里。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。dsh 的结论来自同仓文档与生成式 API 目录，未逐行核对源码，按【推断】处理。permalink 在各弹窗里。</p>
     </section>
 
     <!-- ========== 05 ========== -->
@@ -421,9 +421,9 @@
       <h3>取舍五：环境信息放头部，还是放尾部</h3>
       <p>放头部（传统做法）让模型一开始就知道自己在哪、能做什么，符合人类阅读习惯。放尾部（omp 的日期/cwd 提醒、Grok 的跨午夜提醒）牺牲一点“第一印象”，换来前缀稳定。</p>
       <p>真正的差别在长会话：cwd 一天可能变十次，时间每轮都在变。放头部意味着每次变化都让整个前缀失效；放尾部只让最后几条消息失效。按 token 计费算，这个差距可能是几十倍。</p>
-      <p><strong>代价</strong>：尾部信息更容易被忽略。模型在长上下文里对末尾的注意力并不比开头强，甚至更弱（“lost in the middle”说的是中间，但尾部同样不是万能位置）。所以放尾部时，通常要配合“每轮重复注入”或“关键节点再提醒一次”，这又增加了注入次数。第 04 章会把这条线讲完。</p>
+      <p><strong>代价</strong>：尾部信息更容易被忽略。模型在长上下文里对末尾的注意力并不比开头强，甚至更弱（“lost in the middle”说的是中间，但尾部同样不是万能位置）。所以放尾部时，通常要配合“每轮重复注入”或“关键节点再提醒一次”，这又增加了注入次数。第 11 章会把这条线讲完。</p>
 
-      <p>还有一条横切的取舍：<strong>要不要让用户看见装配结果</strong>。Codex 没有 <code>/context</code> 类命令，Claude Code 有分类计数，Grok Build 的 <code>/context</code> 分四段。看得见，用户能自己诊断“为什么规则没生效”；看不见，实现方少一层维护负担，但排障只能靠读源码。这是第 05 章的主题。</p>
+      <p>还有一条横切的取舍：<strong>要不要让用户看见装配结果</strong>。Codex 没有 <code>/context</code> 类命令，Claude Code 有分类计数，Grok Build 的 <code>/context</code> 分四段。看得见，用户能自己诊断“为什么规则没生效”；看不见，实现方少一层维护负担，但排障只能靠读源码。这是第 12 章的主题。</p>
     </section>
 
     <!-- ========== 06 ========== -->
@@ -463,7 +463,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>换来的是前缀稳定和可替换：规则改了只动消息，不动系统提示；规则也能被压缩、被重注、被回放。失去的是“不可协商”的地位：规则和用户消息同通道，压缩后可能只剩一句摘要。两家的补救方式不同——Claude Code 压缩后按清单重附文件与技能，Codex 压缩后重注初始上下文。见<a href="#tradeoffs">取舍二</a>与第 08 章。</p>
+          <p>换来的是前缀稳定和可替换：规则改了只动消息，不动系统提示；规则也能被压缩、被重注、被回放。失去的是“不可协商”的地位：规则和用户消息同通道，压缩后可能只剩一句摘要。两家的补救方式不同——Claude Code 压缩后按清单重附文件与技能，Codex 压缩后重注初始上下文。见<a href="#tradeoffs">取舍二</a>与第 15 章。</p>
         </div>
       </div>
     </section>
@@ -472,7 +472,7 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-01-1">
-          事实卡片标【待核实】：<code>build_prompt</code> 只接收 <code>incremental_tools</code> 布尔值，函数内不写默认值；已检查 <code>core/src/session/turn.rs</code> 的组装路径与 <code>core/src/config/mod.rs</code> 的会话配置段，未找到统一默认。缺的是“上层调用方在什么条件下传 true”的完整调用链。因此正文只写“取决于上游”，不写“默认开启”。
+          【待核实】：<code>build_prompt</code> 只接收 <code>incremental_tools</code> 布尔值，函数内不写默认值；已检查 <code>core/src/session/turn.rs</code> 的组装路径与 <code>core/src/config/mod.rs</code> 的会话配置段，未找到统一默认。缺的是“上层调用方在什么条件下传 true”的完整调用链。因此正文只写“取决于上游”，不写“默认开启”。
           <a class="footnotes__back" href="#fnref-main-01-1">↩</a>
         </li>
       </ol>
@@ -540,7 +540,7 @@
           <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L543-L573">session-manager.ts#L543-L573</a>（树投影）
         </dd>
       </dl>
-      <p class="modal__note">pi 自我定位是“minimal, extensible agent harness”，README 明确跳过子代理和 plan mode。因此它没有 plan 状态注入，也没有周期性环境提醒——第 04 章会看到，这是与 omp 的重要差别。</p>
+      <p class="modal__note">pi 自我定位是“minimal, extensible agent harness”，README 明确跳过子代理和 plan mode。因此它没有 plan 状态注入，也没有周期性环境提醒——第 11 章会看到，这是与 omp 的重要差别。</p>
     </div>
   </div>
 </div>
@@ -629,7 +629,7 @@
           <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/model-request.ts#L236-L302">model-request.ts#L236-L302</a>（工具钩子）
         </dd>
       </dl>
-      <p class="modal__note">v2 与 v1 是同一仓库的两个 tag，不能互相外推：v1 <code>733b2c6</code>，v2 <code>042d083</code>。v2 的指令源顺序见第 02 章。</p>
+      <p class="modal__note">v2 与 v1 是同一仓库的两个 tag，不能互相外推：v1 <code>733b2c6</code>，v2 <code>042d083</code>。v2 的指令源顺序见第 9 章。</p>
     </div>
   </div>
 </div>

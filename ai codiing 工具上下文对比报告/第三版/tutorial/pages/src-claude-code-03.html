@@ -74,7 +74,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -84,7 +84,7 @@
   <article class="prose" id="src-claude-code-03">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Claude Code</span><span>·</span><span>第 03 节</span></p>
+      <p class="kicker"><b>第 35 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Claude Code</span></p>
       <h1>压缩后重附清单</h1>
       <p class="lede">压缩把几万 token 的历史换成一段摘要。但摘要不会记得你正在改哪几个文件、正在用哪个技能、plan 文件里写了什么。Claude Code 的解法不是「让摘要更详细」，而是压缩完按一张固定清单，把文件、技能、plan、delta、钩子输出重新附上。这一节读这张清单。<span class="tag tag--src">源码 v2.1.88</span></p>
       <ul class="meta">
@@ -113,7 +113,7 @@
       <p class="callout__title">来源类型对照</p>
       <p><span class="tag tag--src">源码 v2.1.88</span> 重附清单：最近 5 个文件（50k 预算）、技能正文（5k/25k）、plan 文件、三类 delta 全量重播。</p>
       <p><span class="tag tag--doc">官方文档</span> 说「压缩后重载 CLAUDE.md、技能与最近 5 个文件」，与源码<span class="tag tag--both">部分一致</span>；CLAUDE.md 在这里由嵌套记忆附件承担，不在重附清单的字面项里。</p>
-      <p><b>注意：</b>文档说的「先清理旧工具输出再摘要」，在外部构建里默认关闭（microcompact），见主线第 7 章。</p>
+      <p><b>注意：</b>文档说的「先清理旧工具输出再摘要」，在外部构建里默认关闭（microcompact），见第 14 章。</p>
     </div>
 
     <!-- ================= 01 功能说明 ================= -->
@@ -127,7 +127,7 @@
 
       <p>这个区分很重要。如果让摘要负责记住文件内容，模型拿到的会是「用户改过 auth.ts」这种概括，而不是文件当前的真实内容；如果让附件负责记住历史，又会把几万 token 的旧消息搬回来，压缩就白做了。Claude Code 的选择是：历史交给摘要，工作现场交给附件。<span class="tag tag--guess">推断</span></p>
 
-      <p>整条链路可以分成六步：触发压缩 → 发摘要请求 → 清缓存并生成附件 → 拼边界与摘要 → 写回历史 → 下一轮请求。本节讲第 3 到第 4 步；触发与摘要请求在主线第 8 章，这里只交代必要的上下文。<span class="tag tag--src">源码 v2.1.88</span></p>
+      <p>整条链路可以分成六步：触发压缩 → 发摘要请求 → 清缓存并生成附件 → 拼边界与摘要 → 写回历史 → 下一轮请求。本节讲第 3 到第 4 步；触发与摘要请求在第 15 章，这里只交代必要的上下文。<span class="tag tag--src">源码 v2.1.88</span></p>
 
       <figure class="fig">
         <svg viewBox="0 0 640 282" role="img" aria-labelledby="fig-1-title fig-1-desc">
@@ -214,8 +214,8 @@
       <p>这六条链接之外，还有一个不在链接里的前提：压缩请求发出前会调用 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L133-L165">stripImagesFromMessages()</a>，把图片与文档替换成 <code>[image]</code> / <code>[document]</code> 文本标记。它不改变重附清单，但决定了「摘要能看到什么」——摘要看不到图片，所以重附清单里也不需要为图片做特殊安排。这是两个独立但相关的裁剪。<span class="tag tag--src">源码 v2.1.88</span></p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】「最近修改的 5 个文件」应改为「最近读过的 5 个文件」</p>
-        <p>事实卡片写「最近修改的最多 5 个文件」。源码的输入是 <code>preCompactReadFileState</code>，也就是 <code>context.readFileState</code> 的快照；它记录的是本会话读过或写过的文件状态，按 <code>timestamp</code> 倒序，不区分「读」与「改」。一张只读过、没改过的文件也会被重附。把它说成「修改」会让人误以为只有编辑过的文件才进清单。<span class="tag tag--src">源码 v2.1.88</span></p>
+        <p class="callout__title">【注意】「最近修改的 5 个文件」应改为「最近读过的 5 个文件」</p>
+        <p>常见的转述是「最近修改的最多 5 个文件」。源码的输入是 <code>preCompactReadFileState</code>，也就是 <code>context.readFileState</code> 的快照；它记录的是本会话读过或写过的文件状态，按 <code>timestamp</code> 倒序，不区分「读」与「改」。一张只读过、没改过的文件也会被重附。把它说成「修改」会让人误以为只有编辑过的文件才进清单。<span class="tag tag--src">源码 v2.1.88</span></p>
       </div>
     </section>
 
@@ -486,7 +486,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 8 节（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，Grok Build 源码，dsh 为同仓文档口径）。</p>
+      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，Grok Build 源码，dsh 为同仓文档口径）。</p>
 
       <p>第一个对照是<b>「文件内容是重附还是概述」</b>。Claude Code 重附正文，模型可以直接编辑；pi、omp 只在摘要里列文件名，模型需要重新读；Grok 与 dsh 不重附。重附正文的好处是「继续工作不用重新读」，坏处是「可能立刻再次触发压缩」。这是「上下文预算」与「工具调用轮次」之间的直接交换。<span class="tag tag--guess">推断</span></p>
 
@@ -543,7 +543,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-claude-code-04.html">Claude Code · 只注入变化的附件 delta</a>。</p>
+    <p class="footer-note">下一章：<a href="src-claude-code-04.html">Claude Code · 只注入变化的附件 delta</a>。</p>
 
   </article>
 </main>

@@ -143,7 +143,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -153,14 +153,14 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第三部分 · 进阶</b><span>·</span><span>第 03 章</span></p>
+      <p class="kicker"><b>第 26 章</b><span>·</span><span>第三部分 · 进阶</span></p>
       <h1>架构对比：四种把历史变短的路线</h1>
       <p class="lede">同样是“压缩到 64k”，有的工具改的是内存里的一个数组，有的工具只在日志上追加一条记录，还有的把这件事交给了服务端。功能表上看不出差别，架构图上差别很大——差在真相存在哪、减量动了谁、失败之后从哪儿恢复。</p>
       <ul class="meta">
         <li>约 22 分钟</li>
         <li>1 张主图</li>
         <li>L3 → L4</li>
-        <li>前置：主线第 11 章</li>
+        <li>前置：第 18 章</li>
       </ul>
       <div class="learn">
         <h2>读完你能做到</h2>
@@ -338,7 +338,7 @@
 
       <p><strong>它的优点是可预测。</strong>模型看到的消息序列和数组完全一致，没有“投影”这一步，调试时只要打印数组就知道模型看到了什么。实现成本也最低：一个列表、一个阈值、一次摘要调用。</p>
       <p><strong>它的代价是“覆盖”不可逆。</strong>压缩之后，内存里没有“压缩前的数组”了，只有存档里的原始记录。要做审计，得另写一套读存档的工具；要做“回到压缩前”，得从检查点重放。Grok Build 的做法是把摘要装配成固定七段，最近消息放在摘要之前；装配顺序固定，重放时不会因为消息位置变化而得到另一份历史。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-telemetry/src/events/compaction.rs#L30-L60">events/compaction.rs#L30-L60</a> <span class="tag tag--ok">已核实</span></p>
-      <p>还有一个隐蔽的代价：<strong>每次压缩都会让前缀缓存断一次</strong>。摘要替代了原来的开头，从摘要第一个 token 起，后面的缓存都不能复用。A 架构把“省下的输入 token”和“失效的缓存”放在同一笔账里，长任务上通常是划算的，短任务上不一定——这正是主线第 16 章要算的 <code>CPS</code>。</p>
+      <p>还有一个隐蔽的代价：<strong>每次压缩都会让前缀缓存断一次</strong>。摘要替代了原来的开头，从摘要第一个 token 起，后面的缓存都不能复用。A 架构把“省下的输入 token”和“失效的缓存”放在同一笔账里，长任务上通常是划算的，短任务上不一定——这正是第 23 章要算的 <code>CPS</code>。</p>
       <p>覆盖式实现还有一个边界要特别小心：<strong>压缩本身也可能超窗</strong>。要把待压缩的历史再发一遍给模型，输入比压缩前更大。Codex 的处理是删掉最旧条目再试，并把“删到不能再删”的情况单独兜底<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L685-L700">history.rs#L685-L700</a> <span class="tag tag--ok">已核实</span>；Claude Code 连续失败三次就熔断<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L257-L350">autoCompact.ts#L257-L350</a> <span class="tag tag--src">源码 v2.1.88</span>。这些兜底在架构上属于“A 的失败分支”，如果一开始没留位置，后面很难补。</p>
     </section>
 
@@ -571,7 +571,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>“代码不出内网”和“历史发给服务端压缩”直接冲突，不能靠配置绕过。折中是：本地做压缩（A 或 B），服务端只做模型推理。如果必须内网部署，压缩链路也只能自己实现，等于回到 A/B；厂商的“服务端压缩”不会跟着模型一起搬进内网。代价是压缩质量与维护成本回到自己身上，需要配一套评测（见第 05 章）。</p>
+          <p>“代码不出内网”和“历史发给服务端压缩”直接冲突，不能靠配置绕过。折中是：本地做压缩（A 或 B），服务端只做模型推理。如果必须内网部署，压缩链路也只能自己实现，等于回到 A/B；厂商的“服务端压缩”不会跟着模型一起搬进内网。代价是压缩质量与维护成本回到自己身上，需要配一套评测（见第 28 章）。</p>
         </div>
       </div>
 
@@ -596,7 +596,7 @@
           <a class="footnotes__back" href="#fnref-adv-03-1">↩</a>
         </li>
         <li id="fn-adv-03-2">
-          “约束 → 架构”的推荐是经验判断，不是对照实验：本章没有为每类团队跑过 A/B，也没有跨团队的样本。它来自各工具公开的设计取舍与源码结构，只能作为选型起点。真正选型时，应按第 05 章的方法在自己的任务集上验证。
+          “约束 → 架构”的推荐是经验判断，不是对照实验：本章没有为每类团队跑过 A/B，也没有跨团队的样本。它来自各工具公开的设计取舍与源码结构，只能作为选型起点。真正选型时，应按第 28 章的方法在自己的任务集上验证。
           <a class="footnotes__back" href="#fnref-adv-03-2">↩</a>
         </li>
         <li id="fn-adv-03-3">

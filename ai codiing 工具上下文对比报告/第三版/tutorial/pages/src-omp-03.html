@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-omp-03">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>oh-my-pi</span><span>·</span><span>第 03 节</span></p>
+      <p class="kicker"><b>第 42 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>oh-my-pi</span></p>
       <h1>snapcompact 把历史渲成图</h1>
       <p class="lede">如果模型读一张密集排版的图，比读同样长度的文字更省 token，那么「压缩」这件事就不一定要写成摘要。snapcompact 把被丢弃的历史渲染成位图帧，让视觉模型直接读图，全程不调用 LLM。它激进、可测量、也只对能读图的模型成立。</p>
       <ul class="meta">
@@ -203,8 +203,8 @@
       <p class="small muted">补充证据：形状变体表与模型行映射见 <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/snapcompact/src/snapcompact.ts#L383-L424">snapcompact.ts#L383-L424</a>；可读性检测与 CJK 回退见同文件 L460-L493；帧数据预算见 L537-L545。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】「默认 80 帧」是代码常量，不是文档推导</p>
-        <p>事实卡片把 80 帧的来源标为 <code>docs/compaction.md</code>；代码里 <code>MAX_FRAMES_DEFAULT = 80</code> 就在 <code>snapcompact.ts#L510</code>，注释还算了一笔账：高分辨率 Anthropic 帧约 5 000 billed token，80 帧约 400k token，同时低于单请求约 100 张图片的上限。<span class="tag tag--ok">已核实</span>文档与代码一致，但引用时优先给代码行。</p>
+        <p class="callout__title">【注意】「默认 80 帧」是代码常量，不是文档推导</p>
+        <p>有一种说法把 80 帧的来源指向 <code>docs/compaction.md</code>；代码里 <code>MAX_FRAMES_DEFAULT = 80</code> 就在 <code>snapcompact.ts#L510</code>，注释还算了一笔账：高分辨率 Anthropic 帧约 5 000 billed token，80 帧约 400k token，同时低于单请求约 100 张图片的上限。<span class="tag tag--ok">已核实</span>文档与代码一致，但引用时优先给代码行。</p>
       </div>
     </section>
 
@@ -527,7 +527,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：opencode v1 · 切点：整轮边界与预算。</p>
+    <p class="footer-note">下一章：opencode v1 · 切点：整轮边界与预算。</p>
 
   </article>
 </main>

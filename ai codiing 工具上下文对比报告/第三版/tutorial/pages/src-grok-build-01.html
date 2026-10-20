@@ -75,7 +75,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -85,7 +85,7 @@
   <article class="prose" id="src-grok-build-01">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Grok Build</span><span>·</span><span>第 01 节</span></p>
+      <p class="kicker"><b>第 49 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Grok Build</span></p>
       <h1>自动压缩与 7 段装配</h1>
       <p class="lede">别的工具压缩时想的是「保住哪一段尾巴」，Grok Build 想的是「把整段历史扔掉，再从零件箱里重新装一份」。这份新历史只有七个插槽，顺序还被刻意安排过。这一节读两段代码：什么时候决定压，以及压完到底装了什么。</p>
       <ul class="meta">
@@ -195,8 +195,8 @@
       <p class="small muted">补充证据（正文会引用）：9 段摘要提示词在 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/common/xai-grok-compaction/src/code_compaction/templates/full_replace_summary_prompt.txt#L1-L19">full_replace_summary_prompt.txt#L1-L19</a>；阈值的五级覆盖在 <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/util/config/resolve/compaction.rs#L39-L89">util/config/resolve/compaction.rs#L39-L89</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】与大纲、事实卡片的三处出入</p>
-        <p>一、大纲把 <code>check_auto_compact_needed</code> 标在 <code>compaction.rs:2095</code>，实际 L2095 是它调用的 <code>should_auto_compact</code>；判定入口在 L2151。二、事实卡片把装配函数标为 <code>assemble.rs:60-L115</code>，函数体实际是 L62-L102，L104 之后是单元测试。三、卡片说装配结果是「7 段」，这个说法只在插槽意义上成立：生产路径上 <code>recent_messages</code> 一般是空的（见第 4 节第 5 小节的【订正】），运行时通常只有 4 到 6 条消息。</p>
+        <p class="callout__title">【注意】三处容易转述错的细节</p>
+        <p>一、常见标注把 <code>check_auto_compact_needed</code> 放在 <code>compaction.rs:2095</code>，实际 L2095 是它调用的 <code>should_auto_compact</code>；判定入口在 L2151。二、另一种标注把装配函数标为 <code>assemble.rs:60-L115</code>，函数体实际是 L62-L102，L104 之后是单元测试。三、也有说法把装配结果说成「7 段」，这个说法只在插槽意义上成立：生产路径上 <code>recent_messages</code> 一般是空的（见第 4 节第 5 小节），运行时通常只有 4 到 6 条消息。</p>
       </div>
     </section>
 
@@ -401,7 +401,7 @@
 
       <p>最后一条状态提醒（<code>system_reminder</code>）装的是「压缩这一刻的环境事实」：改过哪些文件、有哪些后台任务在跑、有哪些子代理没结束、哪些 MCP 服务器连着。它放在最后，因为它是「现在」而不是「过去」，而且每次压缩都要重新生成。注意它排在摘要之后，也就是说，模型读到的最后一句不是总结，而是「当前环境」——这又一次说明顺序是被刻意设计的，不是随手拼的。</p>
 
-      <h3>第 5 段　【订正】生产路径上的「7 段」通常只有 4 到 6 条</h3>
+      <h3>第 5 段　生产路径上的「7 段」通常只有 4 到 6 条</h3>
 
       <p>上面的七个插槽来自通用装配器 <code>xai-grok-compaction</code>。但 Grok Build 的 shell 实际调用的是 <code>xai-chat-state</code> 里的 <code>build_compacted_history()</code>（<code>compaction_utils.rs</code> L920-L991），它是同一套顺序的超集：多了一个「agent message anchor」插槽，还可以通过 <code>summary_before_recent</code> 开关把摘要提到最近消息之前。</p>
 
@@ -489,7 +489,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：Grok Build 数据来自本节 permalink；Codex 来自 <code>research/codex.md</code> 第 8 节（提交 <code>76ed3b4</code>）；Claude Code 来自 v2.1.88 源码（<code>compact.ts</code> 的重附常量与 <code>prompt.ts</code> 的摘要格式）；pi 来自 <code>research/pi.md</code> 第 8 节（提交 <code>b45e0eb</code>）；DeepSeek Harness 来自 <code>research/dsh.md</code> 第 8 节（提交 <code>5719020</code>）。</p>
+      <p class="table-caption">表注：Grok Build 数据来自本节 permalink；Codex 来自提交 <code>76ed3b4</code> 的压缩预算实现；Claude Code 来自 v2.1.88 源码（<code>compact.ts</code> 的重附常量与 <code>prompt.ts</code> 的摘要格式）；pi 来自提交 <code>b45e0eb</code> 的切点实现；DeepSeek Harness 来自提交 <code>5719020</code> 的压缩选区实现。</p>
 
       <p>三个值得单独说的对照：</p>
 
@@ -545,7 +545,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-grok-build-02.html">Grok Build · 零成本裁剪：软裁剪与硬清空</a></p>
+    <p class="footer-note">下一章：<a href="src-grok-build-02.html">Grok Build · 零成本裁剪：软裁剪与硬清空</a></p>
 
   </article>
 </main>

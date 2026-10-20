@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>组件示范页 · AI Coding Agent 上下文管理</title>
+<title>组件示范页（内部参考）· AI Coding Agent 上下文管理</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
 <script>
   try {
@@ -12,7 +12,7 @@
     if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="../assets/css/main.css">
+<link rel="stylesheet" href="../tutorial/assets/css/main.css">
 </head>
 <body data-chapter="components">
 <a class="skip-link" href="#main">跳到正文</a>
@@ -21,7 +21,7 @@
   <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="打开目录" aria-expanded="false" aria-controls="sidebar">
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
   </button>
-  <a class="brand" href="../index.html">
+  <a class="brand" href="../tutorial/index.html">
     <span class="brand__mark" aria-hidden="true">ctx</span>
     <span class="brand__text">AI Coding Agent 上下文管理</span>
   </a>
@@ -45,7 +45,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 组件示范页<br>
+      <a href="../tutorial/index.html">返回导读</a> · 组件示范页<br>
       写法手册：<code>tutorial/CONVENTIONS.md</code>
     </div>
   </div>
@@ -55,7 +55,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>内部页面</b><span>·</span><span>不进入教程目录</span><span>·</span><span>01 号票</span></p>
+      <p class="kicker"><b>内部参考</b><span>·</span><span>组件写法示范</span><span>·</span><span>不进入教程目录</span></p>
       <h1>组件示范页</h1>
       <p class="lede">这一页把教程里所有可复用的组件摆在真实页面里跑一遍。写章节时，从这里复制结构，再对照 <code>CONVENTIONS.md</code> 的说明填内容。</p>
       <ul class="meta">
@@ -586,9 +586,9 @@
   </div>
 </div>
 
-<script src="../assets/js/toc.js"></script>
-<script src="../assets/js/search-index.js"></script>
-<script src="../assets/js/app.js"></script>
+<script src="../tutorial/assets/js/toc.js"></script>
+<script src="../tutorial/assets/js/search-index.js"></script>
+<script src="../tutorial/assets/js/app.js"></script>
 <script>
 (function () {
   var range = document.getElementById("demo-budget-range");

@@ -69,7 +69,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -79,7 +79,7 @@
   <article class="prose" id="src-opencode-v1-01">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>opencode v1</span><span>·</span><span>第 01 节</span></p>
+      <p class="kicker"><b>第 43 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>opencode v1</span></p>
       <h1>切点：整轮边界与预算</h1>
       <p class="lede">opencode v1 的压缩先按「轮」挑：从最后一轮往前，整轮装得下就整轮留；装不下，才在这一轮内部找一个能装下的起点。预算不是固定值，而是「可用窗口的四分之一」，夹在 2 000 与 15 000 之间。这一节把两条规则拆开，再与 v2 的改法并排看。</p>
       <ul class="meta">
@@ -189,8 +189,8 @@
       <p class="small muted">补充证据：可用窗口与溢出判定见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/overflow.ts#L8-L34">overflow.ts#L8-L34</a>；保留起点的落盘字段见 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/compaction.ts#L461-L466">compaction.ts#L461-L466</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】<code>tail_turns</code> 是候选上限，不是保留上限</p>
-        <p>配置注释写的是「limit candidate turns」，事实卡片也标了「只限候选」。但很容易被读成「保留 N 轮」。实际逻辑是：候选集缩小到最近 N 轮，然后仍按预算从新到旧累加，仍可能拆轮。<code>tail_turns = 0</code> 是一个特例——直接返回「全部摘要、无保留段」。<span class="tag tag--ok">已核实</span></p>
+        <p class="callout__title">【注意】<code>tail_turns</code> 是候选上限，不是保留上限</p>
+        <p>配置注释写的是「limit candidate turns」，注释里也标了「只限候选」。但很容易被读成「保留 N 轮」。实际逻辑是：候选集缩小到最近 N 轮，然后仍按预算从新到旧累加，仍可能拆轮。<code>tail_turns = 0</code> 是一个特例——直接返回「全部摘要、无保留段」。<span class="tag tag--ok">已核实</span></p>
       </div>
     </section>
 
@@ -593,7 +593,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：opencode v1 · prune：默认关闭的旧结果擦除。</p>
+    <p class="footer-note">下一章：opencode v1 · prune：默认关闭的旧结果擦除。</p>
 
   </article>
 </main>

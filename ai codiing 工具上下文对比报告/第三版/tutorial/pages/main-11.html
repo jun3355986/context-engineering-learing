@@ -328,7 +328,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -338,7 +338,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 11 章</span></p>
+      <p class="kicker"><b>第 18 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>会话时间线：恢复、分叉与回退</h1>
       <p class="lede">Agent 的“记忆”不在模型里，在磁盘上。会话日志只追加，恢复不是重放整段，而是“最近检查点 + 之后的后缀”；分叉不是复制上下文，而是换一个叶子；回退不是删行，而是把模型可见的历史截短，日志本身一行不少。</p>
       <ul class="meta">
@@ -417,7 +417,7 @@
 
       <h3 id="codex-log">2.1 日志：记录“发生过”，不记录“现在该看什么”</h3>
       <p>rollout 的职责是完整：模型收到什么、调用了什么工具、返回了什么、什么时候压缩过，都写进去。源码里有一句关键注释：内存中的 live 历史可以被截断，但 rollout 里保存的是原始载荷。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L520-L545">history.rs#L520-L545</a> <span class="tag tag--ok">已核实</span> 这句话把“事实”和“投影”分开了：日志是事实，内存历史只是当前投影。</p>
-      <p><strong>为什么必须只追加。</strong>第一，审计：你事后能查清“它当时到底看到了什么”，而不是只看摘要。第二，恢复：检查点之后的任意一条消息都可以重放。第三，分叉：从旧节点长出新枝时，旧路径不能被改写。<strong>代价</strong>是日志会膨胀，而且包含完整的文件内容和工具输出，磁盘、备份、隐私都要跟着处理。多数工具的做法是“不自动删，交给上层清理”，Codex 的事实卡片也没有记录自动过期策略。</p>
+      <p><strong>为什么必须只追加。</strong>第一，审计：你事后能查清“它当时到底看到了什么”，而不是只看摘要。第二，恢复：检查点之后的任意一条消息都可以重放。第三，分叉：从旧节点长出新枝时，旧路径不能被改写。<strong>代价</strong>是日志会膨胀，而且包含完整的文件内容和工具输出，磁盘、备份、隐私都要跟着处理。多数工具的做法是“不自动删，交给上层清理”，现有材料也没有记录自动过期策略。</p>
 
       <h3 id="codex-checkpoint">2.2 检查点：存的是“替换后的历史”，不是“摘要文本”</h3>
       <p><code>CompactedItem</code> 里带四类东西：<code>replacement_history</code>（替换后的完整历史）、窗口编号与前后窗口 id、当时的 token 用量记录、以及恢复所需的 <code>resume_metadata</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/mod.rs#L4321-L4356">session/mod.rs#L4321-L4356</a> <span class="tag tag--ok">已核实</span> 注意它存的是“模型应该看到的那串消息”，不是“一段摘要 + 一段原文”的配方。</p>
@@ -496,7 +496,7 @@
             <p class="stree-warning" id="tree-warning" role="alert" hidden></p>
           </div>
         </div>
-        <p class="demo__note">教学示意：节点文本、token、文件版本与日志行数都是演示值。真实工具的分支与回退语义各不相同：有的同文件换叶，有的复制成新会话，有的只改投影。页内说明以各工具事实卡片为准。</p>
+        <p class="demo__note">教学示意：节点文本、token、文件版本与日志行数都是演示值。真实工具的分支与回退语义各不相同：有的同文件换叶，有的复制成新会话，有的只改投影。页内说明以源码为准。</p>
       </div>
     </section>
 
@@ -697,16 +697,16 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-11-1">
-          事实卡片标【待核实】：已核对 <code>app-server-protocol/src/protocol/v2/thread.rs</code> 的 <code>ThreadForkParams</code> 与 core 的 session/rollout 代码，确认 fork 参数存在；未找到逐消息 rewind 的命令入口。缺 TUI / app-server 的命令表与 UI 代码，因此本章只写“本快照未见 rewind 入口”，不写“Codex 不支持回退”。<a class="footnotes__back" href="#fnref-main-11-1">↩</a>
+          【待核实】：已核对 <code>app-server-protocol/src/protocol/v2/thread.rs</code> 的 <code>ThreadForkParams</code> 与 core 的 session/rollout 代码，确认 fork 参数存在；未找到逐消息 rewind 的命令入口。缺 TUI / app-server 的命令表与 UI 代码，因此本章只写“本快照未见 rewind 入口”，不写“Codex 不支持回退”。<a class="footnotes__back" href="#fnref-main-11-1">↩</a>
         </li>
         <li id="fn-main-11-2">
-          事实卡片把“对话侧截断由选择器 UI 完成”标为【推断】：已核对 <code>commands/rewind/rewind.ts</code>（命令只打开选择器并返回 <code>skip</code>）与 <code>utils/fileHistory.ts</code>（文件快照与回退），未逐行读选择器组件。缺 UI 组件源码，所以“对话如何被截断”只能按“选择器完成后截断”表述，不能给出具体实现。<a class="footnotes__back" href="#fnref-main-11-2">↩</a>
+          “对话侧截断由选择器 UI 完成”标【推断】：已核对 <code>commands/rewind/rewind.ts</code>（命令只打开选择器并返回 <code>skip</code>）与 <code>utils/fileHistory.ts</code>（文件快照与回退），未逐行读选择器组件。缺 UI 组件源码，所以“对话如何被截断”只能按“选择器完成后截断”表述，不能给出具体实现。<a class="footnotes__back" href="#fnref-main-11-2">↩</a>
         </li>
         <li id="fn-main-11-3">
-          事实卡片对 dsh 的【推断】结论：已核对 <code>core/session/src/index.ts</code> 的 <code>deriveMessages</code>、<code>surface.ts</code> 的 <code>replace</code>、<code>fork.ts</code> 与 <code>session-persistence/README.md</code>；没有找到 rewind / undo / 树状多分支的实现。缺完整命令表与前端代码，因此“没有”是按“源码未找到”得出的，不排除插件层提供。<a class="footnotes__back" href="#fnref-main-11-3">↩</a>
+          dsh 的【推断】结论：已核对 <code>core/session/src/index.ts</code> 的 <code>deriveMessages</code>、<code>surface.ts</code> 的 <code>replace</code>、<code>fork.ts</code> 与 <code>session-persistence/README.md</code>；没有找到 rewind / undo / 树状多分支的实现。缺完整命令表与前端代码，因此“没有”是按“源码未找到”得出的，不排除插件层提供。<a class="footnotes__back" href="#fnref-main-11-3">↩</a>
         </li>
         <li id="fn-main-11-4">
-          本页七个弹窗的“设计意图”段都标【推断】：依据是源码的数据结构、字段名与调用顺序，缺作者的设计文档。它们解释“为什么这样设计、代价是什么”，不改变前文标【已核实】的日志格式、恢复路径与回退语义；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-11-4">↩</a>
+          各工具弹窗的“设计意图”段都标【推断】：依据是源码的数据结构、字段名与调用顺序，缺作者的设计文档。它们解释“为什么这样设计、代价是什么”，不改变前文标【已核实】的日志格式、恢复路径与回退语义；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-11-4">↩</a>
         </li>
       </ol>
     </div>

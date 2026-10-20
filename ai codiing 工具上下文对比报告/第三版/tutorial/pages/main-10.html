@@ -249,7 +249,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -259,7 +259,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 10 章</span></p>
+      <p class="kicker"><b>第 17 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>子代理隔离：把一场搜索关在另一个窗口里</h1>
       <p class="lede">子代理不是“更聪明的工具”，它是一次上下文预算的转移：把几十轮搜索、试错和工具输出留在一个你看不见的窗口里，只把结论交回来。设计一次委派，真正要定的是四件事：给它什么上下文、什么工具、什么返回格式，以及允许多深、多宽。</p>
       <ul class="meta">
@@ -340,12 +340,12 @@
       <p><strong>为什么用消息而不是共享上下文。</strong>共享上下文会让隔离失效，还会让并发写入变成竞态：两个子代理同时改同一段历史，谁赢？消息通道把并发收敛成“收件箱”，每条消息都有明确的发送者与顺序。<strong>代价</strong>是多一次往返：父想问“你为什么排除方案 B”，必须再发一条消息，子代理可能已经结束，只能重启或读日志。</p>
 
       <h3 id="codex-tools">2.3 工具池：Codex 有机制，但把策略外置</h3>
-      <p>Codex 的形态和 Claude Code、Grok Build 不同：它<strong>没有内置的 Explore / Plan 只读代理类型</strong>。子会话的 Config 与指令由父会话构造，角色约束由调用方通过 <code>subagent_developer_instructions</code> 写进去；工具池本身由配置决定，事实卡片没有展开“是否裁剪写工具”这一层。也就是说，Codex 提供的是“独立会话 + 消息通道 + 指令叠加”这套机制，至于“只读”“只搜索”“不许跑测试”，要由发起方自己定义。</p>
+      <p>Codex 的形态和 Claude Code、Grok Build 不同：它<strong>没有内置的 Explore / Plan 只读代理类型</strong>。子会话的 Config 与指令由父会话构造，角色约束由调用方通过 <code>subagent_developer_instructions</code> 写进去；工具池本身由配置决定，本次没有展开“是否裁剪写工具”这一层。也就是说，Codex 提供的是“独立会话 + 消息通道 + 指令叠加”这套机制，至于“只读”“只搜索”“不许跑测试”，要由发起方自己定义。</p>
       <p>这种设计的好处是通用：同一个入口可以派“查资料”“写测试”“审 diff”“跑迁移”任何角色，不需要为每种角色维护一个内置模板。代价是<strong>约束靠提示词，不靠工具池</strong>：如果指令写得含糊，子代理仍然可能调用写工具。真正硬的隔离要在权限层做，而不是在提示词里做。</p>
       <p>Claude Code 则把两类常用角色内置了：Explore 与 Plan 默认不注入 <code>CLAUDE.md</code>，也不注入 <code>gitStatus</code>，只读工具池排除写类工具。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L370-L410">runAgent.ts#L370-L410</a> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/built-in/exploreAgent.ts#L15-L60">exploreAgent.ts#L15-L60</a> <span class="tag tag--src">源码 v2.1.88</span> 这是“角色内置”和“角色外置”的分野，没有绝对优劣，取决于你更怕“模板不够用”还是更怕“约束不够硬”。</p>
 
       <h3 id="codex-worktree">2.4 并行与 worktree：能力在环境层，不在 core</h3>
-      <p>事实卡片只核对了 <code>child_config.rs</code>、<code>spawn.rs</code> 与多代理工具目录，<strong>没有在 core 里找到 worktree 级文件隔离</strong>；相关能力如果在运行环境或应用层，本快照没有给出实现<sup class="fn-ref"><a href="#fn-main-10-1" id="fnref-main-10-1">1</a></sup>。这和 Grok Build 明确提供 <code>isolation: worktree</code>、Claude Code 的 <code>isolation: "worktree"</code> 形成对照：Codex 的 core 先把“上下文隔离”做扎实，文件隔离留给外层。</p>
+      <p>本次只核对了 <code>child_config.rs</code>、<code>spawn.rs</code> 与多代理工具目录，<strong>没有在 core 里找到 worktree 级文件隔离</strong>；相关能力如果在运行环境或应用层，本快照没有给出实现<sup class="fn-ref"><a href="#fn-main-10-1" id="fnref-main-10-1">1</a></sup>。这和 Grok Build 明确提供 <code>isolation: worktree</code>、Claude Code 的 <code>isolation: "worktree"</code> 形成对照：Codex 的 core 先把“上下文隔离”做扎实，文件隔离留给外层。</p>
       <p>为什么文件隔离重要：两个子代理同时改同一个仓库，哪怕上下文完全独立，也会在磁盘上互相覆盖。上下文隔离只保证“模型看不到对方的中间输出”，不保证“文件不会被对方改坏”。如果任务涉及写文件，要么串行，要么给每个子代理一个 worktree，要么让它们只产出 patch、由父统一应用。</p>
 
       <h3 id="codex-limits">2.5 深度与并发：没有统一常量，不等于没有上限</h3>
@@ -610,16 +610,16 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-10-1">
-          事实卡片标【待核实】：已检查 <code>codex-rs/core/src/agent/child_config.rs</code>、<code>tools/handlers/multi_agents_v2/</code> 与 <code>spawn.rs</code>，未找到 worktree 字段或创建逻辑；缺 app-server / 运行环境层的代码，因此只能写“core 未见”。这不影响“子会话上下文独立”的结论，但意味着不能断言 Codex 不支持 worktree 隔离。<a class="footnotes__back" href="#fnref-main-10-1">↩</a>
+          【待核实】：已检查 <code>codex-rs/core/src/agent/child_config.rs</code>、<code>tools/handlers/multi_agents_v2/</code> 与 <code>spawn.rs</code>，未找到 worktree 字段或创建逻辑；缺 app-server / 运行环境层的代码，因此只能写“core 未见”。这不影响“子会话上下文独立”的结论，但意味着不能断言 Codex 不支持 worktree 隔离。<a class="footnotes__back" href="#fnref-main-10-1">↩</a>
         </li>
         <li id="fn-main-10-2">
-          事实卡片标【待核实】：已检索 <code>multi_agents_v2</code> 的 spawn / wait / send_message 与 <code>config</code>，没有找到类似 <code>max_concurrency</code> 的统一常量；缺上层调度器代码。因此本章只写“无统一常量”，不写具体并发数。omp 的 32、Grok 的深度 1 等数字来自各自源码，不能外推到 Codex。<a class="footnotes__back" href="#fnref-main-10-2">↩</a>
+          【待核实】：已检索 <code>multi_agents_v2</code> 的 spawn / wait / send_message 与 <code>config</code>，没有找到类似 <code>max_concurrency</code> 的统一常量；缺上层调度器代码。因此本章只写“无统一常量”，不写具体并发数。omp 的 32、Grok 的深度 1 等数字来自各自源码，不能外推到 Codex。<a class="footnotes__back" href="#fnref-main-10-2">↩</a>
         </li>
         <li id="fn-main-10-3">
-          事实卡片把 DeepSeek Harness 的子代理整节标为【推断】：依据是 <code>packages/subagent/README.md</code> 与 <code>tool-subagent/README.md</code>，未逐行核对 provider 运行时代码。因此“立即返回 childId + 完成通知”只能按文档表述，不能当作所有 provider 的运行时保证；外部后端（Codex / Claude Code / ACP）只执行一次、不接受追问这一点同样来自 README。<a class="footnotes__back" href="#fnref-main-10-3">↩</a>
+          DeepSeek Harness 的子代理这一整节标【推断】：依据是 <code>packages/subagent/README.md</code> 与 <code>tool-subagent/README.md</code>，未逐行核对 provider 运行时代码。因此“立即返回 childId + 完成通知”只能按文档表述，不能当作所有 provider 的运行时保证；外部后端（Codex / Claude Code / ACP）只执行一次、不接受追问这一点同样来自 README。<a class="footnotes__back" href="#fnref-main-10-3">↩</a>
         </li>
         <li id="fn-main-10-4">
-          本页七个弹窗的“设计意图”段都标【推断】：依据是各工具源码的分支结构、参数命名与默认值，缺作者的设计文档或提交说明。这些句子解释“为什么这样设计、代价是什么”，不影响前文标【已核实】的行为、参数与默认值；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-10-4">↩</a>
+          各工具弹窗的“设计意图”段都标【推断】：依据是各工具源码的分支结构、参数命名与默认值，缺作者的设计文档或提交说明。这些句子解释“为什么这样设计、代价是什么”，不影响前文标【已核实】的行为、参数与默认值；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-10-4">↩</a>
         </li>
       </ol>
     </div>
@@ -829,7 +829,7 @@
           <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/subagent/tool-subagent/README.md#L47-L53">tool-subagent/README.md#L47-L53</a>
         </dd>
       </dl>
-      <p class="modal__note">事实卡片整节标【推断】：依据是包 README，不是逐行运行时代码。可以据此说“设计如此”，不能据此断言每个 provider 在任何配置下都非阻塞、都能恢复。</p>
+      <p class="modal__note">这一整节标【推断】：依据是包 README，不是逐行运行时代码。可以据此说“设计如此”，不能据此断言每个 provider 在任何配置下都非阻塞、都能恢复。</p>
     </div>
   </div>
 </div>

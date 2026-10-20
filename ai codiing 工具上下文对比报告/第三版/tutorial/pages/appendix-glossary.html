@@ -70,7 +70,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -80,7 +80,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>附录</b><span>·</span><span>速查</span></p>
+      <p class="kicker"><b>附录 A</b><span>·</span><span>速查</span></p>
       <h1>术语表（中英对照）</h1>
       <p class="lede">同一个东西，各家叫法不一样：有人叫 compact，有人叫 summarize，有人叫 full-replace。这张表把正文用到的词收在一处，给中文、英文原词、一句话定义，以及第一次把它讲清楚的章节。</p>
       <ul class="meta">
@@ -119,55 +119,55 @@
                 <th scope="row">Token</th>
                 <td>token</td>
                 <td>模型读写与计价的离散单位，不等同于字或词；中文一个字可能拆成多个 token。</td>
-                <td><a href="intro-01.html">入门第 1 章</a></td>
+                <td><a href="intro-01.html">第 1 章</a></td>
               </tr>
               <tr>
                 <th scope="row">上下文窗口</th>
                 <td>context window</td>
                 <td>一次请求里输入与输出共享的最大 token 容量，不是「输入可用」的容量。</td>
-                <td><a href="intro-01.html">入门第 1 章</a></td>
+                <td><a href="intro-01.html">第 1 章</a></td>
               </tr>
               <tr>
                 <th scope="row">输出预留</th>
                 <td>output reserve</td>
                 <td>留给本次生成、不能全部让给输入的 token；留多少直接改变可用输入上限。</td>
-                <td><a href="intro-01.html">入门第 1 章</a></td>
+                <td><a href="intro-01.html">第 1 章</a></td>
               </tr>
               <tr>
                 <th scope="row">有效上下文</th>
                 <td>effective context</td>
                 <td>名义窗口里模型实际能稳定用上的那部分，只能靠任务表现去测，没有官方数字。</td>
-                <td><a href="intro-04.html">入门第 4 章</a></td>
+                <td><a href="intro-04.html">第 4 章</a></td>
               </tr>
               <tr>
                 <th scope="row">上下文腐化</th>
                 <td>context rot</td>
                 <td>材料变长后，即使任务没变、干扰不多，整体表现也会下降。<sup class="fn-ref"><a href="#fn-appendix-glossary-1" id="fnref-appendix-glossary-1">1</a></sup></td>
-                <td><a href="intro-04.html">入门第 4 章</a></td>
+                <td><a href="intro-04.html">第 4 章</a></td>
               </tr>
               <tr>
                 <th scope="row">中段遗失</th>
                 <td>lost in the middle</td>
                 <td>长上下文里，位于开头与结尾之间那段的信息更容易被忽略。<sup class="fn-ref"><a href="#fn-appendix-glossary-2" id="fnref-appendix-glossary-2">3</a></sup></td>
-                <td><a href="intro-04.html">入门第 4 章</a></td>
+                <td><a href="intro-04.html">第 4 章</a></td>
               </tr>
               <tr>
                 <th scope="row">用量回执</th>
                 <td>usage</td>
                 <td>服务端返回的输入、输出、缓存读写 token 数；本地估算最终要向它对账。</td>
-                <td><a href="main-05.html">主线第 5 章</a></td>
+                <td><a href="main-05.html">第 12 章</a></td>
               </tr>
               <tr>
                 <th scope="row">字符估算</th>
                 <td>chars/4 estimation</td>
                 <td>用字符数除以 4 近似 token；对中文、代码和 JSON 的误差都不小。</td>
-                <td><a href="main-05.html">主线第 5 章</a></td>
+                <td><a href="main-05.html">第 12 章</a></td>
               </tr>
               <tr>
                 <th scope="row">上下文压力</th>
                 <td>context pressure</td>
                 <td>已用 token 占窗口的比例，用来决定何时裁剪、压缩或拒绝请求。</td>
-                <td><a href="main-05.html">主线第 5 章</a></td>
+                <td><a href="main-05.html">第 12 章</a></td>
               </tr>
             </tbody>
           </table>
@@ -197,92 +197,92 @@
                 <th scope="row">请求组装</th>
                 <td>request assembly</td>
                 <td>把系统提示、工具定义、规则、环境说明与历史拼成一次请求的全过程。</td>
-                <td><a href="main-01.html">主线第 1 章</a></td>
+                <td><a href="main-01.html">第 8 章</a></td>
               </tr>
               <tr>
                 <th scope="row">系统提示词</th>
                 <td>system prompt</td>
                 <td>位于请求最前、定义身份与行为的长指令；多数工具把它拆成静态段与动态段。</td>
-                <td><a href="main-01.html">主线第 1 章</a></td>
+                <td><a href="main-01.html">第 8 章</a></td>
               </tr>
               <tr>
                 <th scope="row">工具定义</th>
                 <td>tool definition</td>
                 <td>描述工具名、参数与用法的 schema；它本身占 token，而且通常在最稳定的前缀里。</td>
-                <td><a href="main-01.html">主线第 1 章</a></td>
+                <td><a href="main-01.html">第 8 章</a></td>
               </tr>
               <tr>
                 <th scope="row">MCP</th>
                 <td>Model Context Protocol</td>
                 <td>把外部工具与资源接入模型的协议；接入方式决定工具定义是预加载还是延迟。</td>
-                <td><a href="main-01.html">主线第 1 章</a>
+                <td><a href="main-01.html">第 8 章</a>
                 </td>
               </tr>
               <tr>
                 <th scope="row">规则文件</th>
                 <td>rules file</td>
                 <td>写在项目里、每次会话都要遵守的持久指令文件，如 AGENTS.md、CLAUDE.md。</td>
-                <td><a href="main-02.html">主线第 2 章</a></td>
+                <td><a href="main-02.html">第 9 章</a></td>
               </tr>
               <tr>
                 <th scope="row">AGENTS.md</th>
                 <td>AGENTS.md</td>
                 <td>Codex 等工具默认读取的项目规则文件名；各家对候选名与合并顺序的处理不同。</td>
-                <td><a href="main-02.html">主线第 2 章</a></td>
+                <td><a href="main-02.html">第 9 章</a></td>
               </tr>
               <tr>
                 <th scope="row">包含深度</th>
                 <td>include depth</td>
                 <td>规则文件递归引用其它文件的最大层数；超限后引用被忽略，且各家默认值可能不同。</td>
-                <td><a href="main-02.html">主线第 2 章</a></td>
+                <td><a href="main-02.html">第 9 章</a></td>
               </tr>
               <tr>
                 <th scope="row">规则合并</th>
                 <td>rules merge</td>
                 <td>多层规则按顺序拼接；多数工具是叠加而不是覆盖，越靠近工作目录的越靠后。</td>
-                <td><a href="main-02.html">主线第 2 章</a></td>
+                <td><a href="main-02.html">第 9 章</a></td>
               </tr>
               <tr>
                 <th scope="row">渐进披露</th>
                 <td>progressive disclosure</td>
                 <td>先只给目录或描述，模型需要时再取正文，用一次额外读取换常驻 token。</td>
-                <td><a href="main-03.html">主线第 3 章</a></td>
+                <td><a href="main-03.html">第 10 章</a></td>
               </tr>
               <tr>
                 <th scope="row">技能</th>
                 <td>skill</td>
                 <td>可按需加载的指令包，正文通常在 SKILL.md；系统提示里只放名称与描述。</td>
-                <td><a href="main-03.html">主线第 3 章</a></td>
+                <td><a href="main-03.html">第 10 章</a></td>
               </tr>
               <tr>
                 <th scope="row">延迟加载</th>
                 <td>deferred loading</td>
                 <td>工具定义不进首轮请求，模型先检索、需要时再取完整 schema。</td>
-                <td><a href="main-03.html">主线第 3 章</a></td>
+                <td><a href="main-03.html">第 10 章</a></td>
               </tr>
               <tr>
                 <th scope="row">代码模式</th>
                 <td>Code Mode</td>
                 <td>把工具调用改写成写代码执行，工具定义只留一份目录，靠 execute 间接调用。</td>
-                <td><a href="main-03.html">主线第 3 章</a></td>
+                <td><a href="main-03.html">第 10 章</a></td>
               </tr>
               <tr>
                 <th scope="row">动态注入</th>
                 <td>dynamic injection</td>
                 <td>运行中把状态、提醒或环境变化追加进上下文，而不是重写系统提示词。</td>
-                <td><a href="main-04.html">主线第 4 章</a></td>
+                <td><a href="main-04.html">第 11 章</a></td>
               </tr>
               <tr>
                 <th scope="row">系统提醒</th>
                 <td>system reminder</td>
                 <td>以消息形式插入的提示（常包在标签里），不改系统提示词本身；插在哪里，决定它会不会截断缓存前缀。</td>
-                <td><a href="main-04.html">主线第 4 章</a></td>
+                <td><a href="main-04.html">第 11 章</a></td>
               </tr>
               <tr>
                 <th scope="row">差分注入</th>
                 <td>delta injection</td>
                 <td>只发送发生变化的部分：未变不发、变化发替换、删除发移除通知。</td>
-                <td><a href="main-04.html">主线第 4 章</a></td>
+                <td><a href="main-04.html">第 11 章</a></td>
               </tr>
             </tbody>
           </table>
@@ -312,103 +312,103 @@
                 <th scope="row">截断</th>
                 <td>truncation</td>
                 <td>超过上限时直接切掉输出的一部分；按方向分保头、保尾、头尾保留三种。</td>
-                <td><a href="main-06.html">主线第 6 章</a></td>
+                <td><a href="main-06.html">第 13 章</a></td>
               </tr>
               <tr>
                 <th scope="row">落盘</th>
                 <td>spill / offload</td>
                 <td>把完整输出写进文件或 artifact，上下文只留路径、预览与回读提示。</td>
-                <td><a href="main-06.html">主线第 6 章</a></td>
+                <td><a href="main-06.html">第 13 章</a></td>
               </tr>
               <tr>
                 <th scope="row">回读</th>
                 <td>read-back</td>
                 <td>模型按路径或 offset/limit 重新读取被落盘的内容，是「卸载」而不是「删除」。</td>
-                <td><a href="main-06.html">主线第 6 章</a></td>
+                <td><a href="main-06.html">第 13 章</a></td>
               </tr>
               <tr>
                 <th scope="row">历史裁剪</th>
                 <td>pruning</td>
                 <td>不调用模型，直接把旧内容省略或替换成占位符；原文通常仍在日志里。</td>
-                <td><a href="main-07.html">主线第 7 章</a></td>
+                <td><a href="main-07.html">第 14 章</a></td>
               </tr>
               <tr>
                 <th scope="row">陈旧结果</th>
                 <td>superseded result</td>
                 <td>同一文件被更新的一次读取覆盖后，旧的读取结果不再需要留在上下文里。</td>
-                <td><a href="main-07.html">主线第 7 章</a></td>
+                <td><a href="main-07.html">第 14 章</a></td>
               </tr>
               <tr>
                 <th scope="row">微压缩</th>
                 <td>microcompact</td>
                 <td>只清理旧工具结果、不做摘要的轻量压缩；Claude Code 的这条路径默认关闭。<span class="tag tag--src">源码 v2.1.88</span></td>
-                <td><a href="main-07.html">主线第 7 章</a></td>
+                <td><a href="main-07.html">第 14 章</a></td>
               </tr>
               <tr>
                 <th scope="row">压缩</th>
                 <td>compaction</td>
                 <td>调用模型把一段历史改写成摘要，再用摘要加保留尾部替换原历史。</td>
-                <td><a href="main-08.html">主线第 8 章</a></td>
+                <td><a href="main-08.html">第 15 章</a></td>
               </tr>
               <tr>
                 <th scope="row">切点</th>
                 <td>cut point</td>
                 <td>历史被分成「写成摘要」和「原样保留」两段的位置，必须落在合法边界上。</td>
-                <td><a href="main-08.html">主线第 8 章</a></td>
+                <td><a href="main-08.html">第 15 章</a></td>
               </tr>
               <tr>
                 <th scope="row">保留预算</th>
                 <td>keep recent tokens</td>
                 <td>压缩时留给最近原文的 token 上限；太小会把刚发生的细节也压掉。</td>
-                <td><a href="main-08.html">主线第 8 章</a></td>
+                <td><a href="main-08.html">第 15 章</a></td>
               </tr>
               <tr>
                 <th scope="row">工具配对</th>
                 <td>tool pairing</td>
                 <td>工具调用与它的结果必须成对保留或成对丢弃，切点不能落在二者中间。</td>
-                <td><a href="main-08.html">主线第 8 章</a></td>
+                <td><a href="main-08.html">第 15 章</a></td>
               </tr>
               <tr>
                 <th scope="row">单回合拆分</th>
                 <td>split turn</td>
                 <td>一个回合长到放不进保留预算时，把轮前缀单独摘要，再与历史摘要合并。</td>
-                <td><a href="main-08.html">主线第 8 章</a></td>
+                <td><a href="main-08.html">第 15 章</a></td>
               </tr>
               <tr>
                 <th scope="row">压缩累积</th>
                 <td>compaction accumulation</td>
                 <td>后一次摘要继承前一次摘要；具体合并规则各家不同，但都不能从零重写。</td>
-                <td><a href="main-08.html">主线第 8 章</a></td>
+                <td><a href="main-08.html">第 15 章</a></td>
               </tr>
               <tr>
                 <th scope="row">整段替换</th>
                 <td>full-replace</td>
                 <td>用一条摘要加保留尾部整体替换旧历史；Grok Build 的默认形态。</td>
-                <td><a href="src-grok-build-01.html">源码 · Grok Build 第 1 节</a></td>
+                <td><a href="src-grok-build-01.html">第 49 章</a></td>
               </tr>
               <tr>
                 <th scope="row">方法链</th>
                 <td>method chain</td>
                 <td>压缩按可用性依次尝试多种方法（remote、snapcompact、handoff、shake、soft）并逐级回退。</td>
-                <td><a href="src-omp-01.html">源码 · oh-my-pi 第 1 节</a></td>
+                <td><a href="src-omp-01.html">第 40 章</a></td>
               </tr>
               <tr>
                 <th scope="row">机械省略</th>
                 <td>shake</td>
                 <td>不调模型，把大块工具结果或代码围栏换成占位符与可恢复的 artifact 指针。</td>
-                <td><a href="src-omp-02.html">源码 · oh-my-pi 第 2 节</a></td>
+                <td><a href="src-omp-02.html">第 41 章</a></td>
               </tr>
               <tr>
                 <th scope="row">历史转图</th>
                 <td>snapcompact</td>
                 <td>把被丢弃的历史渲染成 PNG 帧，交给视觉模型「读图」，用图像 token 换文本 token。</td>
-                <td><a href="src-omp-03.html">源码 · oh-my-pi 第 3 节</a></td>
+                <td><a href="src-omp-03.html">第 42 章</a></td>
               </tr>
               <tr>
                 <th scope="row">图片驱逐</th>
                 <td>image eviction</td>
                 <td>按请求体字节或图片数量预算把旧图片移出上下文，并留一句「图已不可见」的占位。</td>
-                <td><a href="main-09.html">主线第 9 章</a></td>
+                <td><a href="main-09.html">第 16 章</a></td>
               </tr>
             </tbody>
           </table>
@@ -438,84 +438,84 @@
                 <th scope="row">子代理</th>
                 <td>subagent</td>
                 <td>拥有独立上下文与工具池、只把最终结果回传父会话的代理。</td>
-                <td><a href="main-10.html">主线第 10 章</a></td>
+                <td><a href="main-10.html">第 17 章</a></td>
               </tr>
               <tr>
                 <th scope="row">子会话</th>
                 <td>child session</td>
                 <td>子代理自己的会话，有独立历史与 token 计数，通常从空上下文开始。</td>
-                <td><a href="main-10.html">主线第 10 章</a></td>
+                <td><a href="main-10.html">第 17 章</a></td>
               </tr>
               <tr>
                 <th scope="row">结构化返回</th>
                 <td>structured return</td>
                 <td>子代理按事先给的 schema 返回结果，而不是一整段自由文本。</td>
-                <td><a href="main-10.html">主线第 10 章</a></td>
+                <td><a href="main-10.html">第 17 章</a></td>
               </tr>
               <tr>
                 <th scope="row">工作树隔离</th>
                 <td>worktree isolation</td>
                 <td>子代理在独立 git worktree 上改文件，完成后合并或丢弃，避免互相踩踏。</td>
-                <td><a href="main-10.html">主线第 10 章</a></td>
+                <td><a href="main-10.html">第 17 章</a></td>
               </tr>
               <tr>
                 <th scope="row">会话日志</th>
                 <td>session log</td>
                 <td>只追加的记录，是恢复、审计与重放的唯一真实来源；压缩通常只追加检查点，不删旧行。</td>
-                <td><a href="main-11.html">主线第 11 章</a></td>
+                <td><a href="main-11.html">第 18 章</a></td>
               </tr>
               <tr>
                 <th scope="row">投影</th>
                 <td>projection</td>
                 <td>从日志派生出的、本次请求真正发给模型的历史视图。</td>
-                <td><a href="main-11.html">主线第 11 章</a></td>
+                <td><a href="main-11.html">第 18 章</a></td>
               </tr>
               <tr>
                 <th scope="row">可见面</th>
                 <td>surface</td>
                 <td>DeepSeek Harness 的术语：日志中进入模型请求的那层有序视图，可被 replace 遮蔽。</td>
-                <td><a href="src-dsh-01.html">源码 · DeepSeek Harness 第 1 节</a></td>
+                <td><a href="src-dsh-01.html">第 52 章</a></td>
               </tr>
               <tr>
                 <th scope="row">检查点</th>
                 <td>checkpoint</td>
                 <td>压缩或回退时写下的锚点，记录「从哪里继续」，本身不产生新知识。</td>
-                <td><a href="main-11.html">主线第 11 章</a></td>
+                <td><a href="main-11.html">第 18 章</a></td>
               </tr>
               <tr>
                 <th scope="row">分叉</th>
                 <td>fork</td>
                 <td>从某个点复制出新会话，原会话不变；复制的是记录，不是模型状态。</td>
-                <td><a href="main-11.html">主线第 11 章</a></td>
+                <td><a href="main-11.html">第 18 章</a></td>
               </tr>
               <tr>
                 <th scope="row">回退</th>
                 <td>rewind</td>
                 <td>把对话或文件恢复到之前的检查点；有的工具只回对话，不动磁盘。</td>
-                <td><a href="main-11.html">主线第 11 章</a></td>
+                <td><a href="main-11.html">第 18 章</a></td>
               </tr>
               <tr>
                 <th scope="row">分支摘要</th>
                 <td>branch summary</td>
                 <td>切换分支时，给离开的那条分支写一份摘要，避免回来时从零重建。</td>
-                <td><a href="main-11.html">主线第 11 章</a></td>
+                <td><a href="main-11.html">第 18 章</a></td>
               </tr>
               <tr>
                 <th scope="row">跨会话记忆</th>
                 <td>cross-session memory</td>
                 <td>会话结束后仍保留、下次可以检索并注入的知识；与「会话日志」是两套东西。</td>
-                <td><a href="main-12.html">主线第 12 章</a></td>
+                <td><a href="main-12.html">第 19 章</a></td>
               </tr>
               <tr>
                 <th scope="row">记忆污染</th>
                 <td>memory poisoning</td>
                 <td>错误或过期的记忆被反复注入，模型把旧结论当成当前事实。</td>
-                <td><a href="main-12.html">主线第 12 章</a></td>
+                <td><a href="main-12.html">第 19 章</a></td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p class="table-caption">八份事实卡片里，pi 与 opencode v1/v2、dsh 都没有跨会话记忆子系统；「没有」也是结论，不要按「默认关闭」理解。</p>
+        <p class="table-caption">八个工具里，pi 与 opencode v1/v2、dsh 都没有跨会话记忆子系统；「没有」也是结论，不要按「默认关闭」理解。</p>
       </section>
 
       <!-- ========== E ========== -->
@@ -540,85 +540,85 @@
                 <th scope="row">前缀缓存</th>
                 <td>prompt cache</td>
                 <td>服务端复用相同前缀的中间计算结果，命中部分按缓存读取计价。</td>
-                <td><a href="intro-05.html">入门第 5 章</a></td>
+                <td><a href="intro-05.html">第 5 章</a></td>
               </tr>
               <tr>
                 <th scope="row">前缀</th>
                 <td>prefix</td>
                 <td>从请求第一个 token 开始、必须逐字节相同的部分；一位不同，后面全部作废。</td>
-                <td><a href="intro-05.html">入门第 5 章</a></td>
+                <td><a href="intro-05.html">第 5 章</a></td>
               </tr>
               <tr>
                 <th scope="row">缓存命中</th>
                 <td>cache hit</td>
                 <td>本次请求的前缀在服务端已有缓存，可直接复用。</td>
-                <td><a href="intro-05.html">入门第 5 章</a></td>
+                <td><a href="intro-05.html">第 5 章</a></td>
               </tr>
               <tr>
                 <th scope="row">缓存写入</th>
                 <td>cache write</td>
                 <td>为后续复用而新建缓存的那部分 token；计价方式因 provider 而异，不能默认「写入一定比输入贵」。</td>
-                <td><a href="intro-05.html">入门第 5 章</a></td>
+                <td><a href="intro-05.html">第 5 章</a></td>
               </tr>
               <tr>
                 <th scope="row">存活时间</th>
                 <td>TTL</td>
                 <td>缓存保留多久；过期后下一次请求要重新写入。</td>
-                <td><a href="intro-05.html">入门第 5 章</a></td>
+                <td><a href="intro-05.html">第 5 章</a></td>
               </tr>
               <tr>
                 <th scope="row">缓存断点</th>
                 <td>cache breakpoint</td>
                 <td>显式标记「到这里为止可以缓存」的位置；多一个断点不等于多一份收益。</td>
-                <td><a href="main-13.html">主线第 13 章</a></td>
+                <td><a href="main-13.html">第 20 章</a></td>
               </tr>
               <tr>
                 <th scope="row">缓存失效</th>
                 <td>cache invalidation</td>
                 <td>前缀任一处变化，导致从该处起后面的缓存全部不可复用。</td>
-                <td><a href="main-13.html">主线第 13 章</a></td>
+                <td><a href="main-13.html">第 20 章</a></td>
               </tr>
               <tr>
                 <th scope="row">失败恢复</th>
                 <td>failure recovery</td>
                 <td>溢出或压缩失败后的重试、降级与兜底；恢复路径本身也有成本。</td>
-                <td><a href="main-14.html">主线第 14 章</a></td>
+                <td><a href="main-14.html">第 21 章</a></td>
               </tr>
               <tr>
                 <th scope="row">熔断</th>
                 <td>circuit breaker</td>
                 <td>连续失败后停止自动尝试，避免每次请求都为一次注定失败的压缩付费。</td>
-                <td><a href="main-14.html">主线第 14 章</a></td>
+                <td><a href="main-14.html">第 21 章</a></td>
               </tr>
               <tr>
                 <th scope="row">钩子</th>
                 <td>hook</td>
                 <td>挂在生命周期事件上的外部逻辑；能改什么、只能看什么，各家边界不同。</td>
-                <td><a href="main-15.html">主线第 15 章</a></td>
+                <td><a href="main-15.html">第 22 章</a></td>
               </tr>
               <tr>
                 <th scope="row">配对 A/B</th>
                 <td>paired A/B</td>
                 <td>同一任务、同一初始状态下比较两套配置，用差值而不是两组均值判断优劣。</td>
-                <td><a href="main-16.html">主线第 16 章</a></td>
+                <td><a href="main-16.html">第 23 章</a></td>
               </tr>
               <tr>
                 <th scope="row">信息保留率</th>
                 <td>IRR</td>
                 <td>只从「被压缩掉的那段历史」里出题，看模型还能答对多少；压缩质量最直接的指标。</td>
-                <td><a href="main-16.html">主线第 16 章</a></td>
+                <td><a href="main-16.html">第 23 章</a></td>
               </tr>
               <tr>
                 <th scope="row">每成功任务成本</th>
                 <td>CPS</td>
                 <td>总成本除以成功任务数，失败任务的成本也计入分子，避免奖励「提前失败」。</td>
-                <td><a href="main-16.html">主线第 16 章</a></td>
+                <td><a href="main-16.html">第 23 章</a></td>
               </tr>
               <tr>
                 <th scope="row">缓存命中率</th>
                 <td>CHR</td>
                 <td>缓存读取占全部输入 token 的比例；只作诊断，不作越高越好的 KPI。</td>
-                <td><a href="main-16.html">主线第 16 章</a></td>
+                <td><a href="main-16.html">第 23 章</a></td>
               </tr>
             </tbody>
           </table>
@@ -636,9 +636,9 @@
           <p class="callout__title">对照一 · 裁剪（pruning） vs 压缩（compaction）</p>
           <dl class="kv">
             <dt>裁剪</dt>
-            <dd>不调用模型，只改「模型这次能看到什么」。原文仍在日志或数据库里，改回来很便宜。适合旧工具结果、重复读取、空搜索结果。<a href="main-07.html">主线第 7 章</a></dd>
+            <dd>不调用模型，只改「模型这次能看到什么」。原文仍在日志或数据库里，改回来很便宜。适合旧工具结果、重复读取、空搜索结果。<a href="main-07.html">第 14 章</a></dd>
             <dt>压缩</dt>
-            <dd>调用模型，把一段历史重写成摘要。语义被改写、细节不可逆，但能把很长一段压成很短一段。适合任务还在继续、但早期过程已经不需要逐字保留。<a href="main-08.html">主线第 8 章</a></dd>
+            <dd>调用模型，把一段历史重写成摘要。语义被改写、细节不可逆，但能把很长一段压成很短一段。适合任务还在继续、但早期过程已经不需要逐字保留。<a href="main-08.html">第 15 章</a></dd>
             <dt>一句话判断</dt>
             <dd>如果「不花钱就能撤回」，先裁剪；如果裁剪完仍然装不下，才压缩。</dd>
           </dl>
@@ -648,9 +648,9 @@
           <p class="callout__title">对照二 · 会话（session） vs 记忆（memory）</p>
           <dl class="kv">
             <dt>会话</dt>
-            <dd>这一次任务的完整记录，重、可按检查点恢复、可分叉。它回答「我们刚才做了什么」。<a href="main-11.html">主线第 11 章</a></dd>
+            <dd>这一次任务的完整记录，重、可按检查点恢复、可分叉。它回答「我们刚才做了什么」。<a href="main-11.html">第 18 章</a></dd>
             <dt>记忆</dt>
-            <dd>跨会话留下的结论或偏好，轻、按需检索、可能过期。它回答「以前学到过什么」。<a href="main-12.html">主线第 12 章</a></dd>
+            <dd>跨会话留下的结论或偏好，轻、按需检索、可能过期。它回答「以前学到过什么」。<a href="main-12.html">第 19 章</a></dd>
             <dt>一句话判断</dt>
             <dd>需要逐字复现过程，用会话；只需要下次别再犯同样的错，用记忆。别把会话日志当记忆库直接塞进请求。</dd>
           </dl>
@@ -660,9 +660,9 @@
           <p class="callout__title">对照三 · 摘要（summary） vs 检查点（checkpoint）</p>
           <dl class="kv">
             <dt>摘要</dt>
-            <dd>一段新写出来的内容，会丢信息，也会带入写摘要时的判断。模型看到的是它，不是原文。<a href="main-08.html">主线第 8 章</a></dd>
+            <dd>一段新写出来的内容，会丢信息，也会带入写摘要时的判断。模型看到的是它，不是原文。<a href="main-08.html">第 15 章</a></dd>
             <dt>检查点</dt>
-            <dd>日志里的一个位置标记，不产生新知识。它只告诉系统「从这一条之后继续」，模型看不到「检查点」本身。<a href="main-11.html">主线第 11 章</a></dd>
+            <dd>日志里的一个位置标记，不产生新知识。它只告诉系统「从这一条之后继续」，模型看不到「检查点」本身。<a href="main-11.html">第 18 章</a></dd>
             <dt>一句话判断</dt>
             <dd>压缩 = 写摘要 + 落检查点。只有检查点、没有摘要，模型会看不到被遮蔽的历史；只有摘要、没有检查点，系统不知道保留段从哪里开始。</dd>
           </dl>
@@ -677,7 +677,7 @@
             <a class="footnotes__back" href="#fnref-appendix-glossary-1">↩</a>
           </li>
           <li id="fn-appendix-glossary-2">
-            关于 lost in the middle：本教程采用「开头与结尾较好、中段较差」这一实验结论，但它依赖具体任务、模型与文档长度，不能换算成一个固定的「中段召回率」。入门第 4 章已标【待核实】，这里只把它当作位置效应的现象名。
+            关于 lost in the middle：本教程采用「开头与结尾较好、中段较差」这一实验结论，但它依赖具体任务、模型与文档长度，不能换算成一个固定的「中段召回率」。第 4 章已标【待核实】，这里只把它当作位置效应的现象名。
             <a class="footnotes__back" href="#fnref-appendix-glossary-2">↩</a>
           </li>
         </ol>

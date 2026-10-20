@@ -73,7 +73,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -83,7 +83,7 @@
   <article class="prose" id="src-dsh-01">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>DeepSeek Harness</span><span>·</span><span>第 01 节</span></p>
+      <p class="kicker"><b>第 52 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>DeepSeek Harness</span></p>
       <h1>日志与 surface 两层结构</h1>
       <p class="lede">DeepSeek Harness 把「发生过什么」和「模型看到什么」拆成了两层：底下一份只追加的日志，上面一层由日志派生出来的可见视图。压缩、裁剪、图片移出，全都不是「改历史」，而是「往视图上追加一条替换」。这一节读这层结构怎么建、怎么算、代价是什么。</p>
       <ul class="meta">
@@ -204,8 +204,8 @@
       <p class="small muted">补充证据：系统提示词是 surface 节点 0，只有它自己能被替换——校验在 <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/surface.ts#L493-L507">surface.ts#L493-L507</a>；空内容节点仍占位、但不产生 wire 消息，见 <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/core/session/src/surface.ts#L120-L152">surface.ts#L120-L152</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】大纲的行号略偏，且「replace 的起止」有一个反直觉点</p>
-        <p>大纲把 <code>surfaceOp</code> 标在 <code>surface.ts:49</code>，L49 实际是 <code>SURFACE_EVENT_TYPES</code> 常量；<code>SurfaceOp</code> 的类型定义在 <code>types.ts#L463-L465</code>，<code>surface.ts</code> 里是使用它的校验逻辑。另外，<code>startSeq</code> 与 <code>endSeq</code> 是<b>位置区间</b>，不是数值区间：如果一个高 seq 的替换节点落在旧区间的位置上，后来的替换会出现 <code>startSeq &gt; endSeq</code> 的情况。但「数值可以倒挂」不等于「随便写」——<code>replacementRange()</code> 仍然要求前者在 <code>nodes</code> 里的<b>下标</b>小于等于后者，否则直接抛错；判断「哪些节点被遮蔽」也要以 <code>shadowedSeqs</code> 为准，不要自己按数值比大小。</p>
+        <p class="callout__title">【注意】一处容易引错的行号，和一个反直觉点</p>
+        <p>常见标注把 <code>surfaceOp</code> 放在 <code>surface.ts:49</code>，L49 实际是 <code>SURFACE_EVENT_TYPES</code> 常量；<code>SurfaceOp</code> 的类型定义在 <code>types.ts#L463-L465</code>，<code>surface.ts</code> 里是使用它的校验逻辑。另外，<code>startSeq</code> 与 <code>endSeq</code> 是<b>位置区间</b>，不是数值区间：如果一个高 seq 的替换节点落在旧区间的位置上，后来的替换会出现 <code>startSeq &gt; endSeq</code> 的情况。但「数值可以倒挂」不等于「随便写」——<code>replacementRange()</code> 仍然要求前者在 <code>nodes</code> 里的<b>下标</b>小于等于后者，否则直接抛错；判断「哪些节点被遮蔽」也要以 <code>shadowedSeqs</code> 为准，不要自己按数值比大小。</p>
       </div>
     </section>
 
@@ -446,7 +446,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：dsh 见本节 permalink；Grok Build 见源码解读第 3 节；pi 见 <code>research/pi.md</code> 第 11 节（<code>buildContextEntries</code>）；opencode v2 见 <code>research/opencode-v2.md</code> 第 11 节（<code>latestCompaction</code> 与 <code>entriesForRunner</code>）。</p>
+      <p class="table-caption">表注：dsh 见本节 permalink；Grok Build 见源码解读第 3 节；pi 见 <code>buildContextEntries</code>；opencode v2 见 <code>latestCompaction</code> 与 <code>entriesForRunner</code>。</p>
 
       <p><b>对照一：显式视图 vs 隐式过滤。</b>dsh 把「哪些节点可见」变成一个真实存在的数据结构 <code>nodes</code>，替换时直接改它；Grok Build 不维护这个数组，而是在每次重放时用标记当场算出来。前者的好处是读取快、语义集中；后者的好处是磁盘格式极简、不需要把视图持久化。代价也对称：dsh 要在内存里维护两份（日志与节点数组），Grok Build 要在每个读路径上重复过滤。</p>
 
@@ -503,7 +503,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-dsh-02.html">DeepSeek Harness · 压缩选区的三个约束</a></p>
+    <p class="footer-note">下一章：<a href="src-dsh-02.html">DeepSeek Harness · 压缩选区的三个约束</a></p>
 
   </article>
 </main>

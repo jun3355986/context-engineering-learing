@@ -85,7 +85,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -95,7 +95,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 03 章</span></p>
+      <p class="kicker"><b>第 10 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>按需加载与渐进披露</h1>
       <p class="lede">工具和技能的清单会随插件数量线性增长，但一次任务真正用到的往往只有两三个。渐进披露（progressive disclosure）做的就是“先给目录，再给正文”：启动时只放名字和一句描述，模型需要时再拉全文。</p>
       <ul class="meta">
@@ -473,19 +473,19 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-03-1">
-          事实卡片标【待核实】：<code>skills.include_instructions</code> 的注释说明它控制 <code>&lt;skills_instructions&gt;</code> 是否注入，但查 <code>core/src/config/mod.rs</code> 的 skills 配置段未找到显式 default。缺的是配置反序列化时的缺省值来源（可能在别处的 derive 或上层 bundle）。因此正文只写“控制是否注入”，不写默认开或关。
+          【待核实】：<code>skills.include_instructions</code> 的注释说明它控制 <code>&lt;skills_instructions&gt;</code> 是否注入，但查 <code>core/src/config/mod.rs</code> 的 skills 配置段未找到显式 default。缺的是配置反序列化时的缺省值来源（可能在别处的 derive 或上层 bundle）。因此正文只写“控制是否注入”，不写默认开或关。
           <a class="footnotes__back" href="#fnref-main-03-1">↩</a>
         </li>
         <li id="fn-main-03-2">
-          事实卡片标【推断】：Codex 的 <code>@</code> 在源码里表现为 <code>ToolMentionKind</code>、<code>app://</code>、<code>plugin://</code> 等结构化提及；检索 <code>@file</code> 的通用展开路径未命中。缺的是“是否存在只在 TUI 层做的文件展开”。因此正文说“没有找到通用路径”，不断言“完全没有”。
+          【推断】：Codex 的 <code>@</code> 在源码里表现为 <code>ToolMentionKind</code>、<code>app://</code>、<code>plugin://</code> 等结构化提及；检索 <code>@file</code> 的通用展开路径未命中。缺的是“是否存在只在 TUI 层做的文件展开”。因此正文说“没有找到通用路径”，不断言“完全没有”。
           <a class="footnotes__back" href="#fnref-main-03-2">↩</a>
         </li>
         <li id="fn-main-03-3">
-          dsh 的技能目录、MCP 注册与 <code>@file</code> 语义均来自同仓 <code>docs/subsystems</code> 与包 README，未逐行核对源码，卡片整体标【推断】。已检查 <code>packages/skill/tool-skill/README.md</code>、<code>packages/mcp/mcp-client/README.md</code>、<code>packages/context/file-reference/README.md</code>；缺的是运行时实际注册顺序。表中相应格子按【推断】标注。
+          dsh 的技能目录、MCP 注册与 <code>@file</code> 语义均来自同仓 <code>docs/subsystems</code> 与包 README，未逐行核对源码，整体标【推断】。已检查 <code>packages/skill/tool-skill/README.md</code>、<code>packages/mcp/mcp-client/README.md</code>、<code>packages/context/file-reference/README.md</code>；缺的是运行时实际注册顺序。表中相应格子按【推断】标注。
           <a class="footnotes__back" href="#fnref-main-03-3">↩</a>
         </li>
         <li id="fn-main-03-4">
-          事实卡片标【待核实】：Grok Build 的技能清单预算同时出现三种表述——<code>context_window_tokens × 4 × 0.005</code>、<code>× 4 × 0.5%</code>、以及“200k 窗口约 400k 字符”。前两种按字面算分别得 4,000 与 4,000 字符，与 400k 示例相差 100 倍；只有把 <code>0.5</code> 当作比例（50%）才能得到 400k。已核对卡片第 3 节的常量名 <code>SKILL_BUDGET_CONTEXT_PERCENT</code> 与示例值，缺的是 <code>listing.rs</code> 里实际参与乘法的表达式。因此正文只写常量名与示例值，不给百分比结论。
+          【待核实】：Grok Build 的技能清单预算同时出现三种表述——<code>context_window_tokens × 4 × 0.005</code>、<code>× 4 × 0.5%</code>、以及“200k 窗口约 400k 字符”。前两种按字面算分别得 4,000 与 4,000 字符，与 400k 示例相差 100 倍；只有把 <code>0.5</code> 当作比例（50%）才能得到 400k。已核对常量名 <code>SKILL_BUDGET_CONTEXT_PERCENT</code> 与示例值，缺的是 <code>listing.rs</code> 里实际参与乘法的表达式。因此正文只写常量名与示例值，不给百分比结论。
           <a class="footnotes__back" href="#fnref-main-03-4">↩</a>
         </li>
       </ol>
@@ -658,10 +658,10 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">Skills 只在首条用户消息里给出「名称 + 截断后的描述」清单，模型要用时调用 skill 工具读取 <code>SKILL.md</code> 正文；清单有硬预算：按上下文窗口 token 数折算成字符（<code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code>，卡片给的 200k 窗口示例约 400k 字符<sup class="fn-ref"><a href="#fn-main-03-4" id="fnref-main-03-4">4</a></sup>），超出后按条目裁剪而不是整段丢弃。MCP 走另一条路：服务器与工具<strong>不进入 function tools</strong>，只注入一段「服务器公告」，模型先用 <code>search_tool</code>（BM25 关键词检索）找工具，再用 <code>use_tool</code> 调用；单个 MCP 工具或服务器描述硬截断到 2048 字符，公告用 <code>(tool_count, description_hash, tool_names_hash)</code> 指纹做变更检测，只在变化时重发。<code>@</code> 文件引用在本版源码中没有独立的附件注入通道，文件内容一律通过 <code>read_file</code> 按需读取。</p>
+      <p class="modal__lead">Skills 只在首条用户消息里给出「名称 + 截断后的描述」清单，模型要用时调用 skill 工具读取 <code>SKILL.md</code> 正文；清单有硬预算：按上下文窗口 token 数折算成字符（<code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code>，文档给的 200k 窗口示例约 400k 字符<sup class="fn-ref"><a href="#fn-main-03-4" id="fnref-main-03-4">4</a></sup>），超出后按条目裁剪而不是整段丢弃。MCP 走另一条路：服务器与工具<strong>不进入 function tools</strong>，只注入一段「服务器公告」，模型先用 <code>search_tool</code>（BM25 关键词检索）找工具，再用 <code>use_tool</code> 调用；单个 MCP 工具或服务器描述硬截断到 2048 字符，公告用 <code>(tool_count, description_hash, tool_names_hash)</code> 指纹做变更检测，只在变化时重发。<code>@</code> 文件引用在本版源码中没有独立的附件注入通道，文件内容一律通过 <code>read_file</code> 按需读取。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
-        <dd>技能清单预算由 <code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code> 控制，未知窗口时按 200k 折算；卡片给的示例值是 400k 字符，换算口径见脚注 4。<span class="tag tag--todo">待核实</span> MCP 描述上限 2048 字符 + <code>… [truncated]</code>；检索 BM25，工具名 <code>search_tool</code> / <code>use_tool</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dd>技能清单预算由 <code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code> 控制，未知窗口时按 200k 折算；文档给的示例值是 400k 字符，换算口径见脚注 4。<span class="tag tag--todo">待核实</span> MCP 描述上限 2048 字符 + <code>… [truncated]</code>；检索 BM25，工具名 <code>search_tool</code> / <code>use_tool</code>。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
         <dd>把 MCP 彻底移出工具数组，换来最短的前缀；用 BM25 而不是语义检索，是因为工具名与描述本身就是关键词，BM25 足够且可解释。代价是检索成为必经步骤，检索词写不好就找不到；2048 字符的截断也可能切掉关键参数说明。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>

@@ -74,7 +74,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -84,7 +84,7 @@
   <article class="prose" id="src-codex-04">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Codex CLI</span><span>·</span><span>第 04 节</span></p>
+      <p class="kicker"><b>第 32 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Codex CLI</span></p>
       <h1>头尾保留的截断预算</h1>
       <p class="lede">工具输出太长时，Codex 不砍头也不砍尾，而是把中间挖掉，换成一句「…N tokens truncated…」。听起来简单，但要同时做对四件事：按 token 估预算、左右对半分、UTF-8 不切半个字符、标记不占预算。这一节读的就是这四件事。</p>
       <ul class="meta">
@@ -201,8 +201,8 @@
       <p class="small muted">补充证据：多块输出共享预算在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L164-L231">output-truncation/src/lib.rs#L164-L231</a>；序列化余量 <code>×1.2</code> 在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L21">同文件 L17-L21</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】事实卡片的行号漂移</p>
-        <p>卡片把「<code>split_budget</code> + UTF-8 对齐」标在 <code>truncate.rs#L62-L90</code>。本提交里 L62 属于 <code>truncate_middle_with_marker</code> 的拼装，<code>split_budget</code> 实际在 L142-L145，UTF-8 对齐在 L23 与 L59-L60。主函数 L69-L85、估算 L87-L90 与卡片一致。</p>
+        <p class="callout__title">【注意】一处容易引错的行号</p>
+        <p>常见标注把「<code>split_budget</code> + UTF-8 对齐」放在 <code>truncate.rs#L62-L90</code>。本提交里 L62 属于 <code>truncate_middle_with_marker</code> 的拼装，<code>split_budget</code> 实际在 L142-L145，UTF-8 对齐在 L23 与 L59-L60。主函数 L69-L85、估算 L87-L90 则与常见标注一致。</p>
       </div>
     </section>
 
@@ -401,7 +401,7 @@
 
       <h3>第 7 段　与压缩时截断的关系</h3>
 
-      <p>这套函数不只用于工具出口。压缩时，候选用户消息如果放不下，也会调用 <code>truncate_annotated_text()</code>，而后者内部用的是同一套头尾保留逻辑（见 <code>src-codex-01</code> 第 3 段）。错误信息、沙箱报错、附加上下文也各自调用 <code>truncate_middle_with_token_budget</code>，只是传入的 <code>max_tokens</code> 不同（例如沙箱错误用 900）。<span class="tag tag--ok">已核实</span></p>
+      <p>这套函数不只用于工具出口。压缩时，候选用户消息如果放不下，也会调用 <code>truncate_annotated_text()</code>，而后者内部用的是同一套头尾保留逻辑（见第 29 章第 3 段）。错误信息、沙箱报错、附加上下文也各自调用 <code>truncate_middle_with_token_budget</code>，只是传入的 <code>max_tokens</code> 不同（例如沙箱错误用 900）。<span class="tag tag--ok">已核实</span></p>
 
       <p>调用点分散带来的一个后果是：同一份文本在不同位置可能被截两次。比如一个工具输出先在 <code>formatted_truncate_text()</code> 里被截到 10k token，写进历史后又在压缩阶段被 <code>truncate_annotated_text()</code> 按 20k 预算重新处理。第二次通常不会再截（因为已经小于 20k），但如果中间又拼了别的片段，就可能触发二次截断。<span class="tag tag--guess">推断</span></p>
 
@@ -481,7 +481,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 6 节（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径，Grok Build 为源码常量）。</p>
+      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径，Grok Build 为源码常量）。</p>
 
       <p>第一个对照是<b>「保留位置」与「工具语义」的匹配</b>。pi 让读类工具保头、bash 保尾，因为文件开头有结构、命令结尾有错误；Codex 统一挖中间，不区分工具，因为它要的是一个跨工具通用的原语。统一策略的好处是行为可预测，坏处是对某类工具不够贴合：比如 <code>git diff</code> 的尾部可能比头部更重要，挖中间会同时保住两端，但也可能把关键的 diff 块挖掉。<span class="tag tag--guess">推断</span></p>
 
@@ -535,7 +535,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-claude-code-01.html">Claude Code · 系统提示的静态/动态分段</a>。</p>
+    <p class="footer-note">下一章：<a href="src-claude-code-01.html">Claude Code · 系统提示的静态/动态分段</a>。</p>
 
   </article>
 </main>

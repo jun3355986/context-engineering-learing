@@ -70,7 +70,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -80,7 +80,7 @@
   <article class="prose" id="src-pi-01">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>pi</span><span>·</span><span>第 01 节</span></p>
+      <p class="kicker"><b>第 37 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>pi</span></p>
       <h1>切点、单回合拆分与文件跟踪</h1>
       <p class="lede">压缩要回答一个看起来很小的问题：从哪一条开始保留？pi 的答案不是「数够 20 000 token 就切」，而是「数够之后，往后找最近一个合法边界」。这一步之差，决定了工具调用会不会被切成孤儿，也决定了压缩后模型还能不能接着干活。</p>
       <ul class="meta">
@@ -184,8 +184,8 @@
       <p class="small muted">补充证据：切点结果如何被使用，见 <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L872-L936">prepareCompaction()#L872-L936</a>；文件操作如何从工具调用里抽取，见同文件 <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/utils.ts#L30-L61">utils.ts#L30-L61</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】大纲写 <code>findCutPoint</code>，但线上跑的是它的投影版</p>
-        <p>大纲和事实卡片都把切点标在 <code>findCutPoint()</code>（L446）。这个函数确实存在，也被 <code>src/index.ts</code> 导出、被 <code>test/compaction.test.ts</code> 直接调用；但 <code>prepareCompaction()</code> 实际调用的是 <code>findProjectedCutPoint()</code>（L802）。两者算法骨架相同（倒序累加、取最近的合法切点、回溯轮首），差别在三点：入参是「投影条目」而不是原始条目；多一段 <code>isRecoveryOmissionSuffix</code> 判断；多一层「相邻不可见元数据」的回退。本节引 <code>findCutPoint()</code> 讲主干，是因为它没有投影类型的噪音，读起来更干净；投影版的三点差异在第 4 节单独说明。以源码为准，不以大纲为准。</p>
+        <p class="callout__title">【注意】线上跑的不是 <code>findCutPoint</code>，是它的投影版</p>
+        <p>常见资料都把切点标在 <code>findCutPoint()</code>（L446）。这个函数确实存在，也被 <code>src/index.ts</code> 导出、被 <code>test/compaction.test.ts</code> 直接调用；但 <code>prepareCompaction()</code> 实际调用的是 <code>findProjectedCutPoint()</code>（L802）。两者算法骨架相同（倒序累加、取最近的合法切点、回溯轮首），差别在三点：入参是「投影条目」而不是原始条目；多一段 <code>isRecoveryOmissionSuffix</code> 判断；多一层「相邻不可见元数据」的回退。本节引 <code>findCutPoint()</code> 讲主干，是因为它没有投影类型的噪音，读起来更干净；投影版的三点差异在第 4 节单独说明。这里以源码为准。</p>
       </div>
     </section>
 
@@ -351,7 +351,7 @@
       <p>循环结束后还有一个 <code>while</code>：如果切点前一条是不可见的元数据（<code>usage</code>、<code>session_info</code>、<code>model_change</code> 这类不产生消息的条目），就把切点再往前挪一格。它不改变语义，只是让 <code>firstKeptEntryId</code> 指在一条「真实存在且可见」的条目上，方便恢复时定位。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】投影版多一条「恢复省略」规则</p>
+        <p class="callout__title">【注意】投影版多一条「恢复省略」规则</p>
         <p><code>findProjectedCutPoint()</code>（L802-L870）在主循环之后多了一段 <code>isRecoveryOmissionSuffix</code>（L834-L856）：当预算越线、且切点之后的整个后缀里只有「被 <code>context_edit</code> 省略掉的失败尝试」时，把切点再往后推一格。原因是这些条目对模型不可见，留着它们当边界没有意义。这段逻辑在 <code>findCutPoint()</code> 里不存在，因为后者拿不到编辑信息。读源码时不要把两者当成同一个函数。</p>
       </div>
 
@@ -576,7 +576,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：pi · 压缩只改投影，不删历史。</p>
+    <p class="footer-note">下一章：pi · 压缩只改投影，不删历史。</p>
 
   </article>
 </main>

@@ -104,7 +104,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -114,7 +114,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 14 章</span></p>
+      <p class="kicker"><b>第 21 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>失败恢复：溢出、压缩失败与兜底</h1>
       <p class="lede">压缩是窗口快满时的最后一根绳子，但绳子自己也会断：压缩请求本身也要装下待压缩的历史。本章按一次失败发生的时间顺序拆开：怎么识别溢出、压不动时删什么、连续失败什么时候该停、以及哪三种情况再怎么压也没用。</p>
       <ul class="meta">
@@ -289,10 +289,10 @@
       <p><strong>怎么识别</strong>：把历史清空、只发固定前缀，仍然超窗；或者压缩后总量几乎没降。<strong>还能做什么</strong>：减少工具数量、把大工具表改成按需加载、缩短规则文件、换更大窗口的模型。这些都不是压缩能解决的，应该直接报给用户，而不是继续重试。</p>
 
       <p><strong>第二种：单个不可分割的单元超窗。</strong>一条 80k 的工具结果、一条超长的用户消息，或者一个无法再拆的工具单元。压缩的切点只能落在消息边界上，不能把一条消息切成两半（切了也不再是原来的工具结果）。Grok Build 的 full-replace 明确不能拆单元；dsh 把“单个不可分割的非工具节点”和“工具单元里不可裁剪的剩余部分”分别列为两条限制。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/README.md#L243-L246">compaction-basic/README.md#L243-L246</a> <span class="tag tag--ok">已核实</span></p>
-      <p><strong>怎么识别</strong>：删到只剩这一条时仍超窗；或者切点算法反复回到同一个位置。<strong>还能做什么</strong>：在进入上下文之前就截断或落盘（第 6 章），把原文留在文件里；把这条消息拆成多条再发；或者直接放弃这一轮，让用户决定。<span class="tag tag--guess">推断</span></p>
+      <p><strong>怎么识别</strong>：删到只剩这一条时仍超窗；或者切点算法反复回到同一个位置。<strong>还能做什么</strong>：在进入上下文之前就截断或落盘（第 13 章），把原文留在文件里；把这条消息拆成多条再发；或者直接放弃这一轮，让用户决定。<span class="tag tag--guess">推断</span></p>
 
       <p><strong>第三种：压缩本身不可用或不可完成。</strong>没有配置摘要模型；删到只剩一条后压缩请求仍超窗；摘要输出被 <code>maxTokens</code> 截断（隐藏推理吃掉了预算）；或者压缩锁没有释放，后续请求全被挡住。dsh 把“没有可用模型写摘要且还没有任何已路由请求”列为第四条限制；opencode v1 在压缩自身再溢出时直接 <code>stop</code>，没有第二次兜底。</p>
-      <p><strong>怎么识别</strong>：错误发生在压缩请求内部，而不是主请求；日志里有“summary”“max tokens”“busy/lock”一类字样。<strong>还能做什么</strong>：换一个便宜的摘要模型；给摘要请求单独设更大的输出预算；清理孤儿锁；或者退回“不压缩、只裁剪”的路径（第 7 章）。</p>
+      <p><strong>怎么识别</strong>：错误发生在压缩请求内部，而不是主请求；日志里有“summary”“max tokens”“busy/lock”一类字样。<strong>还能做什么</strong>：换一个便宜的摘要模型；给摘要请求单独设更大的输出预算；清理孤儿锁；或者退回“不压缩、只裁剪”的路径（第 14 章）。</p>
 
       <div class="callout callout--warn">
         <p class="callout__title">别把三种绝境混成一种</p>
@@ -439,7 +439,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗与事实卡片里。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
     </section>
 
     <!-- ========== 06 取舍 ========== -->
@@ -517,7 +517,7 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-14-1">
-          事实卡片把“本快照未见会话级连续失败熔断”标为【推断】：已检索 <code>compact.rs</code>、<code>session/mod.rs</code> 与 <code>async_compaction.rs</code> 的失败分支，只看到单次压缩内部的重试与终止条件，没有找到跨轮次的失败计数。缺少对宿主层（TUI / app-server）的穷举，因此不能排除外层自己实现了熔断。
+          “本快照未见会话级连续失败熔断”标【推断】：已检索 <code>compact.rs</code>、<code>session/mod.rs</code> 与 <code>async_compaction.rs</code> 的失败分支，只看到单次压缩内部的重试与终止条件，没有找到跨轮次的失败计数。缺少对宿主层（TUI / app-server）的穷举，因此不能排除外层自己实现了熔断。
           <a class="footnotes__back" href="#fnref-main-14-1">↩</a>
         </li>
         <li id="fn-main-14-2">
@@ -529,7 +529,7 @@
           <a class="footnotes__back" href="#fnref-main-14-3">↩</a>
         </li>
         <li id="fn-main-14-4">
-          “三种情况”是本教程对 Grok Build 第 14 节与 dsh 第 14 节限制清单的归纳，不是原文的三分法。已核对 dsh 的 <code>compaction-basic/README.md#L235-L246</code>（不可分割单元、前缀超窗、摘要截断）；Grok 卡片给出了“full-replace 不能拆单元、系统提示 + 工具逼近窗口时压缩无能为力”的描述，但其 §14 的 permalink 指向溢出判定与错误分类，没有一条直接对应这段限制清单。因此正文的“三种”按归纳表述，引用分别落在能落到源码或文档的部分。
+          “三种情况”是本教程对 Grok Build 与 dsh 的限制清单的归纳，不是原文的三分法。已核对 dsh 的 <code>compaction-basic/README.md#L235-L246</code>（不可分割单元、前缀超窗、摘要截断）；Grok 的资料给出了“full-replace 不能拆单元、系统提示 + 工具逼近窗口时压缩无能为力”的描述，但其 §14 的 permalink 指向溢出判定与错误分类，没有一条直接对应这段限制清单。因此正文的“三种”按归纳表述，引用分别落在能落到源码或文档的部分。
           <a class="footnotes__back" href="#fnref-main-14-4">↩</a>
         </li>
       </ol>

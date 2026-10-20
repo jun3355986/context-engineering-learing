@@ -96,7 +96,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -106,7 +106,7 @@
   <article class="prose" id="main-07">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 07 章</span></p>
+      <p class="kicker"><b>第 14 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>历史裁剪：不调用模型的减量</h1>
       <p class="lede">上下文里最占地方的往往不是你的话，而是十轮之前的工具结果。删掉它们不需要再问一次模型，也不该让模型“重新总结一遍”。这一章讲的是减量链里最便宜的一层：只改模型能看见的投影，不动磁盘上的原文。</p>
       <ul class="meta">
@@ -170,7 +170,7 @@
     <section id="codex">
       <p class="sec-no">02 · 主线：Codex 的缺位与 Grok 的三段式</p>
       <h2>Codex 无此能力，主例换成 Grok Build</h2>
-      <p><strong>Codex 没有“定期清空旧工具结果”的独立通道。</strong>它不调用模型的减量只有三类：写入历史时的输出截断（第 6 章）、压缩重试时删除最旧条目、以及规范化阶段的丢弃。全仓未找到类似 <code>clear old tool results</code> 的独立 pass。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L968-L982">history.rs#L968-L982</a> <span class="tag tag--ok">已核实</span><sup class="fn-ref"><a href="#fn-main-07-1" id="fnref-main-07-1">1</a></sup></p>
+      <p><strong>Codex 没有“定期清空旧工具结果”的独立通道。</strong>它不调用模型的减量只有三类：写入历史时的输出截断（第 13 章）、压缩重试时删除最旧条目、以及规范化阶段的丢弃。全仓未找到类似 <code>clear old tool results</code> 的独立 pass。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L968-L982">history.rs#L968-L982</a> <span class="tag tag--ok">已核实</span><sup class="fn-ref"><a href="#fn-main-07-1" id="fnref-main-07-1">1</a></sup></p>
       <p>这三类分别是什么：</p>
       <ul>
         <li><strong>写入时截断</strong>：只作用于单条输出，不处理“旧结果是否还有用”。</li>
@@ -206,7 +206,7 @@
       </div>
       <p class="age-note">图 07-1　Grok Build 的三段式。参数：<code>keep_last_n_turns = 3</code>、<code>soft_trim_threshold = 4000</code>、<code>soft_trim_head = 1500</code>、<code>soft_trim_tail = 1500</code>、<code>hard_clear_age_turns = 10</code>。</p>
 
-      <p><strong>软裁剪为什么是“头 1,500 + 尾 1,500”，而不是只留头。</strong>工具结果的信息分布通常是“开头有命令与摘要、结尾有结论与报错”。中间才是最长的过程。留两头等于用 3,000 字符买下“知道这是什么、结果如何”这两件事，把“具体每一行”留给回读。<strong>代价</strong>是中间可能藏着唯一一条警告，和第 6 章的中间截断一样，命中率取决于内容。</p>
+      <p><strong>软裁剪为什么是“头 1,500 + 尾 1,500”，而不是只留头。</strong>工具结果的信息分布通常是“开头有命令与摘要、结尾有结论与报错”。中间才是最长的过程。留两头等于用 3,000 字符买下“知道这是什么、结果如何”这两件事，把“具体每一行”留给回读。<strong>代价</strong>是中间可能藏着唯一一条警告，和第 13 章的中间截断一样，命中率取决于内容。</p>
       <p><strong>硬清空为什么到第 10 轮才做。</strong>因为轮龄是“重要性”的粗糙代理：越久远的工具结果，越可能已经被后续结果覆盖（同一个文件重读过、同一个测试重跑过）。10 轮是一个经验阈值：足够长，避免误删仍然有效的工作状态；足够短，避免上下文被“僵尸结果”长期占据。<strong>代价</strong>是它不判断内容，只看年龄——一个 9 轮前读的、至今没变的关键配置文件，会在第 3 轮被软裁剪、第 10 轮被清空，尽管它仍然有效。</p>
 
       <h3 id="grok-copy">2.3 只改副本：UI 与实发请求会对不上</h3>
@@ -498,15 +498,15 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-07-1">
-          事实卡片对 Codex 的“无定期裁剪”是<strong>否定式核实</strong>：全仓检索 <code>clear.*tool</code> 无命中，且只在压缩重试与规范化路径里找到删除逻辑。已检查 <code>context_manager/history.rs</code> 与 <code>rollout_reconstruction.rs</code>，未穷举插件与实验特性。结论按“核心无独立通道”表述，不排除扩展提供。
+          “Codex 无定期裁剪”是<strong>否定式核实</strong>：全仓检索 <code>clear.*tool</code> 无命中，且只在压缩重试与规范化路径里找到删除逻辑。已检查 <code>context_manager/history.rs</code> 与 <code>rollout_reconstruction.rs</code>，未穷举插件与实验特性。结论按“核心无独立通道”表述，不排除扩展提供。
           <a class="footnotes__back" href="#fnref-main-07-1">↩</a>
         </li>
         <li id="fn-main-07-2">
-          Grok Build 的事实卡片描述了 <code>prune_conversation</code> 的三段式与触发阈值，但没有提到缓存守卫；正文检查了同一段实现与配置默认值，未见 <code>cacheWarmSuffixTokens</code> 一类逻辑。结论按“本快照未见守卫”表述，不排除其他层（如网关）另有保护。
+          关于 Grok Build，现有材料描述了 <code>prune_conversation</code> 的三段式与触发阈值，但没有提到缓存守卫；正文检查了同一段实现与配置默认值，未见 <code>cacheWarmSuffixTokens</code> 一类逻辑。结论按“本快照未见守卫”表述，不排除其他层（如网关）另有保护。
           <a class="footnotes__back" href="#fnref-main-07-2">↩</a>
         </li>
         <li id="fn-main-07-3">
-          事实卡片把 dsh 的 pruner 时机标为【已核实】，但“因此可能完全不需要摘要”是文档里的设计意图，不是可观测的统计。正文按“设计目的”表述，不声称每次都能避免压缩。
+          dsh 的 pruner 时机标为【已核实】，但“因此可能完全不需要摘要”是文档里的设计意图，不是可观测的统计。正文按“设计目的”表述，不声称每次都能避免压缩。
           <a class="footnotes__back" href="#fnref-main-07-3">↩</a>
         </li>
         <li id="fn-main-07-4">

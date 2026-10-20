@@ -45,7 +45,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -55,12 +55,12 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第一部分 · 入门</b><span>·</span><span>第 04 章</span></p>
+      <p class="kicker"><b>第 4 章</b><span>·</span><span>第一部分 · 入门</span></p>
       <h1>窗口装得下，不等于模型用得好</h1>
       <p class="lede">容量是一回事，注意力是另一回事。塞满窗口，只是把问题从“放不下”换成了“找不到”。</p>
       <ul class="meta">
         <li>约 13 分钟</li>
-        <li>前置：intro-01</li>
+        <li>前置：第 1 章</li>
         <li>L1 → L2</li>
       </ul>
       <div class="learn">
@@ -95,7 +95,7 @@
       <p><strong>上下文窗口（context window）</strong>是名义容量：模型一次最多能接收多少 token。它是一个硬数字，写在模型规格里。</p>
       <p><strong>有效上下文（effective context）</strong>是另一回事：在这堆材料里，模型实际能稳定用上的那部分。它没有官方数字，只能靠任务表现去测。</p>
       <p>开会打比方：会议室能坐五十人，这是容量；但真正能形成结论的，往往是前十分钟的发言和最后拍板那几句。坐满五十人，不等于五十个人都参与了决策。</p>
-      <p>这也是为什么 <code>/context</code> 这类命令解决不了这个问题。它按类别列出系统提示、工具、规则、消息各占多少<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/analyzeContext.ts#L918-L1000">analyzeContext.ts#L918-L1000</a>），量的是容量；它不会告诉你“这段材料里有多少真的会被用上”。
+      <p>这也是为什么 <code>/context</code> 这类命令解决不了这个问题。它按类别列出系统提示、工具、规则、消息各占多少<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/analyzeContext.ts#L918-L1000">analyzeContext.ts#L918-L1000</a>），量的是容量；它不会告诉你“这段材料里有多少真的会被用上”。</p>
       <p>所以“我有 100 万 token 窗口”回答的是容量问题；它不回答“放进去 80 万，模型还能不能找到第 2 条约束”。</p>
     </section>
 
@@ -214,7 +214,7 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-intro-04-1">
-          事实卡片未收录 lost in the middle 的实验数据，本章按公开研究的定性结论表述。已核对的是：位置效应的方向（两头优于中段）在多组长上下文实验中反复出现；缺的是本次未重新抓取原论文，因此不引用具体降幅、模型名单与实验设置，图 1 的曲线只表示形状。若要写进评测章节，需补原始论文的表格数据。
+          本次未收录 lost in the middle 的实验数据，本章按公开研究的定性结论表述。已核对的是：位置效应的方向（两头优于中段）在多组长上下文实验中反复出现；缺的是本次未重新抓取原论文，因此不引用具体降幅、模型名单与实验设置，图 1 的曲线只表示形状。若要写进评测章节，需补原始论文的表格数据。
           <a class="footnotes__back" href="#fnref-intro-04-1">↩</a>
         </li>
         <li id="fn-intro-04-2">

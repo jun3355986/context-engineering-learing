@@ -109,7 +109,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -119,7 +119,7 @@
   <article class="prose" id="main-09">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 09 章</span></p>
+      <p class="kicker"><b>第 16 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>多模态上下文</h1>
       <p class="lede">一张截图能省掉三百字描述，也可能一次吃掉两万 token。图片进入上下文之后，既不会自己变小，也不会自己消失；它要么被移出并留下占位，要么被压缩成摘要，要么被渲染成另一种图片。这一章讲这三种出口，以及每种出口的代价。</p>
       <ul class="meta">
@@ -488,15 +488,15 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-09-1">
-          事实卡片把 dsh 的图片 offload 标为【推断】：结论来自 <code>packages/compaction/compaction-image-offload/README.md</code>、<code>docs/subsystems/compaction.md</code> 与 base 配置，未逐行核对实现；“选择跨 resume/replay 持久”来自文档描述。正文按“文档口径”表述，不影响“先移出最早图片、再以占位重试”的机制判断。
+          dsh 的图片 offload 标【推断】：结论来自 <code>packages/compaction/compaction-image-offload/README.md</code>、<code>docs/subsystems/compaction.md</code> 与 base 配置，未逐行核对实现；“选择跨 resume/replay 持久”来自文档描述。正文按“文档口径”表述，不影响“先移出最早图片、再以占位重试”的机制判断。
           <a class="footnotes__back" href="#fnref-main-09-1">↩</a>
         </li>
         <li id="fn-main-09-2">
-          事实卡片标【推断】：Claude Code 本快照未见“把历史图片复制到 <code>tool-results/</code>”的代码路径；已检查通用落盘函数（只处理文本块）与压缩剥图路径，未穷举所有工具实现。正文按“未见该路径”表述，不声称绝对不存在。
+          【推断】：Claude Code 本快照未见“把历史图片复制到 <code>tool-results/</code>”的代码路径；已检查通用落盘函数（只处理文本块）与压缩剥图路径，未穷举所有工具实现。正文按“未见该路径”表述，不声称绝对不存在。
           <a class="footnotes__back" href="#fnref-main-09-2">↩</a>
         </li>
         <li id="fn-main-09-3">
-          事实卡片标【推断】：opencode v1 的图片字节预算在源码中未找到，但“未找到”不等于“不存在”；已检索 <code>packages/opencode/src</code> 的媒体与压缩路径，未穷举 provider 适配层。表格按“未找到”写，不排除适配器内部有上限。
+          【推断】：opencode v1 的图片字节预算在源码中未找到，但“未找到”不等于“不存在”；已检索 <code>packages/opencode/src</code> 的媒体与压缩路径，未穷举 provider 适配层。表格按“未找到”写，不排除适配器内部有上限。
           <a class="footnotes__back" href="#fnref-main-09-3">↩</a>
         </li>
       </ol>

@@ -92,7 +92,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -102,7 +102,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>第二部分 · 主线</b><span>·</span><span>第 02 章</span></p>
+      <p class="kicker"><b>第 9 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>规则文件的发现与合并</h1>
       <p class="lede">你写了规则，Agent 也读了，但最后生效的可能不是你以为的那一条。规则文件从哪个目录开始找、往上找到哪里为止、几份文件怎么拼、超长时先砍谁——四步里任何一步不同，模型看到的就是另一段文字。</p>
       <ul class="meta">
@@ -162,10 +162,10 @@
 
       <h3 id="codex-diff">2.4 拼好之后，还要决定“这次发不发”</h3>
       <p>规则不是一次性塞进历史。Codex 把它作为 <code>WorldState</code> 的一个 section，逐轮计算快照并与上次比较：没变不发，变了发“替换通知 + 新全文”，删了发“不再适用”通知。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/agents_md.rs#L36-L80">world_state/agents_md.rs#L36-L80</a> <span class="tag tag--ok">已核实</span></p>
-      <p>这个设计把“规则内容”与“规则传输”分开了：内容是拼出来的文本，传输是按 section 的差分。好处是改了子目录规则，只需要发那一段；坏处是模型看到的规则是“一条条补丁”而不是一份完整文档，出现冲突时它未必能重建全貌。第 04 章会展开差分的细节。</p>
+      <p>这个设计把“规则内容”与“规则传输”分开了：内容是拼出来的文本，传输是按 section 的差分。好处是改了子目录规则，只需要发那一段；坏处是模型看到的规则是“一条条补丁”而不是一份完整文档，出现冲突时它未必能重建全貌。第 11 章会展开差分的细节。</p>
 
       <h3 id="codex-noinclude">2.5 Codex 没有文件内 include</h3>
-      <p>Codex 的规则文件就是纯文本，卡片里没有描述任何“在文件里引用另一个文件”的语法。想让多个文件生效，只能靠目录层级，不能靠 <code>@import</code>。这个选择让发现逻辑保持在“路径 + 字节”层面，代价是无法把一份共享规范放在仓库外再引用进来——你只能复制，或者用符号链接（而符号链接的行为不在本卡片的核实范围内）。</p>
+      <p>Codex 的规则文件就是纯文本，现有材料里没有描述任何“在文件里引用另一个文件”的语法。想让多个文件生效，只能靠目录层级，不能靠 <code>@import</code>。这个选择让发现逻辑保持在“路径 + 字节”层面，代价是无法把一份共享规范放在仓库外再引用进来——你只能复制，或者用符号链接（而符号链接的行为不在本章的核实范围内）。</p>
       <p>这一点很重要，因为下一节要讲的 include 深度、循环、递归展开，在 Codex 这里统统不存在。它的复杂度全部押在“层级 + 预算”上。</p>
     </section>
 
@@ -194,14 +194,14 @@
       <h3 id="merge-truncate">3.4 截断顺序：牺牲宽的还是牺牲窄的</h3>
       <p>Codex 从尾部截，等于牺牲窄的（更具体的）。DeepSeek Harness 反过来：超预算时<strong>先整份省略更宽的（更靠上的）文件，再截断最具体的那个文件</strong>。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/context/agent-instructions/README.md#L12">agent-instructions/README.md#L12</a> <span class="tag tag--guess">推断</span></p>
       <p>两种顺序对应两种价值观。Codex 假设“通则比例外重要”，宁可让子目录规则消失，也要保证团队底线在场。dsh 假设“越具体越相关”，宁可丢掉根目录的手册，也要保住当下目录的约定。没有哪种一定对：在规范统一的团队里，前者更安全；在 monorepo 里各模块差异很大时，后者更实用。</p>
-      <p>真正危险的是“没有告警的截断”。两家都没有在截断时主动告诉模型“这里少了一段”，模型会以为自己看到了全部规则。如果你的规则文件经常接近上限，正确做法不是调大预算，而是拆文件、删重复、把细节移到按需加载（第 03 章）。</p>
+      <p>真正危险的是“没有告警的截断”。两家都没有在截断时主动告诉模型“这里少了一段”，模型会以为自己看到了全部规则。如果你的规则文件经常接近上限，正确做法不是调大预算，而是拆文件、删重复、把细节移到按需加载（第 10 章）。</p>
     </section>
 
     <!-- ========== 04 ========== -->
     <section id="pathmap">
       <p class="sec-no">04 · 八工具查找路径</p>
       <h2>从全局到子目录，谁扫了哪几层</h2>
-      <p>下面这张图是本票的硬要求：把八个工具的查找范围横向排开，看它们分别扫了哪几层、哪一层是启动时全量加载、哪一层要等到“读到这个目录”才补进来。实心点＝启动时参与合并；空心虚线点＝触达时才加载；没有点＝不参与。</p>
+      <p>下面这张图把八个工具的查找范围横向排开，看它们分别扫了哪几层、哪一层是启动时全量加载、哪一层要等到“读到这个目录”才补进来。实心点＝启动时参与合并；空心虚线点＝触达时才加载；没有点＝不参与。</p>
 
       <figure class="fig" id="fig-rule-paths">
         <svg class="pathmap" viewBox="0 0 640 486" role="img" aria-labelledby="fig-path-title fig-path-desc">
@@ -314,7 +314,7 @@
           <circle class="pm-node--off" cx="206" cy="477" r="4"/>
           <text class="pm-note" x="216" y="480">不参与（未找到该层）</text>
         </svg>
-        <figcaption>图 02-1　八个工具的规则文件查找路径。按本页核对的卡片口径，Codex 是唯一完全不读全局层的一家——它只看项目根到 cwd。Claude Code 与 Grok Build 覆盖最广：前者从受管策略一直到 cwd，后者把 home 规则根和三套 <code>rules</code> 目录一起扫。pi、omp、dsh 都是“宽→窄”排序后拼接，差别只在去重方式。虚线点表示“读到更深目录时才补进来”，不是启动时加载。图中只画层级，不画文件数量与体积；示意，非真实比例。</figcaption>
+        <figcaption>图 02-1　八个工具的规则文件查找路径。按本页核对的口径，Codex 是唯一完全不读全局层的一家——它只看项目根到 cwd。Claude Code 与 Grok Build 覆盖最广：前者从受管策略一直到 cwd，后者把 home 规则根和三套 <code>rules</code> 目录一起扫。pi、omp、dsh 都是“宽→窄”排序后拼接，差别只在去重方式。虚线点表示“读到更深目录时才补进来”，不是启动时加载。图中只画层级，不画文件数量与体积；示意，非真实比例。</figcaption>
       </figure>
 
       <p>图里最值得记住的不是“谁扫得多”，而是<strong>扫描范围与合并顺序是两件事</strong>。扫描范围决定“哪些文件有机会进来”，合并顺序决定“进来之后谁最后说话”。pi 用 <code>unshift</code> 收集祖先链，所以离 cwd 越近的越靠后；omp 按 <code>depth</code> 排序，远的先、近的后；Grok Build 也是 home 先、项目根后、cwd 最后。三家扫描范围不同，但“近者后置”的结论一致。</p>
@@ -468,7 +468,7 @@
 
       <h3>取舍四：文件内 include，还是按需读取</h3>
       <p>Claude Code 选择在加载时递归展开 <code>@path</code>，深度 5 层。好处是模型一次就能看到全部内容，不需要额外工具调用；坏处是体积不可控，循环只能靠深度兜住。pi、omp 选择把路径留在提示词里，让模型用 <code>read</code> 或 <code>rule://</code> 去取：体积可控，但多一次往返，而且模型可能不去取。</p>
-      <p>这条取舍和第 03 章的“渐进披露”是同一条线：你到底相信“一次给全”，还是相信“模型会按需来拿”。规则文件通常很短，所以展开派居多；但一旦允许 include，长度就不再由文件数决定，而是由引用图决定。</p>
+      <p>这条取舍和第 10 章的“渐进披露”是同一条线：你到底相信“一次给全”，还是相信“模型会按需来拿”。规则文件通常很短，所以展开派居多；但一旦允许 include，长度就不再由文件数决定，而是由引用图决定。</p>
 
       <h3>取舍五：启动快照，还是运行时热更新</h3>
       <p>Codex 每轮算 <code>WorldState</code> 快照、只发差异；opencode v2 用文件 watcher，100 ms 防抖后重扫并发出指令 diff；opencode v1 每步从磁盘重读、整段重拼；dsh 不在启动后持续监听，只有 <code>read</code>/<code>write</code>/<code>edit</code> 触达更深目录时才补进来。</p>
@@ -521,15 +521,15 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-02-1">
-          事实卡片标【待核实】：<code>claudemd.ts</code> 里能确认 <code>MAX_INCLUDE_DEPTH = 5</code> 与递归展开，但通读该文件的 include 分支后没有找到独立的 visited 集合或环检测。缺的是“递归入口是否在别处做过路径去重”的证据。因此正文只写“深度上限是已知护栏”，不断言“存在环检测”。
+          【待核实】：<code>claudemd.ts</code> 里能确认 <code>MAX_INCLUDE_DEPTH = 5</code> 与递归展开，但通读该文件的 include 分支后没有找到独立的 visited 集合或环检测。缺的是“递归入口是否在别处做过路径去重”的证据。因此正文只写“深度上限是已知护栏”，不断言“存在环检测”。
           <a class="footnotes__back" href="#fnref-main-02-1">↩</a>
         </li>
         <li id="fn-main-02-2">
-          多份卡片把“无体积上限”标为【待核实】或【推断】：pi、omp、opencode v1/v2 都是“通读加载路径后未发现截断”，属于否定式证据，只能证明“本快照没找到”，不能证明“永远不存在”。Grok Build 是例外，用户手册明确写了 no character cap and no truncation，按【已核实】处理。表中据此分列两种标签。
+          多份资料把“无体积上限”标为【待核实】或【推断】：pi、omp、opencode v1/v2 都是“通读加载路径后未发现截断”，属于否定式证据，只能证明“本快照没找到”，不能证明“永远不存在”。Grok Build 是例外，用户手册明确写了 no character cap and no truncation，按【已核实】处理。表中据此分列两种标签。
           <a class="footnotes__back" href="#fnref-main-02-2">↩</a>
         </li>
         <li id="fn-main-02-3">
-          事实卡片标【待核实】：pi、omp 的“单文件无字节上限”同样是否定式结论。已检查 pi 的 <code>resource-loader.ts</code> 加载路径与 <code>system-prompt.ts</code> 的 <code>renderProjectContext</code>、omp 的 <code>discovery/</code> 六个 provider 与 <code>rule-buckets.ts</code>，均未见按字节或行数截断。缺的是运行期是否由上层再包一层限制。
+          【待核实】：pi、omp 的“单文件无字节上限”同样是否定式结论。已检查 pi 的 <code>resource-loader.ts</code> 加载路径与 <code>system-prompt.ts</code> 的 <code>renderProjectContext</code>、omp 的 <code>discovery/</code> 六个 provider 与 <code>rule-buckets.ts</code>，均未见按字节或行数截断。缺的是运行期是否由上层再包一层限制。
           <a class="footnotes__back" href="#fnref-main-02-3">↩</a>
         </li>
       </ol>
@@ -657,7 +657,7 @@
           <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/instruction.ts#L179-L221">instruction.ts#L179-L221</a>（就近规则）
         </dd>
       </dl>
-      <p class="modal__note">就近规则注入的是<strong>工具输出</strong>，不是系统提示；这意味着它只在那一次读取之后可见，后续是否保留取决于历史裁剪。第 03 章会把它和 v2 的 synthetic 消息做法对比。</p>
+      <p class="modal__note">就近规则注入的是<strong>工具输出</strong>，不是系统提示；这意味着它只在那一次读取之后可见，后续是否保留取决于历史裁剪。第 10 章会把它和 v2 的 synthetic 消息做法对比。</p>
     </div>
   </div>
 </div>

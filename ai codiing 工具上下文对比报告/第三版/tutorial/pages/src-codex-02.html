@@ -75,7 +75,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 版本 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -85,7 +85,7 @@
   <article class="prose" id="src-codex-02">
 
     <header class="page-head">
-      <p class="kicker"><b>第四部分 · 源码解读</b><span>·</span><span>Codex CLI</span><span>·</span><span>第 02 节</span></p>
+      <p class="kicker"><b>第 30 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Codex CLI</span></p>
       <h1>请求四块与增量工具</h1>
       <p class="lede">每次采样前，Codex 都要拼一个 <code>Prompt</code>。它看起来只有四块，但真正发到线上的形状可能只有两块，甚至一块。这一节读 <code>build_prompt</code>，看清「四块」是逻辑分类，不是 JSON 字段；也看清增量工具到底省掉了什么。</p>
       <ul class="meta">
@@ -200,8 +200,8 @@
       <p class="small muted">补充证据：<code>ResponsesApiRequest</code> 的字段表见 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/codex-api/src/common.rs#L278-L304">codex-api/src/common.rs#L278-L304</a>，里面没有 <code>instructions</code> 字段；岗位说明书确实走 <code>input</code>。<code>has_tool_declarations()</code> 只认 <code>ResponseItem::AdditionalTools</code> 的证据在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L626-L629">history.rs#L626-L629</a>；结构化输出进入 <code>text.format</code> 的证据在 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/codex-api/src/common.rs#L392-L410">common.rs#L392-L410</a>。</p>
 
       <div class="callout callout--warn">
-        <p class="callout__title">【订正】事实卡片的三处表述</p>
-        <p>一、卡片说「<code>base_instructions</code>（<code>instructions</code>）」，暗示它对应请求的 <code>instructions</code> 字段；本提交的 <code>ResponsesApiRequest</code> 没有这个字段（common.rs#L278-L304），<code>base_instructions</code> 被包成开发者消息插进 <code>input</code>（client.rs#L996-L1005）。二、卡片说「<code>incremental_tools=true</code> 时把 <code>tools</code> 置空、<code>base_instructions</code> 置空文本」，方向正确，但漏了前置条件：只有 <code>use_responses_lite</code> 的模型才可能为真（world_state.rs#L48-L50）。三、卡片把「历史规范化」写成四项不变量，源码注释只列了三条，第三项同时包含图片与音频；函数体确实是四次调用，按四次讲更准确。</p>
+        <p class="callout__title">【注意】三处容易转述错的表述</p>
+        <p>一、常见说法把 <code>base_instructions</code> 与 <code>instructions</code> 当成同一个字段，暗示它对应请求的 <code>instructions</code>；本提交的 <code>ResponsesApiRequest</code> 没有这个字段（common.rs#L278-L304），<code>base_instructions</code> 被包成开发者消息插进 <code>input</code>（client.rs#L996-L1005）。二、也有说法认为「<code>incremental_tools=true</code> 时把 <code>tools</code> 置空、<code>base_instructions</code> 置空文本」；方向对，但漏了前置条件：只有 <code>use_responses_lite</code> 的模型才可能为真（world_state.rs#L48-L50）。三、也有资料把「历史规范化」写成四项不变量，源码注释只列了三条，第三项同时包含图片与音频；函数体确实是四次调用，按四次讲更准确。</p>
       </div>
     </section>
 
@@ -494,7 +494,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具 <code>research/</code> 事实卡片第 1 节（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径）。</p>
+      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径）。</p>
 
       <p>第一个对照是<b>「系统提示」是否是一个真实对象</b>。Codex 与 dsh 都把它变成历史里的一条消息/事件，因此它可以被重放、被替换、被增量更新；pi 与 opencode 则把它拼成字符串，字符串本身不参与历史，只在每次请求时重新生成。前者的好处是恢复与压缩有统一入口，坏处是历史里多了一条需要特殊识别的消息；后者实现简单，但每次改动都要重算整段。</p>
 
@@ -548,7 +548,7 @@
       </div>
     </section>
 
-    <p class="footer-note">下一节：<a href="src-codex-03.html">Codex · 规则差分：只发变化</a>。</p>
+    <p class="footer-note">下一章：<a href="src-codex-03.html">Codex · 规则差分：只发变化</a>。</p>
 
   </article>
 </main>
