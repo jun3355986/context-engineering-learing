@@ -176,7 +176,7 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
         <figcaption>图 2　示意，非真实比例。蓝线是不封顶的增长：中途压缩一次，掉一截，随后继续爬升；绿虚线是从第一轮就给工具输出封顶的对照，斜率明显更缓。两条阈值线分别是 90% 与 95%。</figcaption>
       </figure>
 
-      <p>两条线的数字来自真实工具：Codex 的整段硬线取窗口的 95%，自动压缩软线取 90%<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L393-L395">openai_models.rs#L393-L395</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/context_window.rs#L60-L110">context_window.rs#L60-L110</a>）。Claude Code 的算法不同：先算有效窗口（模型窗口 − <code>min(模型最大输出, 20_000)</code>），再减 13,000 作为自动压缩线<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L28-L49">autoCompact.ts#L28-L49</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">#L62-L91</a>）。</p>
+      <p>两条线的数字来自真实 agent：Codex 的整段硬线取窗口的 95%，自动压缩软线取 90%<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L393-L395">openai_models.rs#L393-L395</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/context_window.rs#L60-L110">context_window.rs#L60-L110</a>）。Claude Code 的算法不同：先算有效窗口（模型窗口 − <code>min(模型最大输出, 20_000)</code>），再减 13,000 作为自动压缩线<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L28-L49">autoCompact.ts#L28-L49</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">#L62-L91</a>）。</p>
       <p>两条线在同一个地方刹车：<strong>不是等装满，而是提前留出一截。</strong>因为压缩本身也要发请求、也要占地方，真到 100% 才动，连压缩都塞不进去。</p>
 
       <div class="hf hf--think">
@@ -192,7 +192,7 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
       <p class="sec-no">05 · 循环没有天然的终点</p>
       <h2>“做完了”是模型说的，不是循环说的</h2>
       <p>循环什么时候停？通常是模型认为任务完成、不再调用工具；或者外部设了步数、预算、时间上限。也就是说，<strong>结束条件是行为判断，不是容量判断</strong>。模型可以在上下文快满时仍然觉得“再读一个文件就好”。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-intro-03-1" id="fnref-intro-03-1">1</a></sup></p>
-      <p>所以减量不是“出问题再补”，而是循环设计的一部分。减量有三种代价，从低到高：</p>
+      <p>所以减量得写进循环设计里，不能等出了问题再补。减量有三种代价，从低到高：</p>
       <ul>
         <li><strong>控制单次工具输出</strong>：读进来时就截断，或把全文落盘、只留路径和预览。</li>
         <li><strong>裁剪历史</strong>：把旧工具结果换成占位符，不调用模型，便宜但不可逆（在活历史里）。</li>

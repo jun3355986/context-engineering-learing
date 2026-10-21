@@ -112,7 +112,7 @@ window.TOC = {
       chapters: [
         { id: "appendix-glossary", label: "附录 A", title: "术语表（中英对照）", file: "pages/appendix-glossary.html", status: "done" },
         { id: "appendix-params", label: "附录 B", title: "参数速查表", file: "pages/appendix-params.html", status: "done" },
-        { id: "appendix-matrix", label: "附录 C", title: "16 类 × 8 工具总表", file: "pages/appendix-matrix.html", status: "done" },
+        { id: "appendix-matrix", label: "附录 C", title: "16 类 × 8 agent总表", file: "pages/appendix-matrix.html", status: "done" },
         { id: "appendix-reading", label: "附录 D", title: "推荐阅读", file: "pages/appendix-reading.html", status: "done" },
         { id: "appendix-video", label: "附录 E", title: "视频分镜脚本", file: "pages/appendix-video.html", status: "done" },
       ]

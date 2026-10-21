@@ -203,7 +203,7 @@
 
       <div class="callout callout--warn">
         <p class="callout__title">【注意】<code>firstKeptEntryId</code> 可能指向压缩条目自己</p>
-        <p>写入时写的是 <code>firstKeptEntryId ?? id</code>：如果准备阶段没给出保留起点，指针就指回新追加的这条压缩条目。此时投影结果为「压缩条目自己 + 压缩之后的条目」，保留段为空。这不是 bug，而是「所有内容都进了摘要」的合法表达。读代码时不要把 <code>?? id</code> 当成防御性兜底，它改变的是语义。</p>
+        <p>写入时写的是 <code>firstKeptEntryId ?? id</code>：如果准备阶段没给出保留起点，指针就指回新追加的这条压缩条目。此时投影结果为「压缩条目自己 + 压缩之后的条目」，保留段为空。这是「所有内容都进了摘要」的合法表达。读代码时不要把 <code>?? id</code> 当成防御性兜底，它改变的是语义。</p>
       </div>
     </section>
 
@@ -447,17 +447,17 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>四种「历史变短」的实现，差别在谁记住边界</h2>
 
-      <p>「压缩后模型只看到一部分」是所有工具的共同结果，但边界的记法完全不同：pi 记一个 id，opencode v1 记一个 id 然后<b>重排数组</b>，opencode v2 记一个 seq 然后<b>取连续段</b>，omp 在 pi 的骨架上加了 <code>/clear</code> 边界。</p>
+      <p>「压缩后模型只看到一部分」是所有 agent 的共同结果，但边界的记法完全不同：pi 记一个 id，opencode v1 记一个 id 然后<b>重排数组</b>，opencode v2 记一个 seq 然后<b>取连续段</b>，omp 在 pi 的骨架上加了 <code>/clear</code> 边界。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">边界记法</th>
               <th scope="col">读取方式</th>
               <th scope="col">旧原文</th>

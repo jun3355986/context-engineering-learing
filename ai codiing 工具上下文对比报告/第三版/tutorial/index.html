@@ -56,10 +56,10 @@
     <header class="page-head">
       <p class="kicker"><b>导读</b><span>·</span><span>2026-10-18</span></p>
       <h1>先看地图，再决定怎么读</h1>
-      <p class="lede">这套教程讲一件事：AI 编程工具的「上下文」是怎么被装进去、用掉、压缩和隔离的。读完入门部分，你能看懂工具在做什么；读完进阶部分，你能为不同场景设计策略，并说清代价。</p>
+      <p class="lede">这套教程讲一件事：编码智能体（coding agent）的「上下文」是怎么被装进去、用掉、压缩和隔离的。所谓编码智能体，就是能读写代码、执行命令、自己迭代的那类 AI 编程工具；书里也简称 agent。读完入门部分，你能看懂 agent 在做什么；读完进阶部分，你能为不同场景设计策略，并说清代价。</p>
       <ul class="meta">
         <li>16 类上下文管理能力</li>
-        <li>8 个工具</li>
+        <li>8 个编码智能体</li>
         <li>L1–L5 五级能力</li>
         <li>54 章正文 + 5 篇附录</li>
       </ul>
@@ -67,7 +67,7 @@
         <h2>读完你能做到</h2>
         <ol>
           <li>说清一次请求里到底装了哪些东西，各自占多少。</li>
-          <li>判断一个工具在压缩、裁剪、隔离上做了什么取舍。</li>
+          <li>判断一个 agent 在压缩、裁剪、隔离上做了什么取舍。</li>
           <li>为自己的项目写一套上下文策略，并用评测数据证明它更好。</li>
         </ol>
       </div>
@@ -78,7 +78,7 @@
     <section id="map">
       <p class="sec-no">01 · 教程地图</p>
       <h2>五个部分，一条从「会用」到「能评估」的路线</h2>
-      <p>整套教程按能力层级组织，而不是按工具逐个介绍。每个工具的做法都放在同一类问题下对比，这样你能看到「同一个麻烦，各家怎么解」。</p>
+      <p>整套教程按能力层级组织，而不是按产品逐个介绍。每个 agent 的做法都放在同一类问题下对比，这样你能看到「同一个麻烦，各家怎么解」。</p>
 
       <div class="map-grid">
         <div class="map-card">
@@ -92,7 +92,7 @@
           <p class="map-card__part">PART 2</p>
           <h3>主线</h3>
           <p class="map-card__count">16 章 · L2→L3</p>
-          <p>16 类能力逐类拆开：Codex 主线讲解、8 个工具弹窗、对比表、设计取舍、小测验。</p>
+          <p>16 类能力逐类拆开：Codex 主线讲解、8 个agent 弹窗、对比表、设计取舍、小测验。</p>
           <p class="map-card__sample">规则文件 · 按需加载 · 压缩 · 子代理隔离 · 会话时间线</p>
         </div>
         <div class="map-card">
@@ -105,7 +105,7 @@
         <div class="map-card">
           <p class="map-card__part">PART 4</p>
           <h3>源码</h3>
-          <p class="map-card__count">26 章 · 8 个工具</p>
+          <p class="map-card__count">26 章 · 8 个 agent</p>
           <p>每段解读固定到提交和行号，只摘关键片段，逐行加中文注释。</p>
           <p class="map-card__sample">Codex CLI · Claude Code · pi · opencode · Grok Build · dsh</p>
         </div>
@@ -114,7 +114,7 @@
           <h3>附录</h3>
           <p class="map-card__count">5 篇 · 速查</p>
           <p>术语、参数、16 类总表、推荐阅读，以及视频分镜脚本。</p>
-          <p class="map-card__sample">术语表 · 参数速查 · 16 类 × 8 工具总表 · 推荐阅读</p>
+          <p class="map-card__sample">术语表 · 参数速查 · 16 类 × 8 agent 总表 · 推荐阅读</p>
         </div>
       </div>
     </section>
@@ -184,7 +184,7 @@
         </div>
         <div class="path-card">
           <h3>当手册查：带着问题跳读</h3>
-          <p>用顶部搜索找章节，或直接翻附录的参数速查表和 16 类总表。查到某个工具的做法后，记得看它旁边的可信度标签。</p>
+          <p>用顶部搜索找章节，或直接翻附录的参数速查表和 16 类总表。查到某个 agent 的做法后，记得看它旁边的可信度标签。</p>
         </div>
       </div>
 
@@ -197,14 +197,14 @@
     <section id="versions">
       <p class="sec-no">04 · 版本表</p>
       <h2>本教程分析的源码快照</h2>
-      <p>所有关于工具行为的结论，都对应下表中的某一个快照。opencode v2 目前是 beta，结论只代表 <code>v2.0.29</code> 这个标签。</p>
+      <p>所有关于 agent 行为的结论，都对应下表中的某一个快照。opencode v2 目前是 beta，结论只代表 <code>v2.0.29</code> 这个标签。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">版本 / 提交号</th>
               <th scope="col">快照日期</th>
               <th scope="col">依据</th>
@@ -279,7 +279,7 @@
     <section id="legend">
       <p class="sec-no">06 · 符号约定</p>
       <h2>看到这些标签，知道该信几分</h2>
-      <p>教程里每个关于工具行为的说法都会带来源。标签不是装饰，它告诉你这条结论的证据强度。</p>
+      <p>教程里每个关于 agent 行为的说法都会带来源。标签不是装饰，它告诉你这条结论的证据强度。</p>
 
       <div class="tag-row">
         <span class="tag tag--ok">已核实</span>

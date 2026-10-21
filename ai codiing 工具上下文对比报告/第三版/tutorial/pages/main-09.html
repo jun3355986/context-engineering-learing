@@ -131,7 +131,7 @@
         <h2>读完你能做到</h2>
                 <ol>
           <li>画出图片在上下文里的生命周期：进入、保留、驱逐、占位，并说出每一站的判定条件。</li>
-          <li>比较按张、按字节、按像素三种计价口径，估算同一组截图在不同工具里的占用。</li>
+          <li>比较按张、按字节、按像素三种计价口径，估算同一组截图在不同 agent 里的占用。</li>
           <li>判断一次截图密集的调试该用“保留原图”“压缩前剥图”还是“历史转图”，并说出代价。</li>
         </ol>
       </div>
@@ -165,7 +165,7 @@
       <p>“占位”与“删除”的区别在这里体现得很清楚：删除会让模型以为用户从没发过图；占位告诉它“有图，但你看不见”。后者能阻止模型编造，也能让它主动说“请把图里的文字贴出来”。<strong>代价</strong>是占位文本仍然占一点空间，且模型可能反复请求“再发一次”。</p>
 
       <h3 id="codex-audio">2.3 音频单独计价，不按字节折算</h3>
-      <p>音频在截断预算中单独估算 token，不按字节折算。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L160-L175">output-truncation/lib.rs#L160-L175</a> <span class="tag tag--ok">已核实</span> 这条看似细枝末节，其实很重要：音频的 token 密度与字节数几乎无关（采样率、编码、时长共同决定），按字节折算会得到完全错误的预算。</p>
+      <p>音频在截断预算中单独估算 token，不按字节折算。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L160-L175">output-truncation/lib.rs#L160-L175</a> <span class="tag tag--ok">已核实</span> 这一条容易被当成细节，但它决定预算怎么算：音频的 token 密度与字节数几乎无关（采样率、编码、时长共同决定），按字节折算会得到完全错误的预算。</p>
       <p>它也给图片提了个醒：<strong>不同模态要用不同的计价函数</strong>。用一个统一的“字节 ÷ 4”处理文本、图片、音频，是很多实现出错的起点。</p>
 
       <h3 id="codex-budget">2.4 压缩时给图片留预算</h3>
@@ -289,9 +289,9 @@
     </section>
 
     <section id="tools">
-      <p class="sec-no">05 · 七个工具</p>
+      <p class="sec-no">05 · 七个编码智能体</p>
       <h2>七种预算，七种占位</h2>
-      <p>Codex 的直通与占位已在主线拆过。下面七个工具各有一个弹窗，重点看四个数：<strong>每张图怎么计价、体积上限是多少、什么时候驱逐、驱逐后留下什么话</strong>。这四个数决定了一次截图密集的会话能撑多久。</p>
+      <p>Codex 的直通与占位已在主线拆过。下面七个 agent 各有一个弹窗，重点看四个数：<strong>每张图怎么计价、体积上限是多少、什么时候驱逐、驱逐后留下什么话</strong>。这四个数决定了一次截图密集的会话能撑多久。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -326,7 +326,7 @@
     </section>
 
     <section id="matrix">
-      <p class="sec-no">06 · 八工具对比</p>
+      <p class="sec-no">06 · 八个编码智能体对比</p>
       <h2>把计价、上限与出口排成一张表</h2>
       <p>先看“计价”一列：它决定同一张图在两家为什么差一个数量级。再看“体积上限”与“驱逐”：它们决定图片能留多久。最后两列是出口——压缩前怎么处理、有没有历史转图或附件转文字。</p>
 
@@ -335,7 +335,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">计价</th>
               <th scope="col">体积上限</th>
               <th scope="col">驱逐策略</th>
@@ -507,14 +507,14 @@
   </article>
 </main>
 
-<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+<!-- ===== agent 弹窗（7 个；Codex 已在正文） ===== -->
 
 <div class="modal" id="modal-claude-code" hidden>
   <div class="modal__backdrop" data-close></div>
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -543,7 +543,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -571,7 +571,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -602,7 +602,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -631,7 +631,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -660,7 +660,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -689,7 +689,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

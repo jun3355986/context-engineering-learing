@@ -239,7 +239,7 @@
       <h3 id="codex-order">2.5 顺序：稳定在前，变化在后</h3>
       <p>把四块排成一条序列，Codex 的顺序是：<strong>instructions → tools → input（从旧到新）</strong>。这不是审美选择，而是缓存协议的要求：prompt cache 以“前缀完全相同”为命中条件，任何靠前的字节变化，都会让它后面的全部内容重新计费。</p>
       <p>所以“把规则文件放在系统提示里”和“把规则文件作为一条消息前插”不是等价方案。前者只要规则改一个字，整个前缀作废；后者只影响插入点之后的内容，而插入点通常在历史头部，仍然很贵，但至少工具表还在。真正便宜的位置是<strong>尾部</strong>：把易变信息追加在本轮输入之前，前面的东西一个字都不动。</p>
-      <p>这也是为什么几乎所有工具都会把“当前时间”做成一条独立提醒，而不是写进系统提示的第一段。Grok Build 甚至宁可加一条一次性的跨午夜提醒，也不肯改写启动时缓存的 <code>&lt;user_info&gt;</code> 日期。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs#L507-L522">reminders.rs#L507-L522</a> <span class="tag tag--ok">已核实</span> 第 11 章会专门讲这类注入。</p>
+      <p>这也是为什么几乎所有 agent 都会把“当前时间”做成一条独立提醒，而不是写进系统提示的第一段。Grok Build 甚至宁可加一条一次性的跨午夜提醒，也不肯改写启动时缓存的 <code>&lt;user_info&gt;</code> 日期。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs#L507-L522">reminders.rs#L507-L522</a> <span class="tag tag--ok">已核实</span> 第 11 章会专门讲这类注入。</p>
 
       <div class="hf hf--qa">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
@@ -265,9 +265,9 @@
 
     <!-- ========== 03 ========== -->
     <section id="tools">
-      <p class="sec-no">03 · 七个工具</p>
+      <p class="sec-no">03 · 七个编码智能体</p>
       <h2>同一张底图，七种画法</h2>
-      <p>下面七个工具各有一个弹窗。读的时候盯住三件事：系统提示是<strong>一整块</strong>还是<strong>具名 section</strong>；历史是<strong>内存里追加</strong>还是<strong>每步从存储投影</strong>；工具定义是<strong>全量下发</strong>还是<strong>有增量/延迟</strong>。这三件事决定了它们后面所有章节的行为。</p>
+      <p>下面七个 agent 各有一个弹窗。读的时候盯住三件事：系统提示是<strong>一整块</strong>还是<strong>具名 section</strong>；历史是<strong>内存里追加</strong>还是<strong>每步从存储投影</strong>；工具定义是<strong>全量下发</strong>还是<strong>有增量/延迟</strong>。这三件事决定了它们后面所有章节的行为。</p>
       <p>一个提醒：Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本；它与官方文档不一致的地方，弹窗里会并列写。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
@@ -304,7 +304,7 @@
 
     <!-- ========== 04 ========== -->
     <section id="matrix">
-      <p class="sec-no">04 · 八工具对比</p>
+      <p class="sec-no">04 · 八个编码智能体对比</p>
       <h2>把“装什么”排成一张表</h2>
       <p>看表时先看“系统提示形态”：它决定了你改一句话的代价。再看“历史来源”：内存追加的实现便宜、快，但恢复和分叉要另做一套；每步投影的实现慢一点，却天然支持回退和多分支。最后看“增量与复用”，那是各家对缓存做的功课。</p>
 
@@ -313,7 +313,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">系统提示形态</th>
               <th scope="col">工具定义</th>
               <th scope="col">历史从哪来</th>
@@ -411,7 +411,7 @@
       <h3>取舍三：工具定义全量下发，还是增量/延迟</h3>
       <p>全量下发（opencode v1、dsh）最可预测：模型每一轮都能看到完整工具表，不存在“工具忽然不见”。代价是长会话里同一份 schema 被重复发送几百次；工具越多，前缀越长，能留给对话的空间越小。</p>
       <p>增量（Codex <code>incremental_tools</code>）和延迟（Claude Code 的 <code>tst</code> 模式、Codex 的 <code>supports_search_tool</code>、Grok Build 的 <code>search_tool</code>）都在减少“每轮都发”的体积，但机制不同：增量是“发过一次就不再发”，延迟是“先只发名字，用到再取”。前者假设历史可靠，后者假设模型知道自己需要什么。</p>
-      <p><strong>代价</strong>：增量把正确性押在历史上，裁剪、压缩、回退都可能让工具消失；延迟把正确性押在检索上，模型可能搜不到、或者根本不搜就声称自己没有这个能力。全量则把成本押在 token 上——这是唯一一种“贵但不会错”的方案，也是大多数工具在工具数量少时的默认选择。</p>
+      <p><strong>代价</strong>：增量把正确性押在历史上，裁剪、压缩、回退都可能让工具消失；延迟把正确性押在检索上，模型可能搜不到、或者根本不搜就声称自己没有这个能力。全量则把成本押在 token 上——这是唯一一种“贵但不会错”的方案，也是大多数 agent 在工具数量少时的默认选择。</p>
 
       <h3>取舍四：历史在内存追加，还是每步从存储投影</h3>
       <p>追加派（Codex 的 <code>ContextManager</code>）快：一次写入，之后只读。投影派（pi 的会话树、opencode v1 的 SQLite、omp 的叶子回溯）慢：每一步都要重新计算“模型现在应该看到什么”，但天然支持回退、分叉、压缩后重建。</p>
@@ -483,14 +483,14 @@
   </article>
 </main>
 
-<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+<!-- ===== agent 弹窗（7 个；Codex 已在正文） ===== -->
 
 <div class="modal" id="modal-claude-code" hidden>
   <div class="modal__backdrop" data-close></div>
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -520,7 +520,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -550,7 +550,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -579,7 +579,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -609,7 +609,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -639,7 +639,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -668,7 +668,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

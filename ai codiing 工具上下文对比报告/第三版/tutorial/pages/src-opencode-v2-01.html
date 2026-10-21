@@ -472,7 +472,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>v1 看实测，v2 看锚点，pi 看尾部</h2>
 
       <p>触发判定是三家里差别最大的地方。v1 完全信任上一轮的 <code>tokens</code>，pi 用「最近一次 assistant usage + 之后累加」，v2 则要求「锚点必须晚于检查点」。三种做法对应三种失败模式。</p>
@@ -482,7 +482,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">触发依据</th>
               <th scope="col">预算</th>
               <th scope="col">入口数</th>

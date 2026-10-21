@@ -558,7 +558,7 @@
             <p class="cd-status" id="cd-status" role="status" aria-live="polite"></p>
           </div>
         </div>
-        <p class="demo__note">教学模型，不是任何工具的真实摘要算法。12 条事实与衰减表都是手写示意；“字数”是渲染文本的字符数，不是 token 实测。硬约束只判保留或丢失，不判变形。后期摘要可能更短，因为事实被丢掉了，不代表更安全。</p>
+        <p class="demo__note">教学模型，不是任何 agent 的真实摘要算法。12 条事实与衰减表都是手写示意；“字数”是渲染文本的字符数，不是 token 实测。硬约束只判保留或丢失，不判变形。后期摘要可能更短，因为事实被丢掉了，不代表更安全。</p>
       </div>
 
       <h3>三个读数</h3>
@@ -591,7 +591,7 @@
       <h3>修复（三档）</h3>
       <p><strong>改配置。</strong>打开成对切点。pi 的 <code>findCutPoint</code> 明确规定“绝不切在 toolResult”，切在带工具调用的 assistant 时，其结果会随后保留；DeepSeek Harness 的 <code>selectCompactableRange</code> 会从预算位置往前挪到工具配对平衡处。<a href="main-08.html#pairing">第 15 章第 4 节</a></p>
       <p><strong>改流程。</strong>压缩前做一次 dry-run：列出切点两侧的消息类型，确认没有孤立的调用或结果。把这一步写进发版检查，和“跑测试”放在同一张清单上。</p>
-      <p><strong>改代码。</strong>在两个位置兜底：切点选择时，如果落在结果之前，就前移到调用之前；历史重建后，如果发现孤立结果，就删除它或补一个占位调用。前移会多保留一对结果，后移会丢掉最近的工作状态；多数工具选前移。</p>
+      <p><strong>改代码。</strong>在两个位置兜底：切点选择时，如果落在结果之前，就前移到调用之前；历史重建后，如果发现孤立结果，就删除它或补一个占位调用。前移会多保留一对结果，后移会丢掉最近的工作状态；多数 agent 选前移。</p>
 
       <h3>怎么预防</h3>
       <p>设指标 <code>orphan_tool_results</code> = 压缩后历史中“没有配对调用的结果”数量。目标恒为 0；大于 0 就拒绝提交这次压缩。再加一条 <code>pairing_repair_count</code>，记录切点被修复的次数；它持续上升，说明预算或切点算法需要调整。</p>
@@ -613,7 +613,7 @@
         <li><code>cached_input_tokens ÷ 总输入 token</code> 从 78% 掉到 12%。</li>
         <li>每轮首 token 延迟明显上升，长会话更明显。</li>
         <li>成本曲线和“压缩次数”高度同步：压得越勤，账单越高。</li>
-        <li>删掉很多工具输出后，token 总量下降了，账单却没降。</li>
+        <li>删掉很多 agent 输出后，token 总量下降了，账单却没降。</li>
       </ul>
 
       <h3>根因</h3>
@@ -787,7 +787,7 @@
           <a class="footnotes__back" href="#fnref-adv-02-2">↩</a>
         </li>
         <li id="fn-adv-02-3">
-          本条为【推断】。已核对 Claude Code 的 <code>fileHistoryRewind</code> 与快照上限、Codex 的检查点与后缀回放；没有逐行阅读 <code>/rewind</code> 的选择器 UI，也没有在所有工具上实测“回退是否同时恢复文件”。缺的是跨工具行为对照。因此正文把“只回退一半”写成一种常见风险，不写成所有工具的必然行为。
+          本条为【推断】。已核对 Claude Code 的 <code>fileHistoryRewind</code> 与快照上限、Codex 的检查点与后缀回放；没有逐行阅读 <code>/rewind</code> 的选择器 UI，也没有在所有 agent 上实测“回退是否同时恢复文件”。缺的是跨 agent 行为对照。因此正文把“只回退一半”写成一种常见风险，不写成所有工具的必然行为。
           <a class="footnotes__back" href="#fnref-adv-02-3">↩</a>
         </li>
       </ol>

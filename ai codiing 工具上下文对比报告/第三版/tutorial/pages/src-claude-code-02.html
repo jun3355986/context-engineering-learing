@@ -422,7 +422,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>断点数量：一家一个，一家四个</h2>
 
       <p>「断点放几个」没有统一答案。它取决于服务端的驱逐策略、API 的断点上限、以及工具愿意为缓存写入付多少成本。下面四家代表四种取舍。<span class="tag tag--guess">推断</span></p>
@@ -432,7 +432,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">消息层断点</th>
               <th scope="col">系统层断点</th>
               <th scope="col">特殊处理</th>
@@ -471,7 +471,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Claude Code v2.1.88 源码，opencode v1 tag <code>v1.19.0</code>，Grok Build 源码，pi 提交 <code>b45e0eb</code>）。</p>
+      <p class="table-caption">表注：来源为各 agent 固定提交的源码与官方文档（Claude Code v2.1.88 源码，opencode v1 tag <code>v1.19.0</code>，Grok Build 源码，pi 提交 <code>b45e0eb</code>）。</p>
 
       <p>第一个对照是<b>「断点数量与服务端策略」</b>。Claude Code 的注释直接引用了服务端的驱逐实现，说明「一个标记」是针对 Mycro 的 KV 页回收策略做的优化；opencode 打四个点，是因为它要兼容多种 provider，无法假设某一种驱逐行为；Grok 留一个槽给网关，是因为网关可能自己加标记。断点数不是越多越好，而是要和「谁在回收、回收多快」匹配。<span class="tag tag--guess">推断</span></p>
 

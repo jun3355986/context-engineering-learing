@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>16 类 × 8 工具总表 · AI Coding Agent 上下文管理</title>
+<title>16 类 × 8 agent 总表 · AI Coding Agent 上下文管理</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
 <script>
   try {
@@ -83,8 +83,8 @@
 
     <header class="page-head">
       <p class="kicker"><b>附录 C</b><span>·</span><span>速查</span></p>
-      <h1>16 类 × 8 工具总表</h1>
-      <p class="lede">这张表是整本教程的压缩版：行是 16 类上下文能力，列是 8 个工具，每格一句话结论加可信度与来源缩写。它不替代正文，只帮你快速定位「谁做了什么、这个结论有多硬」。</p>
+      <h1>16 类 × 8 agent 总表</h1>
+      <p class="lede">这张表是整本教程的压缩版：行是 16 类上下文能力，列是 8 个 agent，每格一句话结论加可信度与来源缩写。它不替代正文，只帮你快速定位「谁做了什么、这个结论有多硬」。</p>
       <ul class="meta">
         <li>128 格</li>
         <li>16 类 · 8 工具</li>
@@ -310,9 +310,9 @@
 
         <h3>一、哪些格子是推断</h3>
         <p>标【推断】的 10 格集中在 dsh（第 1、3、4、6、9、10、13、16 类）和 opencode v1/v2 的评估（第 16 类）。dsh 的推断来自同仓 <code>docs/subsystems</code> 与各包 README，不是逐行源码；它能说明「设计意图与开关」，但不能当作「运行时一定如此」。opencode 两版的评估格是「没找到评测框架」的否定式判断，属于推断而非已核实。<sup class="fn-ref"><a href="#fn-appendix-matrix-1" id="fnref-appendix-matrix-1">1</a></sup></p>
-        <p>另有 1 格【待核实】：opencode v1 是否有 <code>/context</code> 类视图，本次只检索了出货 <code>packages/opencode/src</code>，没有穷举前端命令表。其余 8 个工具共 22 条【待核实】细节（如 Codex worktree 隔离、pi/omp 单文件字节上限、Grok Build 官方记忆文档 404）没有升格成整格待核实，写章节时要带进脚注。<sup class="fn-ref"><a href="#fn-appendix-matrix-2" id="fnref-appendix-matrix-2">2</a></sup></p>
+        <p>另有 1 格【待核实】：opencode v1 是否有 <code>/context</code> 类视图，本次只检索了出货 <code>packages/opencode/src</code>，没有穷举前端命令表。其余 8 个 agent 共 22 条【待核实】细节（如 Codex worktree 隔离、pi/omp 单文件字节上限、Grok Build 官方记忆文档 404）没有升格成整格待核实，写章节时要带进脚注。<sup class="fn-ref"><a href="#fn-appendix-matrix-2" id="fnref-appendix-matrix-2">2</a></sup></p>
 
-        <h3>二、哪些工具在某类上是空白</h3>
+        <h3>二、哪些 agent 在某类上是空白</h3>
         <p>整格「无此能力」的有 5 处：pi 的子代理（第 10 类）与跨会话记忆（第 12 类）；opencode v1 的记忆（第 12 类）；opencode v2 的记忆（第 12 类）；dsh 的记忆（第 12 类）。</p>
         <p>半空白要按「部分能力」写，不能写成有：Codex 没有独立的历史裁剪通道、没有历史转图、没有内置评测（第 7、9、16 类）；opencode v1/v2 没有树状多分支和 rewind（第 11 类）；dsh 没有 rewind/undo（第 11 类）；pi 没有自动裁剪（第 7 类）、没有图片驱逐（第 9 类）。同一类里「有机制」与「默认开启」是两件事：Claude Code 的 microcompact 默认关闭、omp 的记忆默认 off、Grok Build 的记忆默认 off，矩阵写的是机制存在，不是默认生效。</p>
 

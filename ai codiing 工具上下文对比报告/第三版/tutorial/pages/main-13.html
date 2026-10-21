@@ -147,7 +147,7 @@
 
       <div class="callout callout--info">
         <p class="callout__title">场景 · 一句话改在最前面，整晚都在重算</p>
-        <p>周三晚上，一个小团队把 <code>git status</code> 的输出塞进了系统提示词的第一段，方便 Agent 知道当前分支。那天合并频繁，分支名每十几分钟变一次。任务还是那些任务，代码还是那些代码，但当月账单是上月的三倍。他们删了很多工具输出，却没有意识到：每次分支变化，都让整段历史从第一个字节起重新计费。</p>
+        <p>周三晚上，一个小团队把 <code>git status</code> 的输出塞进了系统提示词的第一段，方便 Agent 知道当前分支。那天合并频繁，分支名每十几分钟变一次。任务还是那些任务，代码还是那些代码，但当月账单是上月的三倍。他们删了很多 agent 输出，却没有意识到：每次分支变化，都让整段历史从第一个字节起重新计费。</p>
       </div>
 
       <p>这件事反直觉的地方在于：他们做的每一步“减量”都是对的。少读文件、少跑测试、截断日志，token 确实少了。但缓存不是按“总量”算的，它按<strong>前缀</strong>算。</p>
@@ -220,7 +220,7 @@
       <p>这三个字段（未缓存输入、缓存读、缓存写）足以算出一个会话的“缓存账”，但不足以解释“为什么没命中”。最常用的命中率口径是 <code>cached_input_tokens ÷ 总输入 token</code>；分母是否包含缓存写，各家不同，所以这个数字只在同一口径内可比。Codex 侧没有内置的失效归因；要做归因，只能自己在客户端记录每次请求的拼接哈希，再和 usage 对齐。这一点和 Claude Code 有明确差距：后者有专门的缓存失效检测模块，会对比系统提示词哈希、工具哈希、TTL/scope 变化，给出“本可命中却没命中”的原因<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/promptCacheBreakDetection.ts#L31">promptCacheBreakDetection.ts#L31</a>。<span class="tag tag--src">源码 v2.1.88</span></p>
 
       <h3 id="codex-order">2.3 排序：三原则比任何参数都重要</h3>
-      <p>Codex 的请求骨架是 <code>base_instructions</code>（稳定）+ 工具表（稳定）+ 历史（增长）+ 尾部增量。这个顺序不是随手排的，它对应三条可以迁移到任何工具的原则。</p>
+      <p>Codex 的请求骨架是 <code>base_instructions</code>（稳定）+ 工具表（稳定）+ 历史（增长）+ 尾部增量。这个顺序不是随手排的，它对应三条可以迁移到任何 agent 的原则。</p>
 
       <p><strong>原则一：按变化频率排序。</strong>越稳定的内容越靠前，越易变的内容越靠后。系统提示词的静态段、工具定义、项目规则在前；日期、当前分支、todo 状态、环境提醒在后。顺序一旦反过来，最易变的东西就站在了最前面，后面再稳定也没用。</p>
       <p>工具定义是前缀里最重、也最容易被“顺手改一下”的部分。三条做法可以让它稳定：<strong>排序固定</strong>——按名字排序，而不是按 map 的插入序，opencode v1 就是这么做的<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/provider/transform.ts#L357-L404">transform.ts#L357-L404</a> <span class="tag tag--ok">已核实</span>；<strong>模式切换不改工具目录</strong>——dsh 的 plan mode 只换提示词约束、不动工具 schema，源码注释明确写了这是为了请求缓存稳定<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/bundle/base/cordis.patch.yml#L340">cordis.patch.yml#L340</a> <span class="tag tag--ok">已核实</span>；<strong>工具表变化走增量</strong>——Codex 的 <code>incremental_tools</code> 在不需要时置空 <code>tools</code>，避免整张表重发<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a> <span class="tag tag--ok">已核实</span>。代价是：按名字排序会让工具顺序不符合语义分组；模式切换不改表，意味着某些模式下模型看得见却用不了某些工具；增量工具要求客户端与服务端都支持，换 provider 就可能退化。</p>
@@ -235,7 +235,7 @@
 
       <div class="codeblock" data-lang="text">
         <div class="codeblock__bar">
-          <span class="codeblock__lang">教学模型 · 不是任何工具的真实计价</span>
+          <span class="codeblock__lang">教学模型 · 不是任何 agent 的真实计价</span>
           <button class="codeblock__copy" type="button" data-copy>复制</button>
         </div>
         <pre class="code"><code><span class="code__line code__line--cmt">// 只算缓存这一项，不含压缩请求本身的成本</span>
@@ -284,7 +284,7 @@
     <section id="demo-guide">
       <p class="sec-no">03 · 动手与读图</p>
       <h2>演示在入门章，本章看失效点</h2>
-      <p>“改哪一段、改几个字节、命中多少”这件事，第 5 章有一个可以直接拖的演示。本章不重复实现它，只把结论落到真实工具的拼接位置上。</p>
+      <p>“改哪一段、改几个字节、命中多少”这件事，第 5 章有一个可以直接拖的演示。本章不重复实现它，只把结论落到真实 agent 的拼接位置上。</p>
 
       <div class="callout callout--info">
         <p class="callout__title">动手 · 去第 5 章看缓存命中</p>
@@ -356,11 +356,11 @@
       <p>读这张图只需要三步。第一步，找到“谁被替换了”——压缩是历史中段，驱逐是一张图。第二步，把失效点画在<strong>被替换块的开头</strong>，不是结尾，也不是“改动量最大”的地方。第三步，问一句：失效点之前的字节，真的一个都没动吗？如果前面还顺手更新了日期或分支名，真正的失效点会比图上更靠前。</p>
     </section>
 
-    <!-- ========== 04 工具弹窗 ========== -->
+    <!-- ========== 04 agent 弹窗 ========== -->
     <section id="tools">
-      <p class="sec-no">04 · 七个工具</p>
+      <p class="sec-no">04 · 七个编码智能体</p>
       <h2>有人发键，有人摆断点，有人只发改动</h2>
-      <p>Codex 已经在主线里拆过。剩下七个工具可以分三派：<strong>发键让服务端管</strong>（Codex 自己也属于这派，客户端只发 <code>prompt_cache_key</code>）；<strong>显式摆断点</strong>（Claude Code、opencode v1/v2、Grok Build）；<strong>把提示词 section 化，只发改动</strong>（pi、omp、dsh）。三派的差别不在“知不知道缓存”，而在“愿意把多少控制权交给客户端”。另外，opencode v1/v2 只能证明客户端下发了标记，服务端命中率与 TTL 不可观测<sup class="fn-ref"><a href="#fn-main-13-2" id="fnref-main-13-2">2</a></sup>，所以跨工具比命中率之前，先统一口径。</p>
+      <p>Codex 已经在主线里拆过。剩下七个 agent 可以分三派：<strong>发键让服务端管</strong>（Codex 自己也属于这派，客户端只发 <code>prompt_cache_key</code>）；<strong>显式摆断点</strong>（Claude Code、opencode v1/v2、Grok Build）；<strong>把提示词 section 化，只发改动</strong>（pi、omp、dsh）。三派的差别不在“知不知道缓存”，而在“愿意把多少控制权交给客户端”。另外，opencode v1/v2 只能证明客户端下发了标记，服务端命中率与 TTL 不可观测<sup class="fn-ref"><a href="#fn-main-13-2" id="fnref-main-13-2">2</a></sup>，所以跨 agent 比命中率之前，先统一口径。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -396,7 +396,7 @@
 
     <!-- ========== 05 对比表 ========== -->
     <section id="matrix">
-      <p class="sec-no">05 · 八工具对比</p>
+      <p class="sec-no">05 · 八个编码智能体对比</p>
       <h2>把“前缀怎么保”排成一张表</h2>
       <p>看表时先看第二列“前缀怎么保”：它是策略层。第三列“断点/标记”是执行层，决定失效点由谁摆。第四列最容易忽略：易变内容放在哪，往往比断点数量更影响命中率。最后一列是压缩的代价，也是本章与第 8、14 章的接口。</p>
 
@@ -405,7 +405,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">前缀怎么保</th>
               <th scope="col">断点 / 标记</th>
               <th scope="col">易变内容放哪</th>
@@ -479,7 +479,7 @@
     <section id="tradeoffs">
       <p class="sec-no">06 · 设计取舍</p>
       <h2>为什么有人只放一个断点，有人放四个</h2>
-      <p>下面五组取舍，是这张表背后真正的分歧。每组都给出“A 派怎么做”“B 派怎么做”和一句代价。本节引用的参数不重复给 permalink，统一见第 05 节表格与各工具弹窗。</p>
+      <p>下面五组取舍，是这张表背后真正的分歧。每组都给出“A 派怎么做”“B 派怎么做”和一句代价。本节引用的参数不重复给 permalink，统一见第 05 节表格与各 agent 弹窗。</p>
 
       <h3>取舍一：一个断点，还是四个断点</h3>
       <p><strong>少而准</strong>：Claude Code 在消息层每请求只放一个 <code>cache_control</code>，位置是最后一条消息；它把“4”留给系统提示词的分块上限，两者不是一回事。<strong>多而密</strong>：opencode v2 的 <code>auto</code> 会同时给最后一个工具、首末 system、尾部消息打点，上限 4；Grok Build 打 3 处显式断点，第 4 个槽故意留给网关。</p>
@@ -575,7 +575,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -600,7 +600,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -625,7 +625,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -650,7 +650,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -675,7 +675,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -700,7 +700,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -725,7 +725,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

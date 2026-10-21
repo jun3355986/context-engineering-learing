@@ -293,7 +293,7 @@
 
       <h3>第 1 段　合法切点：为什么 <code>toolResult</code> 永远不能切</h3>
 
-      <p><code>isCutPointMessage()</code> 是一个 <code>switch</code>：<code>user</code>、<code>assistant</code>、<code>bashExecution</code>、<code>custom</code>、<code>branchSummary</code>、<code>compactionSummary</code> 返回 <code>true</code>，<code>toolResult</code> 返回 <code>false</code>。<span class="tag tag--ok">已核实</span>原因不是审美，而是协议约束：OpenAI 与 Anthropic 都要求工具结果与发起它的调用<b>配对出现</b>，Anthropic 还要求结果紧跟在调用之后。如果切点落在工具结果上，压缩后的第一条消息就是一个没有调用方的结果，请求会被直接拒绝。</p>
+      <p><code>isCutPointMessage()</code> 是一个 <code>switch</code>：<code>user</code>、<code>assistant</code>、<code>bashExecution</code>、<code>custom</code>、<code>branchSummary</code>、<code>compactionSummary</code> 返回 <code>true</code>，<code>toolResult</code> 返回 <code>false</code>。<span class="tag tag--ok">已核实</span>原因是协议约束：OpenAI 与 Anthropic 都要求工具结果与发起它的调用<b>配对出现</b>，Anthropic 还要求结果紧跟在调用之后。如果切点落在工具结果上，压缩后的第一条消息就是一个没有调用方的结果，请求会被直接拒绝。</p>
 
       <p>反过来，切在带工具调用的 <code>assistant</code> 上是安全的：它的工具结果在数组里排在它后面，会跟着一起进入保留段。源码注释把这条写得很直白——「When we cut at an assistant message with tool calls, its tool results follow it and will be kept.」<span class="tag tag--ok">已核实</span></p>
 
@@ -472,7 +472,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>同一句「保留最近 20k」，四家保留的东西不一样</h2>
 
       <p>把四家放在一张表里，会发现分歧不在数字，而在<b>累加单位</b>和<b>切点约束</b>：pi 按条目累加，omp 按整组累加；Codex 只留用户消息，所以根本不需要切点约束；opencode v1 按整轮挑，必要时才拆轮。</p>
@@ -482,7 +482,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">累加单位</th>
               <th scope="col">保留预算</th>
               <th scope="col">切点约束</th>

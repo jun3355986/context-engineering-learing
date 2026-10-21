@@ -203,7 +203,7 @@
       <p class="sec-no">01 · 三个数字</p>
       <h2>“到底是 62% 还是 81%？”</h2>
       <p>下午三点四十，你在修一个导出模块。屏幕底部的状态栏写着 62%，你判断还能再跑两轮测试。第二轮结束，Agent 突然开始压缩历史，把前面读过的四个文件全换成了摘要。你翻回去看：压缩前最后一次请求的 <code>usage</code> 是 158,400，窗口 200,000，也就是 79.2%。62% 是客户端自己按字符估算的，它少算了工具定义和一段 JSON。</p>
-      <p>这不是某个工具的 bug，而是“计量”这件事本身有三个层次：</p>
+      <p>这不是某个 agent 的 bug，而是“计量”这件事本身有三个层次：</p>
       <ul>
         <li><strong>服务端 usage</strong>：模型服务在响应里回报的 <code>input / output / cache_read / cache_write</code>。它是计费与真实窗口占用的唯一权威，但只在<strong>一次请求结束之后</strong>才更新。</li>
         <li><strong>本地估算</strong>：客户端把还没发出去的消息按“字符数 ÷ 4”折算成 token。它随时可用，但对中文、代码、JSON 和图片都会偏。</li>
@@ -263,7 +263,7 @@
       <p><strong>为什么是两条线，而不是一条。</strong>整段线是物理上限，再往前走 API 会直接拒绝；范围线是策略上限，它要在“还能再跑一轮模型 + 一次工具调用”的地方停下。两者的调整频率也不同：整段线跟着模型窗口走，范围线跟着任务类型走。<strong>代价</strong>是配置面变大。如果模型元数据里的 <code>auto_compact_token_limit</code> 不准，范围线就会过早或过晚触发，而用户只看到一个笼统的“自动压缩”。</p>
 
       <h3 id="codex-reserve">2.3 输出预留：Codex 把它藏进了百分比里</h3>
-      <p>“输出预留”指的是：窗口由输入和输出共享，必须给模型本次要生成的 token 留出空间，否则输入刚好占满时，请求会因为“没有位置放输出”而失败。不同工具处理方式差别很大：</p>
+      <p>“输出预留”指的是：窗口由输入和输出共享，必须给模型本次要生成的 token 留出空间，否则输入刚好占满时，请求会因为“没有位置放输出”而失败。不同 agent 处理方式差别很大：</p>
       <ul>
         <li><strong>Codex</strong> 没有独立的输出预留字段，95% 这条线事实上充当了预留：5% 的窗口留给输出与协议开销。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-05-1" id="fnref-main-05-1">1</a></sup></li>
         <li><strong>Claude Code</strong> 显式先减：有效窗口 = 模型窗口 − <code>min(模型最大输出, 20_000)</code>，自动压缩线再减 <code>13_000</code>，阻塞线再减 <code>3_000</code>。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L28-L49">autoCompact.ts#L28-L49</a> <span class="tag tag--src">源码 v2.1.88</span></li>
@@ -347,7 +347,7 @@
             <p class="cm-warn" id="cm-warn" hidden>已用部分超过触发线：这段会话会在下一次检查时进入压缩。</p>
           </div>
         </div>
-        <p class="demo__note">教学模型：预留固定按窗口的 15% 计，触发线固定在 85%，已用的四段为示意值，不是任何工具的真实默认值。真实工具里预留与触发线是两个独立参数。</p>
+        <p class="demo__note">教学模型：预留固定按窗口的 15% 计，触发线固定在 85%，已用的四段为示意值，不是任何 agent 的真实默认值。真实工具里预留与触发线是两个独立参数。</p>
       </div>
 
       <p>读这张图分三步。第一步看<strong>已用总高</strong>：它决定“现在离触发还有多远”。第二步看<strong>哪一段最厚</strong>：历史通常最厚，但在长会话刚开始时，工具定义往往才是第二大块。第三步看<strong>预留区</strong>：它不是“已用”，而是“不能用”，所以真正可用的空间是窗口减去预留，再减去已用。</p>
@@ -362,7 +362,7 @@
       <p><strong>第一类，分词器差异。</strong>影响所有“估算”段，尤其是中文与代码。它不改变历史段的实测部分，但会改变尾随增量。</p>
       <p><strong>第二类，重复计数。</strong>同一个工具定义可能既出现在“工具定义”里，又作为系统提示的一部分被计入。Grok 的处理最直白：工具、Skills、MCP、workflows、AGENTS.md 单独列在“Already counted above”区，并明确标注已包含在上面四项里，不重复计入。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/src/scrollback/blocks/context_info.rs#L312-L360">context_info.rs#L312-L360</a> <span class="tag tag--ok">已核实</span></p>
       <p><strong>第三类，缓存 token 的口径。</strong>缓存读通常比新输入便宜，但它仍然占用窗口。把 <code>cache_read</code> 排除在“已用”之外，会得到一个乐观得多的百分比。</p>
-      <p><strong>第四类，多模态。</strong>图片按张、按 tile、按固定 token 数或按字节计，四家四种做法。一张 2 MB 的截图在 A 工具里是 765 token，在 B 工具里可能是 1,500，在 C 工具里按请求体字节算。分类视图若把图片算进“历史”，偏差会很大。</p>
+      <p><strong>第四类，多模态。</strong>图片按张、按 tile、按固定 token 数或按字节计，四家四种做法。一张 2 MB 的截图在 A 家是 765 token，在 B 家可能是 1,500，在 C 家按请求体字节算。分类视图若把图片算进“历史”，偏差会很大。</p>
       <p><strong>第五类，编排开销。</strong>有些 provider 会回报“可计费但不回放进对话前缀”的编排 token。oh-my-pi 在计算上下文占用时会把这部分减掉，因为算进去会虚高触发。<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/context-usage-runtime.ts#L21-L47">context-usage-runtime.ts#L21-L47</a> <span class="tag tag--ok">已核实</span> 这一步在只看“账单”的视图里通常不会做。</p>
 
       <h3 id="meter-switch">3.2 换窗口时，什么会动，什么不会</h3>
@@ -372,9 +372,9 @@
     </section>
 
     <section id="tools">
-      <p class="sec-no">04 · 七个工具</p>
+      <p class="sec-no">04 · 七个编码智能体</p>
       <h2>七种量法，七种可见性</h2>
-      <p>Codex 的链路已经在主线里拆过。下面七个工具各有一个弹窗，重点看三件事：<strong>它信谁</strong>（服务端 usage、估算、还是两者取大）、<strong>它怎么算预留</strong>、<strong>它让用户看到什么</strong>。这三件事决定了同一个会话在七个工具里会显示七个不同的百分比。</p>
+      <p>Codex 的链路已经在主线里拆过。下面七个 agent 各有一个弹窗，重点看三件事：<strong>它信谁</strong>（服务端 usage、估算、还是两者取大）、<strong>它怎么算预留</strong>、<strong>它让用户看到什么</strong>。这三件事决定了同一个会话在七个 agent 里会显示七个不同的百分比。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -409,7 +409,7 @@
     </section>
 
     <section id="matrix">
-      <p class="sec-no">05 · 八工具对比</p>
+      <p class="sec-no">05 · 八个编码智能体对比</p>
       <h2>同一段会话，八个答案</h2>
       <p>看表时先看“计量来源”和“触发阈值”两列，它们决定数字怎么来；再看“可视化”和“可切换窗口”两列，它们决定用户能不能自己核对。最后一列是输出预留，它是“为什么显示 80% 就不能再发”的答案。</p>
 
@@ -418,7 +418,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">计量来源</th>
               <th scope="col">触发阈值</th>
               <th scope="col">输出预留</th>
@@ -500,11 +500,11 @@
     <section id="tradeoffs">
       <p class="sec-no">06 · 设计取舍</p>
       <h2>为什么没有一个百分比</h2>
-      <p>下面五组取舍，是“同一段会话显示不同数字”背后的真正分歧。每组给出两种路线、各自在想什么，以及代价。本节不重复 permalink，统一见第 05 节表格与各工具弹窗。</p>
+      <p>下面五组取舍，是“同一段会话显示不同数字”背后的真正分歧。每组给出两种路线、各自在想什么，以及代价。本节不重复 permalink，统一见第 05 节表格与各 agent 弹窗。</p>
 
       <h3>取舍一：只信实测、只信估算，还是混合</h3>
       <p><strong>只信实测</strong>（opencode v1 的触发）最准确，但有一个致命缺口：两次请求之间新增的工具结果没有读数，必须等到下一次请求才知道超了。opencode v1 接受了这个缺口，代价是“没有 provider 回报之前不会自动压缩”，第一次溢出只能靠错误驱动。<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/overflow.ts#L8-L34">overflow.ts#L8-L34</a> <span class="tag tag--ok">已核实</span></p>
-      <p><strong>只信估算</strong>简单、随时可用，但误差会累积，中文与代码场景偏差最大。没有哪家完全这么做，但很多工具在“尾随增量”这一段实际上就是纯估算。</p>
+      <p><strong>只信估算</strong>简单、随时可用，但误差会累积，中文与代码场景偏差最大。没有哪家完全这么做，但很多 agent 在“尾随增量”这一段实际上就是纯估算。</p>
       <p><strong>混合</strong>（Codex、Claude Code、pi、opencode v2、Grok、dsh）是主流。分歧在“两者不一致时怎么办”：oh-my-pi 取<strong>较大值</strong>，理由是 provider 报的 prompt token 可能因为请求被压缩或混淆而偏小，只信它会让真实历史无界增长。<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/agent/src/compaction/compaction.ts#L316-L354">compaction.ts#L316-L354</a> <span class="tag tag--ok">已核实</span> 取较大值是保守方向：宁可早压，不可晚炸。</p>
       <p><strong>代价</strong>：取较大值会让估算偏高时频繁误触发；取最近一次实测则可能在工具结果堆积时漏判。混合方案还必须处理“锚点失效”（压缩、切模型、历史重排），否则会拿一个不再对应的真值去加增量。</p>
 
@@ -607,14 +607,14 @@
   </article>
 </main>
 
-<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+<!-- ===== agent 弹窗（7 个；Codex 已在正文） ===== -->
 
 <div class="modal" id="modal-claude-code" hidden>
   <div class="modal__backdrop" data-close></div>
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -644,7 +644,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -674,7 +674,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -703,7 +703,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -732,7 +732,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -761,7 +761,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -791,7 +791,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

@@ -399,14 +399,14 @@
     <section>
       <p class="sec-no">02 · 先统一尺子</p>
       <h2>token 不是字数，是模型切出来的小块</h2>
-      <p>你打开日志，数了数：300 行，大概 6000 个字符。“不多啊。”工具却报：约 3000 token。换一份 2000 字的中文需求文档，你以为是“小文件”，它却吃掉一大块白板。</p>
+      <p>你打开日志，数了数：300 行，大概 6000 个字符。“不多啊。”它却报：约 3000 token。换一份 2000 字的中文需求文档，你以为是“小文件”，它却吃掉一大块白板。</p>
       <p>token 是模型读写文本时用的最小计量单位。它不按“字”切，按自己的词表切：一个常见英文单词可能是一块，一个汉字也可能是一块，标点、缩进、换行同样要占。</p>
       <p>所以，同一个文件读两遍，就是两份 token。白板不会因为“内容重复”给你打折。</p>
       <p>工程上常用的粗估是“4 个字符 ≈ 1 个 token”：Codex 截断工具输出时按 <code>bytes / 4</code> 估算，Claude Code 的本地粗估用 <code>chars / 4</code>。但这把尺子量中文会明显偏小——同一个意思，中文通常比英文更费 token，一个汉字常常就在 1 个 token 上下，甚至更多。别背系数，记量级：一页中文文档，可能就是一两千 token。<span class="tag tag--guess">推断</span></p>
       <p>代码更阴：缩进、括号、重复的字段名，全都算。一个 500 行的配置文件，可能比一篇 3000 字的文章还重。</p>
 
       <div class="callout callout--quiet">
-        <p class="callout__title">对照：工具自己也在估</p>
+        <p class="callout__title">对照：agent 自己也在估</p>
         <ul>
           <li>Claude Code 的本地粗估是 <code>chars / 4</code>，只求快；精确值要等服务端返回 <code>usage</code>。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/tokenEstimation.ts#L203-L210">tokenEstimation.ts#L203-L210</a></li>
           <li>Codex 在截断工具输出时按 <code>bytes / 4</code> 估算，并另留 20% 序列化余量。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L17-L29">truncate.rs#L17-L29</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L34">lib.rs#L17-L34</a></li>
@@ -465,7 +465,7 @@
       <p>先回到那道题：195k 输入 + 10k 输出 = 205k，超了 5k。结局不是“方案写得短一点”；没开自动压缩时，请求会在开始写之前被拒。</p>
       <p>白板的右下角，你用胶带划出一块：这块留给模型写答案。输入写得再满，也不能越过这条胶带。这块被圈起来的地方，就是<strong>输出预留（output reserve）</strong>。</p>
       <p>预留不是已经写上去的字，而是用胶带围出来的空地：模型不一定写满，但请求必须先圈出“最多可能写多少”。不圈，常见后果不是回答变短，而是请求直接被判超窗。</p>
-      <p>不同工具留法不一样：</p>
+      <p>不同 agent 留法不一样：</p>
 
       <div class="callout callout--quiet">
         <p class="callout__title">对照：输出预留，各家怎么算</p>
@@ -562,7 +562,7 @@
             <p class="cb-sr" id="cb-sr" role="status" aria-live="polite"></p>
           </div>
         </div>
-        <p class="demo__note">容量固定为 200,000 token，与 Claude Code 的默认窗口同量级（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/context.ts#L9-L98">源码 v2.1.88</a>）。五段初始大小是示意值，不是该工具的真实配置。</p>
+        <p class="demo__note">容量固定为 200,000 token，与 Claude Code 的默认窗口同量级（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/context.ts#L9-L98">源码 v2.1.88</a>）。五段初始大小是示意值，不是该 agent 的真实配置。</p>
       </div>
 
       <p class="small"><strong>试一试</strong>：把“历史消息”拉到 60%，看剩余空间怎么变；再拉回去，看警戒色什么时候消失。最后把“输出预留”拉到最小，想想真实请求里会发生什么。</p>
@@ -597,7 +597,7 @@
           <ul>
             <li>token 是容量和计价的单位，不是字数；中文通常比英文更费 token。</li>
             <li>上下文窗口 = 输入 + 输出，共用同一块固定空间。</li>
-            <li>输出必须预留：不留，可能不是答得短，而是请求直接超窗。</li>
+            <li>输出必须预留：不留，请求可能直接超窗。</li>
             <li>超窗只有三条路：压缩、截断、报错，都要拿掉已有内容。</li>
             <li>装得下不等于用得好；下一关是模型能不能找到并用上。</li>
           </ul>

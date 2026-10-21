@@ -385,7 +385,7 @@
         <li>阈值：154 × 70% ≈ <strong>108k</strong>；保留段：<strong>20k</strong>。</li>
         <li>压缩后一次请求约 12 + 8 + 摘要（约 3k）+ 20 = <strong>43k</strong>。这已经回到阈值以下，留出继续跑的空间。</li>
       </ul>
-      <p class="small muted">这些比例是示例，不是任何工具的默认值<sup class="fn-ref"><a href="#fn-adv-04-1" id="fnref-adv-04-1">1</a></sup>。真实值要按你的工具表大小、规则体积和输出上限重算。算完写进策略表，别留在脑子里。</p>
+      <p class="small muted">这些比例是示例，不是任何 agent 的默认值<sup class="fn-ref"><a href="#fn-adv-04-1" id="fnref-adv-04-1">1</a></sup>。真实值要按你的工具表大小、规则体积和输出上限重算。算完写进策略表，别留在脑子里。</p>
 
       <p>三个容易算错的地方：</p>
       <ol>
@@ -708,7 +708,7 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-adv-04-1">
-          200k 窗口下的 12k / 8k / 16k / 10k / 70% / 20k 是一组示例参数，来自主线第 5、8 章的常见量级，不是任何工具的实际默认值。已核对 Codex 的 95% 与 90% 两条线、Claude Code 的有效窗口减 13k、opencode v1 的保留预算 <code>clamp(25%, 2k, 15k)</code>，各家口径不同，不能直接套用。正式使用时按自己的工具表与规则体积重算。
+          200k 窗口下的 12k / 8k / 16k / 10k / 70% / 20k 是一组示例参数，来自主线第 5、8 章的常见量级，不是任何 agent 的实际默认值。已核对 Codex 的 95% 与 90% 两条线、Claude Code 的有效窗口减 13k、opencode v1 的保留预算 <code>clamp(25%, 2k, 15k)</code>，各家口径不同，不能直接套用。正式使用时按自己的工具表与规则体积重算。
           <a class="footnotes__back" href="#fnref-adv-04-1">↩</a>
         </li>
         <li id="fn-adv-04-2">

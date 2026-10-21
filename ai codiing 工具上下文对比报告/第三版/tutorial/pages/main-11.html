@@ -405,7 +405,7 @@
 
       <div class="callout callout--warn">
         <p class="callout__title">日志在，不等于状态在</p>
-        <p>对话可以精确回退到某一条消息，文件却不一定。多数工具把“回退对话”和“回退文件”做成两件事：前者只改投影，后者要覆盖工作区。两者不同步时，模型会看到一个“代码已经改了、但对话说还没改”的世界。这是本章最后一组取舍。</p>
+        <p>对话可以精确回退到某一条消息，文件却不一定。多数 agent 把“回退对话”和“回退文件”做成两件事：前者只改投影，后者要覆盖工作区。两者不同步时，模型会看到一个“代码已经改了、但对话说还没改”的世界。这是本章最后一组取舍。</p>
       </div>
     </section>
 
@@ -417,7 +417,7 @@
 
       <h3 id="codex-log">2.1 日志：记录“发生过”，不记录“现在该看什么”</h3>
       <p>rollout 的职责是完整：模型收到什么、调用了什么工具、返回了什么、什么时候压缩过，都写进去。源码里有一句关键注释：内存中的 live 历史可以被截断，但 rollout 里保存的是原始载荷。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L520-L545">history.rs#L520-L545</a> <span class="tag tag--ok">已核实</span> 这句话把“事实”和“投影”分开了：日志是事实，内存历史只是当前投影。</p>
-      <p><strong>为什么必须只追加。</strong>第一，审计：你事后能查清“它当时到底看到了什么”，而不是只看摘要。第二，恢复：检查点之后的任意一条消息都可以重放。第三，分叉：从旧节点长出新枝时，旧路径不能被改写。<strong>代价</strong>是日志会膨胀，而且包含完整的文件内容和工具输出，磁盘、备份、隐私都要跟着处理。多数工具的做法是“不自动删，交给上层清理”，现有材料也没有记录自动过期策略。</p>
+      <p><strong>为什么必须只追加。</strong>第一，审计：你事后能查清“它当时到底看到了什么”，而不是只看摘要。第二，恢复：检查点之后的任意一条消息都可以重放。第三，分叉：从旧节点长出新枝时，旧路径不能被改写。<strong>代价</strong>是日志会膨胀，而且包含完整的文件内容和工具输出，磁盘、备份、隐私都要跟着处理。多数 agent 的做法是“不自动删，交给上层清理”，现有材料也没有记录自动过期策略。</p>
 
       <h3 id="codex-checkpoint">2.2 检查点：存的是“替换后的历史”，不是“摘要文本”</h3>
       <p><code>CompactedItem</code> 里带四类东西：<code>replacement_history</code>（替换后的完整历史）、窗口编号与前后窗口 id、当时的 token 用量记录、以及恢复所需的 <code>resume_metadata</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/mod.rs#L4321-L4356">session/mod.rs#L4321-L4356</a> <span class="tag tag--ok">已核实</span> 注意它存的是“模型应该看到的那串消息”，不是“一段摘要 + 一段原文”的配方。</p>
@@ -496,15 +496,15 @@
             <p class="stree-warning" id="tree-warning" role="alert" hidden></p>
           </div>
         </div>
-        <p class="demo__note">教学示意：节点文本、token、文件版本与日志行数都是演示值。真实工具的分支与回退语义各不相同：有的同文件换叶，有的复制成新会话，有的只改投影。页内说明以源码为准。</p>
+        <p class="demo__note">教学示意：节点文本、token、文件版本与日志行数都是演示值。真实 agent 的分支与回退语义各不相同：有的同文件换叶，有的复制成新会话，有的只改投影。页内说明以源码为准。</p>
       </div>
     </section>
 
     <!-- ========== 04 工具 ========== -->
     <section id="tools">
-      <p class="sec-no">04 · 七个工具</p>
+      <p class="sec-no">04 · 七个编码智能体</p>
       <h2>同一棵树，七种走法</h2>
-      <p>下面七个工具各有一个弹窗。可以按“树在哪里”分成三派：<strong>JSONL 树</strong>（Claude Code、pi、oh-my-pi）用 <code>parentUuid</code> / <code>parentId</code> 在同一个文件里成树；<strong>数据库投影</strong>（opencode v1/v2）把消息写进 SQLite，再按压缩边界重排；<strong>日志 + 表面</strong>（Grok Build、DeepSeek Harness）用只追加日志加一个“可见视图”，回退靠标记或 <code>replace</code>。pi 有树但没有 checkpoint/rewind；opencode v1/v2 没有树也没有 rewind；dsh 连 rewind 都没有。这些空白和“有”一样重要。弹窗里的“设计意图”是作者根据源码结构做的分析，不是工具作者的自述<sup class="fn-ref"><a href="#fn-main-11-4" id="fnref-main-11-4">4</a></sup>。</p>
+      <p>下面七个 agent 各有一个弹窗。可以按“树在哪里”分成三派：<strong>JSONL 树</strong>（Claude Code、pi、oh-my-pi）用 <code>parentUuid</code> / <code>parentId</code> 在同一个文件里成树；<strong>数据库投影</strong>（opencode v1/v2）把消息写进 SQLite，再按压缩边界重排；<strong>日志 + 表面</strong>（Grok Build、DeepSeek Harness）用只追加日志加一个“可见视图”，回退靠标记或 <code>replace</code>。pi 有树但没有 checkpoint/rewind；opencode v1/v2 没有树也没有 rewind；dsh 连 rewind 都没有。这些空白和“有”一样重要。弹窗里的“设计意图”是作者根据源码结构做的分析，不是工具作者的自述<sup class="fn-ref"><a href="#fn-main-11-4" id="fnref-main-11-4">4</a></sup>。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -541,7 +541,7 @@
 
     <!-- ========== 05 对比表 ========== -->
     <section id="matrix">
-      <p class="sec-no">05 · 八工具对比</p>
+      <p class="sec-no">05 · 八个编码智能体对比</p>
       <h2>把“怎么回去”排成一张表</h2>
       <p>先看“恢复”：是检查点 + 后缀，还是全量重放，还是数据库投影。再看“分支”：同文件换叶、复制新文件，还是只有子会话的单亲关系。最后看“回退”：回退对话、回退文件，还是两者都能做。</p>
 
@@ -550,7 +550,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">日志与真实来源</th>
               <th scope="col">恢复</th>
               <th scope="col">分支 / fork</th>
@@ -706,7 +706,7 @@
           dsh 的【推断】结论：已核对 <code>core/session/src/index.ts</code> 的 <code>deriveMessages</code>、<code>surface.ts</code> 的 <code>replace</code>、<code>fork.ts</code> 与 <code>session-persistence/README.md</code>；没有找到 rewind / undo / 树状多分支的实现。缺完整命令表与前端代码，因此“没有”是按“源码未找到”得出的，不排除插件层提供。<a class="footnotes__back" href="#fnref-main-11-3">↩</a>
         </li>
         <li id="fn-main-11-4">
-          各工具弹窗的“设计意图”段都标【推断】：依据是源码的数据结构、字段名与调用顺序，缺作者的设计文档。它们解释“为什么这样设计、代价是什么”，不改变前文标【已核实】的日志格式、恢复路径与回退语义；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-11-4">↩</a>
+          各 agent 弹窗的“设计意图”段都标【推断】：依据是源码的数据结构、字段名与调用顺序，缺作者的设计文档。它们解释“为什么这样设计、代价是什么”，不改变前文标【已核实】的日志格式、恢复路径与回退语义；两者冲突时以来源链接为准。<a class="footnotes__back" href="#fnref-main-11-4">↩</a>
         </li>
       </ol>
     </div>
@@ -716,14 +716,14 @@
   </article>
 </main>
 
-<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+<!-- ===== agent 弹窗（7 个；Codex 已在正文） ===== -->
 
 <div class="modal" id="modal-claude-code" hidden>
   <div class="modal__backdrop" data-close></div>
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -753,7 +753,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -783,7 +783,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -813,7 +813,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -843,7 +843,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -873,7 +873,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -903,7 +903,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

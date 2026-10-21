@@ -310,10 +310,10 @@
           <text class="a3-t" x="510" y="372">日志重放</text>
           <text class="a3-s" x="510" y="387">＋记忆快照</text>
         </svg>
-        <figcaption>图 03-1　五种架构的四个部件。分叉 ① 在“真相源”：A 把历史放在内存数组里，B 放在条目树里，C 放在追加日志里，D 放在服务端，E 多一份外部记忆。分叉 ② 在“减量动了谁”：A 直接覆盖，B、C 只追加或遮蔽，D 由服务端决定，E 还会从记忆里补回。代表工具：A Codex 本地压缩、Grok Build full-replace；B pi、Claude Code、opencode v1；C DeepSeek Harness；D Codex 远端 v2；E Grok Build memory、Codex memories。图注比图更全，缩到手机宽度时以图注为准。</figcaption>
+        <figcaption>图 03-1　五种架构的四个部件。分叉 ① 在“真相源”：A 把历史放在内存数组里，B 放在条目树里，C 放在追加日志里，D 放在服务端，E 多一份外部记忆。分叉 ② 在“减量动了谁”：A 直接覆盖，B、C 只追加或遮蔽，D 由服务端决定，E 还会从记忆里补回。代表实现：A Codex 本地压缩、Grok Build full-replace；B pi、Claude Code、opencode v1；C DeepSeek Harness；D Codex 远端 v2；E Grok Build memory、Codex memories。图注比图更全，缩到手机宽度时以图注为准。</figcaption>
       </figure>
 
-      <p>读这张图时，容易犯两个错。第一个是<strong>把“日志”当成架构</strong>：几乎每个工具都写日志，日志只能说明“真相被保存了”，不能说明“模型看到的是哪一份”。第二个是<strong>把“压缩”当成一个动作</strong>：在 A 里压缩是覆盖，在 B、C 里压缩是追加一条记录，在 D 里压缩发生在你看不到的地方。同一个词，三种语义。</p>
+      <p>读这张图时，容易犯两个错。第一个是<strong>把“日志”当成架构</strong>：几乎每个 agent 都写日志，日志只能说明“真相被保存了”，不能说明“模型看到的是哪一份”。第二个是<strong>把“压缩”当成一个动作</strong>：在 A 里压缩是覆盖，在 B、C 里压缩是追加一条记录，在 D 里压缩发生在你看不到的地方。同一个词，三种语义。</p>
       <p>所以下面每讲一种架构，都按同一组问题走：数据流怎么走、上下文从哪里来、减量发生在哪、失败时怎么恢复、谁是这个架构的代表。</p>
     </section>
 

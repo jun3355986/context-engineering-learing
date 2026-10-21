@@ -98,7 +98,7 @@
         <h2>读完你能做到</h2>
         <ol>
           <li>说出 <code>Prompt</code> 的四个逻辑块，以及另外三个不影响「块数」的开关。</li>
-          <li>解释 <code>incremental_tools</code> 不是配置项，而是「模型能力 + 历史状态」推导出来的布尔值。</li>
+          <li>解释 <code>incremental_tools</code> 的取值：由「模型能力 + 历史状态」每轮现算。</li>
           <li>画出一次请求从 <code>build_prompt</code> 到线上 JSON 的形状变化，指出工具定义和岗位说明书被折叠到了哪里。</li>
           <li>比较 Codex、pi、opencode v1、DeepSeek Harness 四家把「系统提示」放在哪一层。</li>
         </ol>
@@ -306,7 +306,7 @@
 
       <p><code>input</code> 是历史条目数组，类型是 <code>ResponseItem</code>，不是「消息字符串」。这意味着工具调用、推理、压缩摘要、环境片段都可能是数组里的一个元素，顺序就是模型读到的顺序。<code>tools</code> 是工具定义数组，注释写得非常直白：<em>empty when supplied by history</em>——为空不是「没有工具」，而是「工具已经写在历史里了」。<span class="tag tag--ok">已核实</span></p>
 
-      <p><code>base_instructions</code> 是岗位说明书，类型不是 <code>String</code>，而是带 <code>text</code> 与 <code>provenance</code> 的结构。这解释了一个常见疑问：为什么 Codex 能区分「模型自带的提示」和「用户自定义的提示」？答案在 <code>provenance</code> 上，而不在文本内容里。<code>output_schema</code> 是可选的结构化输出约束，配合 <code>output_schema_strict</code> 决定服务端是否严格校验。<span class="tag tag--ok">已核实</span></p>
+      <p><code>base_instructions</code> 是岗位说明书，类型是带 <code>text</code> 与 <code>provenance</code> 的结构。这解释了一个常见疑问：为什么 Codex 能区分「模型自带的提示」和「用户自定义的提示」？答案在 <code>provenance</code> 上，而不在文本内容里。<code>output_schema</code> 是可选的结构化输出约束，配合 <code>output_schema_strict</code> 决定服务端是否严格校验。<span class="tag tag--ok">已核实</span></p>
 
       <p>另外三个字段容易被误认为「块」：<code>parallel_tool_calls</code> 是布尔开关，<code>output_schema_strict</code> 是校验开关，<code>cyber_access_program</code> 是安全策略上下文。它们不增加上下文内容的分类，但会改变请求行为的边界。把它们算进「四块」会让后面的对比失真。<span class="tag tag--guess">推断</span></p>
 
@@ -400,7 +400,7 @@
 
       <p>省下的是每轮重复下发的工具表与岗位说明书。工具表通常包含名称、描述、JSON Schema，MCP 工具多的时候可能有几十条；岗位说明书是整段系统提示。把它们从「每轮请求头部」搬到「历史开头」，后续轮次只需要在历史里保留一次，理论上每次采样都能省下这两块的序列化与传输。<span class="tag tag--guess">推断</span></p>
 
-      <p>代价有三类。第一，声明变成了历史的一部分，任何工具变更都必须以「增量声明」的形式追加，不能直接改头部；这就是 <code>TopLevelToolsState</code> 存在的理由。第二，历史被压缩或截断时，必须保证声明条目不被误删，否则模型会收到「没有工具」的请求。第三，恢复旧会话时，声明条目必须能被识别出来，否则会重复声明或漏声明。<span class="tag tag--guess">推断</span></p>
+      <p>代价有三类。第一，声明变成了历史的一部分，任何 agent 变更都必须以「增量声明」的形式追加，不能直接改头部；这就是 <code>TopLevelToolsState</code> 存在的理由。第二，历史被压缩或截断时，必须保证声明条目不被误删，否则模型会收到「没有工具」的请求。第三，恢复旧会话时，声明条目必须能被识别出来，否则会重复声明或漏声明。<span class="tag tag--guess">推断</span></p>
 
       <p>这三类代价解释了为什么 <code>AdditionalTools</code> 要带稳定 id、为什么要单独的 <code>TopLevelToolsState</code>、为什么 <code>has_tool_declarations()</code> 要回历史里查。增量不是免费的省 token，它把「无状态请求」变成了「有状态会话」，所有恢复路径都要跟着变。<span class="tag tag--guess">推断</span></p>
 
@@ -445,7 +445,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>同样是「系统提示」，四家放在四个不同的层</h2>
 
       <p>把「系统提示放在哪」拆开看，会发现四家的分歧不在文案，而在承载它的数据结构：Codex 用开发者消息，pi 用具名 section 拼成文本，opencode v1 把四块压成一条 system 字符串，DeepSeek Harness 把系统提示本身当成一条会话事件。</p>
@@ -455,7 +455,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">系统提示的载体</th>
               <th scope="col">工具定义的位置</th>
               <th scope="col">是否每轮重发</th>
@@ -494,7 +494,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径）。</p>
+      <p class="table-caption">表注：来源为各 agent 固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径）。</p>
 
       <p>第一个对照是<b>「系统提示」是否是一个真实对象</b>。Codex 与 dsh 都把它变成历史里的一条消息/事件，因此它可以被重放、被替换、被增量更新；pi 与 opencode 则把它拼成字符串，字符串本身不参与历史，只在每次请求时重新生成。前者的好处是恢复与压缩有统一入口，坏处是历史里多了一条需要特殊识别的消息；后者实现简单，但每次改动都要重算整段。</p>
 

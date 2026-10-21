@@ -284,7 +284,7 @@
 
       <h3>第 1 段　快照为什么只有两个字段</h3>
 
-      <p><code>AgentsMdSnapshot</code> 存的是 <code>directory</code> 和 <code>text</code>。没有文件路径列表、没有 mtime、没有内容哈希。这不是偷懒，而是「模型可见状态」的最小充分集：模型只知道「这些规则来自哪个目录」和「规则正文是什么」，它不知道文件何时被修改，也不该知道。<span class="tag tag--ok">已核实</span></p>
+      <p><code>AgentsMdSnapshot</code> 存的是 <code>directory</code> 和 <code>text</code>。没有文件路径列表、没有 mtime、没有内容哈希。这是「模型可见状态」的最小充分集：模型只知道「这些规则来自哪个目录」和「规则正文是什么」，它不知道文件何时被修改，也不该知道。<span class="tag tag--ok">已核实</span></p>
 
       <p>把 <code>directory</code> 放进快照，意味着「同样的文本出现在不同目录」也会被判定为变化。假设项目根和子目录各有一份内容相同的 AGENTS.md，合并后的文本一样，但目录不同；模型看到的提示是「这些规则来自 /repo/sub」，来源变了，语义也可能变（比如规则的作用范围）。所以目录必须参与比较。<span class="tag tag--guess">推断</span></p>
 
@@ -351,7 +351,7 @@
 
       <h3>第 5 段　删除为什么要单独发通知</h3>
 
-      <p>「当前无 + 上次有」这个分支只发一条 <code>REMOVAL_NOTICE</code>，不带任何正文。这条消息的作用不是告诉模型「新规则是什么」，而是告诉它「之前那条不再适用」。如果没有这条通知，模型会在历史里看到一份 AGENTS.md，然后继续遵守它——因为在它的视角里，没有任何东西撤销过这份规则。<span class="tag tag--guess">推断</span></p>
+      <p>「当前无 + 上次有」这个分支只发一条 <code>REMOVAL_NOTICE</code>，不带任何正文。这条消息只声明「之前那条不再适用」，不重复新规则是什么。如果没有这条通知，模型会在历史里看到一份 AGENTS.md，然后继续遵守它——因为在它的视角里，没有任何东西撤销过这份规则。<span class="tag tag--guess">推断</span></p>
 
       <p>这也是「追加式历史」的代价：删除一个状态，不能靠「不发送」来表达，必须靠一条显式的否定消息。所有基于追加日志的系统都会遇到这个问题：dsh 用「移除通知」，Grok Build 用 rewind marker，pi 用 section patch 的 <code>null</code>。表达「不存在」永远比表达「存在」更贵。<span class="tag tag--guess">推断</span></p>
 
@@ -409,7 +409,7 @@
 
       <p>这里有一个容易被忽略的约束：快照不能序列化成 <code>null</code>。因为 merge patch 里的 <code>null</code> 表示删除，如果某个合法状态被序列化成 <code>null</code>，恢复时就会被当成「这一节不存在」，下一次比较从 <code>Absent</code> 开始，可能漏发替换通知。trait 的注释专门写了这一点（mod.rs#L306-L308）。<span class="tag tag--ok">已核实</span></p>
 
-      <p>如果基线丢了会怎样？<code>render_history_diff()</code> 会退回到历史里找旧片段：找到就 <code>Unknown</code>，找不到就 <code>Absent</code>。前者会多发一条替换通知，后者可能漏发。这就是为什么「快照持久化」不是可选项，而是正确性的一部分。<span class="tag tag--guess">推断</span></p>
+      <p>如果基线丢了会怎样？<code>render_history_diff()</code> 会退回到历史里找旧片段：找到就 <code>Unknown</code>，找不到就 <code>Absent</code>。前者会多发一条替换通知，后者可能漏发。所以快照必须持久化：它是正确性的一部分。<span class="tag tag--guess">推断</span></p>
 
       <p>再往前一步：section 的 <code>ID</code> 必须稳定。trait 的注释写明它会被写进 rollout，改动它等于让旧会话找不到自己的快照；<code>add_section()</code> 还会对重复 ID 直接 <code>assert</code>。这两条约束一起保证了「恢复时能对上号」。如果某个重构把 <code>agents_md</code> 改成 <code>agents_md_v2</code>，旧会话恢复时就会退到 <code>Unknown</code>，多发一条替换通知；如果改成和别的 section 重名，程序会直接崩溃，而不是悄悄错乱。<span class="tag tag--ok">已核实</span></p>
 
@@ -431,7 +431,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>五种「规则变了怎么告诉模型」</h2>
 
       <p>规则文件的发现方式各家有各家的做法，但真正影响上下文的是「变化怎么表达」。下面五家代表五种不同的选择：状态差分、按需发现、提示词补丁、每次重发、全量加载。</p>
@@ -441,7 +441,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">变化检测</th>
               <th scope="col">变化时发什么</th>
               <th scope="col">删除怎么表达</th>
@@ -487,7 +487,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，dsh 为同仓文档口径，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，Grok Build 为源码 + 用户手册）。</p>
+      <p class="table-caption">表注：来源为各 agent 固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，dsh 为同仓文档口径，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，Grok Build 为源码 + 用户手册）。</p>
 
       <p>第一个对照是<b>「差分发生在哪一层」</b>。Codex 与 dsh 都在「规则文件」这一层做状态对账，变化时发的是文件级的新全文/移除通知；pi 在「系统提示 section」这一层做补丁，规则只是众多 section 之一；opencode 与 Grok 干脆不做差分，每轮重建整段。层次越靠上，差分的收益越大，但实现也越依赖「历史是否可追加」这个前提。</p>
 

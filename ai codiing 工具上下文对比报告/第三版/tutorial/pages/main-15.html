@@ -170,7 +170,7 @@
       <h3 id="codex-why-closed">2.3 为什么压缩不开放</h3>
       <p>压缩是一致性敏感的流程：切点必须落在合法边界，工具调用与结果必须成对，摘要写回后内存与检查点必须同时更新。任何一条被插件改坏，都会产生一段“模型能看见但协议不合法”的历史。开放压缩，等于把这三个不变量交给第三方维护。</p>
       <p>Codex 的选择是“不开放”，代价是用户想保留领域信息时，只能绕路：写进压缩模板（手动 <code>/compact</code> 可替换 <code>compact_prompt</code>）、写进规则文件、或者在压缩后用 <code>SessionStart(Compact)</code> 补一条交接清单。前两条改的是“摘要要写什么”，第三条改的是“摘要之后再加什么”，都不是“改压缩算法”。</p>
-      <p>这也解释了一个常见困惑：为什么有的工具能“自定义压缩”，有的只能“自定义压缩提示词”。不是能力高低，而是<strong>愿不愿意把不变量交出去</strong>。</p>
+      <p>这也解释了一个常见困惑：为什么有的工具能“自定义压缩”，有的只能“自定义压缩提示词”。差别在于<strong>愿不愿意把不变量交出去</strong>。</p>
 
       <h3 id="codex-plugin-prefix">2.4 插件的命名前缀为什么算接口</h3>
       <p>Codex 的插件在提示词里用 <code>plugin_name:</code> 前缀标注技能来源。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/available_plugins_instructions.rs#L33-L42">available_plugins_instructions.rs#L33-L42</a> <span class="tag tag--ok">已核实</span> 这不是装饰：它让模型能区分“项目自带的技能”和“某个插件提供的技能”，也让用户在排查时知道该卸哪个包。</p>
@@ -305,7 +305,7 @@
         <li><strong>Codex</strong>：没有 PreCompact；压缩后触发 <code>SessionStart(Compact)</code>，可以补上下文，但不能改摘要。</li>
         <li><strong>dsh</strong>：没有同名钩子，走 <code>compaction/summary-error</code> 瀑布与 <code>CompactionEngine</code> 子类（第三档）。</li>
       </ul>
-      <p>所以“PreCompact / PostCompact 能力差异”不是实现偷懒，而是<strong>提交点决定可写性</strong>。在提交点之前，你可以影响要写什么；在提交点之后，最安全的能力就是观察。少数工具允许在提交后追加（比如 Codex 的 <code>SessionStart(Compact)</code>），但那是“追加一条新消息”，不是“改已提交的摘要”。</p>
+      <p>所以“PreCompact / PostCompact 能力差异”不是实现偷懒，而是<strong>提交点决定可写性</strong>。在提交点之前，你可以影响要写什么；在提交点之后，最安全的能力就是观察。少数 agent 允许在提交后追加（比如 Codex 的 <code>SessionStart(Compact)</code>），但那是“追加一条新消息”，不是“改已提交的摘要”。</p>
 
       <h3 id="plugin-mcp">3.5 插件与 MCP 的分工</h3>
       <p>这两个词经常被混用，但它们改的不是同一件事。</p>
@@ -328,11 +328,11 @@
       <p>契约测试可以很小：准备一个固定任务，跑完后断言“上下文里出现了某个只有 hook 才会写入的标记字符串”，再断言“压缩后这个标记仍在”。这条测试不关心模型答得好不好，只关心扩展有没有生效。它能在升级当天抓到字段改名、事件未触发、注入被去重这三类问题，成本只有几分钟。</p>
     </section>
 
-    <!-- ========== 04 工具弹窗 ========== -->
+    <!-- ========== 04 agent 弹窗 ========== -->
     <section id="tools">
-      <p class="sec-no">04 · 七个工具</p>
+      <p class="sec-no">04 · 七个编码智能体</p>
       <h2>同一道缝，七种开法</h2>
-      <p>Codex 已经在主线里拆过。剩下七个工具可以按“缝开在哪”分三派：<strong>事件钩子</strong>（Claude Code、Grok Build）、<strong>进程内扩展</strong>（pi、omp、opencode v1/v2）、<strong>全插件内核</strong>（dsh）。第一派最容易接入，第三派能改得最深。</p>
+      <p>Codex 已经在主线里拆过。剩下七个 agent 可以按“缝开在哪”分三派：<strong>事件钩子</strong>（Claude Code、Grok Build）、<strong>进程内扩展</strong>（pi、omp、opencode v1/v2）、<strong>全插件内核</strong>（dsh）。第一派最容易接入，第三派能改得最深。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -368,7 +368,7 @@
 
     <!-- ========== 05 对比表 ========== -->
     <section id="matrix">
-      <p class="sec-no">05 · 八工具对比</p>
+      <p class="sec-no">05 · 八个编码智能体对比</p>
       <h2>把“能改到多深”排成一张表</h2>
       <p>先看第二列“扩展机制”：它决定你以什么形式接入。第三列是压缩相关钩子，第四列是能力深度，最后一列是升级时最可能坏的地方。读表时把第三、四列连起来看：同样是“有压缩钩子”，有的只能改提示词，有的能直接给摘要。</p>
 
@@ -377,7 +377,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">扩展机制</th>
               <th scope="col">压缩相关钩子</th>
               <th scope="col">能改到多深</th>
@@ -459,7 +459,7 @@
 
       <h3>取舍二：给“压缩前”写权限，还是只给“压缩后”观察</h3>
       <p><strong>前写派</strong>：Claude Code 的 <code>PreCompact</code>、pi / omp 的 <code>session_before_compact</code>、opencode v2 的 <code>session.compaction</code>。它们都发生在提交点之前，改的是“即将写入的内容”。<strong>后看派</strong>：Grok 的 <code>post_compact</code>、pi / omp 的 <code>session_compact</code>、Codex 的 <code>SessionStart(Compact)</code>（只能追加）。</p>
-      <p><strong>代价</strong>：前写能力强，但要求扩展理解压缩的约束（切点合法、配对完整、预算不超）；写坏了，错误会被写进新基线，后面很难修。后看最安全，但只能做事后补救，比如记录指标、追加一条提醒、触发一次外部索引；它救不回已经丢掉的细节。这也是为什么大多数工具把“写”放在前、“看”放在后。</p>
+      <p><strong>代价</strong>：前写能力强，但要求扩展理解压缩的约束（切点合法、配对完整、预算不超）；写坏了，错误会被写进新基线，后面很难修。后看最安全，但只能做事后补救，比如记录指标、追加一条提醒、触发一次外部索引；它救不回已经丢掉的细节。这也是为什么大多数 agent 把“写”放在前、“看”放在后。</p>
 
       <h3>取舍三：进程内扩展，还是外部命令</h3>
       <p><strong>进程内</strong>：pi、omp、opencode 的扩展是同一进程里的模块，能直接拿到消息对象、工具定义、压缩准备数据，改起来最细；Grok 的 hooks 也是进程内事件回调。<strong>外部命令</strong>：Claude Code 的 hooks 是外部命令或 HTTP 端点，通过 stdin/stdout 与退出码通信。</p>
@@ -547,7 +547,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -572,7 +572,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -597,7 +597,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -622,7 +622,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -647,7 +647,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -672,7 +672,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -697,7 +697,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

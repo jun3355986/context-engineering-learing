@@ -642,7 +642,7 @@
             <p class="cmp-warning" id="cmp-warning" role="alert" hidden></p>
           </div>
         </div>
-        <p class="demo__note">教学模型，不是任何工具的真实算法。窗口固定 200k；tokens 为示意值；“进摘要”只统计真实用户消息，其余前缀消息算作丢弃。把阈值调到 70%、保留量保持 20k，可以看到切点自动避开工具配对。</p>
+        <p class="demo__note">教学模型，不是任何 agent 的真实算法。窗口固定 200k；tokens 为示意值；“进摘要”只统计真实用户消息，其余前缀消息算作丢弃。把阈值调到 70%、保留量保持 20k，可以看到切点自动避开工具配对。</p>
       </div>
 
       <p>三个结果值得记住。第一，<strong>阈值决定“什么时候压”，不直接决定“保留多少”</strong>；它通过“压缩发生时历史有多长”间接影响切点。第二，<strong>保留量才是切点的主要旋钮</strong>：保留量越大，切点越靠前，进摘要的内容越少。第三，<strong>输出预留会压缩可用输入</strong>：预留从 16k 提到 30k，触发线下降约 7%，压缩会更早发生。</p>
@@ -679,14 +679,14 @@
         <p class="demo__note">合法切点共有 10 个（0…12 中去掉 3、6、9）。修复方向默认“前移”，即把整对调用与结果都留在保留段；也可以“后移”，把整对丢进摘要，但会失去最近的工作状态。</p>
       </div>
 
-      <p><strong>为什么多数工具选择“前移”而不是“后移”。</strong>结果通常是最近一次工作状态的快照：测试有没有过、文件现在长什么样。把它丢掉，模型下一轮可能重复刚才的失败。前移只多花这一对结果的 token，后移则要重新执行工具。<strong>代价</strong>是保留段可能因此超出预算；这时实现要么允许超一点，要么把更早的整对也一起保留，形成连锁。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L446-L501">pi 的 findCutPoint</a> <span class="tag tag--ok">已核实</span> 与 <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/src/region.ts#L117-L155">dsh 的 selectCompactableRange</a> <span class="tag tag--ok">已核实</span> 都在切点选择里显式处理了这个约束。</p>
+      <p><strong>为什么多数 agent 选择“前移”而不是“后移”。</strong>结果通常是最近一次工作状态的快照：测试有没有过、文件现在长什么样。把它丢掉，模型下一轮可能重复刚才的失败。前移只多花这一对结果的 token，后移则要重新执行工具。<strong>代价</strong>是保留段可能因此超出预算；这时实现要么允许超一点，要么把更早的整对也一起保留，形成连锁。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L446-L501">pi 的 findCutPoint</a> <span class="tag tag--ok">已核实</span> 与 <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/src/region.ts#L117-L155">dsh 的 selectCompactableRange</a> <span class="tag tag--ok">已核实</span> 都在切点选择里显式处理了这个约束。</p>
     </section>
 
-    <!-- ========== 05 工具弹窗 ========== -->
+    <!-- ========== 05 agent 弹窗 ========== -->
     <section id="tools">
-      <p class="sec-no">05 · 七个工具</p>
+      <p class="sec-no">05 · 七个编码智能体</p>
       <h2>同一件事，七种切法</h2>
-      <p>Codex 已经在主线里拆过，下面七个工具各有一个弹窗。可以粗略分成三派：<strong>只留用户消息</strong>（Codex）、<strong>保留最近一段原文</strong>（pi、oh-my-pi、opencode v1/v2、DeepSeek Harness）、<strong>整段替换 + 固定重附清单</strong>（Claude Code、Grok Build）。分野不在“会不会写摘要”，而在“切点怎么找、切完补什么”。</p>
+      <p>Codex 已经在主线里拆过，下面七个 agent 各有一个弹窗。可以粗略分成三派：<strong>只留用户消息</strong>（Codex）、<strong>保留最近一段原文</strong>（pi、oh-my-pi、opencode v1/v2、DeepSeek Harness）、<strong>整段替换 + 固定重附清单</strong>（Claude Code、Grok Build）。分野不在“会不会写摘要”，而在“切点怎么找、切完补什么”。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -722,7 +722,7 @@
 
     <!-- ========== 06 对比表 ========== -->
     <section id="matrix">
-      <p class="sec-no">06 · 八工具对比</p>
+      <p class="sec-no">06 · 八个编码智能体对比</p>
       <h2>把五个决定排成一张表</h2>
       <p>看表时先看“保留预算”和“切点规则”两列：它们决定了压缩后模型还能看见什么。再看“摘要与重附”：同样是摘要，有的工具只留一条笔记，有的会把最近文件、技能、工具定义重新塞回去。最后一列是失败时的退路。</p>
 
@@ -731,7 +731,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">触发条件</th>
               <th scope="col">保留预算</th>
               <th scope="col">切点规则</th>
@@ -814,7 +814,7 @@
     <section id="tradeoffs">
       <p class="sec-no">07 · 设计取舍</p>
       <h2>为什么没有一种切法通吃</h2>
-      <p>下面五组取舍，是这张对比表背后真正的分歧。每组都给出“选 A 的人在想什么”“选 B 的人在想什么”，以及一句代价。没有正确答案，只有和场景匹配的答案。本节引用的参数不重复给 permalink，统一见第 06 节表格与各工具弹窗。</p>
+      <p>下面五组取舍，是这张对比表背后真正的分歧。每组都给出“选 A 的人在想什么”“选 B 的人在想什么”，以及一句代价。没有正确答案，只有和场景匹配的答案。本节引用的参数不重复给 permalink，统一见第 06 节表格与各 agent 弹窗。</p>
 
       <h3>取舍一：切点保守，还是激进</h3>
       <p><strong>保守派</strong>（Codex、Grok Build）只保留一类可靠的东西：Codex 保留真实用户消息，Grok 保留系统消息、用户前缀、AGENTS.md、最后真实请求及其后的消息。切点规则简单，永远不会拆散工具配对。<strong>激进派</strong>（pi、omp、opencode、dsh）从最新往回保留一大段原文，连工具结果一起留，只把“更早的历史”换摘要。它们要保住最近的工作状态，因此必须写复杂的合法切点算法。</p>
@@ -859,12 +859,12 @@
       <div class="quiz">
         <div class="quiz__head">
           <span class="quiz__no">Q2</span>
-          <p class="quiz__q">切点落在“工具调用”和它的“工具结果”之间，会发生什么？有哪两种合法修法？多数工具为什么选前移？</p>
+          <p class="quiz__q">切点落在“工具调用”和它的“工具结果”之间，会发生什么？有哪两种合法修法？多数 agent 为什么选前移？</p>
         </div>
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>结果是保留段里出现一条没有对应调用的工具结果，调用本身却进了摘要。严格 API 会拒绝这种历史，宽松模型会把结果当成新事实。两种修法：把切点前移到调用之前（整对保留），或后移到结果之后（整对丢弃）。多数工具选前移，因为结果代表最近的工作状态，丢掉会导致重复执行；前移只多花这一对的 token。见<a href="#pairing">演示二</a>与 <a href="#tradeoffs">取舍一</a>。</p>
+          <p>结果是保留段里出现一条没有对应调用的工具结果，调用本身却进了摘要。严格 API 会拒绝这种历史，宽松模型会把结果当成新事实。两种修法：把切点前移到调用之前（整对保留），或后移到结果之后（整对丢弃）。多数 agent 选前移，因为结果代表最近的工作状态，丢掉会导致重复执行；前移只多花这一对的 token。见<a href="#pairing">演示二</a>与 <a href="#tradeoffs">取舍一</a>。</p>
         </div>
       </div>
 
@@ -896,14 +896,14 @@
   </article>
 </main>
 
-<!-- ===== 工具弹窗（7 个；Codex 已在正文） ===== -->
+<!-- ===== agent 弹窗（7 个；Codex 已在正文） ===== -->
 
 <div class="modal" id="modal-claude-code" hidden>
   <div class="modal__backdrop" data-close></div>
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -934,7 +934,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -964,7 +964,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -994,13 +994,13 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">opencode v1 的保留预算按可用窗口比例算：<code>clamp(usable × 0.25, 2_000, 15_000)</code>，也可以用 <code>preserve_recent_tokens</code> 覆盖，或用 <code>tail_turns</code> 限制候选 turn 数。切点优先落在整 turn 边界；预算不够整 turn 时，用 <code>splitTurn</code> 在 turn 内部找切点，并把起点记到压缩 part 的 <code>tail_start_id</code>。被摘要的部分序列化成文本（tool 结果再按 2000 字符限长），交给一个隐藏的 <code>compaction</code> agent；该 agent 权限 <code>"*": deny</code>，不能调用任何工具。前一次摘要以 <code>&lt;prior-summary&gt;</code> 合并，规则是“没带过来的就丢了、冲突时以新对话为准”。</p>
+      <p class="modal__lead">opencode v1 的保留预算按可用窗口比例算：<code>clamp(usable × 0.25, 2_000, 15_000)</code>，也可以用 <code>preserve_recent_tokens</code> 覆盖，或用 <code>tail_turns</code> 限制候选 turn 数。切点优先落在整 turn 边界；预算不够整 turn 时，用 <code>splitTurn</code> 在 turn 内部找切点，并把起点记到压缩 part 的 <code>tail_start_id</code>。被摘要的部分序列化成文本（tool 结果再按 2000 字符限长），交给一个隐藏的 <code>compaction</code> agent；该 agent 权限 <code>"*": deny</code>，不能调用任何 agent。前一次摘要以 <code>&lt;prior-summary&gt;</code> 合并，规则是“没带过来的就丢了、冲突时以新对话为准”。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd><code>compaction.auto</code> 默认 <code>true</code>（仅 <code>=== false</code> 时关）；<code>preserve_recent_tokens</code> 未设时 <code>clamp(usable×0.25, 2_000, 15_000)</code>；<code>reserved</code> 未设时 <code>min(20_000, maxOutputTokens)</code>；<code>tail_turns</code> 未设表示不限；摘要模板 5 段：Objective / Important Details / Work State / Next Move / Relevant Files。<span class="tag tag--ok">已核实</span></dd>
@@ -1024,7 +1024,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -1055,7 +1055,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -1086,7 +1086,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

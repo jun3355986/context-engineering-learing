@@ -168,9 +168,9 @@
       <p>这三样加起来，足够做“事后归因”：这次任务为什么多花了 30%？是压缩次数多了、缓存失效多了，还是工具输出变大了？但都不足以做“事前预测”：换一个阈值会怎样，必须自己跑对照实验。</p>
 
       <h3 id="codex-no-eval">2.2 为什么“工具不自带评测”是常态</h3>
-      <p>八个工具里，有成型评测设施的只有 pi 与 omp：pi 有 <code>packages/evals</code>，用 <code>vitest-evals</code> 跑“有文档 / 无文档”的对照；omp 有 <code>snapcompact</code> 的研究评测（SQuAD 的 recall / F1）和 <code>packages/stats</code> 的本地观测面板。Grok 算半套：遥测字段齐全，但没有运行器。其余工具大多只有记账与事件。没有一家提供“压缩策略 A/B”这种开箱即用的能力。</p>
+      <p>八个 agent 里，有成型评测设施的只有 pi 与 omp：pi 有 <code>packages/evals</code>，用 <code>vitest-evals</code> 跑“有文档 / 无文档”的对照；omp 有 <code>snapcompact</code> 的研究评测（SQuAD 的 recall / F1）和 <code>packages/stats</code> 的本地观测面板。Grok 算半套：遥测字段齐全，但没有运行器。其余工具大多只有记账与事件。没有一家提供“压缩策略 A/B”这种开箱即用的能力。</p>
       <p>原因不难理解：上下文策略的效果高度依赖任务分布。一个在“读代码问答”上更好的压缩策略，可能在“跨文件重构”上更差；一个在短会话里省钱的阈值，在长会话里会让成功率下降。工具厂商很难替你定义“你的任务”，所以只能给你原始数据。</p>
-      <p class="lead-in">评测不是工具的附属功能，是你对自己任务分布的理解。</p>
+      <p class="lead-in">评测不是 agent 的附属功能，是你对自己任务分布的理解。</p>
 
       <h3 id="codex-pipeline">2.3 一个最小可用的评估管线</h3>
       <p>不需要一上来就搭平台。四步就够跑第一轮：</p>
@@ -262,7 +262,7 @@
             <tr>
               <th scope="row">压缩回收率<code>CRR</code></th>
               <td><code>(tokens_before − tokens_after) ÷ tokens_before</code>，只看输入侧。</td>
-              <td>Grok 的 <code>CompactionCompleted</code> 直接给 before / after；其他工具从压缩前后 usage 或检查点估算。</td>
+              <td>Grok 的 <code>CompactionCompleted</code> 直接给 before / after；其他 agent 从压缩前后 usage 或检查点估算。</td>
               <td>回收率低说明“压了等于没压”，要查保留预算是否过大、切点是否太靠后。它不能单独作为好坏标准，必须配 IRR。</td>
               <td>C3</td>
             </tr>
@@ -499,11 +499,11 @@
       <p>规则写在实验开始之前，能防止“结果出来再挑指标”。这也是 <code>C6</code> 的实践含义：先算样本量，再定决策阈值，最后才跑。</p>
     </section>
 
-    <!-- ========== 06 工具弹窗 ========== -->
+    <!-- ========== 06 agent 弹窗 ========== -->
     <section id="tools">
-      <p class="sec-no">06 · 七个工具</p>
+      <p class="sec-no">06 · 七个编码智能体</p>
       <h2>有人给账本，有人给遥测，有人给评测</h2>
-      <p>Codex 已经在主线里拆过：它给 rollout、usage、OTEL，不给结论。剩下七个工具可以按“最值钱的那份数据”分四派：<strong>记账派</strong>（pi、opencode v1/v2）把每一步的 token 与成本记准；<strong>遥测派</strong>（Claude Code、Grok Build）把压缩与缓存失效做成事件；<strong>投影派</strong>（dsh）在请求发出前就给出压力预估；<strong>评测派</strong>（pi、omp）自带一套离线评测设施。四派都不提供“上下文策略 A/B”的开箱能力。</p>
+      <p>Codex 已经在主线里拆过：它给 rollout、usage、OTEL，不给结论。剩下七个 agent 可以按“最值钱的那份数据”分四派：<strong>记账派</strong>（pi、opencode v1/v2）把每一步的 token 与成本记准；<strong>遥测派</strong>（Claude Code、Grok Build）把压缩与缓存失效做成事件；<strong>投影派</strong>（dsh）在请求发出前就给出压力预估；<strong>评测派</strong>（pi、omp）自带一套离线评测设施。四派都不提供“上下文策略 A/B”的开箱能力。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -539,7 +539,7 @@
 
     <!-- ========== 07 对比表 ========== -->
     <section id="matrix">
-      <p class="sec-no">07 · 八工具对比</p>
+      <p class="sec-no">07 · 八个编码智能体对比</p>
       <h2>把“能采到什么”排成一张表</h2>
       <p>看表时先看第二列：它决定你能否算 <code>CPS</code> 与 <code>CHR</code>。第三列是压缩相关的遥测，决定你能否算 <code>CRR</code> 与压缩耗时。第四列是评测设施，决定你能不能直接做配对实验。最后一列是“没有内置能力时，外部从哪里接”。</p>
 
@@ -548,7 +548,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">自带可观测数据</th>
               <th scope="col">压缩遥测</th>
               <th scope="col">评测框架</th>
@@ -848,11 +848,11 @@
           <a class="footnotes__back" href="#fnref-main-16-2">↩</a>
         </li>
         <li id="fn-main-16-3">
-          “缓存命中率跨工具不可比”是推断：Codex 的 <code>cached_tokens</code>、opencode v2 的 <code>cache.read</code>、pi footer 的 cacheRead 在分母口径上是否包含缓存写，源码与文档没有统一说明；已核对三家的 usage 字段定义，缺少跨 provider 的对照测试。因此本章要求先统一口径再比较，不给出跨工具的“标准命中率”。
+          “缓存命中率跨工具不可比”是推断：Codex 的 <code>cached_tokens</code>、opencode v2 的 <code>cache.read</code>、pi footer 的 cacheRead 在分母口径上是否包含缓存写，源码与文档没有统一说明；已核对三家的 usage 字段定义，缺少跨 provider 的对照测试。因此本章要求先统一口径再比较，不给出跨 agent 的“标准命中率”。
           <a class="footnotes__back" href="#fnref-main-16-3">↩</a>
         </li>
         <li id="fn-main-16-4">
-          “探针法测信息保留率”是本章建议的评测方法，不是任何工具的内置指标；八个工具里没有任何一家提供 <code>IRR</code> 这类字段。已逐个核对八个工具的评测相关源码，确认只有记账、事件与遥测。探针问题的设计、评分口径需要自行制定并在实验记录里写明。
+          “探针法测信息保留率”是本章建议的评测方法，不是任何 agent 的内置指标；八个 agent 里没有任何一家提供 <code>IRR</code> 这类字段。已逐个核对八个 agent 的评测相关源码，确认只有记账、事件与遥测。探针问题的设计、评分口径需要自行制定并在实验记录里写明。
           <a class="footnotes__back" href="#fnref-main-16-4">↩</a>
         </li>
       </ol>
@@ -869,7 +869,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -894,13 +894,13 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">pi 是八家里少数自带评测设施的工具：<code>packages/evals</code> 用 <code>vitest-evals</code> 跑行为评测，支持“文档增益”对照——同一 case 分别在 <code>without_docs</code> 与 <code>with_docs</code> 容器里跑，报告 lift；运行器按 <code>(case, variant, repetition)</code> 展开并配对两臂。</p>
+      <p class="modal__lead">pi 是八家里少数自带评测设施的 agent：<code>packages/evals</code> 用 <code>vitest-evals</code> 跑行为评测，支持“文档增益”对照——同一 case 分别在 <code>without_docs</code> 与 <code>with_docs</code> 容器里跑，报告 lift；运行器按 <code>(case, variant, repetition)</code> 展开并配对两臂。</p>
       <dl class="kv">
         <dt>关键参数</dt>
         <dd>评测框架 <code>vitest-evals</code>；两臂目录 <code>without_docs</code> / <code>with_docs</code>；footer 显示累计 input / output / cacheRead / cacheWrite、缓存命中率、成本；<code>cache-stats</code> 噪声下限 1024 token。<span class="tag tag--ok">已核实</span></dd>
@@ -919,7 +919,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -944,7 +944,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -969,7 +969,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -994,7 +994,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -1019,7 +1019,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

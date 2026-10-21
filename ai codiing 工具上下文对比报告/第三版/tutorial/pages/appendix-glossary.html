@@ -86,7 +86,7 @@
       <ul class="meta">
         <li>68 条</li>
         <li>5 组</li>
-        <li>3 组易混对照</li>
+        <li>4 组易混对照</li>
         <li>查词用</li>
       </ul>
       <div class="callout callout--quiet">
@@ -101,7 +101,7 @@
       <section id="glossary-a">
         <p class="sec-no">A · 容量与计量</p>
         <h2>先能数清楚，才能谈怎么省</h2>
-        <p>这一组的词都围绕一个问题：这次请求到底占了多少、还剩多少、超了会怎样。不同工具的估算口径不同，所以定义里尽量写「是谁的视角」，不写死一个数。</p>
+        <p>这一组的词都围绕一个问题：这次请求到底占了多少、还剩多少、超了会怎样。不同 agent 的估算口径不同，所以定义里尽量写「是谁的视角」，不写死一个数。</p>
 
         <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
         <div class="table-wrap">
@@ -172,7 +172,7 @@
             </tbody>
           </table>
         </div>
-        <p class="table-caption">同一个「80%」在不同工具里分母可能不同：有的除以窗口，有的除以「窗口减输出预留」。跨工具比较前先统一分母。</p>
+        <p class="table-caption">同一个「80%」在不同 agent 里分母可能不同：有的除以窗口，有的除以「窗口减输出预留」。跨工具比较前先统一分母。</p>
       </section>
 
       <!-- ========== B ========== -->
@@ -202,7 +202,7 @@
               <tr>
                 <th scope="row">系统提示词</th>
                 <td>system prompt</td>
-                <td>位于请求最前、定义身份与行为的长指令；多数工具把它拆成静态段与动态段。</td>
+                <td>位于请求最前、定义身份与行为的长指令；多数 agent 把它拆成静态段与动态段。</td>
                 <td><a href="main-01.html">第 8 章</a></td>
               </tr>
               <tr>
@@ -227,7 +227,7 @@
               <tr>
                 <th scope="row">AGENTS.md</th>
                 <td>AGENTS.md</td>
-                <td>Codex 等工具默认读取的项目规则文件名；各家对候选名与合并顺序的处理不同。</td>
+                <td>Codex 等 agent 默认读取的项目规则文件名；各家对候选名与合并顺序的处理不同。</td>
                 <td><a href="main-02.html">第 9 章</a></td>
               </tr>
               <tr>
@@ -239,7 +239,7 @@
               <tr>
                 <th scope="row">规则合并</th>
                 <td>rules merge</td>
-                <td>多层规则按顺序拼接；多数工具是叠加而不是覆盖，越靠近工作目录的越靠后。</td>
+                <td>多层规则按顺序拼接；多数 agent 是叠加而不是覆盖，越靠近工作目录的越靠后。</td>
                 <td><a href="main-02.html">第 9 章</a></td>
               </tr>
               <tr>
@@ -287,7 +287,7 @@
             </tbody>
           </table>
         </div>
-        <p class="table-caption">规则文件的「合并」在不同工具里语义差别很大：Codex 拼接后按字节截断，Claude Code 拼接后作为一条 meta 用户消息前插，omp 还会做内容包含去重。</p>
+        <p class="table-caption">规则文件的「合并」在不同 agent 里语义差别很大：Codex 拼接后按字节截断，Claude Code 拼接后作为一条 meta 用户消息前插，omp 还会做内容包含去重。</p>
       </section>
 
       <!-- ========== C ========== -->
@@ -515,7 +515,7 @@
             </tbody>
           </table>
         </div>
-        <p class="table-caption">八个工具里，pi 与 opencode v1/v2、dsh 都没有跨会话记忆子系统；「没有」也是结论，不要按「默认关闭」理解。</p>
+        <p class="table-caption">八个 agent 里，pi 与 opencode v1/v2、dsh 都没有跨会话记忆子系统；「没有」也是结论，不要按「默认关闭」理解。</p>
       </section>
 
       <!-- ========== E ========== -->
@@ -629,8 +629,8 @@
       <!-- ========== 易混词 ========== -->
       <section id="glossary-confusable">
         <p class="sec-no">F · 易混词对照</p>
-        <h2>三对词，三句话分清</h2>
-        <p>这三组词在正文里经常被并列提到，但它们的代价、可逆性和失败模式完全不同。下面每个框只回答一个问题：什么时候该用哪一个。</p>
+        <h2>四对词，四句话分清</h2>
+        <p>这四组词在正文里经常被并列提到，但它们的代价、可逆性和失败模式完全不同。下面每个框只回答一个问题：什么时候该用哪一个。</p>
 
         <div class="callout callout--info">
           <p class="callout__title">对照一 · 裁剪（pruning） vs 压缩（compaction）</p>
@@ -667,6 +667,19 @@
             <dd>压缩 = 写摘要 + 落检查点。只有检查点、没有摘要，模型会看不到被遮蔽的历史；只有摘要、没有检查点，系统不知道保留段从哪里开始。</dd>
           </dl>
         </div>
+        <div class="callout callout--info">
+          <p class="callout__title">对照四 · 编码智能体（coding agent） vs 编码助手（coding assistant）</p>
+          <dl class="kv">
+            <dt>编码智能体</dt>
+            <dd>能自己规划多步、读写文件、执行命令、跑测试并自我修正。你给目标，它跑「读—改—跑—修」的循环，你审结果。本教程比较的八个产品都属于这一类。<a href="../index.html">导读</a></dd>
+            <dt>编码助手</dt>
+            <dd>在你敲代码时补全下一行、回答一个问题；控制权始终在人手里，它不自己动手改仓库。早期的 Copilot 补全、IDE 里的行内建议属于这一类。</dd>
+            <dt>一句话判断</dt>
+            <dd>看控制流：人一步一步指挥，是助手；给一个目标、它自己跑循环，是智能体。</dd>
+          </dl>
+        </div>
+
+        <p>正文里的「工具」只指协议层的 tool——工具定义、工具调用、工具结果；产品一律写 agent，正式名是<strong>编码智能体</strong>。</p>
       </section>
 
       <div class="footnotes">

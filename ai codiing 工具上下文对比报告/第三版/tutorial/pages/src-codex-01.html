@@ -375,7 +375,7 @@
 
       <p>这里是最容易被讲错的一处。很多介绍会说 Codex「放不下就跳过，继续往前找更小的那条」——不是。代码的顺序是：先算 <code>preserve_content</code>，装不下就把 <code>content</code> 置空、走截断分支，用 <code>truncate_annotated_text(parts, remaining)</code> 把文本裁到剩余额度，<b>先把这条 push 进去</b>，然后才 <code>break</code>。</p>
 
-      <p>也就是说，边界那条消息不是被丢弃，也不是被跳过，而是「留半条」。<code>truncate_annotated_text()</code> 裁的是头尾保留、中间替换成 <code>…N tokens truncated…</code> 标记，所以读者仍能看到这句话的开头和结尾。</p>
+      <p>也就是说，边界那条消息只保留一半：头尾留着，中间截掉。<code>truncate_annotated_text()</code> 裁的是头尾保留、中间替换成 <code>…N tokens truncated…</code> 标记，所以读者仍能看到这句话的开头和结尾。</p>
 
       <div class="callout callout--warn">
         <p class="callout__title">【注意】不是「放不下就停」，而是「先截断再停」</p>
@@ -410,7 +410,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>同样是「压缩后留一点」，四家留的东西完全不同</h2>
 
       <p>把 Codex 放在一起比，会发现真正的分歧不在预算大小，而在<b>保留的对象是什么</b>：Codex 留消息，Claude Code 留清单，pi 留连续的尾部，opencode v1 留整轮。</p>
@@ -420,7 +420,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">保留预算</th>
               <th scope="col">候选范围</th>
               <th scope="col">切点约束</th>
@@ -463,7 +463,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>）。Codex 与 pi 的保留预算都是 20 000，但装的不是同一种东西：Codex 只往里放用户消息，pi 放的是含工具结果的连续尾部，同数字不等于同容量。</p>
+      <p class="table-caption">表注：来源为各 agent 固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>）。Codex 与 pi 的保留预算都是 20 000，但装的不是同一种东西：Codex 只往里放用户消息，pi 放的是含工具结果的连续尾部，同数字不等于同容量。</p>
 
       <p>两个值得记住的对照：</p>
 

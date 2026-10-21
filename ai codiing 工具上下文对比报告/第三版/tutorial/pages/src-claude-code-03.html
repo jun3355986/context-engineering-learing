@@ -408,7 +408,7 @@
 
       <p>源码在估算压缩后上下文时，专门加了一句注释：下一轮的 <code>shouldAutoCompact</code> 看到的不只是这批附件，还要加上约 20–40K 的系统提示、工具与 userContext。也就是说，附件预算 75K 只是「消息层」的增量，真实上下文还要再加上固定开销。<span class="tag tag--src">源码 v2.1.88</span></p>
 
-      <p>如果压缩前接近窗口上限，压缩后摘要 + 75K 附件 + 20–40K 固定开销，很可能又回到阈值附近。源码用 <code>willRetriggerNextTurn</code> 这个指标显式记录这种情况：当压缩后估算值仍然大于等于自动压缩阈值时，标记为「下一轮还会触发」。这不是 bug，而是「重附太多」的必然结果。<span class="tag tag--src">源码 v2.1.88</span></p>
+      <p>如果压缩前接近窗口上限，压缩后摘要 + 75K 附件 + 20–40K 固定开销，很可能又回到阈值附近。源码用 <code>willRetriggerNextTurn</code> 这个指标显式记录这种情况：当压缩后估算值仍然大于等于自动压缩阈值时，标记为「下一轮还会触发」。这是「重附太多」的必然结果。<span class="tag tag--src">源码 v2.1.88</span></p>
 
       <p>取舍很清楚：少附一点，可能失去工作现场，模型要重新读文件、重新加载技能，多花几轮；多附一点，可能立刻再压一次，陷入「压缩—重附—再压缩」的循环。Claude Code 用预算上限（5 个文件、25K 技能）来限制最坏情况，但没有保证「一定不再触发」；它把这个风险暴露成指标，让上层决定要不要调阈值。<span class="tag tag--guess">推断</span></p>
 
@@ -430,17 +430,17 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>压缩后留什么：消息、文件、还是摘要里的清单</h2>
 
-      <p>五家工具都做压缩，但「压缩后还记得什么」差别很大。Claude Code 用独立附件重附现场；pi 与 omp 把文件清单写进摘要；Grok 重新注入规则与最后请求；dsh 只保留摘要与尾部消息。<span class="tag tag--guess">推断</span></p>
+      <p>五家 agent 都做压缩，但「压缩后还记得什么」差别很大。Claude Code 用独立附件重附现场；pi 与 omp 把文件清单写进摘要；Grok 重新注入规则与最后请求；dsh 只保留摘要与尾部消息。<span class="tag tag--guess">推断</span></p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">压缩后保留</th>
               <th scope="col">文件内容</th>
               <th scope="col">预算</th>
@@ -486,7 +486,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，Grok Build 源码，dsh 为同仓文档口径）。</p>
+      <p class="table-caption">表注：来源为各 agent 固定提交的源码与官方文档（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，Grok Build 源码，dsh 为同仓文档口径）。</p>
 
       <p>第一个对照是<b>「文件内容是重附还是概述」</b>。Claude Code 重附正文，模型可以直接编辑；pi、omp 只在摘要里列文件名，模型需要重新读；Grok 与 dsh 不重附。重附正文的好处是「继续工作不用重新读」，坏处是「可能立刻再次触发压缩」。这是「上下文预算」与「工具调用轮次」之间的直接交换。<span class="tag tag--guess">推断</span></p>
 

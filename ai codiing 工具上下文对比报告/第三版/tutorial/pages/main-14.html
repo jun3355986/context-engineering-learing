@@ -302,7 +302,7 @@
       <h3 id="breaker">3.2 熔断：连续几次之后该停</h3>
       <p>Claude Code 的选择是连续 3 次自动压缩失败后熔断，本会话不再尝试。<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code>，<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L257-L350">autoCompact.ts#L257-L350</a> <span class="tag tag--src">源码 v2.1.88</span> 另外还有递归保护：当请求来源是 <code>compact</code> 或 <code>session_memory</code> 时，禁止再触发自动压缩，避免“压缩请求触发压缩”的套娃。</p>
       <p><strong>为什么是 3 而不是 1。</strong>1 次太脆：一次网络抖动、一次临时限流就会让整个会话失去自动恢复能力。3 次能过滤掉瞬时错误，又不会让用户在注定失败的循环里等太久。<strong>代价</strong>是第 3 次仍然要付钱；如果前两次是瞬时错误、第三次是真正的结构问题，这三次都是白花的。</p>
-      <p>不同工具的“停”法不一样：</p>
+      <p>不同 agent 的“停”法不一样：</p>
       <ul>
         <li><strong>计数熔断</strong>：Claude Code 连续 3 次失败后停，本会话不再自动压缩。</li>
         <li><strong>次数上限</strong>：pi 的溢出恢复只允许一次 compact-and-retry，第二次直接报 “recovery failed after one compact-and-retry attempt”。</li>
@@ -323,11 +323,11 @@
       <p>还有一个容易被忽略的收尾：<strong>告诉用户发生了什么</strong>。压缩成功、压缩失败、取消、熔断，是四种不同的结果。用户需要知道“你的历史被换成了摘要”“这次没压成功，但任务继续”“已停止自动压缩，请手动处理”。静默的成功和静默的失败一样危险：前者让人以为什么都没丢，后者让人以为还在处理。</p>
     </section>
 
-    <!-- ========== 04 工具弹窗 ========== -->
+    <!-- ========== 04 agent 弹窗 ========== -->
     <section id="tools">
-      <p class="sec-no">04 · 七个工具</p>
+      <p class="sec-no">04 · 七个编码智能体</p>
       <h2>同一场溢出，七种收场</h2>
-      <p>Codex 已经在主线里拆过。剩下七个工具可以按“第一次失败之后做什么”分成三派：<strong>删了再试</strong>（Codex、Claude Code、pi、dsh）、<strong>换条路再试</strong>（omp 先换模型、opencode v2 三级收缩、Grok 分类抑制）、<strong>试一次就停</strong>（opencode v1）。分野不在“重试几次”，而在“每次重试改变了什么”。</p>
+      <p>Codex 已经在主线里拆过。剩下七个 agent 可以按“第一次失败之后做什么”分成三派：<strong>删了再试</strong>（Codex、Claude Code、pi、dsh）、<strong>换条路再试</strong>（omp 先换模型、opencode v2 三级收缩、Grok 分类抑制）、<strong>试一次就停</strong>（opencode v1）。分野不在“重试几次”，而在“每次重试改变了什么”。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -363,7 +363,7 @@
 
     <!-- ========== 05 对比表 ========== -->
     <section id="matrix">
-      <p class="sec-no">05 · 八工具对比</p>
+      <p class="sec-no">05 · 八个编码智能体对比</p>
       <h2>把“失败之后”排成一张表</h2>
       <p>先看第二列“溢出识别”：它决定恢复是主动还是被动。第三列是核心，看每次重试<strong>改变了什么</strong>——删消息、砍整组、降预算、换模型，还是只改等待时间。第四列决定什么时候停。最后一列是停下来之后，用户看到什么。</p>
 
@@ -372,7 +372,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">溢出识别</th>
               <th scope="col">压缩请求超窗怎么办</th>
               <th scope="col">熔断 / 抑制</th>
@@ -546,7 +546,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-claude-code-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · claude-code</p>
+        <p class="modal__kicker">agent 弹窗 · claude-code</p>
         <h2 class="modal__title" id="modal-claude-code-title">Claude Code</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -571,7 +571,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-pi-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · pi</p>
+        <p class="modal__kicker">agent 弹窗 · pi</p>
         <h2 class="modal__title" id="modal-pi-title">pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -596,7 +596,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-omp-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · omp</p>
+        <p class="modal__kicker">agent 弹窗 · omp</p>
         <h2 class="modal__title" id="modal-omp-title">oh-my-pi</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -621,7 +621,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v1-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v1</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v1</p>
         <h2 class="modal__title" id="modal-opencode-v1-title">opencode v1</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -646,7 +646,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-opencode-v2-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · opencode-v2</p>
+        <p class="modal__kicker">agent 弹窗 · opencode-v2</p>
         <h2 class="modal__title" id="modal-opencode-v2-title">opencode v2</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -671,7 +671,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-grok-build-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · grok-build</p>
+        <p class="modal__kicker">agent 弹窗 · grok-build</p>
         <h2 class="modal__title" id="modal-grok-build-title">Grok Build</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
@@ -696,7 +696,7 @@
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-dsh-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · dsh</p>
+        <p class="modal__kicker">agent 弹窗 · dsh</p>
         <h2 class="modal__title" id="modal-dsh-title">DeepSeek Harness</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>

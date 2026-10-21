@@ -87,7 +87,7 @@
     <header class="page-head">
       <p class="kicker"><b>第 49 章</b><span>·</span><span>第四部分 · 源码解读</span><span>·</span><span>Grok Build</span></p>
       <h1>自动压缩与 7 段装配</h1>
-      <p class="lede">别的工具压缩时想的是「保住哪一段尾巴」，Grok Build 想的是「把整段历史扔掉，再从零件箱里重新装一份」。这份新历史只有七个插槽，顺序还被刻意安排过。这一节读两段代码：什么时候决定压，以及压完到底装了什么。</p>
+      <p class="lede">别的 agent 压缩时想的是「保住哪一段尾巴」，Grok Build 想的是「把整段历史扔掉，再从零件箱里重新装一份」。这份新历史只有七个插槽，顺序还被刻意安排过。这一节读两段代码：什么时候决定压，以及压完到底装了什么。</p>
       <ul class="meta">
         <li>约 17 分钟</li>
         <li>3 张图</li>
@@ -393,13 +393,13 @@
 
       <p>「最近消息在摘要之前」是这份代码里最反直觉的一处，源码注释只写了 <q>Recent messages come first, then the summary.</q>，没有解释。合理的解释是角色定位：摘要描述的是「更早发生的一切」，它应该出现在被它概括的内容之后；如果摘要排在最近消息之前，模型读到的顺序就变成「先看总结，再看几轮具体对话」，很容易把那几轮对话当成摘要之后的续写，而不是摘要所覆盖的范围。</p>
 
-      <p>第二处反直觉的是 AGENTS.md。它不是「保留」下来的，而是<b>重新注入</b>的：压缩前从 agent 里重新取一次渲染好的 <code>&lt;system-reminder&gt;</code> 块，压缩后原样放进第 3 个插槽。源码注释写明理由：项目指令不能依赖摘要模型，它必须逐字存活。<span class="tag tag--ok">已核实</span>这条设计解决了一个常见故障：压缩后模型突然「忘了」项目里的命名规范，因为那段规则只存在于被摘要掉的系统提醒里。</p>
+      <p>第二处反直觉的是 AGENTS.md。它是<b>重新注入</b>的：压缩前从 agent 里重新取一次渲染好的 <code>&lt;system-reminder&gt;</code> 块，压缩后原样放进第 3 个插槽。源码注释写明理由：项目指令不能依赖摘要模型，它必须逐字存活。<span class="tag tag--ok">已核实</span>这条设计解决了一个常见故障：压缩后模型突然「忘了」项目里的命名规范，因为那段规则只存在于被摘要掉的系统提醒里。</p>
 
       <p>第三处是摘要的包装。摘要正文不是裸文本，前面固定加一段前言：<q>This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.</q><span class="tag tag--ok">已核实</span>这段前言有两个作用：告诉模型「这是续接，不是新任务」；给下一次压缩一个可识别的标记（提示词里提到的 <code>"This session is being continued" preamble</code> 就是它）。</p>
 
-      <p>还有一个容易忽略的细节：摘要用的是 <code>T::new_user_meta(...)</code>，不是 <code>new_user</code>，也不是 assistant 消息。它是一条「用户角色、但不是用户原话」的消息。这个选择在三家实现里高度一致——Codex 的摘要也是用户消息，DeepSeek Harness 的压缩检查点同样是 <code>user/message</code>。原因不是审美，而是协议约束：多数模型的对话模板要求「最后一条是用户消息」才能续写；把摘要放进 assistant 角色，下一次请求就变成「助手刚说完一段总结，用户没说话」，模型容易把它当成待续写的半成品。</p>
+      <p>还有一个容易忽略的细节：摘要用的是 <code>T::new_user_meta(...)</code>，不是 <code>new_user</code>，也不是 assistant 消息。它是一条「用户角色、但不是用户原话」的消息。这个选择在三家实现里高度一致——Codex 的摘要也是用户消息，DeepSeek Harness 的压缩检查点同样是 <code>user/message</code>。原因是协议约束：多数模型的对话模板要求「最后一条是用户消息」才能续写；把摘要放进 assistant 角色，下一次请求就变成「助手刚说完一段总结，用户没说话」，模型容易把它当成待续写的半成品。</p>
 
-      <p>最后一条状态提醒（<code>system_reminder</code>）装的是「压缩这一刻的环境事实」：改过哪些文件、有哪些后台任务在跑、有哪些子代理没结束、哪些 MCP 服务器连着。它放在最后，因为它是「现在」而不是「过去」，而且每次压缩都要重新生成。注意它排在摘要之后，也就是说，模型读到的最后一句不是总结，而是「当前环境」——这又一次说明顺序是被刻意设计的，不是随手拼的。</p>
+      <p>最后一条状态提醒（<code>system_reminder</code>）装的是「压缩这一刻的环境事实」：改过哪些文件、有哪些后台任务在跑、有哪些子代理没结束、哪些 MCP 服务器连着。它放在最后，因为它是「现在」而不是「过去」，而且每次压缩都要重新生成。注意它排在摘要之后，也就是说，模型读到的最后一句是「当前环境」——顺序是刻意设计的。</p>
 
       <h3>第 5 段　生产路径上的「7 段」通常只有 4 到 6 条</h3>
 
@@ -433,17 +433,17 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>同样是「压缩后留一点」，五家留的东西完全不同</h2>
 
-      <p>把五个工具放在一张表里，分歧点立刻显现：Grok Build 和 DeepSeek Harness 都是「整段替换」，但一个重新装配七段、一个只落一条替换消息；Codex 和 pi 都是「保留一段」，但一个只留用户消息、一个留连续尾巴；Claude Code 干脆不留对话，改留「文件与技能清单」。</p>
+      <p>把五家 agent 放在一张表里，分歧点立刻显现：Grok Build 和 DeepSeek Harness 都是「整段替换」，但一个重新装配七段、一个只落一条替换消息；Codex 和 pi 都是「保留一段」，但一个只留用户消息、一个留连续尾巴；Claude Code 干脆不留对话，改留「文件与技能清单」。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">压缩产物</th>
               <th scope="col">保留预算</th>
               <th scope="col">摘要结构</th>

@@ -425,7 +425,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>保留哪一端，决定模型还能不能自救</h2>
 
       <p>截断策略的分歧不在「留多少」，而在「留哪一端」以及「原文能不能回读」。前者决定模型看到什么，后者决定模型能不能自己补看。</p>
@@ -435,7 +435,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">保留位置</th>
               <th scope="col">预算口径</th>
               <th scope="col">原文回读</th>
@@ -481,7 +481,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径，Grok Build 为源码常量）。</p>
+      <p class="table-caption">表注：来源为各 agent 固定提交的源码与官方文档（Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，opencode v1 tag <code>v1.19.0</code>，dsh 为同仓文档口径，Grok Build 为源码常量）。</p>
 
       <p>第一个对照是<b>「保留位置」与「工具语义」的匹配</b>。pi 让读类工具保头、bash 保尾，因为文件开头有结构、命令结尾有错误；Codex 统一挖中间，不区分工具，因为它要的是一个跨工具通用的原语。统一策略的好处是行为可预测，坏处是对某类工具不够贴合：比如 <code>git diff</code> 的尾部可能比头部更重要，挖中间会同时保住两端，但也可能把关键的 diff 块挖掉。<span class="tag tag--guess">推断</span></p>
 

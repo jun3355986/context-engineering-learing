@@ -392,13 +392,13 @@
 
       <p>很多人以为「动态段放后面，改了只失效后面」。这只对了一半。系统提示在请求里位于消息之前，动态段又是系统提示的最后一部分；它一变，后面所有消息的缓存前缀都跟着失效。真正被保住的是<b>边界之前的静态块</b>，而不是消息历史。<span class="tag tag--guess">推断</span></p>
 
-      <p>那分段还有什么意义？意义在 scope。静态块可以标 <code>global</code>，跨组织复用；动态块不标 scope，避免把用户特定信息写进全局缓存。如果没有边界，整段系统提示只能按 <code>org</code> 缓存，复用范围小一个层级。省下的不是「一次失效的长度」，而是「每次命中能复用的范围」。<span class="tag tag--guess">推断</span></p>
+      <p>那分段还有什么意义？意义在 scope。静态块可以标 <code>global</code>，跨组织复用；动态块不标 scope，避免把用户特定信息写进全局缓存。如果没有边界，整段系统提示只能按 <code>org</code> 缓存，复用范围小一个层级。省下的是「每次命中能复用的范围」。<span class="tag tag--guess">推断</span></p>
 
       <p>这也解释了为什么 <code>DANGEROUS_uncached</code> 的注释强调「late MCP connect」：MCP 连接是会话中途事件，一旦指令变化，动态块变化，消息前缀失效；但如果把它缓存住，模型会一直看到旧指令。两害相权，Claude Code 选择「正确性优先，缓存失效可接受」。<span class="tag tag--guess">推断</span></p>
 
       <p>从账面上看，这个选择并不便宜：MCP 指令往往包含多个服务器的工具说明，可能占几千 token；连接一次、断开一次，就会让后续消息的缓存前缀失效两次。但如果不这样做，模型可能调用一个已经不存在的工具，或者漏掉一个新接入服务器的使用约束。前者是「多花钱」，后者是「做错事」，优先级很清楚。<span class="tag tag--guess">推断</span></p>
 
-      <p>更一般地说，缓存友好的设计不是「永不失效」，而是「让失效发生在可控的位置」。Claude Code 把易变内容集中到动态区，把静态区隔在边界之前，等于把「失效的爆炸半径」限制在边界之后；至于边界之后是几千 token 还是几万 token，取决于动态段本身的大小，而不是整个系统提示。<span class="tag tag--guess">推断</span></p>
+      <p>更一般地说，缓存友好的设计，是「让失效发生在可控的位置」。Claude Code 把易变内容集中到动态区，把静态区隔在边界之前，等于把「失效的爆炸半径」限制在边界之后；至于边界之后是几千 token 还是几万 token，取决于动态段本身的大小，而不是整个系统提示。<span class="tag tag--guess">推断</span></p>
 
       <figure class="fig">
         <svg viewBox="0 0 640 250" role="img" aria-labelledby="fig-3-title fig-3-desc">
@@ -453,7 +453,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>同样是分段，分法完全不同</h2>
 
       <p>「把系统提示拆成段」不是 Claude Code 独有的做法。pi、oh-my-pi、DeepSeek Harness 都拆，但拆的粒度、拼接方式、失效机制各不相同。下面这张表按「段怎么定义、怎么拼、怎么失效」三列对比。<span class="tag tag--guess">推断</span></p>
@@ -463,7 +463,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">段怎么定义</th>
               <th scope="col">怎么拼</th>
               <th scope="col">怎么失效</th>
@@ -509,7 +509,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，dsh 为同仓文档口径，opencode v1 tag <code>v1.19.0</code>）。</p>
+      <p class="table-caption">表注：来源为各 agent 固定提交的源码与官方文档（Claude Code v2.1.88 源码，pi 提交 <code>b45e0eb</code>，omp 提交 <code>f979f46</code>，dsh 为同仓文档口径，opencode v1 tag <code>v1.19.0</code>）。</p>
 
       <p>第一个对照是<b>「段是数据结构还是拼接约定」</b>。Claude Code 与 pi 都把段当成真实对象：有名字、有计算函数、有缓存状态；opencode 只是把四类块拼成字符串，段本身不保留身份。前者能做「按段失效」，后者只能「整段重建」。这也解释了为什么 opencode 的缓存更脆弱：任何一块变化，整条 system 字符串都变。<span class="tag tag--guess">推断</span></p>
 

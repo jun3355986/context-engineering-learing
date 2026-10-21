@@ -308,7 +308,7 @@
 
       <p>把这条因果链拆成四步，可以当成一张检查表。第一步，这段内容是否在请求的前缀里？如果是，它一变就会影响后面所有缓存。第二步，它是否会被频繁改动？如果会，前缀里的每一次改动都很贵。第三步，它是否必须完整呈现？如果不是，可以改成尾部增量。第四步，尾部增量是否稳定？如果不稳定，还要加排序、去时间戳。四步里任何一步答错，都会把「省 token」变成「反复重建缓存」。<span class="tag tag--guess">推断</span></p>
 
-      <p>注释里的「10.2% of fleet cache_creation」是整仓少见的量化数据。它不是说「10.2% 的请求失败」，也不是「10.2% 的成本」，而是「缓存创建量里约 10.2% 来自这个原因」。这个口径很重要：cache_creation 是「写缓存」的量，通常比 cache_read 贵；把它降下来，直接省的是写入成本，间接省的是「因为写入而没能复用」的机会成本。<span class="tag tag--guess">推断</span></p>
+      <p>注释里的「10.2% of fleet cache_creation」是整仓少见的量化数据。它说的是「缓存创建量里约 10.2% 来自这个原因」，不是请求失败率或成本占比。这个口径很重要：cache_creation 是「写缓存」的量，通常比 cache_read 贵；把它降下来，直接省的是写入成本，间接省的是「因为写入而没能复用」的机会成本。<span class="tag tag--guess">推断</span></p>
 
       <h3>第 2 段　重建：为什么从历史里算，不用内存 Set</h3>
 
@@ -421,7 +421,7 @@
 
     <!-- ================= 05 差异 ================= -->
     <section id="s5">
-      <p class="sec-no">05 · 与其他工具的差异</p>
+      <p class="sec-no">05 · 与其他 agent 的差异</p>
       <h2>四种「只注入变化」，四种状态载体</h2>
 
       <p>Claude Code 用尾部附件做 delta，Codex 用世界状态做 section diff，pi 用系统提示 section patch，Grok 用已公告集合。目标相同，载体不同。<span class="tag tag--guess">推断</span></p>
@@ -431,7 +431,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">工具</th>
+              <th scope="col">agent</th>
               <th scope="col">差分对象</th>
               <th scope="col">状态存在哪</th>
               <th scope="col">无变化时</th>
@@ -477,7 +477,7 @@
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：来源为各工具固定提交的源码与官方文档（Claude Code v2.1.88 源码，Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，Grok Build 源码，omp 提交 <code>f979f46</code>）。</p>
+      <p class="table-caption">表注：来源为各 agent 固定提交的源码与官方文档（Claude Code v2.1.88 源码，Codex 提交 <code>76ed3b4</code>，pi 提交 <code>b45e0eb</code>，Grok Build 源码，omp 提交 <code>f979f46</code>）。</p>
 
       <p>第一个对照是<b>「状态存在消息里还是消息外」</b>。Claude Code 把状态存在消息里（旧 delta 本身就是消息），所以能随历史一起恢复、fork、压缩；Codex 把状态存在持久化快照 + rollout patch 里，消息里只有片段；pi 存在会话的 sections 里，系统提示是投影；Grok 存在公告快照文件里。消息内状态最自解释，但占上下文；消息外状态最省，但需要额外的恢复逻辑。<span class="tag tag--guess">推断</span></p>
 
