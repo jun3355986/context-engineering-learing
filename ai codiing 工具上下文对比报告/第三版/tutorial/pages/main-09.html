@@ -123,7 +123,8 @@
       <h1>多模态上下文</h1>
       <p class="lede">一张截图能省掉三百字描述，也可能一次吃掉两万 token。图片进入上下文之后，既不会自己变小，也不会自己消失；它要么被移出并留下占位，要么被压缩成摘要，要么被渲染成另一种图片。这一章讲这三种出口，以及每种出口的代价。</p>
       <ul class="meta">
-        <li>约 16 分钟</li>
+        <li>第 9 类</li>
+        <li>约 23 分钟</li>
         <li>0 个交互</li>
         <li>L2 → L3</li>
       </ul>
@@ -165,7 +166,7 @@
       <p>“占位”与“删除”的区别在这里体现得很清楚：删除会让模型以为用户从没发过图；占位告诉它“有图，但你看不见”。后者能阻止模型编造，也能让它主动说“请把图里的文字贴出来”。<strong>代价</strong>是占位文本仍然占一点空间，且模型可能反复请求“再发一次”。</p>
 
       <h3 id="codex-audio">2.3 音频单独计价，不按字节折算</h3>
-      <p>音频在截断预算中单独估算 token，不按字节折算。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L160-L175">output-truncation/lib.rs#L160-L175</a> <span class="tag tag--ok">已核实</span> 这一条容易被当成细节，但它决定预算怎么算：音频的 token 密度与字节数几乎无关（采样率、编码、时长共同决定），按字节折算会得到完全错误的预算。</p>
+      <p>音频在截断预算中单独估算 token，不按字节折算。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L160-L175">output-truncation/lib.rs#L160-L175</a> <span class="tag tag--ok">已核实</span> 这一条容易被当成细节，但它决定预算怎么算。音频的 token 密度与字节数几乎无关（采样率、编码、时长共同决定），按字节折算会得到完全错误的预算。</p>
       <p>它也给图片提了个醒：<strong>不同模态要用不同的计价函数</strong>。用一个统一的“字节 ÷ 4”处理文本、图片、音频，是很多实现出错的起点。</p>
 
       <h3 id="codex-budget">2.4 压缩时给图片留预算</h3>
@@ -265,7 +266,7 @@
       <p><strong>opencode v2</strong> 在请求组装阶段做两道媒体治理。第一道 <code>unsupportedParts</code>：模型能力不支持的模态被替换成一句 <code>ERROR: Cannot read …</code> 文本。第二道 <code>boundImages</code>：统计所有内联图片字节，超过 <strong>25 MiB</strong> 就开始从<strong>最旧</strong>的图片删起，删到 <strong>15 MiB</strong> 以下；移除文本明确要求模型“不要凭记忆断言图片内容，需要时重新读取或让用户重发”。<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/model-request.ts#L122-L216">model-request.ts#L122-L216</a> <span class="tag tag--ok">已核实</span> 读取侧另有 20 MiB 的媒体摄取上限，超过直接报 <code>MediaIngestLimitError</code>。</p>
       <p><strong>Grok Build</strong> 用的是请求体预算加<strong>滞回</strong>：当序列化后的 body 达到“上限 − 3 MiB”时开始驱逐老图片，一直回收到“上限的一半”才停。被驱逐的图片替换为一段明确告知模型“图已不可见、不要凭记忆描述”的占位文本；工具结果里的图片驱逐则在该结果文本末尾追加同类说明。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/image_budget.rs#L9-L35">image_budget.rs#L9-L35</a> <span class="tag tag--ok">已核实</span></p>
       <p><strong>为什么清到一半，而不是清到阈值以下。</strong>如果只清到“刚好低于触发线”，下一张图进来又会越线，于是每轮都触发一次驱逐，每次都改动前缀，KV cache 反复失效。清到一半留出足够的缓冲，让接下来若干轮都不再越线。这是典型的滞回设计：用一次多删，换长期稳定。<strong>代价</strong>是可能一次删掉过多仍然有用的图。</p>
-      <p><strong>dsh</strong> 走的是“路由拒绝时永久 offload”：图片适配器超预算时返回 <code>IMAGE_OFFLOAD_REQUIRED</code> 并附带需要移出的张数；<code>dsh-compaction-image-offload</code> 沿模型请求顺序遍历 surface，跳过 assistant 节点与已标记图片，标记恰好那么多<strong>最早的</strong>图片出现位置，每条决策追加一个 <code>image/offload</code> 事件。下一次投影时这些图片变成占位文本（附件名 + 可读路径），请求重试<strong>不消耗 provider 重试预算</strong>、也不写 <code>llm/retry</code>。选择跨路由、resume、replay 持久。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-image-offload/README.md#L12">image-offload/README.md#L12</a> <span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-09-1" id="fnref-main-09-1">1</a></sup></p>
+      <p><strong>dsh</strong> 走的是“路由拒绝时永久 offload”：图片适配器超预算时返回 <code>IMAGE_OFFLOAD_REQUIRED</code> 并附带需要移出的张数。<code>dsh-compaction-image-offload</code> 沿模型请求顺序遍历 surface，跳过 assistant 节点与已标记图片，标记恰好那么多<strong>最早的</strong>图片出现位置，每条决策追加一个 <code>image/offload</code> 事件。下一次投影时这些图片变成占位文本（附件名 + 可读路径），请求重试<strong>不消耗 provider 重试预算</strong>、也不写 <code>llm/retry</code>。选择跨路由、resume、replay 持久。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-image-offload/README.md#L12">image-offload/README.md#L12</a> <span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-09-1" id="fnref-main-09-1">1</a></sup></p>
       <p><strong>为什么“永久”很重要。</strong>如果每次请求都重新判断要不要移出，同一张图可能在 A 请求里被删、在 B 请求里又回来，模型看到的世界不稳定，缓存也不稳定。把 offload 写成事件、跟着会话走，等于让“这张图已经不在”成为一个持久事实。<strong>代价</strong>是用户后来想再看那张图，必须重新发或重新读，系统不会自动恢复。</p>
 
       <h3 id="mech-snap">4.2 历史转图：omp 的 snapcompact</h3>
@@ -666,7 +667,7 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">Grok 把图片按 <strong>765 token/张</strong>计入估算，但真正的控制是<strong>请求体字节预算</strong>：内联图片的 <code>data:</code> URL 是请求体的主要构成，当序列化后的 body 达到“上限 − 3 MB”时开始驱逐老图片，一直回收到“上限的一半”才停——用滞回避免每轮都跨过阈值反复打断 KV cache。被驱逐的图片替换为一段明确告知模型“图已不可见、不要凭记忆描述”的占位文本。第二条路是服务端拒图：收到带 <code>invalid_image</code> 的 400 时，若整个请求里只有一个唯一图片 URL，把该图从 <code>chat_history.jsonl</code> 中剥离并重试。第三条路是图片转文字，仅 Cursor 兼容 harness：先送视觉模型生成描述，再注入该轮用户消息，最多 16 张。</p>
+      <p class="modal__lead">Grok 把图片按 <strong>765 token/张</strong>计入估算，但真正的控制是<strong>请求体字节预算</strong>。内联图片的 <code>data:</code> URL 是请求体的主要构成。当序列化后的 body 达到“上限 − 3 MB”时开始驱逐老图片，一直回收到“上限的一半”才停。这种滞回避免每轮都跨过阈值、反复打断 KV cache。被驱逐的图片替换为一段明确告知模型“图已不可见、不要凭记忆描述”的占位文本。第二条路是服务端拒图：收到带 <code>invalid_image</code> 的 400 时，若整个请求里只有一个唯一图片 URL，把该图从 <code>chat_history.jsonl</code> 中剥离并重试。第三条路是图片转文字，仅 Cursor 兼容 harness：先送视觉模型生成描述，再注入该轮用户消息，最多 16 张。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd><code>IMAGE_TOKEN_ESTIMATE = 765</code>；驱逐触发 <code>max_request_bytes − 3 MiB</code>；回收目标 <code>max_request_bytes / 2</code>；剥离并发上限 16；转写上限 16 张；转写仅 <code>is_cursor_harness()</code>。<span class="tag tag--ok">已核实</span></dd>
@@ -695,7 +696,7 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">dsh 不移出图片，而是在<strong>路由拒绝时永久 offload</strong>：图片适配器（DeepSeek 的 file-mode / inline-fallback 预算、pi-ai 的 base64 界）在超预算时返回 <code>IMAGE_OFFLOAD_REQUIRED</code> 并附带需要移出的张数；<code>dsh-compaction-image-offload</code> 沿模型请求顺序遍历 surface，跳过 assistant 节点与已标记图片，标记恰好那么多<strong>最早的</strong>图片出现位置，每条决策追加一个 <code>image/offload</code> 事件（按当前消息事件 seq + 深度优先图片索引定位），消息事件与 surface 节点身份都不变。下一次投影时这些图片变成占位文本（附件名 + 可读路径），请求重试不消耗 provider 重试预算。</p>
+      <p class="modal__lead">dsh 不移出图片，而是在<strong>路由拒绝时永久 offload</strong>：图片适配器（DeepSeek 的 file-mode / inline-fallback 预算、pi-ai 的 base64 界）在超预算时返回 <code>IMAGE_OFFLOAD_REQUIRED</code> 并附带需要移出的张数。<code>dsh-compaction-image-offload</code> 沿模型请求顺序遍历 surface，跳过 assistant 节点与已标记图片，标记恰好那么多<strong>最早的</strong>图片出现位置，每条决策追加一个 <code>image/offload</code> 事件（按当前消息事件 seq + 深度优先图片索引定位），消息事件与 surface 节点身份都不变。下一次投影时这些图片变成占位文本（附件名 + 可读路径），请求重试不消耗 provider 重试预算。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd>触发码 <code>IMAGE_OFFLOAD_REQUIRED</code>（带 <code>offloadImages</code> 计数）；无自有配置，预算由适配器决定；选择顺序为请求顺序中最早出现、跳过 assistant；事件 <code>image/offload</code>；占位为附件名 + 可读路径。<span class="tag tag--guess">推断</span></dd>

@@ -154,7 +154,7 @@
       <h1>设计你自己的上下文策略</h1>
       <p class="lede">策略不是一组抄来的参数。它是一串有顺序的决定：先看清任务长什么样，再分预算。接着定减量的先后，最后才做隔离、延续和验收。顺序颠倒，参数越调越乱。</p>
       <ul class="meta">
-        <li>约 30 分钟</li>
+        <li>约 26 分钟</li>
         <li>2 个练习</li>
         <li>L4</li>
         <li>前置：第 23 章</li>
@@ -186,7 +186,7 @@
         <li>压力来自并发的探索（读了 60 个文件才找到一处）——子代理隔离比压缩更省。</li>
         <li>压力来自合规（历史不能出网）——先把架构限死，再谈参数。</li>
       </ul>
-      <p class="lead-in">所以策略的第一步不是“选什么”，是“量什么”。</p>
+      <p class="lead-in">所以策略的第一步是“量什么”，选什么放到后面。</p>
     </section>
 
     <!-- ========== 02 框架 ========== -->
@@ -351,7 +351,7 @@
     <section id="budget">
       <p class="sec-no">04 · 第二步：分预算</p>
       <h2>先减固定开销，再谈历史</h2>
-      <p>预算不是“窗口有多大”，是“历史能用多少”。固定开销先扣掉，剩下的才是可分配的历史。</p>
+      <p>预算算的是“历史能用多少”，窗口标称值只是起点。固定开销先扣掉，剩下的才是可分配的历史。</p>
 
       <div class="codeblock" data-lang="text">
         <div class="codeblock__bar">
@@ -665,7 +665,7 @@
       </dl>
 
       <p>这一题的关键决定是<strong>把“事实”和“叙述”分开</strong>。事实卡是结构化的，字段固定，压缩不会丢。叙述摘要可以写得很顺，但容易漏掉金额和承诺。先抽事实、再写摘要，等于给摘要加了一层校验。摘要与事实卡冲突时，以事实卡为准。</p>
-      <p>第二个关键决定是<strong>记忆只写白名单</strong>。客服场景里，“客户上次说喜欢电话回访”有用。“客户上次提到家里有事”不该被记住。白名单不是技术限制，是合规边界。</p>
+      <p>第二个关键决定是<strong>记忆只写白名单</strong>。客服场景里，“客户上次说喜欢电话回访”有用。“客户上次提到家里有事”不该被记住。白名单划的是合规边界，技术只是执行手段。</p>
 
       <h3 id="ex-two-score">评分点（每项 2 分，共 10 分）</h3>
       <ol>
@@ -707,6 +707,46 @@
         </li>
       </ol>
     </div>
+
+    <!-- ========== 12 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">12 · 小测验</p>
+      <h2>三道题，检验你的策略能不能被验收</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">一个任务只有 12 轮，但每轮都读一个 3,000 行的文件。它算短任务还是长任务？第一步该做什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>看 token，不看轮次。12 轮也可能塞满窗口。第一步是量任务：数总轮次、工具调用次数、单次输出的 p95、结束时的窗口占用。这组数大概率指向「工具输出压力大」，那就先做截断与裁剪，而不是上压缩或换 1M 窗口的模型。</p>
+        </div>
+      </div>
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">有人把减量顺序排成「截断、压缩、裁剪、新会话」，理由是「越便宜越先做」。这个排序哪里错了？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>排序应按可逆性，不按成本。裁剪只换占位符、原文还能还原，应该排在压缩之前。先压缩会把本可以直接丢掉的工具输出写进摘要，既花了摘要的 token，又把噪声留在了摘要里，还退不回去。正确顺序是截断、裁剪、压缩、新会话。</p>
+        </div>
+      </div>
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">你的策略在短任务上把成功率拉低了 3 个百分点，成本降了 18%。按本章的验收原则，接下来该做什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>先看护栏。成功率护栏通常取「下降不超过 1 个百分点」，3 个点已经越线，不能只看成本。做法是把策略拆开做消融，一次只关一层，定位是阈值、切点还是隔离导致的退化；短任务可以单独关掉压缩，而不是整体回滚。</p>
+        </div>
+      </div>
+    </section>
 
     <p class="footer-note">下一章：<a href="adv-05.html">评估方法：L5 入门</a>。</p>
 

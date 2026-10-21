@@ -118,7 +118,8 @@
       <h1>失败恢复：溢出、压缩失败与兜底</h1>
       <p class="lede">压缩是窗口快满时的最后一根绳子，但绳子自己也会断：压缩请求本身也要装下待压缩的历史。本章按一次失败发生的时间顺序拆开：怎么识别溢出、压不动时删什么、连续失败什么时候该停、以及哪三种情况再怎么压也没用。</p>
       <ul class="meta">
-        <li>约 18 分钟</li>
+        <li>第 14 类</li>
+        <li>约 25 分钟</li>
         <li>1 张状态机</li>
         <li>L2 → L3</li>
       </ul>
@@ -156,7 +157,7 @@
     <section id="codex">
       <p class="sec-no">02 · Codex 主线</p>
       <h2>先删最旧，再试一次</h2>
-      <p>Codex 的恢复逻辑很短，短到可以一句话说完：压缩请求遇到 <code>ContextWindowExceeded</code> 时，如果待压缩输入不止一条，删掉最旧一条、重置重试计数、再试；如果只剩一条，就把总用量标记为“满”，返回错误。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L359-L371">compact.rs#L359-L371</a> <span class="tag tag--ok">已核实</span> 短，但它把本章的四个问题都碰到了。</p>
+      <p>Codex 的恢复逻辑很短，短到可以一句话说完：压缩请求遇到 <code>ContextWindowExceeded</code> 时，如果待压缩输入不止一条，删掉最旧一条、重置重试计数、再试。如果只剩一条，就把总用量标记为“满”，返回错误。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L359-L371">compact.rs#L359-L371</a> <span class="tag tag--ok">已核实</span> 短，但它把本章的四个问题都碰到了。</p>
 
       <h3 id="codex-detect">2.1 识别：本地估算到线，还是服务端拒绝</h3>
       <p>溢出的信号有两种。一种是<strong>主动</strong>的：本地估算当前用量已到线，提前压缩。Codex 用两把尺子：整段线是窗口 × 95%，范围线默认取 <code>min(模型声明的 auto_compact_token_limit, 窗口 × 90%)</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L393-L395">openai_models.rs#L393-L395</a> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L526-L540">openai_models.rs#L526-L540</a> <span class="tag tag--ok">已核实</span></p>
@@ -450,7 +451,7 @@
 
       <h3>取舍一：重试次数多，还是少</h3>
       <p><strong>多试派</strong>：opencode v2 普通重试最多 10 次，omp 的通用重试也是 10 次（退避 500→8000ms），pi 沿用 3 次。<strong>少试派</strong>：opencode v1 普通错误最多 5 次，Grok 压缩只试 3 次，pi 的溢出恢复只有 1 次。</p>
-      <p><strong>代价</strong>：多试能扛住限流和抖动，但每次重试都要再发一遍历史，成本和延迟线性增长；少试省钱、反馈快，但一次瞬时错误就可能让本可以完成的任务失败。关键不是次数，而是<strong>每次重试是否改变了输入或环境</strong>：不改变的，多试一次就是多花一次钱。</p>
+      <p><strong>代价</strong>：多试能扛住限流和抖动，但每次重试都要再发一遍历史，成本和延迟线性增长。少试省钱、反馈快，但一次瞬时错误就可能让本可以完成的任务失败。关键不是次数，而是<strong>每次重试是否改变了输入或环境</strong>：不改变的，多试一次就是多花一次钱。</p>
 
       <h3>取舍二：删最旧一条，还是砍整组 / 整轮</h3>
       <p><strong>逐条派</strong>：Codex 删最旧一条，理由是保住前缀缓存、不影响最近消息。<strong>整组派</strong>：Claude Code 按 API 轮次分组，砍掉最旧的一组；dsh 选“最大的、平衡的头部区间”；pi 省略失败的 assistant 与配对结果。</p>
@@ -458,7 +459,7 @@
 
       <h3>取舍三：先换模型，还是先压缩</h3>
       <p><strong>先换模型</strong>：omp 在溢出或输出未完成时，如果配置了更大窗口的同族模型，先切模型重试，不压缩。<strong>先压缩</strong>：Codex、Claude Code、pi、dsh 都是先压缩，压缩不动才考虑别的。<strong>先裁剪</strong>：dsh 在压缩前先跑可选 pruner，pi 先把失败的那一组省略。</p>
-      <p><strong>代价</strong>：换模型最快、信息损失最小，但更贵，而且行为会漂移——同一个任务换模型后可能给出不同风格的修改；先压缩省钱，但会丢细节；先裁剪最便宜，但只能省一部分。omp 的顺序（换模型 → 压缩 → 本地救援）是“用钱换信息”，Codex 的顺序是“用信息换钱”。</p>
+      <p><strong>代价</strong>：换模型最快、信息损失最小，但更贵，而且行为会漂移：同一个任务换模型后可能给出不同风格的修改。先压缩省钱，但会丢细节；先裁剪最便宜，但只能省一部分。omp 的顺序（换模型 → 压缩 → 本地救援）是“用钱换信息”，Codex 的顺序是“用信息换钱”。</p>
 
       <h3>取舍四：熔断，还是一直试</h3>
       <p><strong>熔断派</strong>：Claude Code 连续 3 次失败后停；pi 第二次溢出直接报错；opencode v1 压缩再溢出就停。<strong>一直试派</strong>：Codex 本快照没有会话级熔断，每次到线都会再试；Grok 用分类抑制而不是计数熔断，size / schema 类错误只有预算变化才解除。</p>
@@ -677,7 +678,7 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">三条恢复路径，按代价从低到高：preflight 估算已超窗就先压缩；采样报上下文超限时识别错误文本，判定为确定性错误、不原样重发，转压缩后重发；压缩本身失败则按 Size / Auth / CreditBlock / Schema / Other 分类抑制。</p>
+      <p class="modal__lead">三条恢复路径，按代价从低到高：preflight 估算已超窗就先压缩。采样报上下文超限时识别错误文本，判定为确定性错误、不原样重发，转压缩后重发。压缩本身失败则按 Size / Auth / CreditBlock / Schema / Other 分类抑制。</p>
       <dl class="kv">
         <dt>关键参数</dt>
         <dd>压缩重试 3 次 / 间隔 3s / 超时 120s；size、schema 为粘性抑制，只有上下文预算变化才解除；credit 等到一次成功响应；取消有独立文案 <code>compact cancelled</code>。<span class="tag tag--ok">已核实</span></dd>

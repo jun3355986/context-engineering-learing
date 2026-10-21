@@ -395,7 +395,7 @@
       <h1>失败：五次事故，一条因果链</h1>
       <p class="lede">上下文事故很少是“模型变笨了”。它们通常有一个可复现的起点：一条约束没进规则文件，一个切点拆散了工具对，一处易变内容站在缓存前缀里，一次子代理返回太长，或者一次回退只退回了一半。这一页复盘五次事故，并把每次事故拆成可操作的修复。</p>
       <ul class="meta">
-        <li>约 26 分钟</li>
+        <li>约 23 分钟</li>
         <li>1 个交互</li>
         <li>L4</li>
       </ul>
@@ -765,6 +765,46 @@
       </ol>
       <p>五个问题里有一个答“否”，就先修那一项，再谈调参。上下文事故的修复顺序，永远是先修结构，再修参数。</p>
 
+    </section>
+
+    <!-- ========== 09 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">09 · 小测验</p>
+      <h2>三道题，检验你会不会定位根因</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">案例一里，三条硬约束在第六次压缩后全丢了。为什么第一优先级是「把约束写进规则文件」，而不是「把压缩阈值调低」？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>阈值只改变压缩发生的时点，不改变「约束只存在于会被摘要改写的地方」这个结构。规则文件每轮重新注入，压缩碰不到它；调阈值只是让同一场事故晚一点发生。修复顺序是先修结构、再修参数，案例里的三档修复也是按这个顺序排的。</p>
+        </div>
+      </div>
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">案例二的切点落在 tool_use 与 tool_result 之间，为什么结果是 400，而不是「模型回答变差」？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>请求在协议层就不合法：tool_result 必须对应一条 tool_use。切点把配对拆开，客户端发出去的请求会被直接拒绝，轮不到模型判断。修法是切点校验：目标恒为 0，大于 0 就拒绝这次压缩，回退到最近的合法边界。这类错误应该在发送前拦住，不该交给服务端发现。</p>
+        </div>
+      </div>
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">案例三把自动压缩阈值从 90% 调到 75%，缓存命中率从 78% 掉到 12%，账单涨了三倍。这两件事怎么连起来的？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>压缩会重写历史前缀，而 prompt cache 的命中条件是前缀完全相同。阈值调低，压缩更频繁，前缀被更频繁地改写，命中率自然塌。省下的 token 抵不过缓存失效后的重算成本。修复方向不是把阈值调回去，而是让压缩切点对齐稳定边界，减少不必要的前缀变动（见第 20 章）。</p>
+        </div>
+      </div>
       <p class="footer-note">下一章：<a href="adv-03.html">架构对比</a>。这一页的五次事故，会在架构对比里被归入四种不同的上下文架构。</p>
     </section>
 

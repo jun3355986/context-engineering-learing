@@ -88,7 +88,7 @@
       <h1>只有一个消息级缓存断点</h1>
       <p class="lede">很多教程说「Claude Code 有四个缓存断点」。这句话只对了一半：系统提示最多切成四块，但消息层<b>恰好只有一个</b> <code>cache_control</code> 标记。<span class="tag tag--src">源码 v2.1.88</span>这一节读 <code>addCacheBreakpoints</code>，看清「一个标记」如何覆盖整段前缀，以及 fork 为什么要把标记往前挪一位。</p>
       <ul class="meta">
-        <li>约 14 分钟</li>
+        <li>约 24 分钟</li>
         <li>2 张示意图</li>
         <li>L4</li>
         <li>源码 <code>v2.1.88</code></li>
@@ -173,7 +173,7 @@
 
     <!-- ================= 02 链接 ================= -->
     <section id="s2">
-      <p class="sec-no">02 · 固定到提交的链接</p>
+      <p class="sec-no">02 · 这段代码在哪</p>
       <h2>五条链接，覆盖「标记在哪」与「为什么」</h2>
 
       <div class="path-list">

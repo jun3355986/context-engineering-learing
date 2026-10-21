@@ -123,7 +123,7 @@
             </thead>
             <tbody>
               <tr>
-                <th scope="row" class="cell-tool">请求组装<span>01</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-01.html">请求组装</a><span>类 01</span><span>第 1 章</span></th>
                 <td>Prompt 四块；增量工具时置空 tools<span class="tag tag--ok">已核实</span> <span class="small muted">c§1</span></td>
                 <td>系统提示静态 7 段+边界+动态段<span class="tag tag--ok">已核实</span> <span class="small muted">cc§1</span></td>
                 <td>树投影成请求；system 按具名 section 拼<span class="tag tag--ok">已核实</span> <span class="small muted">p§1</span></td>
@@ -134,7 +134,7 @@
                 <td>system 作为会话事件；section 按 order 拼<span class="tag tag--guess">推断</span> <span class="small muted">d§1</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">规则文件发现与合并<span>02</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-02.html">规则文件发现与合并</a><span>类 02</span><span>第 2 章</span></th>
                 <td>AGENTS.md 根→cwd 逐级拼接，32 KiB 截断<span class="tag tag--ok">已核实</span> <span class="small muted">c§2</span></td>
                 <td>Managed→User→逐级目录→Local，拼接不覆盖<span class="tag tag--ok">已核实</span> <span class="small muted">cc§2</span></td>
                 <td>5 个候选名取首个；全局+祖先链<span class="tag tag--ok">已核实</span> <span class="small muted">p§2</span></td>
@@ -145,7 +145,7 @@
                 <td>AGENTS/CLAUDE 链，64 KiB 预算<span class="tag tag--ok">已核实</span> <span class="small muted">d§2</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">按需加载与渐进披露<span>03</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-03.html">按需加载与渐进披露</a><span>类 03</span><span>第 3 章</span></th>
                 <td>Skills 描述先行；MCP 按模型开关延迟<span class="tag tag--ok">已核实</span> <span class="small muted">c§3</span></td>
                 <td>技能描述 250 字符；MCP 默认延迟，阈值 10%<span class="tag tag--ok">已核实</span> <span class="small muted">cc§3</span></td>
                 <td>技能只给名+描述+路径，正文用 read 取<span class="tag tag--ok">已核实</span> <span class="small muted">p§3</span></td>
@@ -156,7 +156,7 @@
                 <td>技能目录 user 消息；MCP 直接注册不延迟<span class="tag tag--guess">推断</span> <span class="small muted">d§3</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">动态注入<span>04</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-04.html">动态注入</a><span>类 04</span><span>第 4 章</span></th>
                 <td>WorldState 按 section 差分，只发变化<span class="tag tag--ok">已核实</span> <span class="small muted">c§4</span></td>
                 <td>37 个附件源；三类 delta 只注入增量<span class="tag tag--ok">已核实</span> <span class="small muted">cc§4</span></td>
                 <td>section 级 patch 消息，只发变化 section<span class="tag tag--ok">已核实</span> <span class="small muted">p§4</span></td>
@@ -167,7 +167,7 @@
                 <td>pre-step 瀑布注入；时间插件默认 10 分钟<span class="tag tag--guess">推断</span> <span class="small muted">d§4</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">Token 计量与可视化<span>05</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-05.html">Token 计量与可视化</a><span>类 05</span><span>第 5 章</span></th>
                 <td>95% 硬线+90% 软线，无 /context<span class="tag tag--ok">已核实</span> <span class="small muted">c§5</span></td>
                 <td>末次 usage+chars/4；/context 分类计数<span class="tag tag--ok">已核实</span> <span class="small muted">cc§5</span></td>
                 <td>末次 usage+尾随估算；70%/90% 变色<span class="tag tag--ok">已核实</span> <span class="small muted">p§5</span></td>
@@ -178,7 +178,7 @@
                 <td>重放日志计价；阈值 min(80%W, W−O−B)<span class="tag tag--ok">已核实</span> <span class="small muted">d§5</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">单次工具输出控制<span>06</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-06.html">单次工具输出控制</a><span>类 06</span><span>第 6 章</span></th>
                 <td>头尾保留+中间标记；原文留 rollout<span class="tag tag--ok">已核实</span> <span class="small muted">c§6</span></td>
                 <td>默认 50k 字符落盘，留 2k 预览<span class="tag tag--ok">已核实</span> <span class="small muted">cc§6</span></td>
                 <td>2000 行/50KB 先到者；bash 落临时文件<span class="tag tag--ok">已核实</span> <span class="small muted">p§6</span></td>
@@ -189,7 +189,7 @@
                 <td>spill 头尾各半+落盘路径；失败保留原文<span class="tag tag--guess">推断</span> <span class="small muted">d§6</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">历史裁剪<span>07</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-07.html">历史裁剪</a><span>类 07</span><span>第 7 章</span></th>
                 <td>无定期清理；只有规范化丢弃与删最旧<span class="tag tag--ok">已核实</span> <span class="small muted">c§7</span></td>
                 <td>时间触发默认关；cache_edits 仅主线程<span class="tag tag--ok">已核实</span> <span class="small muted">cc§7</span></td>
                 <td>无自动裁剪；只有 context_edit 手动省略<span class="tag tag--ok">已核实</span> <span class="small muted">p§7</span></td>
@@ -200,7 +200,7 @@
                 <td>pruner 8192/4096/1024，仅压缩触发后跑<span class="tag tag--ok">已核实</span> <span class="small muted">d§7</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">压缩<span>08</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-08.html">压缩</a><span>类 08</span><span>第 8 章</span></th>
                 <td>本地 20k 候选预算；远端 64k/10k/重试 2<span class="tag tag--ok">已核实</span> <span class="small muted">c§8</span></td>
                 <td>有效窗口−13k 触发；重附 5 文件/25k 技能<span class="tag tag--ok">已核实</span> <span class="small muted">cc§8</span></td>
                 <td>保留 20k；不切 toolResult，超长拆两摘要<span class="tag tag--ok">已核实</span> <span class="small muted">p§8</span></td>
@@ -211,7 +211,7 @@
                 <td>保留 16% 窗口；选区对齐工具配对<span class="tag tag--ok">已核实</span> <span class="small muted">d§8</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">多模态上下文<span>09</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-09.html">多模态上下文</a><span>类 09</span><span>第 9 章</span></th>
                 <td>图片直通；缩放只发提示；无历史转图<span class="tag tag--ok">已核实</span> <span class="small muted">c§9</span></td>
                 <td>2000px/5MB；压缩前剥图；无历史转图<span class="tag tag--ok">已核实</span> <span class="small muted">cc§9</span></td>
                 <td>只按 4800 字符估算；无图片驱逐<span class="tag tag--ok">已核实</span> <span class="small muted">p§9</span></td>
@@ -222,7 +222,7 @@
                 <td>路由拒图时永久 offload 最早 N 张<span class="tag tag--guess">推断</span> <span class="small muted">d§9</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">子代理隔离<span>10</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-10.html">子代理隔离</a><span>类 10</span><span>第 10 章</span></th>
                 <td>独立 Config/历史；完成消息作为输入项回父<span class="tag tag--ok">已核实</span> <span class="small muted">c§10</span></td>
                 <td>默认全新上下文；只读代理省 CLAUDE.md<span class="tag tag--ok">已核实</span> <span class="small muted">cc§10</span></td>
                 <td>无此能力：README 明示跳过子代理<span class="tag tag--ok">已核实</span> <span class="small muted">p§10</span></td>
@@ -233,7 +233,7 @@
                 <td>异步返回 childId，完成通知回传父会话<span class="tag tag--guess">推断</span> <span class="small muted">d§10</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">会话时间线<span>11</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-11.html">会话时间线</a><span>类 11</span><span>第 11 章</span></th>
                 <td>rollout 追加日志+checkpoint+后缀回放<span class="tag tag--ok">已核实</span> <span class="small muted">c§11</span></td>
                 <td>JSONL 树；/rewind 走文件快照<span class="tag tag--ok">已核实</span> <span class="small muted">cc§11</span></td>
                 <td>JSONL 树；/tree 换叶，fork 复制新文件<span class="tag tag--ok">已核实</span> <span class="small muted">p§11</span></td>
@@ -244,7 +244,7 @@
                 <td>日志+surface replace；无 rewind<span class="tag tag--ok">已核实</span> <span class="small muted">d§11</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">跨会话记忆<span>12</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-12.html">跨会话记忆</a><span>类 12</span><span>第 12 章</span></th>
                 <td>根会话后台两阶段管线；读路径注入<span class="tag tag--ok">已核实</span> <span class="small muted">c§12</span></td>
                 <td>记忆 200 行/25KB + 会话内记忆<span class="tag tag--ok">已核实</span> <span class="small muted">cc§12</span></td>
                 <td>无此能力：无独立记忆子系统<span class="tag tag--ok">已核实</span> <span class="small muted">p§12</span></td>
@@ -255,7 +255,7 @@
                 <td>无此能力：跨会话只能靠 AGENTS.md<span class="tag tag--ok">已核实</span> <span class="small muted">d§12</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">缓存友好设计<span>13</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-13.html">缓存友好设计</a><span>类 13</span><span>第 13 章</span></th>
                 <td>发 prompt_cache_key；TTL 由服务端定<span class="tag tag--ok">已核实</span> <span class="small muted">c§13</span></td>
                 <td>消息层恰好 1 个标记；系统最多 4 块<span class="tag tag--ok">已核实</span> <span class="small muted">cc§13</span></td>
                 <td>section patch 保前缀；摘要请求不写缓存<span class="tag tag--ok">已核实</span> <span class="small muted">p§13</span></td>
@@ -266,7 +266,7 @@
                 <td>系统提示可 in-history 追加以保前缀<span class="tag tag--guess">推断</span> <span class="small muted">d§13</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">失败恢复<span>14</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-14.html">失败恢复</a><span>类 14</span><span>第 14 章</span></th>
                 <td>压缩自身超窗删最旧重试；后台压缩默认关<span class="tag tag--ok">已核实</span> <span class="small muted">c§14</span></td>
                 <td>被动压缩一次；连续 3 次失败熔断<span class="tag tag--ok">已核实</span> <span class="small muted">cc§14</span></td>
                 <td>溢出只允许一次 compact-and-retry<span class="tag tag--ok">已核实</span> <span class="small muted">p§14</span></td>
@@ -277,7 +277,7 @@
                 <td>先 pruner 再压缩；增量前进才重试<span class="tag tag--ok">已核实</span> <span class="small muted">d§14</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">扩展点<span>15</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-15.html">扩展点</a><span>类 15</span><span>第 15 章</span></th>
                 <td>hooks/插件/MCP；压缩不可替换<span class="tag tag--ok">已核实</span> <span class="small muted">c§15</span></td>
                 <td>多事件 hooks；PreCompact 可改写压缩指令<span class="tag tag--ok">已核实</span> <span class="small muted">cc§15</span></td>
                 <td>session_before_compact 可整段替换产物<span class="tag tag--ok">已核实</span> <span class="small muted">p§15</span></td>
@@ -288,7 +288,7 @@
                 <td>Cordis 全插件；继承引擎接口换后端<span class="tag tag--ok">已核实</span> <span class="small muted">d§15</span></td>
               </tr>
               <tr>
-                <th scope="row" class="cell-tool">评估与可观测<span>16</span></th>
+                <th scope="row" class="cell-tool"><a class="anchor-quiet" href="main-16.html">评估与可观测</a><span>类 16</span><span>第 16 章</span></th>
                 <td>无评测框架；只有 rollout/OTEL 原始数据<span class="tag tag--ok">已核实</span> <span class="small muted">c§16</span></td>
                 <td>无评测；/context、/cost、缓存失效归因<span class="tag tag--ok">已核实</span> <span class="small muted">cc§16</span></td>
                 <td>自带 evals 做 docs-lift 对照；无上下文指标<span class="tag tag--ok">已核实</span> <span class="small muted">p§16</span></td>

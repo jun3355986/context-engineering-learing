@@ -120,7 +120,7 @@
       <h1>取舍：没有最优解，只有代价清单</h1>
       <p class="lede">同一个模型、同一套工具，两个团队可以做出完全相反的选择，而且都能跑通。区别不在谁更先进，而在谁更清楚自己在为什么付费。这一页只讲六组选择的运行方式与代价。</p>
       <ul class="meta">
-        <li>约 24 分钟</li>
+        <li>约 27 分钟</li>
         <li>7 张图</li>
         <li>L4</li>
       </ul>
@@ -612,6 +612,46 @@
         </div>
       </div>
 
+    </section>
+
+    <!-- ========== 10 测验 ========== -->
+    <section id="quiz">
+      <p class="sec-no">10 · 小测验</p>
+      <h2>三道题，检验你会不会做取舍</h2>
+
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q1</span>
+          <p class="quiz__q">一个任务只剩 3 轮，窗口已用 82%，历史里最大的一段是 12k 的工具输出。按本章的判据，该早压还是晚压？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>晚压，甚至可以压到任务结束。判据是剩余轮数 R 和待压缩历史的体量：R 小、后面没有几轮要跑，压缩省下的空间用不上，反而要多付一次压缩请求和一次信息损失。12k 也远低于「历史里有 50k 以上工具输出」这个早压信号。百分比只是表象，R 才是分母。</p>
+        </div>
+      </div>
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q2</span>
+          <p class="quiz__q">团队把 40 个工具的 MCP 服务器从全量下发改成「目录 + 按需加载」，结果模型经常忘记某个工具存在。按本章的标准，这个改动错在哪？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>错在没按调用频率分层。判断标准是：一份工具定义在 90% 的轮次里不调用，才延迟；每三轮调用一次，就该预加载。40 个工具里总有几个高频繁用的，把它们一起塞进目录，模型要多一次检索往返，甚至根本不检索。做法是分层：高频预加载，低频进目录，并在目录描述里写清「何时用」。</p>
+        </div>
+      </div>
+      <div class="quiz">
+        <div class="quiz__head">
+          <span class="quiz__no">Q3</span>
+          <p class="quiz__q">三个只读子代理各返回 10k 字，父会话因此多出 30k，下一轮就触发压缩。有人说「那就别用子代理」。更好的做法是什么，代价是什么？</p>
+        </div>
+        <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
+        <div class="quiz__answer" hidden>
+          <span class="quiz__label">解析</span>
+          <p>子代理该留，问题在返回契约。要求结构化结果（路径、行号、一句话结论）、设单次返回上限（如 2k token）、父端按「文件:行」合并去重，能把 30k 压到几 k。代价是要先设计返回格式，而且父会话看不到中间过程，方向错了只能整段重来。</p>
+        </div>
+      </div>
       <p class="footer-note">下一章：<a href="adv-02.html">失败案例分析</a>。那一页把取舍放进五个事故，并用交互演示放大“多次压缩”的累积损失。</p>
     </section>
 

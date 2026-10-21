@@ -84,7 +84,7 @@
       <h1>切点、单回合拆分与文件跟踪</h1>
       <p class="lede">压缩要回答一个看起来很小的问题：从哪一条开始保留？pi 的答案不是「数够 20 000 token 就切」，而是「数够之后，往后找最近一个合法边界」。这一步之差，决定了工具调用会不会被切成孤儿，也决定了压缩后模型还能不能接着干活。</p>
       <ul class="meta">
-        <li>约 15 分钟</li>
+        <li>约 20 分钟</li>
         <li>2 个代码块 · 3 张图</li>
         <li>L3 → L4</li>
         <li>源码 <code>b45e0eb</code></li>
@@ -112,7 +112,7 @@
 
       <p>pi 的自动压缩由阈值触发：<code>contextTokens &gt; contextWindow - reserveTokens</code>，<code>reserveTokens</code> 默认 16 384。<span class="tag tag--ok">已核实</span>触发之后，它并不立刻把历史丢给模型，而是先做一次「准备」：算出保留段的起点、要摘要的消息、要单独摘要的轮前缀，以及这一路读写过哪些文件。准备结果交给 <code>compact()</code>，由它决定发一次还是两次摘要请求。</p>
 
-      <p class="lead-in">切点不是「预算用完的那一条」，而是「预算用完之后，往后最近的一个合法边界」。这两个位置常常不是同一条，差额就是压缩质量的来源。</p>
+      <p class="lead-in">更准确地说，切点落在「预算用完之后，往后最近的一个合法边界」。这两个位置常常不是同一条，差额就是压缩质量的来源。</p>
 
       <p>整条链路可以拆成五步。本节讲第 2 步和第 3 步：找切点、判断是否拆轮；文件清单作为第 2 步的副产品一起讲。第 4 步「拼摘要」和第 5 步「只追加条目」分别属于下一节 <b>pi · 压缩只改投影</b> 的内容。</p>
 
@@ -153,7 +153,7 @@
 
     <!-- ================= 02 链接 ================= -->
     <section id="s2">
-      <p class="sec-no">02 · 固定到提交的链接</p>
+      <p class="sec-no">02 · 这段代码在哪</p>
       <h2>四条链接，从常量到调用点</h2>
 
       <p>下面四条都固定在同一提交，行号已用 <code>sed -n</code> 逐段核对：起止行与描述一致，没有跨函数。</p>
@@ -399,7 +399,7 @@
 
       <p><code>extractFileOpsFromMessage()</code> 只认三个工具名：<code>read</code> 进 <code>read</code> 集合、<code>write</code> 进 <code>written</code>、<code>edit</code> 进 <code>edited</code>；路径取自 <code>args.path</code>。它还处理一个特殊情况：codemode 脚本里的调用不挂在 <code>assistant</code> 消息上，而是记在工具结果的 <code>nestedCalls</code> 里，所以要单独扫一遍。<span class="tag tag--ok">已核实</span></p>
 
-      <p>最后的清单只有两个：<code>&lt;read-files&gt;</code> 和 <code>&lt;modified-files&gt;</code>。一个文件如果先读后改，它只出现在 <code>modified-files</code> 里。这不是为了省字符，而是为了给模型一个明确的语义：<b>只读清单里的文件是「我看过、可以放心引用」；修改清单里的文件是「我动过、可能需要核对」。</b>一个文件同时出现在两边，模型就没有稳定预期。</p>
+      <p>最后的清单只有两个：<code>&lt;read-files&gt;</code> 和 <code>&lt;modified-files&gt;</code>。一个文件如果先读后改，它只出现在 <code>modified-files</code> 里。这样做是为了给模型一个明确的语义：<b>只读清单里的文件是「我看过、可以放心引用」；修改清单里的文件是「我动过、可能需要核对」。</b>一个文件同时出现在两边，模型就没有稳定预期。</p>
 
       <p>清单只覆盖「被摘要掉的那部分」，因为 <code>fileOps</code> 是从 <code>messagesToSummarize</code> 和轮前缀里抽的；保留段里的工具调用仍然原样存在，不需要再列一遍。多次压缩时，上一份 <code>CompactionEntry.details</code> 里的清单会先继承再累加，所以第三次压缩的清单里仍能看到第一次改过的文件。<span class="tag tag--ok">已核实</span></p>
 
