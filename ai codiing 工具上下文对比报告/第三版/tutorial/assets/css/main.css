@@ -1007,6 +1007,50 @@ section {
   font-size: 12.5px;
 }
 
+/* 修订记录：折叠在页尾，默认收起 */
+.changelog {
+  margin-top: 28px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.changelog summary {
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: 13px;
+  list-style: none;
+}
+
+.changelog summary::-webkit-details-marker {
+  display: none;
+}
+
+.changelog summary::before {
+  color: var(--muted);
+  content: "▸ ";
+}
+
+.changelog[open] summary::before {
+  content: "▾ ";
+}
+
+.changelog ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  line-height: 1.75;
+}
+
+.changelog li + li {
+  margin-top: 4px;
+}
+
+.changelog strong {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
 /* ---------- 7. 通用块：按钮 / 标签 / 提示框 ---------- */
 .btn {
   display: inline-flex;

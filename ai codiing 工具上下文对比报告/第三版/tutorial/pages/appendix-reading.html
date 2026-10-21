@@ -130,7 +130,7 @@
       <section id="reading-source">
         <p class="sec-no">B · 源码入口</p>
         <h2>六个文件，六种骨架</h2>
-        <p>每条都固定到提交与行号。不要从头读到尾，带着一个问题进去：这段代码在「保留谁、丢掉谁、什么时候停」三件事上做了什么选择。<sup class="fn-ref"><a href="#fn-appendix-reading-1" id="fnref-appendix-reading-1">1</a></sup></p>
+        <p>每条都固定到提交与行号；对应的中文解读在<a href="src-codex-01.html">第 29–54 章</a>。不要从头读到尾，带着一个问题进去：这段代码在「保留谁、丢掉谁、什么时候停」三件事上做了什么选择。<sup class="fn-ref"><a href="#fn-appendix-reading-1" id="fnref-appendix-reading-1">1</a></sup></p>
 
         <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
         <div class="table-wrap">
@@ -209,7 +209,7 @@
               <tr>
                 <th scope="row"><a href="https://arxiv.org/abs/2310.06770">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a></th>
                 <td>论文 · Jimenez et al., 2023</td>
-                <td>给「用任务成功率而不是主观感受评估」一个模板：真实仓库、可执行验收、按任务分层。它是第 23 章评测集设计的直接参照。</td>
+                <td>给「用任务成功率而不是主观感受评估」一个模板：真实仓库、可执行验收、按任务分层。它是<a href="main-16.html">第 23 章</a>评测集设计的直接参照。</td>
               </tr>
             </tbody>
           </table>
@@ -226,15 +226,15 @@
         <ul>
           <li>
             <strong>路线 A · 先懂原理（L2）</strong>
-            <p>第 1 章 → 第 4 章 → 第 5 章 → 第 15 章 → 第 20 章 → 第 21 章。走完这条线，你能解释「为什么压缩会同时省 token 和丢信息」，也能判断一次缓存失效是不是计划内的。</p>
+            <p><a href="intro-01.html">第 1 章</a> → <a href="intro-04.html">第 4 章</a> → <a href="intro-05.html">第 5 章</a> → <a href="main-08.html">第 15 章</a> → <a href="main-13.html">第 20 章</a> → <a href="main-14.html">第 21 章</a>。走完这条线，你能解释「为什么压缩会同时省 token 和丢信息」，也能判断一次缓存失效是不是计划内的。</p>
           </li>
           <li>
             <strong>路线 B · 要改代码（L3）</strong>
-            <p>第 14 章 → 第 15 章 → 第 38 章 → 第 53 章 → 第 40 章 → Codex <code>compact.rs</code>。先看「日志与投影」，再看「切点」，最后看「方法链」；顺序反了会以为压缩就是调一次模型。</p>
+            <p><a href="main-07.html">第 14 章</a> → <a href="main-08.html">第 15 章</a> → <a href="src-pi-02.html">第 38 章</a> → <a href="src-dsh-02.html">第 53 章</a> → <a href="src-omp-01.html">第 40 章</a> → Codex <code>compact.rs</code>。先看「日志与投影」，再看「切点」，最后看「方法链」；顺序反了会以为压缩就是调一次模型。</p>
           </li>
           <li>
             <strong>路线 C · 要做评估（L5）</strong>
-            <p>第 23 章 → 第 28 章 → SWE-bench → 回到第 15 章做一次消融。先定指标与分层，再选材料；不要先跑一轮再找指标，那样只会得到一张无法解释的曲线。</p>
+            <p><a href="main-16.html">第 23 章</a> → <a href="adv-05.html">第 28 章</a> → SWE-bench → 回到<a href="main-08.html">第 15 章</a>做一次消融。先定指标与分层，再选材料；不要先跑一轮再找指标，那样只会得到一张无法解释的曲线。</p>
           </li>
         </ul>
 
@@ -262,7 +262,6 @@
 </main>
 
 <script src="../assets/js/toc.js"></script>
-<script src="../assets/js/search-index.js"></script>
 <script src="../assets/js/app.js"></script>
 </body>
 </html>

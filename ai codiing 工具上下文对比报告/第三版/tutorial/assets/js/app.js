@@ -360,6 +360,37 @@
       return item.chapter.id !== (TOC.home ? TOC.home.id : "");
     });
     var fulltext = window.SEARCH_INDEX || [];
+    var indexState = fulltext.length ? "ready" : "idle";
+    var indexQueue = [];
+
+    /* 全文索引约 690 KB：首屏不加载，聚焦搜索框或首次输入时再注入 */
+    function loadIndex(done) {
+      if (indexState === "ready") {
+        done();
+        return;
+      }
+      indexQueue.push(done);
+      if (indexState === "loading") return;
+      indexState = "loading";
+      var s = document.createElement("script");
+      s.src = prefix + "assets/js/search-index.js";
+      s.async = true;
+      s.onload = function () {
+        fulltext = window.SEARCH_INDEX || [];
+        indexState = fulltext.length ? "ready" : "error";
+        var q = indexQueue;
+        indexQueue = [];
+        q.forEach(function (fn) { fn(); });
+      };
+      s.onerror = function () {
+        indexState = "error";
+        var q = indexQueue;
+        indexQueue = [];
+        q.forEach(function (fn) { fn(); });
+        toast("全文索引加载失败，先按标题搜索");
+      };
+      document.body.appendChild(s);
+    }
 
     function closePanel() {
       panel.hidden = true;
@@ -464,7 +495,11 @@
         });
         panel.insertAdjacentHTML(
           "beforeend",
-          '<p class="search__foot">全文搜索 · 覆盖 ' + fulltext.length + " 个小节</p>"
+          '<p class="search__foot">' +
+            (fulltext.length
+              ? "全文搜索 · 覆盖 " + fulltext.length + " 个小节"
+              : "标题搜索 · 正在载入全文索引…") +
+            "</p>"
         );
       }
 
@@ -492,11 +527,17 @@
         closePanel();
         return;
       }
-      renderResults(q);
       filterNav(q);
+      renderResults(q);
+      if (indexState !== "ready") {
+        loadIndex(function () {
+          if (input.value.trim() === q) renderResults(q);
+        });
+      }
     });
 
     input.addEventListener("focus", function () {
+      if (indexState === "idle") loadIndex(function () {});
       if (input.value.trim()) {
         renderResults(input.value.trim());
         filterNav(input.value.trim());

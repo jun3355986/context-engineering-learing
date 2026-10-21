@@ -107,7 +107,7 @@
       <p>上午十点，你在两个仓库里问了同一句话：“把这个模块的错误处理统一一下。”</p>
       <p>A 仓库的回答先读目录、再读两个文件，改完还跑了一遍测试。B 仓库的回答直接给出一个补丁，路径是错的，API 也是旧版的。你把同一句话再问一遍，B 还是错。你开始怀疑模型变笨了。</p>
       <p>把两次请求拆开看，差别不在模型：A 仓库的工具表里有 <code>read</code>、<code>grep</code>、<code>bash</code>，B 仓库只暴露了三个工具，其中没有搜索；A 的规则文件里写着“改完必须跑 <code>make test</code>”，B 的规则文件在两个月前被移到了子目录，没有生效；A 的历史里已经有上一次的目录树，B 是全新会话。模型没有变，装进去的东西变了。</p>
-      <p class="lead-in">上下文管理的第一件事，是确认“该在的东西真的在”，省钱排在后面。</p>
+      <p class="lead-in">上下文管理的第一件事，不是省钱，而是确认“该在的东西真的在”。</p>
       <p>这一章只回答三个问题：一次请求由哪几块拼成；它们按什么顺序排；为什么工具定义值得单独拿出来优化。后面的规则文件、按需加载、动态注入，都是在这张底图上加东西。</p>
 
       <figure class="fig" id="fig-request-layers">
@@ -157,7 +157,7 @@
         <figcaption>图 01-1　一次请求的五层。①② 是最值得保持稳定的部分，③ 之后逐轮变化。虚线不是协议边界，而是“缓存通常从哪里断开”的经验位置；不同 provider 的实际断点由服务端决定。示意，非真实比例。</figcaption>
       </figure>
 
-      <p>这张图有两个容易看错的地方。第一，工具定义不是一个独立段落，它在协议里是<strong>与消息数组并列的字段</strong>，但在计费和缓存上，它和系统提示一起被算进前缀。第二，环境信息在大多数实现里是若干条插在历史里的合成消息。所以“改系统提示”和“改环境说明”，代价可能完全不同：前者动的是前缀头部，后者只动尾部。</p>
+      <p>这张图有两个容易看错的地方。第一，工具定义不是一个独立段落，它在协议里是<strong>与消息数组并列的字段</strong>，但在计费和缓存上，它和系统提示一起被算进前缀。第二，环境信息在大多数实现里<strong>不是一个字段</strong>，而是若干条插在历史里的合成消息。所以“改系统提示”和“改环境说明”，代价可能完全不同：前者动的是前缀头部，后者只动尾部。</p>
 
       <div class="hf hf--think">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
@@ -238,7 +238,7 @@
       <p class="small muted">对照源码：<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a>。注释为讲解所加，不是原注释；变量名做了简化。</p>
 
       <h3 id="codex-order">2.5 顺序：稳定在前，变化在后</h3>
-      <p>把四块排成一条序列，Codex 的顺序是：<strong>instructions → tools → input（从旧到新）</strong>。这是缓存协议的要求：prompt cache 以“前缀完全相同”为命中条件，任何靠前的字节变化，都会让它后面的全部内容重新计费。</p>
+      <p>把四块排成一条序列，Codex 的顺序是：<strong>instructions → tools → input（从旧到新）</strong>。这不是审美选择，而是缓存协议的要求：prompt cache 以“前缀完全相同”为命中条件，任何靠前的字节变化，都会让它后面的全部内容重新计费。</p>
       <p>所以“把规则文件放在系统提示里”和“把规则文件作为一条消息前插”不是等价方案。前者只要规则改一个字，整个前缀作废；后者只影响插入点之后的内容，而插入点通常在历史头部，仍然很贵，但至少工具表还在。真正便宜的位置是<strong>尾部</strong>：把易变信息追加在本轮输入之前，前面的东西一个字都不动。</p>
       <p>这也是为什么几乎所有 agent 都会把“当前时间”做成一条独立提醒，而不是写进系统提示的第一段。Grok Build 甚至宁可加一条一次性的跨午夜提醒，也不肯改写启动时缓存的 <code>&lt;user_info&gt;</code> 日期。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs#L507-L522">reminders.rs#L507-L522</a> <span class="tag tag--ok">已核实</span> 第 11 章会专门讲这类注入。</p>
 
@@ -694,7 +694,6 @@
 </div>
 
 <script src="../assets/js/toc.js"></script>
-<script src="../assets/js/search-index.js"></script>
 <script src="../assets/js/app.js"></script>
 </body>
 </html>

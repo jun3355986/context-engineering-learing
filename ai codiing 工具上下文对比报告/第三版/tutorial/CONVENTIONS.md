@@ -14,12 +14,14 @@ tutorial/
   assets/css/main.css        全站样式（只由主控改）
   assets/js/toc.js           导航清单（只由主控改）
   assets/js/app.js           导航、弹窗、测验、搜索、主题（只由主控改）
+  assets/js/search-index.js  全文索引（脚本生成，约 690 KB，**不随页面加载**，见 §14）
   assets/js/demos/<名字>.js  交互演示，一个演示一个文件
   CONVENTIONS.md             本文件
 ```
 
 - 章节 ID 与文件名一致：`main-08` → `pages/main-08.html`。
 - 导航、搜索、深浅色、弹窗、测验、复制都由 `toc.js` + `app.js` 驱动，页面里**不写**这些逻辑。
+- 页面只引 `toc.js` 与 `app.js` 两个脚本；`search-index.js` 由 `app.js` 在搜索框聚焦或首次输入时注入，别在页面里写 `<script src=".../search-index.js">`。
 - 不引入 CDN、外部字体、外部图片、构建工具；不写 ES module（`type="module"` 在 `file://` 下会失败）；不写 `fetch`。
 
 ---
@@ -130,7 +132,7 @@ tutorial/
 
 主线每章按 spec 第 5 节的五段写，顺序不要变：
 
-1. Codex 主线讲解（Codex 没有该能力时写明「Codex 无此能力」，改用做得最好的工具当主例）
+1. Codex 主线讲解（Codex 没有该能力时写明「Codex 无此能力」，改用做得最好的 agent 当主例）
 2. 7 个 agent 按钮（点击弹窗；Codex 走正文主线讲解，不进弹窗）
 3. 8 个 agent 对比表
 4. 设计取舍
@@ -165,7 +167,7 @@ tutorial/
 读者卡住的地方，多半不是某句话看不懂，而是**上一节和这一节之间断了**。每节的第一句要接住上一节的落点：
 
 - **接落点**：回指刚讲完的东西（「刚才那块白板，是你用手拖满的」），或把上一节结尾抛出的问题接过来。不要另起一个话题。
-- **新角色先报名**：工具、运行时、模型第一次出场，先用一句话交代「它是谁、在哪一层」，再让它做事。不要写「工具通常在三件事里选」——把工具当人使，读者会问「哪个工具」。写清是运行时在量 token、模型在读写。
+- **新角色先报名**：agent、运行时、模型第一次出场，先用一句话交代「它是谁、在哪一层」，再让它做事。不要写「工具通常在三件事里选」——把工具当人使，读者会问「哪个工具」。写清是运行时在量 token、模型在读写。
 - **节末留钩子**：用后果或问题收尾（「它长到头的时候，谁来踩刹车？」），不要用「下一节讲 X」的目录式过渡。
 - **过渡句并进段落**：不要单开一段「接下来我们看看……」，并进上一节末段或下一节首段。
 
@@ -220,11 +222,11 @@ tutorial/
 
 ---
 
-## 5. 工具弹窗
+## 5. agent 弹窗
 
 ### 5.1 触发按钮
 
-每个工具一个按钮，`data-modal` 的值是弹窗 ID 去掉 `modal-` 前缀。8 个工具的 ID 固定为：
+每个 agent 一个按钮，`data-modal` 的值是弹窗 ID 去掉 `modal-` 前缀。8 个 agent 的 ID 固定为：
 
 `codex`、`claude-code`、`pi`、`omp`、`opencode-v1`、`opencode-v2`、`grok-build`、`dsh`
 
@@ -252,13 +254,13 @@ tutorial/
   <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="modal-codex-title" tabindex="-1">
     <div class="modal__head">
       <div>
-        <p class="modal__kicker">工具弹窗 · codex</p>
+        <p class="modal__kicker">agent 弹窗 · codex</p>
         <h2 class="modal__title" id="modal-codex-title">Codex CLI</h2>
       </div>
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">三到六句话：这个工具在这一类能力上做了什么。</p>
+      <p class="modal__lead">三到六句话：这个 agent 在这一类能力上做了什么。</p>
       <dl class="kv">
         <dt>关键参数</dt>
         <dd>参数名、默认值、触发阈值。<span class="tag tag--ok">已核实</span></dd>
@@ -284,9 +286,9 @@ tutorial/
 
 ---
 
-## 6. 8 工具对比表
+## 6. 8 个 agent 对比表
 
-窄屏横向滚动，第一列冻结。**必须**包在 `.table-wrap` 里，表头第一列写「工具」。
+窄屏横向滚动，第一列冻结。**必须**包在 `.table-wrap` 里，表头第一列写「agent」。
 
 ```html
 <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
@@ -294,7 +296,7 @@ tutorial/
   <table class="data-table">
     <thead>
       <tr>
-        <th scope="col">工具</th>
+        <th scope="col">agent</th>
         <th scope="col">做法</th>
         <th scope="col">关键参数</th>
         <th scope="col">来源</th>
@@ -320,7 +322,7 @@ tutorial/
 <p class="table-caption">表注：版本、口径或需要提醒读者的差异。</p>
 ```
 
-- 行首用 `<th scope="row" class="cell-tool">`，工具 ID 放在内层 `<span>` 里（会自动变成灰色小字）。
+- 行首用 `<th scope="row" class="cell-tool">`，agent ID 放在内层 `<span>` 里（会自动变成灰色小字）。
 - 列多时不要减少到 3 列以下；宽屏靠 `min-width` 保证可读，窄屏靠容器滚动。
 - 不要给表格加 `style="width:..."`，不要自己写 `overflow`。
 
@@ -523,7 +525,7 @@ tutorial/
       <!-- 画布内容：条形、方块、会话树等 -->
     </div>
   </div>
-  <p class="demo__note">数据是示意值，不是某工具的真实默认值。</p>
+  <p class="demo__note">数据是示意值，不是某个 agent 的真实默认值。</p>
 </div>
 ```
 
@@ -640,9 +642,9 @@ tutorial/
 </div>
 ```
 
-### 工具标签（非交互）
+### agent 标签（非交互）
 
-需要显示工具 ID 时用 `<code>codex</code>` 或 `.tool-btn__id` 的写法；不要用彩色胶囊，除非是可信度标签。
+需要显示 agent ID 时用 `<code>codex</code>` 或 `.tool-btn__id` 的写法；不要用彩色胶囊，除非是可信度标签。
 
 ---
 
@@ -658,7 +660,7 @@ tutorial/
 | `[data-copy]` | 复制所在 `.codeblock` 的代码 | `app.js` |
 | `[data-recent-slot]` | 显示「继续上次阅读」卡片 | `app.js` |
 | `[data-clear-recent]` | 清除阅读记录 | `app.js` |
-| `#search-input` / `#search-results` | 标题搜索 | `app.js` |
+| `#search-input` / `#search-results` | 搜索；聚焦时注入 `search-index.js`，输入时先出标题结果、索引到位后升级为全文结果 | `app.js` |
 | `#theme-btn` | 深浅色切换 | `app.js` |
 | `#nav` / `#menu-btn` / `#nav-backdrop` | 导航与手机抽屉 | `app.js` |
 
@@ -687,7 +689,7 @@ tutorial/
 | ≥ 1360px | 右侧出现「本页目录」（由 h2/h3 自动生成）；表格、演示、代码块等宽组件最宽 1100px |
 | > 1000px | 左侧固定导航（268px）；正文行宽 760px，宽组件随可用宽度放宽 |
 | ≤ 1000px | 导航变抽屉，顶部出现菜单按钮，正文占满 |
-| ≤ 760px | 正文 16px，工具按钮两列，演示上下排列，弹窗从底部升起 |
+| ≤ 760px | 正文 16px，agent 按钮两列，演示上下排列，弹窗从底部升起 |
 | ≤ 420px | 更紧的左右留白，搜索框缩小 |
 
 写章节时不需要自己写媒体查询；用 grid/flex 时保证 `min-width: 0`，避免撑破容器。
@@ -703,7 +705,7 @@ tutorial/
 - [ ] 每个弹窗有唯一 ID，`Esc`、遮罩、关闭按钮都有效。
 - [ ] 测验默认收起，点开有解析。
 - [ ] 代码块注释是中文，整行注释有左侧色条，复制出来是纯文本。
-- [ ] 每条工具结论有来源；Claude Code 结论有来源类型标签。
+- [ ] 每条 agent 结论有来源；Claude Code 结论有来源类型标签。
 - [ ] 每节首句接住了上一节的落点；新出现的角色（agent/运行时/模型）有交代。
 - [ ] 产品写 agent、协议层写「工具」，没有把两者混用。
 - [ ] 页头时长按 §3 的公式重算过，不是手填的。

@@ -87,7 +87,7 @@
       <h2>“它一进门就说：这个项目用 Jest”</h2>
       <p>周一早上，新会话的第一条消息还没发完，Agent 已经在计划里写：“用 Jest 补三个单测。” 你愣了一下——项目上个月已经迁到 Vitest，<code>package.json</code> 里连 <code>jest</code> 都删了。你问它为什么这么说，它回答：“项目记忆里写着测试框架是 Jest。”</p>
       <p>它不是幻觉，也不是读错了文件。它读的是一条三个月前写入的记忆：那时候项目确实用 Jest。记忆没有过期，也没有被新事实覆盖，于是每次新会话都把它当作“已知前提”注入。模型没有理由怀疑它，因为注入的位置和措辞都很像一条稳定的项目约定。</p>
-      <p>这就是跨会话记忆和“长上下文”最根本的区别：<strong>长上下文只影响这一次回答，记忆会影响以后每一次回答</strong>。一条错误的记忆会复利：后面的每一轮都在沿用这个错误。</p>
+      <p>这就是跨会话记忆和“长上下文”最根本的区别：<strong>长上下文只影响这一次回答，记忆会影响以后每一次回答</strong>。一条错误的记忆不是一次错误，而是一个会复利的起点。</p>
       <p class="lead-in">先分清三种持久化，再谈记忆。</p>
       <ul>
         <li><strong>规则文件</strong>（<code>AGENTS.md</code>、<code>CLAUDE.md</code>）：人写的、稳定的约束。它回答“必须怎么做”，改动应该经过 review。错误规则的代价大，但通常有人负责。</li>
@@ -134,7 +134,7 @@
         <figcaption>图 12-1　记忆是一条回路：写入 → 整理 → 存储 → 检索注入 → 影响下一次会话。红色虚线是纠错回边；没有这条边，错误会一直循环。示意图，不代表任何 agent 的固定架构。</figcaption>
       </figure>
 
-      <p>这条回路上有四个关键决定，后面每一节都会回到它们：<strong>写什么</strong>（候选选择）、<strong>什么时候写</strong>（会话结束、压缩前、周期整理）、<strong>怎么取</strong>（索引一次、每轮检索、按项目隔离）、<strong>怎么删</strong>（过期、衰减、人工纠错）。四个决定里，最难的是删——因为删除需要判断“这条经验已经不适用了”，而模型通常只会热情地记录，不擅长怀疑自己。</p>
+      <p>这条回路上有四个关键决定，后面每一节都会回到它们：<strong>写什么</strong>（候选选择）、<strong>什么时候写</strong>（会话结束、压缩前、周期整理）、<strong>怎么取</strong>（索引一次、每轮检索、按项目隔离）、<strong>怎么删</strong>（过期、衰减、人工纠错）。四个决定里，最难的不是写，而是删——因为删除需要判断“这条经验已经不适用了”，而模型通常只会热情地记录，不擅长怀疑自己。</p>
 
       <div class="callout callout--warn">
         <p class="callout__title">错误的记忆比没有记忆更贵</p>
@@ -184,7 +184,7 @@
     <section id="tools">
       <p class="sec-no">03 · 七个编码智能体</p>
       <h2>有的在写，有的在整理，有的干脆不做</h2>
-      <p>下面七个 agent 各有一个弹窗。先记住一个事实：<strong>八个 agent 里有四个没有跨会话记忆</strong>——pi、opencode v1、opencode v2、DeepSeek Harness。这些空白是明确的产品选择；跨会话的延续交给规则文件、会话恢复或扩展。剩下的四个里，Claude Code、oh-my-pi、Grok Build 各有完整实现，Codex 是后台管线。弹窗里的“设计意图”是作者根据源码结构做的分析，不是工具作者的自述<sup class="fn-ref"><a href="#fn-main-12-3" id="fnref-main-12-3">3</a></sup>。</p>
+      <p>下面七个 agent 各有一个弹窗。先记住一个事实：<strong>八个 agent 里有四个没有跨会话记忆</strong>——pi、opencode v1、opencode v2、DeepSeek Harness。它们不是“没写完”，而是明确选择不做；跨会话的延续交给规则文件、会话恢复或扩展。剩下的四个里，Claude Code、oh-my-pi、Grok Build 各有完整实现，Codex 是后台管线。弹窗里的“设计意图”是作者根据源码结构做的分析，不是工具作者的自述<sup class="fn-ref"><a href="#fn-main-12-3" id="fnref-main-12-3">3</a></sup>。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -593,7 +593,6 @@
 </div>
 
 <script src="../assets/js/toc.js"></script>
-<script src="../assets/js/search-index.js"></script>
 <script src="../assets/js/app.js"></script>
 </body>
 </html>
