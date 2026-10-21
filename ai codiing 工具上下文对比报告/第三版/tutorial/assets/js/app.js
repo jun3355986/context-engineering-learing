@@ -902,14 +902,56 @@
    * 5. 工具卡片显示弹窗首句作为一句话摘要；弹窗“关键参数”拆成列表
    */
 
+  /* 小节编号与短标题：优先用 .sec-no 里的「01 · 短名」，没有就退回 h2 全文 */
+  function sectionLabel(sec, index) {
+    var out = { no: (index < 9 ? "0" : "") + (index + 1), label: "" };
+    for (var i = 0; i < sec.children.length; i++) {
+      var child = sec.children[i];
+      if (!child.classList || !child.classList.contains("sec-no")) continue;
+      var raw = (child.textContent || "").replace(/\s+/g, " ").trim();
+      var cut = raw.indexOf("·");
+      if (cut > -1) {
+        out.no = raw.slice(0, cut).trim() || out.no;
+        out.label = raw.slice(cut + 1).trim();
+      } else if (raw) {
+        out.label = raw;
+      }
+      break;
+    }
+    return out;
+  }
+
+  /* 老页面没写 id，自动补一个，保证「本页目录」能跳到锚点 */
+  function ensureSectionId(sec, index) {
+    if (sec.id) return sec.id;
+    var chapter = document.body.getAttribute("data-chapter") || "page";
+    var id = chapter + "-s" + (index + 1);
+    while (document.getElementById(id)) id += "-x";
+    sec.id = id;
+    return id;
+  }
+
+  function directChild(el, tag) {
+    for (var i = 0; i < el.children.length; i++) {
+      if (el.children[i].tagName.toLowerCase() === tag) return el.children[i];
+    }
+    return null;
+  }
+
   function buildPageToc() {
     var main = $(".main");
     var prose = $(".prose", main || document);
     if (!main || !prose || $(".page-toc", main)) return;
-    var heads = $$(".prose > section > h2", main).filter(function (h) {
-      return h.parentElement.id;
+
+    /* 顶层 section：允许外面再包一层 div（附录页就是这样），但排除 section 里套 section */
+    var entries = [];
+    $$(".prose section", main).forEach(function (sec) {
+      var parent = sec.parentElement;
+      if (parent && parent.closest && parent.closest("section")) return;
+      var h = directChild(sec, "h2");
+      if (h) entries.push({ sec: sec, h: h });
     });
-    if (heads.length < 3) return;
+    if (entries.length < 3) return;
 
     var nav = document.createElement("nav");
     nav.className = "page-toc";
@@ -920,16 +962,19 @@
     nav.appendChild(title);
     var ol = document.createElement("ol");
     var links = [];
-    heads.forEach(function (h, i) {
-      var sec = h.parentElement;
+    entries.forEach(function (item, i) {
+      var sec = item.sec;
+      var meta = sectionLabel(sec, i);
+      ensureSectionId(sec, i);
       var li = document.createElement("li");
       var a = document.createElement("a");
       a.href = "#" + sec.id;
       var no = document.createElement("span");
       no.className = "page-toc__no";
-      no.textContent = (i < 9 ? "0" : "") + (i + 1);
+      no.textContent = meta.no;
       var label = document.createElement("span");
-      label.textContent = h.textContent.replace(/\s+/g, " ").trim();
+      label.className = "page-toc__label";
+      label.textContent = meta.label || item.h.textContent.replace(/\s+/g, " ").trim();
       a.appendChild(no);
       a.appendChild(label);
       li.appendChild(a);

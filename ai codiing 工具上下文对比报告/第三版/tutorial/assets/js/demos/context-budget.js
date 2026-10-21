@@ -49,6 +49,14 @@
     return sum;
   }
 
+  function isDirty() {
+    for (var i = 0; i < segs.length; i++) {
+      var key = segs[i].getAttribute("data-key");
+      if (tokens[key] !== initial[key]) return true;
+    }
+    return false;
+  }
+
   function format(n) {
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
@@ -133,6 +141,8 @@
       }
     }
     lastLevel = level;
+
+    if (resetBtn) resetBtn.classList.toggle("is-dirty", isDirty());
   }
 
   function maxFor(key) {
@@ -223,9 +233,17 @@
     resetBtn.addEventListener("click", function () {
       segs.forEach(function (seg) {
         var key = seg.getAttribute("data-key");
+        seg.__drag = null;
+        seg.classList.remove("is-dragging");
         tokens[key] = initial[key];
       });
       render();
+
+      var used = totalUsed();
+      if (srEl) {
+        srEl.textContent =
+          "已恢复初始分配：已占 " + format(used) + "，剩余 " + format(CAPACITY - used) + " token。";
+      }
     });
   }
 

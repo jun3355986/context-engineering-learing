@@ -344,7 +344,7 @@ body[data-chapter="intro-05"] .fig .svg-label:not(.svg-label--dark) {
         <p>模型读一段材料要花算力。如果两次请求的<strong>开头完全一样</strong>，这份算力可以复用，不必重算。这个复用叫<strong>前缀缓存（prefix caching）</strong>，也叫 prompt caching。它有个硬条件：从第一个 token 起，逐字节一致。你换了顺序、改了一个词、多了一个空格，从那一处往后都不再算“一样”。</p>
       </div>
 
-      <p class="lead-in">说白了，缓存不是记住你说过什么，是记住“这段材料算过一遍”。</p>
+      <p class="lead-in">缓存不是记住你说过什么，是记住“这段材料算过一遍”。</p>
       <p>前半句区别很重要：它不理解语义，只比对字节。所以“意思一样但写法不同”在它眼里就是两段新材料。</p>
     </section>
 

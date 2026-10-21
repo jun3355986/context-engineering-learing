@@ -90,15 +90,15 @@ body[data-chapter="intro-02"] .fig .svg-label:not(.svg-label--dark) {
         <p>按下回车时，工具不是把你的那句话单独发出去。它先准备好一份“岗位说明书”，再附上这个岗位能用的全部工具，再贴上项目规矩、当前目录和今天的时间，最后才把对话记录和你这句话接上去。这一整摞，才是模型看到的<strong>请求（request）</strong>。</p>
       </div>
 
-      <p class="lead-in">说白了，你写的是便签，工具交上去的是一整个文件夹。</p>
+      <p class="lead-in">你写的是便签，工具交上去的是一整个文件夹。</p>
       <p>这一章就做一件事：把文件夹打开，一层一层看。不用记参数，只要记住每层“从哪来、多久变一次”。</p>
     </section>
 
     <section>
       <p class="sec-no">02 · 骨架：四块加一层历史</p>
       <h2>系统提示、工具、规则、环境、历史</h2>
-      <p>不同工具的字段名不一样，骨架却很像。以 Codex 为例，它每个采样步都调用 <code>build_prompt</code> 组装一个 <code>Prompt</code>，里面是四块：<code>input</code>（历史条目）、<code>tools</code>（模型可见的工具规格）、<code>base_instructions</code>（岗位说明书）、<code>output_schema</code>（结构化输出格式）。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client_common.rs#L22-L40">client_common.rs#L22-L40</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a></p>
-      <p>要注意：Codex 走的是 Responses API 形状，<strong>没有独立的 system 字段</strong>；平时说的“系统提示词”，在它这里是 <code>base_instructions</code>。名字不同，位置一样——都排在最前面。</p>
+      <p>先拆一个真实请求。不同工具的字段名不一样，骨架却很像：以 Codex 为例，它每个采样步都调用 <code>build_prompt</code> 组装一个 <code>Prompt</code>，里面是四块：<code>input</code>（历史条目）、<code>tools</code>（模型可见的工具规格）、<code>base_instructions</code>（岗位说明书）、<code>output_schema</code>（结构化输出格式）。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client_common.rs#L22-L40">client_common.rs#L22-L40</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a></p>
+      <p>Codex 走的是 Responses API 形状，<strong>没有独立的 system 字段</strong>；平时说的“系统提示词”，在它这里是 <code>base_instructions</code>。名字不同，位置一样——都排在最前面。</p>
       <p>Claude Code 这边，<code>getSystemPrompt</code> 返回的是一个字符串数组：先是静态的七段（身份、系统通则、做事方式、行动准则、工具使用、语气、输出效率），然后插一个字符串常量当<strong>边界标记（boundary）</strong>，再拼上随环境变化的动态段。工具定义不在这串里，单独走 <code>toolSchemas</code> 数组。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/prompts.ts#L444-L577">prompts.ts#L444-L577</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L1358-L1379">claude.ts#L1358-L1379</a></p>
       <p>打个比方，这像你去外地出差报销：公司财务制度是系统提示，报销系统里能填的那几张表单是工具定义，部门自己那套“打车要选经济型”的惯例是规则文件，今天在哪个城市、是几号是环境信息，前面几封来回的邮件是历史，你刚说的“帮我报一下”才是最后那句。</p>
 

@@ -243,6 +243,50 @@
   font-size: 10.5px;
   text-align: right;
 }
+#demo-context-budget .cb-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 10px;
+}
+#demo-context-budget .cb-reset {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-color: var(--border-strong);
+  background: var(--bg);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+#demo-context-budget .cb-reset svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#demo-context-budget .cb-reset:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+#demo-context-budget .cb-reset:active {
+  transform: translateY(1px);
+}
+#demo-context-budget .cb-reset.is-dirty {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+#demo-context-budget .cb-actions__hint {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
 #demo-context-budget .cb-sr {
   position: absolute;
   width: 1px;
@@ -340,7 +384,7 @@
         <p>模型没有一间叫“记忆”的仓库。每一轮开口前，它只能看见这次请求里装进去的材料；装不进去的，等于没说过。装材料的这块地方，就是<strong>上下文窗口（context window）</strong>。</p>
       </div>
 
-      <p class="lead-in">说白了，窗口就是模型面前的一块白板：这一轮能看多少，全看板上还剩下多少地方。</p>
+      <p class="lead-in">窗口就是模型面前的一块白板：这一轮能看多少，全看板上还剩下多少地方。</p>
       <p>白板不是仓库。每轮开始，材料都要重新摆上去；上一轮被擦掉的，下一轮不会自己回来。这一章只做一件事：把这块白板量清楚。</p>
 
       <div class="hf hf--think">
@@ -356,7 +400,7 @@
       <p class="sec-no">02 · 先统一尺子</p>
       <h2>token 不是字数，是模型切出来的小块</h2>
       <p>你打开日志，数了数：300 行，大概 6000 个字符。“不多啊。”工具却报：约 3000 token。换一份 2000 字的中文需求文档，你以为是“小文件”，它却吃掉一大块白板。</p>
-      <p>说白了，token 是模型读写文本时用的最小计量单位。它不按“字”切，按自己的词表切：一个常见英文单词可能是一块，一个汉字也可能是一块，标点、缩进、换行同样要占。</p>
+      <p>token 是模型读写文本时用的最小计量单位。它不按“字”切，按自己的词表切：一个常见英文单词可能是一块，一个汉字也可能是一块，标点、缩进、换行同样要占。</p>
       <p>所以，同一个文件读两遍，就是两份 token。白板不会因为“内容重复”给你打折。</p>
       <p>工程上常用的粗估是“4 个字符 ≈ 1 个 token”：Codex 截断工具输出时按 <code>bytes / 4</code> 估算，Claude Code 的本地粗估用 <code>chars / 4</code>。但这把尺子量中文会明显偏小——同一个意思，中文通常比英文更费 token，一个汉字常常就在 1 个 token 上下，甚至更多。别背系数，记量级：一页中文文档，可能就是一两千 token。<span class="tag tag--guess">推断</span></p>
       <p>代码更阴：缩进、括号、重复的字段名，全都算。一个 500 行的配置文件，可能比一篇 3000 字的文章还重。</p>
@@ -468,8 +512,14 @@
                 <dd id="cb-free">60,000</dd>
               </div>
             </dl>
-            <button class="btn btn--ghost btn--small" type="button" id="cb-reset">重置</button>
-            <p class="demo__hint">鼠标拖动色块，或 <kbd>Tab</kbd> 聚焦后按 <kbd>←</kbd> <kbd>→</kbd> 调整（按住 <kbd>Shift</kbd> 一次 10k）；手机上直接拖。虚线是 80% 警戒线和 95% 危险线。</p>
+            <div class="cb-actions">
+              <button class="btn btn--small cb-reset" type="button" id="cb-reset" aria-label="重置为初始分配">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                <span>重置</span>
+              </button>
+              <span class="cb-actions__hint">回到初始分配</span>
+            </div>
+            <p class="demo__hint">鼠标拖动色块，或 <kbd>Tab</kbd> 聚焦后按 <kbd>←</kbd> <kbd>→</kbd> 调整（按住 <kbd>Shift</kbd> 一次 10k）；手机上直接拖。虚线是 80% 警戒线和 95% 危险线。拖乱了，点上面的「重置」。</p>
           </div>
           <div class="demo__canvas">
             <div class="cb-track">
@@ -516,18 +566,20 @@
       </div>
 
       <p class="small"><strong>试一试</strong>：把“历史消息”拉到 60%，看剩余空间怎么变；再拉回去，看警戒色什么时候消失。最后把“输出预留”拉到最小，想想真实请求里会发生什么。</p>
-      <p>多拖几次你会发现：系统提示、工具定义、规则文件一开工就占着，能动的幅度有限；真正一刻不停长胖的是历史消息。第 3 章会专门画它的增长曲线。</p>
+      <p>多拖几次你会发现：系统提示、工具定义、规则文件一开工就占着，能动的幅度有限；真正一刻不停长胖的是历史消息。第 3 章会专门画它的增长曲线。但真实会话里没人替你拖——它长到头的时候，谁来踩刹车？</p>
     </section>
 
     <section>
       <p class="sec-no">06 · 装不下的时候</p>
       <h2>三种结局，没有一种是免费的</h2>
-      <p>白板写满，总得拿掉点什么。工具通常在三件事里选：</p>
+      <p>刚才那块白板，是你用手拖满的。真实会话里没人在拖：你只是不停地说、不停让它读文件，历史自己往上长。等它越过某条线，程序才动手。</p>
+      <p>动手的不是模型。模型只负责读和写，看不见自己还剩多少地方；量 token、判断该不该减量、选哪种减法，都是外面那层 agent 运行时干的活。到了那一步，能选的动作只有三个：</p>
       <ul>
         <li><strong>压缩</strong>：把旧历史交给模型写成摘要，腾出地方。细节会丢，摘要本身还要再占一块。</li>
         <li><strong>截断</strong>：直接丢掉旧消息，或砍掉过长的工具输出。快，但丢掉的东西不会自己回来。</li>
         <li><strong>报错</strong>：什么都不做，请求被拒。最诚实，也最耽误事。</li>
       </ul>
+      <p>三个动作丢掉的东西不一样：压缩丢细节、留下大意；截断连大意一起丢；报错不丢内容，丢的是这一次请求。所以没有哪个选项更好，只有你此刻更能接受哪种损失。</p>
       <p>各家选的阈值不同：Codex 先在 90% 软线触发压缩，95% 是硬线（来源见上面的输出预留一节）；Claude Code 在有效窗口下留 13,000 token 缓冲，再触发自动压缩<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">autoCompact.ts#L62-L91</a>）。</p>
       <p>这些取舍会在第 6 章「用户侧怎么管理上下文」和主线「压缩」一章展开。现在只要记住：它们都是“把已经装进去的东西拿掉”，没有一种能凭空扩容。</p>
     </section>

@@ -2434,7 +2434,7 @@ pre.code code {
   --sidebar-w: 268px;
   --measure: 760px;   /* 正文行宽：约 44 个汉字 */
   --wide: 1100px;     /* 表格、演示、代码、工具卡片的最大宽度 */
-  --toc-w: 228px;     /* 右侧本页目录 */
+  --toc-w: 236px;     /* 右侧本页目录 */
 }
 
 /* 11.1 基础排版：字号、行距、段距 */
@@ -2456,9 +2456,15 @@ body {
 }
 
 .sec-no {
-  margin-bottom: 6px;
+  margin: 0 0 10px;
+  padding-left: 11px;
+  border-left: 3px solid var(--accent);
   color: var(--accent-strong);
-  font-size: 12.5px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
 }
 
 .sec-no + h2 {
@@ -2467,12 +2473,12 @@ body {
 
 h2 {
   margin-top: 56px;
-  font-size: 26px;
+  font-size: 27px;
 }
 
 h3 {
   margin-top: 36px;
-  font-size: 19.5px;
+  font-size: 21px;
 }
 
 .kicker { font-size: 13px; }
@@ -2583,10 +2589,17 @@ h3 {
 .page-toc a {
   display: flex;
   gap: 8px;
-  padding: 5px 8px;
+  padding: 6px 8px;
   border-radius: 6px;
   color: var(--text-2);
   text-decoration: none;
+}
+
+.page-toc__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .page-toc a:hover {
