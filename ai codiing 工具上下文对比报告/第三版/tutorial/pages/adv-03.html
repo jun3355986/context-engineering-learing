@@ -32,16 +32,6 @@
   body[data-chapter="adv-03"] .kv dt {
     white-space: nowrap;
   }
-  body[data-chapter="adv-03"] .k-lvl {
-    margin-left: 10px;
-    padding: 1px 6px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--muted);
-    font-family: var(--font-sans);
-    font-size: 10px;
-    letter-spacing: 0.02em;
-  }
   #fig-arch .a3-box {
     fill: var(--surface-2);
     stroke: var(--border-strong);
@@ -143,7 +133,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 2026-10 · 第 3 版<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -174,7 +164,7 @@
 
     <!-- ========== 01 ========== -->
     <section id="why-arch">
-      <p class="sec-no">01 · 先别比功能<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">01 · 先别比功能</p>
       <h2>三份目录，三种“历史”</h2>
 
       <div class="callout callout--info">
@@ -211,7 +201,7 @@
 
     <!-- ========== 02 主图 ========== -->
     <section id="fig">
-      <p class="sec-no">02 · 一张图看分叉<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <p class="sec-no">02 · 一张图看分叉</p>
       <h2>五种架构，四个部件</h2>
       <p>下面这张图把五种架构放在同一组坐标里。每一行是一种架构，每一列是一个部件。读图顺序固定：先看第一列（真相在哪），再看第二列（减量动了谁），最后看第四列（坏了从哪恢复）。</p>
 
@@ -319,7 +309,7 @@
 
     <!-- ========== 03 A ========== -->
     <section id="arch-a">
-      <p class="sec-no">03 · 架构 A<span class="k-lvl">文字＋结构 · Karpathy L1–L2</span></p>
+      <p class="sec-no">03 · 架构 A</p>
       <h2>单会话 + 压缩：覆盖，然后继续</h2>
       <p>这是最容易理解、也最早出现的一种。整个会话就是一个消息数组，按轮次往后追加。到阈值时，把前段交给模型写成摘要，用摘要替换前段，后面的消息原样保留。模型下一轮看到的是“摘要 + 保留段”，顺序和原来一样。</p>
 
@@ -344,7 +334,7 @@
 
     <!-- ========== 04 B ========== -->
     <section id="arch-b">
-      <p class="sec-no">04 · 架构 B<span class="k-lvl">文字＋结构 · Karpathy L1–L2</span></p>
+      <p class="sec-no">04 · 架构 B</p>
       <h2>树 + 投影：历史只追加，视图每次重算</h2>
       <p>B 把“历史”和“模型看到的历史”彻底分开。磁盘上是一棵条目树，每条消息是一个节点，带自己的 id 和父节点 id。压缩不删除任何节点，只追加一个“压缩条目”，里面记着摘要和“从哪个节点开始保留”。每次请求前，从当前叶子往回走，遇到压缩条目就换成摘要，再拼上保留段，得到这次要发的消息序列。</p>
 
@@ -369,7 +359,7 @@
 
     <!-- ========== 05 C ========== -->
     <section id="arch-c">
-      <p class="sec-no">05 · 架构 C<span class="k-lvl">文字＋结构 · Karpathy L1–L2</span></p>
+      <p class="sec-no">05 · 架构 C</p>
       <h2>日志 + surface：两份数据，一份给审计，一份给模型</h2>
       <p>C 和 B 很像：都不删原文。差别在“视图”怎么表达。B 用树结构加压缩条目，投影时按结构遍历；C 用一条追加日志加一个<strong>可见面（surface）</strong>，每条消息事件带一个操作：要么 <code>append</code> 到尾部，要么 <code>replace(startSeq, endSeq)</code> 遮蔽一段已有节点。派生函数走一遍 surface，就得到模型可见的消息。</p>
 
@@ -394,7 +384,7 @@
 
     <!-- ========== 06 D ========== -->
     <section id="arch-d">
-      <p class="sec-no">06 · 架构 D<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">06 · 架构 D</p>
       <h2>服务端压缩：把减法交给别人做</h2>
       <p>D 把减量搬到服务端。客户端照常发历史，服务端决定保留多少、摘要怎么写，然后返回一份“替换历史”。客户端拿到之后，用它覆盖本地历史，再写一条检查点。</p>
       <p>Codex 的远端 v2 压缩是现成例子：保留消息共享 64,000 token 预算，单条 AgentMessage 上限 10,000，流式重试 2 次；客户端还要验收响应里的 <code>compaction_count</code> 恰好为 1，否则按致命错误处理。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L87-L91">compact_remote_v2.rs#L87-L91</a> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L458-L466">compact_remote_v2.rs#L458-L466</a> <span class="tag tag--ok">已核实</span></p>
@@ -420,7 +410,7 @@
 
     <!-- ========== 07 E ========== -->
     <section id="arch-e">
-      <p class="sec-no">07 · 架构 E<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">07 · 架构 E</p>
       <h2>记忆增强：压缩之外再加一层外部存储</h2>
       <p>E 不是替代压缩，而是在压缩前后各加一步：压缩前把值得留的事实写进记忆库，压缩后按当前任务检索，把可能被摘要丢掉的内容补回上下文。它多了一份真相源，也多了一次“写入—检索—注入”的循环。</p>
       <p>Grok Build 开启记忆后（默认关闭）的路径是：<code>/flush</code> 触发一次摘要写进记忆，压缩前自动跑一次（阈值比压缩阈值提前 4,000 token），压缩完成后再检索一次，把相关事实补回上下文。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-memory/src/flush.rs#L18-L58">xai-grok-memory/flush.rs#L18-L58</a> <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/13-memory.md#L398-L410">13-memory.md#L398-L410</a> <span class="tag tag--ok">已核实</span> Codex 走的是后台两阶段管线：先从各线程的 rollout 提取候选，再合并成产物，读路径把记忆作为 developer 指令注入。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/memories/README.md#L1-L40">memories/README.md#L1-L40</a> <span class="tag tag--ok">已核实</span></p>
@@ -444,7 +434,7 @@
 
     <!-- ========== 08 决策表 ========== -->
     <section id="choose">
-      <p class="sec-no">08 · 决策表<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <p class="sec-no">08 · 决策表</p>
       <h2>约束先于偏好</h2>
       <p>选架构时，先问团队约束，再问“哪个先进”。下面这张表把常见的团队约束和五种架构对上。它不是标准答案，是一张起点表：先找到你的约束那一行，再读“代价”那一列，确认你能接受。</p>
 
@@ -519,7 +509,7 @@
 
     <!-- ========== 09 混合与迁移 ========== -->
     <section id="migrate">
-      <p class="sec-no">09 · 混合与迁移<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">09 · 混合与迁移</p>
       <h2>现实里没有纯种架构</h2>
       <p>把五种架构当成“类型”，不要当成“产品”。一个真实工具往往同时具备两三种特征：</p>
       <ul>
@@ -548,7 +538,7 @@
 
     <!-- ========== 10 测验 ========== -->
     <section id="quiz">
-      <p class="sec-no">10 · 小测验<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">10 · 小测验</p>
       <h2>三道题，检验你会不会看架构</h2>
 
       <div class="quiz">
@@ -596,7 +586,7 @@
           <a class="footnotes__back" href="#fnref-adv-03-1">↩</a>
         </li>
         <li id="fn-adv-03-2">
-          “约束 → 架构”的推荐是经验判断，不是对照实验：本章没有为每类团队跑过 A/B，也没有跨团队的样本。它来自各工具公开的设计取舍与源码结构，只能作为选型起点。真正选型时，应按第 28 章的方法在自己的任务集上验证。
+          “约束 → 架构”的推荐是经验判断，不是对照实验：本章没有为每类团队跑过 A/B，也没有跨团队的样本。它来自各 agent 公开的设计取舍与源码结构，只能作为选型起点。真正选型时，应按第 28 章的方法在自己的任务集上验证。
           <a class="footnotes__back" href="#fnref-adv-03-2">↩</a>
         </li>
         <li id="fn-adv-03-3">

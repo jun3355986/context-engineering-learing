@@ -45,7 +45,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      更新于 2026-10-18 · 纯静态页面，可离线阅读
+      2026-10 · 第 3 版 · 纯静态页面，可离线阅读
     </div>
   </div>
 </aside>
@@ -54,7 +54,7 @@
   <article class="prose">
 
     <header class="page-head">
-      <p class="kicker"><b>导读</b><span>·</span><span>2026-10-18</span></p>
+      <p class="kicker"><b>导读</b><span>·</span><span>2026-10 · 第 3 版</span></p>
       <h1>先看地图，再决定怎么读</h1>
       <p class="lede">这套教程讲一件事：编码智能体（coding agent）的「上下文」是怎么被装进去、用掉、压缩和隔离的。所谓编码智能体，就是能读写代码、执行命令、自己迭代的那类 AI 编程工具；书里也简称 agent。读完入门部分，你能看懂 agent 在做什么；读完进阶部分，你能为不同场景设计策略，并说清代价。</p>
       <ul class="meta">
@@ -83,35 +83,35 @@
       <div class="map-grid">
         <div class="map-card">
           <p class="map-card__part">PART 1</p>
-          <h3>入门</h3>
+          <h3><a href="./pages/intro-01.html">入门</a></h3>
           <p class="map-card__count">7 章 · L1–L2</p>
           <p>先建立直觉：窗口里装了什么、为什么会满、满了之后模型为什么变笨。</p>
           <p class="map-card__sample">上下文窗口是什么 · 一次请求里装了什么 · Prompt cache 与成本</p>
         </div>
         <div class="map-card">
           <p class="map-card__part">PART 2</p>
-          <h3>主线</h3>
+          <h3><a href="./pages/main-01.html">主线</a></h3>
           <p class="map-card__count">16 章 · L2→L3</p>
-          <p>16 类能力逐类拆开：Codex 主线讲解、8 个agent 弹窗、对比表、设计取舍、小测验。</p>
+          <p>16 类能力逐类拆开：Codex 主线讲解、7 个 agent 弹窗（Codex 走正文）、对比表、设计取舍、小测验。</p>
           <p class="map-card__sample">规则文件 · 按需加载 · 压缩 · 子代理隔离 · 会话时间线</p>
         </div>
         <div class="map-card">
           <p class="map-card__part">PART 3</p>
-          <h3>进阶</h3>
+          <h3><a href="./pages/adv-01.html">进阶</a></h3>
           <p class="map-card__count">5 章 · L4–L5</p>
           <p>不再问「怎么做」，改问「为什么这样选、代价是什么、怎么证明」。</p>
           <p class="map-card__sample">设计取舍 · 失败案例 · 架构对比 · 评估方法</p>
         </div>
         <div class="map-card">
           <p class="map-card__part">PART 4</p>
-          <h3>源码</h3>
+          <h3><a href="./pages/src-codex-01.html">源码</a></h3>
           <p class="map-card__count">26 章 · 8 个 agent</p>
           <p>每段解读固定到提交和行号，只摘关键片段，逐行加中文注释。</p>
           <p class="map-card__sample">Codex CLI · Claude Code · pi · opencode · Grok Build · dsh</p>
         </div>
         <div class="map-card">
           <p class="map-card__part">APPENDIX</p>
-          <h3>附录</h3>
+          <h3><a href="./pages/appendix-glossary.html">附录</a></h3>
           <p class="map-card__count">5 篇 · 速查</p>
           <p>术语、参数、16 类总表、推荐阅读，以及视频分镜脚本。</p>
           <p class="map-card__sample">术语表 · 参数速查 · 16 类 × 8 agent 总表 · 推荐阅读</p>
@@ -131,7 +131,7 @@
             <h3>会用</h3>
             <p>会写规则文件；知道什么时候该 <code>/compact</code>、<code>/clear</code>，什么时候该开子代理。</p>
           </div>
-          <div class="level-where">第 1–3 章<br>第 13–15 章的操作部分</div>
+          <div class="level-where"><a href="./pages/intro-01.html">第 1–3 章</a><br><a href="./pages/main-06.html">第 13–15 章的操作部分</a></div>
         </div>
         <div class="level-row">
           <div><span class="level-badge">L2</span></div>
@@ -139,7 +139,7 @@
             <h3>懂原理</h3>
             <p>知道上下文由哪些部分组成、各占多少；理解 prompt cache、context rot、lost in the middle。</p>
           </div>
-          <div class="level-where">第 4–7 章<br>第 8–23 章的概念部分</div>
+          <div class="level-where"><a href="./pages/intro-04.html">第 4–7 章</a><br><a href="./pages/main-01.html">第 8–23 章的概念部分</a></div>
         </div>
         <div class="level-row">
           <div><span class="level-badge">L3</span></div>
@@ -147,7 +147,7 @@
             <h3>能实现</h3>
             <p>能自己写一个 agent 循环，实现计数、截断、压缩、子代理和会话持久化。</p>
           </div>
-          <div class="level-where">第 23 章<br>第 29–54 章源码解读</div>
+          <div class="level-where"><a href="./pages/main-16.html">第 23 章</a><br><a href="./pages/src-codex-01.html">第 29–54 章源码解读</a></div>
         </div>
         <div class="level-row">
           <div><span class="level-badge">L4</span></div>
@@ -155,7 +155,7 @@
             <h3>能权衡</h3>
             <p>能针对具体场景设计策略，并说清每种取舍的代价，而不是照抄某一家的默认值。</p>
           </div>
-          <div class="level-where">第 24–27 章</div>
+          <div class="level-where"><a href="./pages/adv-01.html">第 24–27 章</a></div>
         </div>
         <div class="level-row">
           <div><span class="level-badge">L5</span></div>
@@ -163,7 +163,7 @@
             <h3>能评估</h3>
             <p>能设计评测，用数据证明一种策略比另一种好，而不是靠感觉判断。</p>
           </div>
-          <div class="level-where">第 28 章<br>附录 C · 16 类总表</div>
+          <div class="level-where"><a href="./pages/adv-05.html">第 28 章</a><br><a href="./pages/appendix-matrix.html">附录 C · 16 类总表</a></div>
         </div>
       </div>
     </section>
@@ -176,15 +176,15 @@
       <div class="path-list">
         <div class="path-card">
           <h3>只有 15 分钟：先建立框架</h3>
-          <p>读导读 → 第 1 章「上下文窗口是什么」 → 第 7 章「总流程图」 → 第 15 章「压缩：把历史换成摘要」。目标不是记住细节，而是知道「上下文会满，满了要减量」。</p>
+          <p>读导读 → <a href="./pages/intro-01.html">第 1 章「上下文窗口是什么」</a> → <a href="./pages/intro-07.html">第 7 章「总流程图」</a> → <a href="./pages/main-08.html">第 15 章「压缩：把历史换成摘要」</a>。目标不是记住细节，而是知道「上下文会满，满了要减量」。</p>
         </div>
         <div class="path-card">
           <h3>系统学：按部分顺序</h3>
-          <p>入门 7 章连着读，每章的「动动脑」先自己想一遍；再进主线，一章只解决一类能力。每章末尾的要点可以单独复制成笔记。</p>
+          <p><a href="./pages/intro-01.html">入门 7 章</a>连着读，每章的「动动脑」先自己想一遍；再进主线，一章只解决一类能力。每章末尾的要点可以单独复制成笔记。</p>
         </div>
         <div class="path-card">
           <h3>当手册查：带着问题跳读</h3>
-          <p>用顶部搜索找章节，或直接翻附录的参数速查表和 16 类总表。查到某个 agent 的做法后，记得看它旁边的可信度标签。</p>
+          <p>用顶部搜索找章节，或直接翻<a href="./pages/appendix-params.html">附录的参数速查表</a>和<a href="./pages/appendix-matrix.html">16 类总表</a>。查到某个 agent 的做法后，记得看它旁边的可信度标签。</p>
         </div>
       </div>
 
@@ -301,7 +301,7 @@
 
     </section>
 
-    <p class="footer-note">下一步：从第 1 章「上下文窗口是什么」开始。左侧目录会记住你的折叠状态和上次读到的章节。</p>
+    <p class="footer-note">下一步：从<a href="./pages/intro-01.html">第 1 章「上下文窗口是什么」</a>开始。左侧目录会记住你的折叠状态和上次读到的章节。</p>
   </article>
 </main>
 

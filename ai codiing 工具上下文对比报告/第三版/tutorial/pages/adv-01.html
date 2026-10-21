@@ -106,7 +106,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 2026-10 · 第 3 版<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -204,7 +204,6 @@
     <section id="early-late">
       <p class="sec-no">02 · 取舍一</p>
       <h2>压缩早，还是压缩晚</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（时间线图）。</p>
 
       <h3>怎么跑</h3>
       <p><strong>早压</strong>在窗口用到 70%–85% 时就动手。DeepSeek Harness 的默认阈值是 <code>thresholdRatio 0.8</code>；Grok Build 用 <code>85</code> 常量、grok-4.6 目录用 <code>80</code>；Codex 的范围线默认取 <code>min(模型声明上限, 窗口 × 90%)</code>。<a href="main-08.html#codex-trigger">第 15 章 2.1</a> 这些数字不完全相同，但都在“还留得下一轮工具调用”的位置。</p>
@@ -274,7 +273,6 @@
     <section id="trim-summary">
       <p class="sec-no">03 · 取舍二</p>
       <h2>裁剪，还是摘要</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（可逆性对照图）。</p>
 
       <h3>怎么跑</h3>
       <p><strong>裁剪</strong>不调用模型。它只改“模型能看到的投影”：把旧工具结果换成占位符，把过期文件读取删掉，把空搜索折叠。原文还在会话日志里，需要时可以按路径重新读回。Claude Code 的 <code>microcompact</code> 有一条时间触发路径，<code>gapThresholdMinutes</code> 默认 60 分钟、<code>keepRecent</code> 默认 5 条，但整条路径默认 <code>disabled</code>；oh-my-pi 保护最近 40k、只有能省下 20k 才动；Grok Build 在超过 50% 窗口时做软裁剪，每次保留头尾各 1,500 字符，10 轮后硬清。<a href="main-07.html#tradeoffs">第 14 章</a></p>
@@ -323,7 +321,6 @@
     <section id="preload-ondemand">
       <p class="sec-no">04 · 取舍三</p>
       <h2>预加载，还是按需加载</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（请求流对比图）。</p>
 
       <h3>怎么跑</h3>
       <p><strong>预加载</strong>把规则、技能正文、MCP 工具定义一次性放进请求。模型第一轮就能看到全部能力，不需要“先找工具、再调用”。代价是这些 token 每一轮都要付，而且工具表越大，模型越容易在无关工具上分心。</p>
@@ -374,7 +371,6 @@
     <section id="subagent-single">
       <p class="sec-no">05 · 取舍四</p>
       <h2>子代理，还是单会话</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（上下文边界图）。</p>
 
       <h3>怎么跑</h3>
       <p><strong>子代理</strong>开一份独立上下文。它有自己的系统提示、工具池、文件状态和预算；父会话只把任务描述送进去，子代理只把最终结果送回来。Claude Code 默认 <code>contextMessages = []</code>，也就是全新上下文；只读的 Explore / Plan 代理默认不注入 <code>CLAUDE.md</code>，也不注入 <code>gitStatus</code>。oh-my-pi 的 <code>task</code> 子会话默认深度 2，并要求 schema 校验返回；opencode v1/v2 默认深度 1；Grok Build 默认后台执行，可选 worktree 隔离。<a href="main-10.html#tradeoffs">第 17 章</a></p>
@@ -424,7 +420,6 @@
     <section id="memory-rules">
       <p class="sec-no">06 · 取舍五</p>
       <h2>记忆，还是规则</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（分流图）。</p>
 
       <h3>怎么跑</h3>
       <p><strong>规则</strong>是确定性的文件。它按固定路径发现、按固定顺序合并、每次会话都注入。Codex 的 <code>AGENTS.md</code> 从项目根到 cwd 逐级拼接，总量受 <code>project_doc_max_bytes</code> 默认 32 KiB 约束，超出从尾部截断；DeepSeek Harness 的整条基线消息默认上限 64 KiB；Claude Code 的 <code>MEMORY.md</code> 入口限制 200 行 / 25,000 字节。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a> <span class="tag tag--ok">已核实</span></p>
@@ -482,7 +477,6 @@
     <section id="server-local">
       <p class="sec-no">07 · 取舍六</p>
       <h2>服务端压缩，还是本地压缩</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（边界图）。</p>
 
       <h3>怎么跑</h3>
       <p><strong>服务端压缩</strong>把“压什么、怎么压”交给 provider。客户端只发请求，拿回一段替换后的历史，或者一个 provider 自己维护的加密窗口。Codex 的远端 v2 压缩保留消息共享 64k 预算、单条上限 10k、流重试 2 次，并要求响应里的 <code>compaction_count</code> 恰好为 1；opencode v2 在模型元数据声明 <code>compaction.type === "native"</code> 时走原生压缩，拿回加密窗口；oh-my-pi 的默认方法链第一项就是 <code>remote</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact_remote_v2.rs#L87-L91">compact_remote_v2.rs#L87-L91</a> <span class="tag tag--ok">已核实</span></p>

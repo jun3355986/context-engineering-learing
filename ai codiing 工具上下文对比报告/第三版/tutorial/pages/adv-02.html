@@ -381,7 +381,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 2026-10 · 第 3 版<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -422,7 +422,6 @@
         <li><strong>修复</strong>：配置、流程、代码三档，从便宜到贵。</li>
         <li><strong>预防</strong>：一个指标或一个检查项，能提前报警。</li>
       </ol>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（因果链图）。第 03 节另有第 3 级（交互演示）。</p>
 
       <div class="callout callout--warn">
         <p class="callout__title">先记住这条因果链</p>
@@ -471,7 +470,6 @@
     <section id="case-constraint">
       <p class="sec-no">02 · 案例一</p>
       <h2>压缩后，三条硬约束只剩下一条</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）+ 第 2 级（因果链图）。</p>
 
       <h3>现场</h3>
       <p>周四 15:40，一个“把导出模块拆成独立包”的任务跑到第 41 轮。窗口占用 18.2 万 token，期间压缩了 6 次。开工时用户说过三条硬约束：不要改 public API；测试命令是 <code>pnpm test:unit</code>；保留 export 的命名。三条都只出现在对话里，没进 <code>AGENTS.md</code>。</p>
@@ -504,7 +502,6 @@
     <section id="drift-demo">
       <p class="sec-no">03 · 交互演示</p>
       <h2>把案例一放大到六次压缩</h2>
-      <p class="muted small">Karpathy 输出级别：第 3 级（交互 HTML）。前两节是第 1 级文字与第 2 级图表；这里让参数动起来。</p>
       <p>下面这个演示不调用模型。它用一张手写的“示意衰减表”，让 12 条事实在每次压缩后进入保留、变形、丢失三种状态。左侧是控件；画布内左栏是 12 条事实（3 条硬约束），右栏是每次压缩后的摘要。</p>
       <p>建议按三个实验看：第一，保持“标准”模板，把压缩次数从 1 拉到 6，观察第一条硬约束在第几次消失；第二，切到“精简”，看它提前到第几次；第三，打开“重附文件”，观察文件类事实恢复、硬约束不恢复。</p>
 
@@ -571,7 +568,6 @@
     <section id="case-pairing">
       <p class="sec-no">04 · 案例二</p>
       <h2>切点落在工具调用和结果之间</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）。</p>
 
       <h3>现场</h3>
       <p>周二 11:05，一个“找出所有旧导出入口”的任务跑到第 18 轮。一次 <code>grep</code> 返回了 60k 字符，压缩在第 12 轮和第 13 轮之间触发。切点正好落在一次工具调用和它的结果之间：调用进了摘要，结果留在保留段。</p>
@@ -603,7 +599,6 @@
     <section id="case-cache">
       <p class="sec-no">05 · 案例三</p>
       <h2>缓存失效，把账单推高三倍</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）。</p>
 
       <h3>现场</h3>
       <p>月末对账，团队发现这个月的模型账单是上个月的三倍。任务量只涨了 20%，代码没大改。排查后发现：系统提示词的第一段放了 <code>git status</code>，第二段放了当前时间，第三段放了 todo 列表；分支名每天变十几次，todo 每轮都变。同期，团队把自动压缩阈值从 90% 调到了 75%。</p>
@@ -636,7 +631,6 @@
     <section id="case-subagent">
       <p class="sec-no">06 · 案例四</p>
       <h2>三个子代理，把父上下文撑爆</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）。</p>
 
       <h3>现场</h3>
       <p>周三 16:20，一个“审查 120 个文件的导出使用”的任务。主会话派了 3 个只读子代理，分别看 <code>src/</code>、<code>packages/</code>、<code>tests/</code>。每个子代理返回 8k–12k 字的自由文本，包含文件清单、逐条引用和推理过程。父上下文从 60k 涨到 190k，下一轮就触发了压缩。</p>
@@ -669,7 +663,6 @@
     <section id="case-rewind">
       <p class="sec-no">07 · 案例五</p>
       <h2>回退到第 12 轮，文件却停在第 30 轮</h2>
-      <p class="muted small">Karpathy 输出级别：第 1 级（受控中文）。</p>
 
       <h3>现场</h3>
       <p>周五 10:30，一个重构任务跑到第 30 轮，中间压缩过 2 次。团队决定回退到第 12 轮，换一个方案。回退后，对话历史回到了第 12 轮，但工作区文件仍然是第 30 轮的状态；当前上下文里还留着第 2 次压缩生成的摘要。</p>

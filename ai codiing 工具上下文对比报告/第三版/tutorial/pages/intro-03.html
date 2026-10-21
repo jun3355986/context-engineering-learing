@@ -51,7 +51,7 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 2026-10 · 第 3 版<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -242,13 +242,13 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
       </div>
     </section>
 
-    <p class="footer-note">下一章：窗口装得下，不等于模型用得好（第 4 章）——假设你真有 100 万 token，问题就解决了吗？</p>
+    <p class="footer-note">下一章：<a href="intro-04.html">窗口装得下，不等于模型用得好（第 4 章）</a>——假设你真有 100 万 token，问题就解决了吗？</p>
 
     <div class="footnotes">
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-intro-03-1">
-          此处为【推断】：本次核对了 Codex 与 Claude Code 的循环实现，确认“停止”来自模型不再发起工具调用或外部预算/步数限制；但两家对“最大轮数”的默认值与计数口径不同，本次没有找到统一常量，因此正文只写“有外部上限”，不写具体数字。已检查 <code>turn.rs</code> 的轮前检查与 <code>autoCompact.ts</code> 的递归保护；缺的是各工具面向用户的步数上限说明。
+          此处为【推断】：本次核对了 Codex 与 Claude Code 的循环实现，确认“停止”来自模型不再发起工具调用或外部预算/步数限制；但两家对“最大轮数”的默认值与计数口径不同，本次没有找到统一常量，因此正文只写“有外部上限”，不写具体数字。已检查 <code>turn.rs</code> 的轮前检查与 <code>autoCompact.ts</code> 的递归保护；缺的是各 agent 面向用户的步数上限说明。
           <a class="footnotes__back" href="#fnref-intro-03-1">↩</a>
         </li>
       </ol>

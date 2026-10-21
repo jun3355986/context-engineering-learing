@@ -18,16 +18,6 @@
   body[data-chapter="adv-05"] .prose :not(pre) > code {
     overflow-wrap: anywhere;
   }
-  body[data-chapter="adv-05"] .k-lvl {
-    margin-left: 10px;
-    padding: 1px 6px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--muted);
-    font-family: var(--font-sans);
-    font-size: 10px;
-    letter-spacing: 0.02em;
-  }
   #fig-grid .a5-cell {
     fill: var(--surface-2);
     stroke: var(--border-strong);
@@ -138,7 +128,7 @@
     <div class="recent" id="recent" hidden></div>
     <nav class="nav" id="nav" aria-label="章节导航"></nav>
     <div class="sidebar__foot">
-      <a href="../index.html">返回导读</a> · 更新于 2026-10-18<br>
+      <a href="../index.html">返回导读</a> · 2026-10 · 第 3 版<br>
       纯静态页面，可离线阅读
     </div>
   </div>
@@ -169,7 +159,7 @@
 
     <!-- ========== 01 ========== -->
     <section id="two-teams">
-      <p class="sec-no">01 · 两个都“赢了”的实验<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">01 · 两个都“赢了”的实验</p>
       <h2>同样的策略，相反的结论</h2>
 
       <div class="callout callout--info">
@@ -198,7 +188,7 @@
 
     <!-- ========== 02 ========== -->
     <section id="design">
-      <p class="sec-no">02 · 研究设计的四个部件<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">02 · 研究设计的四个部件</p>
       <h2>从“调参”升级为“实验”</h2>
       <p>一个能站住的实验，可以拆成四个部件。缺一个，结论就会被打折。</p>
 
@@ -246,7 +236,7 @@
 
     <!-- ========== 03 评测集 ========== -->
     <section id="evalset">
-      <p class="sec-no">03 · 评测集：三个维度分层<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <p class="sec-no">03 · 评测集：三个维度分层</p>
       <h2>格子空着，比填满更重要</h2>
       <p>第 23 章按“长度与形态”分了 T1–T6 六层。这一章再加两个维度：<strong>任务族</strong>与<strong>工具密度</strong>。原因是上下文策略的效果，对这两件事特别敏感：</p>
       <ul>
@@ -337,7 +327,7 @@
 
     <!-- ========== 04 配对 ========== -->
     <section id="pairing">
-      <p class="sec-no">04 · 配对与区组<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">04 · 配对与区组</p>
       <h2>配三层，不是配一次</h2>
       <p>第 23 章讲过“同任务、同初始状态、随机顺序”。这里再往下一层：配对其实有三个层次，少一层就会混入一种偏差。</p>
       <ol>
@@ -360,7 +350,7 @@
 
     <!-- ========== 05 MDE ========== -->
     <section id="mde">
-      <p class="sec-no">05 · 最小可检测效应<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <p class="sec-no">05 · 最小可检测效应</p>
       <h2>先算能看见多大的差异</h2>
       <p>最小可检测效应（minimum detectable effect）简称 MDE。它回答一个问题。<strong>以我现在的样本量，多大的差异才不是噪声</strong>。它应该在开跑之前算，而不是跑完之后解释。</p>
 
@@ -440,7 +430,7 @@
 
     <!-- ========== 06 消融 ========== -->
     <section id="ablation">
-      <p class="sec-no">06 · 消融设计<span class="k-lvl">图表 · Karpathy L2</span></p>
+      <p class="sec-no">06 · 消融设计</p>
       <h2>把策略拆开，一次关一个</h2>
       <p>A/B 回答“这套策略比那套好吗”，消融回答“这套策略里，哪一部分在起作用”。一个策略通常由几个组件叠成：截断、裁剪、压缩、子代理、记忆。全量上线有效，不代表每个组件都有用；有的组件可能在做负功。</p>
 
@@ -507,7 +497,7 @@
 
     <!-- ========== 07 写作 ========== -->
     <section id="writing">
-      <p class="sec-no">07 · 结果怎么写<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">07 · 结果怎么写</p>
       <h2>一句话里要有五个东西</h2>
       <p>一个能用的结论句，包含五件事：<strong>条件、对象、方向、幅度、区间</strong>。缺哪个，读者就得猜哪个。</p>
       <p class="lead-in">在长任务（&gt;30 轮、高工具密度）上，变体 B 相对基线 A 降低成本。每成功任务成本从 1.00 降到 0.86。降幅 −14%，95% CI [−20%, −8%]。成功率 72% → 71%（−1pp，CI [−3, +1]），未超出护栏。</p>
@@ -539,7 +529,7 @@
 
     <!-- ========== 08 模板 ========== -->
     <section id="record">
-      <p class="sec-no">08 · 实验记录模板<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">08 · 实验记录模板</p>
       <h2>把研究设计写进字段里</h2>
       <p>下面的模板和第 23 章那张表是配套关系。<strong>指标名直接引用那 13 项，不在这里重复定义</strong>。新增的字段全部属于“研究设计”，也就是这一章讲的东西。</p>
 
@@ -630,7 +620,7 @@
 
     <!-- ========== 09 测验 ========== -->
     <section id="quiz">
-      <p class="sec-no">09 · 小测验<span class="k-lvl">文字 · Karpathy L1</span></p>
+      <p class="sec-no">09 · 小测验</p>
       <h2>三道题，检验你会不会设计实验</h2>
 
       <div class="quiz">
