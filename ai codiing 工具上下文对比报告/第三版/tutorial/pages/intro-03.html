@@ -63,7 +63,7 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
     <header class="page-head">
       <p class="kicker"><b>第 3 章</b><span>·</span><span>第一部分 · 入门</span></p>
       <h1>Agent 循环中上下文如何增长</h1>
-      <p class="lede">没有哪一次请求突然变长。是一轮一轮，每次多一点点，最后撞线。</p>
+      <p class="lede">上下文很少是一下子变长的：每轮多一点，积到最后就顶到了窗口上限。</p>
       <ul class="meta">
         <li>约 10 分钟</li>
         <li>前置：第 2 章</li>
@@ -72,32 +72,32 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
       <div class="learn">
         <h2>读完你能做到</h2>
         <ol>
-          <li>说清一轮循环里，上下文按什么顺序长了哪几段。</li>
-          <li>指出三个增长源，并排出谁最粗。</li>
+          <li>说清一轮循环里，上下文依次多了哪几段。</li>
+          <li>说出上下文增长的三个来源，并判断哪个涨得最多。</li>
           <li>看懂增长曲线上的两条阈值线，知道什么时候必须减量。</li>
         </ol>
       </div>
     </header>
 
     <section>
-      <p class="sec-no">01 · 第九轮开始，它开始问你同一个问题</p>
+      <p class="sec-no">01 · 第九轮，它问了一个你答过的问题</p>
       <h2>“你刚才说的那个配置，是在哪个文件？”</h2>
-      <p>下午两点十分，你让它修一个偶发失败的测试。前两轮很顺：它读了两个文件，改了一行，跑了一次测试。第三轮开始读日志，第四轮又读了三个文件。</p>
+      <p>下午两点十分，你让 agent 修一个偶发失败的测试。前两轮很顺：它读了两个文件，改了一行，跑了一次测试。第三轮开始读日志，第四轮又读了三个文件。</p>
       <p>第九轮，它问：「你刚才说的那个配置，是在哪个文件？」那句话你在第三轮就回答过。会话没有断，你也没清空，但它就是没接上。</p>
 
       <div class="callout callout--info">
-        <p class="callout__title">场景 · 不是它变笨，是桌子被堆满了</p>
-        <p>Agent 不是“一次想完”，而是<strong>循环（agent loop）</strong>：模型看一遍材料，决定调一个工具；工具返回结果，材料变多；模型再看一遍，再决定下一步。每转一圈，桌上就多几张纸。转到某一步，它得先腾地方，而你最早放的那张，可能正好被挪走。</p>
+        <p class="callout__title">场景 · 不是它变笨，是白板写满了</p>
+        <p>Agent 不是一次想完就交卷，它在<strong>循环（agent loop）</strong>里工作：模型看一遍材料，决定调用一个工具；工具返回结果，材料变多；模型再看一遍，决定下一步。每转一圈，白板上就多写几段。写到某一步，板子不够用了，就得擦掉一些，而你最早写上去的那句，可能正好被擦掉。</p>
       </div>
 
-      <p class="lead-in">上下文不是一次装满的，是一轮一轮堆上去的；堆的过程有固定套路。</p>
+      <p class="lead-in">上下文是一轮一轮写满的，而且每轮怎么增长，有固定的规律。</p>
     </section>
 
     <section>
       <p class="sec-no">02 · 一轮里发生了什么</p>
-      <h2>你说话、它动手、工具交回一沓纸</h2>
-      <p>一轮（turn）通常长这样：你的消息先进去；模型<strong>采样（sampling）</strong>一次，输出一段话，或者一个<strong>工具调用（tool call）</strong>；工具真正执行，把<strong>工具结果（tool result）</strong>交回来；这份结果作为新的一条消息追加进历史，模型再采样一次。</p>
-      <p>注意最后半句：模型每采样一次，都是一次<strong>全新的请求</strong>。它不是“在脑子里继续想”，而是把整摞材料重新交一遍。所以一次“读文件并修改”的动作，可能包含三到四次请求，每次都带着前面全部历史。</p>
+      <h2>你说话，模型调工具，工具交回结果</h2>
+      <p>一轮（turn）通常是这样：先放进你的消息；模型<strong>采样（sampling）</strong>一次，也就是生成一次输出，可能是一段话，也可能是一次<strong>工具调用（tool call）</strong>；工具执行后交回<strong>工具结果（tool result）</strong>；这份结果作为一条新消息追加进历史，模型再采样一次。</p>
+      <p>关键在于：模型每采样一次，都是一次<strong>全新的请求</strong>。它没法接着上一次“在脑子里继续想”，每次都要把白板上的全部内容重新发一遍。所以“读文件并修改”这样一个动作，可能包含三四次请求，每次都带着前面的全部历史。</p>
 
       <figure class="fig">
         <svg viewBox="0 0 640 200" role="img" aria-labelledby="fig-1-title fig-1-desc">
@@ -122,30 +122,31 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
           <text class="svg-note" x="525" y="96" text-anchor="middle">+300</text>
 
           <rect class="svg-seg--c" x="300" y="120" width="140" height="26" rx="6" opacity=".85"/>
-          <text class="svg-label" x="370" y="139" text-anchor="middle">最粗的一段</text>
+          <text class="svg-label" x="370" y="139" text-anchor="middle">增量最大</text>
           <path class="svg-rule" d="M370 112v6" fill="none"/>
           <text class="svg-note" x="20" y="176">数字是示意：一次列出几百行文件的工具结果，通常比你说的话大一个数量级。</text>
         </svg>
         <figcaption>图 1　一轮循环的四次追加（示意值）。工具结果往往是一轮里最大的增量，而它本身还会触发下一次采样。</figcaption>
       </figure>
 
-      <p>把它换算成直觉：你说一句话，可能两百 token；模型回一句“我看一下”，再加一次工具调用，四百 token；工具把整个文件打回来，六千 token。三者不是一个量级。</p>
+      <p>换成具体数字感受一下：你说一句话，大约两百 token；模型回一句“我看一下”再发起一次工具调用，大约四百 token；工具把整个文件内容返回，可能就是六千 token，比前两者大了一个数量级。</p>
     </section>
 
     <section>
       <p class="sec-no">03 · 三个增长源</p>
-      <h2>历史、工具输出、系统追加</h2>
-      <p><strong>第一源：历史本身。</strong>每一轮至少追加两条（模型回复、工具结果），它们不会自己消失。第 20 轮的请求里，前 19 轮全在。</p>
-      <p><strong>第二源：工具输出。</strong>这是最粗的一条。读文件、跑测试、搜代码，返回的都是成百上千行。它还有个别扭的地方：同一份内容你读两遍，就占两份 token；工具不会因为“重复”给你打折。</p>
-      <p><strong>第三源：系统侧追加。</strong>提醒、待办状态、日期变化、技能列表、MCP 指令，都会在你不注意时加进来。它们单条不大，但每轮都加。</p>
-      <p>工具输出的形态也值得分清。读文件是“一次一大块”；搜索是“很多小块，每块带路径和行号”；跑测试是“结尾一段结论 + 前面几百行日志”。三种里最容易失控的是第三种：你只想要最后那句“3 failed”，却把整段日志收了进来。</p>
-      <p>三个源叠在一起，就形成了那条熟悉的曲线：前面平，中间陡，最后撞线。</p>
+      <h2>历史、工具输出、系统自动追加</h2>
+      <p><strong>来源一：历史本身。</strong>每一轮至少追加两条（模型回复、工具结果），它们不会自己消失。第 20 轮的请求里，前 19 轮的内容都还在。</p>
+      <p><strong>来源二：工具输出。</strong>三者里它的体积最大：读文件、跑测试、搜代码，返回的动辄成百上千行。还要注意，同一份内容读两遍就占两份 token，不会因为重复而打折。</p>
+      <p><strong>来源三：系统自动追加的内容。</strong>每轮发请求前，agent 会检查提醒、待办、日期、技能列表、MCP 指令这些项目有没有变化，有变化才追加一条，比如日期跨了一天、新连上一个 MCP、该提醒你看一眼待办了。单条都不大，但追加进去的内容会留在历史里，之后每轮都跟着重发，积少成多。</p>
+      <p class="src-note">出处：以 Claude Code 为例：每轮请求前由 <code>getAttachments()</code> 收集这些附件，MCP 指令、agent 列表等只追加有变化的部分。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L743-L1003">attachments.ts#L743-L1003</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1559-L1590">#L1559-L1590</a></p>
+      <p>工具输出还分几种形态：读文件是一次一大块；搜索是很多小块，每块带着路径和行号；跑测试是前面几百行日志，加上结尾一段结论。最容易失控的是跑测试：你只想看最后那句“3 failed”，却把整段日志都收了进来。</p>
+      <p>三个来源叠在一起，就形成了下面这条曲线：开头平缓，中间变陡，最后顶到上限。</p>
     </section>
 
     <section>
-      <p class="sec-no">04 · 曲线与两条线</p>
-      <h2>增长不是线性的，刹车也不是</h2>
-      <p>下图是一条示意曲线：横轴是轮次，纵轴是这次请求的输入 token。第 3 到第 8 轮因为连续读文件，斜率明显变陡；到第 12 轮碰到软线，触发一次压缩，曲线掉下来一截，然后继续往上爬。</p>
+      <p class="sec-no">04 · 增长曲线与两条阈值线</p>
+      <h2>上下文怎么涨，什么时候该压缩</h2>
+      <p>下图是一条示意曲线：横轴是轮次，纵轴是每次请求的输入 token。第 3 到第 8 轮连续读文件，曲线明显变陡；到第 12 轮碰到软线，触发一次压缩，曲线掉下来一截，然后继续往上涨。</p>
 
       <figure class="fig">
         <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-2-title fig-2-desc">
@@ -173,38 +174,40 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
 
           <text class="svg-note" x="56" y="292">纵轴单位：千 token；曲线为示意，非实测数据。</text>
         </svg>
-        <figcaption>图 2　示意，非真实比例。蓝线是不封顶的增长：中途压缩一次，掉一截，随后继续爬升；绿虚线是从第一轮就给工具输出封顶的对照，斜率明显更缓。两条阈值线分别是 90% 与 95%。</figcaption>
+        <figcaption>图 2　示意，非真实比例。蓝线是不限制工具输出时的增长：中途压缩一次，掉下一截，随后继续上涨；绿虚线是从第一轮起就给工具输出封顶的对照，涨得明显更慢。两条阈值线分别是 90% 与 95%。</figcaption>
       </figure>
 
-      <p>两条线的数字来自真实 agent：Codex 的整段硬线取窗口的 95%，自动压缩软线取 90%<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L393-L395">openai_models.rs#L393-L395</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/context_window.rs#L60-L110">context_window.rs#L60-L110</a>）。Claude Code 的算法不同：先算有效窗口（模型窗口 − <code>min(模型最大输出, 20_000)</code>），再减 13,000 作为自动压缩线<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L28-L49">autoCompact.ts#L28-L49</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">#L62-L91</a>）。</p>
-      <p>两条线在同一个地方刹车：<strong>不是等装满，而是提前留出一截。</strong>因为压缩本身也要发请求、也要占地方，真到 100% 才动，连压缩都塞不进去。</p>
+      <p>图里的两条线用的是 Codex 的数字：用到窗口的 90% 时自动压缩（软线），95% 是不能越过的上限（硬线）。Claude Code 的算法不同：先从模型窗口里扣掉给输出预留的部分（最多 20,000 token），得到有效窗口，再往下留 13,000 token，作为自动压缩的触发线。</p>
+      <p class="src-note">出处：Codex <span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L393-L395">openai_models.rs#L393-L395</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/context_window.rs#L60-L110">context_window.rs#L60-L110</a>；Claude Code 有效窗口 = 模型窗口 − <code>min(模型最大输出, 20_000)</code> <span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L28-L49">autoCompact.ts#L28-L49</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">#L62-L91</a></p>
+      <p>两家算法不同，思路一样：<strong>不等窗口装满，提前留出一段空间就开始压缩。</strong>原因是压缩本身也要发一次请求，让模型读旧历史、写摘要，这次请求同样占窗口。等到 100% 才动手，连压缩请求都发不出去。</p>
 
       <div class="hf hf--think">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>先想一想</p>
         <div class="hf__body">
           <p>假设你每轮都让 agent 读一个 500 行的文件，粗略算 6,000 token，其他开销忽略。第 10 轮时，只算这些文件读取，历史里已经堆了多少？</p>
-          <p class="small muted">提示：每一轮请求都带着前面所有轮的读取结果——第 10 轮的这一份请求里，躺着 10 份。</p>
+          <p class="small muted">提示：每轮请求都带着之前所有轮的读取结果，所以第 10 轮的请求里有 10 份。</p>
         </div>
       </div>
     </section>
 
     <section>
       <p class="sec-no">05 · 循环没有天然的终点</p>
-      <h2>“做完了”是模型说的，不是循环说的</h2>
-      <p>循环什么时候停？通常是模型认为任务完成、不再调用工具；或者外部设了步数、预算、时间上限。也就是说，<strong>结束条件是行为判断，不是容量判断</strong>。模型可以在上下文快满时仍然觉得“再读一个文件就好”。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-intro-03-1" id="fnref-intro-03-1">1</a></sup></p>
-      <p>所以减量得写进循环设计里，不能等出了问题再补。减量有三种代价，从低到高：</p>
+      <h2>什么时候算“做完了”，由模型判断</h2>
+      <p>循环什么时候停？通常是模型认为任务完成、不再调用工具，或者碰到外部设置的步数、预算、时间上限。也就是说，<strong>停不停，看的是任务做没做完，不是窗口还剩多少</strong>。所以窗口已经用到九成时，模型照样可能再读一个文件。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-intro-03-1" id="fnref-intro-03-1">1</a></sup></p>
+      <p>因此，减少上下文的办法要事先设计进循环里，不能等出了问题再补。常见做法有三种，代价从低到高：</p>
       <ul>
-        <li><strong>控制单次工具输出</strong>：读进来时就截断，或把全文落盘、只留路径和预览。</li>
-        <li><strong>裁剪历史</strong>：把旧工具结果换成占位符，不调用模型，便宜但不可逆（在活历史里）。</li>
-        <li><strong>压缩</strong>：请模型把旧历史写成摘要，最贵，也最容易丢细节。</li>
+        <li><strong>控制单次工具输出</strong>：结果太长时，读进来就截断；或者把全文存到磁盘，消息里只留文件路径和开头一段预览。</li>
+        <li><strong>裁剪历史</strong>：把旧的工具结果换成一句占位说明。不用调用模型，所以便宜；代价是改了就撤不回来，之后发给模型的请求里再也没有原文。</li>
+        <li><strong>压缩</strong>：让模型把旧历史写成摘要。要多调用一次模型，所以最贵，也最容易丢细节。</li>
       </ul>
-      <p>工具确实在做前两件事。Codex 在工具输出写入历史时按策略截断，中间用 <code>…N tokens truncated…</code> 标记，被裁掉的原文仍留在 rollout 存档里；序列化和头部还另留 20% 余量<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L17-L29">truncate.rs#L17-L29</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L34">lib.rs#L17-L34</a>）。Claude Code 则把超过阈值的工具结果整段落盘，消息里只留一个文件路径加前 2,000 字节预览；通用阈值是 50,000 字符<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolResultStorage.ts#L27-L34">toolResultStorage.ts#L27-L34</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolResultStorage.ts#L137-L199">#L137-L199</a>）。</p>
+      <p>第一种几乎每个 agent 都在做，看两个例子。Codex 把工具输出写进历史时会截断：保留开头和结尾，中间换成一行 <code>…N tokens truncated…</code>。截掉的内容没有丢，完整原文还保存在会话存档（rollout 文件）里。截断预算还会多算 20%，因为输出放进请求时要包一层 JSON，前面还要加一行“已截断，原始共 N token、M 行”的说明，这些都要占地方。Claude Code 的做法是：工具结果超过阈值（默认 50,000 字符），就把全文存到磁盘，消息里只留文件路径和前 2,000 字节的预览。</p>
+      <p class="src-note">出处：Codex 截断 <span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L17-L29">truncate.rs#L17-L29</a>，20% 余量与说明行见 <code>with_serialization_allowance</code>、<code>formatted_truncate_text</code>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L34">lib.rs#L17-L34</a>）；Claude Code <span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolResultStorage.ts#L27-L34">toolResultStorage.ts#L27-L34</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolResultStorage.ts#L137-L199">#L137-L199</a></p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
-          <p class="hf__q">问：工具结果都是“证据”，删了它不就查不到了吗？</p>
-          <p class="hf__a">答：删的是上下文里的副本，不是原文。Codex 把被截掉的中间部分留在 rollout 存档，Claude Code 把超限结果写到磁盘上的 <code>tool-results/</code> 目录，消息里留路径。模型需要时可以再读回来——代价是多一次工具调用，而不是永久失忆。这也解释了为什么“落盘 + 指针”比“直接丢”更常见。</p>
+          <p class="hf__q">问：工具结果是排查问题的证据，删掉之后不就查不到了吗？</p>
+          <p class="hf__a">答：删掉的只是上下文里的那份副本，原文还在。Claude Code 把超长结果写进磁盘上的 <code>tool-results/</code> 目录，消息里留着文件路径，模型需要时按路径读回来就行，代价只是多一次工具调用。Codex 把完整输出留在会话存档里，但没有给模型提供读存档的工具，模型要找回内容，只能重新读文件或重新跑命令（第 13 章细讲）。正因为能找回来，“存到磁盘、消息里留路径”比直接丢掉更常见。</p>
         </div>
       </div>
     </section>
@@ -212,31 +215,31 @@ body[data-chapter="intro-03"] .fig .svg-label:not(.svg-label--dark) {
     <section>
       <p class="sec-no">06 · 什么时候必须减量</p>
       <h2>三个信号，都比报错早</h2>
-      <p>等你看到“上下文超限”的报错，说明前面的信号都被忽略了。可观测的信号有三个：</p>
+      <p>等你看到“上下文超限”的报错，前面的信号其实早就出现了。能观察到的信号有三个：</p>
       <ul>
-        <li><strong>占用贴住软线</strong>：状态栏或 <code>/context</code> 显示已用九成，剩下的空间撑不过下一次读文件。</li>
-        <li><strong>开始重复提问</strong>：它问你第三轮就回答过的事，说明早期内容已经被挤到不重要的位置。</li>
+        <li><strong>占用接近软线</strong>：状态栏或 <code>/context</code> 显示已用九成，剩下的空间可能撑不过下一次读文件。</li>
+        <li><strong>开始重复提问</strong>：它问你第三轮就回答过的事，说明早期的内容要么已经被压缩掉，要么被后来的大量内容淹没了。</li>
         <li><strong>约束被违反</strong>：你开头说的“别动 schema”被忘了。这一条最危险，因为容量看起来还宽裕。</li>
       </ul>
-      <p>前两个是容量信号，第三个是质量信号。第 4 章会解释：为什么容量没满，第三种也会发生。</p>
-      <p>看到信号，先别急着压缩。先问一句“这还是同一件事吗”：如果只是这一轮读得太多，控制工具输出就够；如果任务已经换了一半，压缩不如另开一局（第 6 章给判断图）。</p>
+      <p>前两个是容量信号，第三个是质量信号。第 4 章会解释，为什么容量没满，第三种情况也会发生。</p>
+      <p>看到信号，先别急着压缩，先问自己：现在做的还是同一件事吗？如果只是这一轮读得太多，控制工具输出就够了；如果任务已经换了一半，与其压缩，不如新开一个会话（第 6 章有判断图）。</p>
     </section>
 
     <section>
-      <p class="sec-no">07 · 收口</p>
+      <p class="sec-no">07 · 小结</p>
       <h2>曲线是设计出来的</h2>
-      <p>回头看那条曲线：它不是自然现象，是几个选择叠加的结果——工具输出封不封顶、历史留不留、压缩线画在哪。换一组选择，曲线就换一个形状。</p>
-      <p>下一章要拆掉一个更隐蔽的假设：只要窗口够大，曲线就永远不会撞墙。真的吗？</p>
+      <p>回头看那条曲线，它的形状是几个设计选择共同决定的：工具输出要不要封顶，旧历史留不留，压缩线画在哪里。换一组选择，曲线就换一个形状。</p>
+      <p>下一章讨论一个更隐蔽的想法：只要窗口够大，曲线就永远碰不到上限，问题也就解决了。真是这样吗？</p>
 
       <div class="hf hf--takeaway">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
         <div class="hf__body">
           <ul>
             <li>每采样一次就是一次完整请求，历史全量重发；一轮里可能有好几次采样。</li>
-            <li>三个增长源：历史累积、工具输出、系统侧追加。工具输出通常最粗。</li>
-            <li>增长不是线性的：连续读文件的那几轮，斜率会突然变陡。</li>
-            <li>阈值是提前刹车：Codex 90% 软线 / 95% 硬线，Claude Code 用有效窗口减 13,000。</li>
-            <li>循环的终点由“模型说完了”决定，不由容量决定，所以减量要提前设计。</li>
+            <li>三个增长来源：历史累积、工具输出、系统自动追加。工具输出通常最大。</li>
+            <li>增长不均匀：连续读文件的那几轮，曲线会突然变陡。</li>
+            <li>压缩线都设在装满之前：Codex 是 90% 软线、95% 硬线，Claude Code 是有效窗口减 13,000。</li>
+            <li>循环什么时候停，由模型判断任务是否完成，不看窗口还剩多少，所以减量要提前设计。</li>
           </ul>
         </div>
       </div>

@@ -63,7 +63,7 @@ body[data-chapter="intro-02"] .fig .svg-label:not(.svg-label--dark) {
     <header class="page-head">
       <p class="kicker"><b>第 2 章</b><span>·</span><span>第一部分 · 入门</span></p>
       <h1>一次请求里装了什么</h1>
-      <p class="lede">你只敲了一句话，请求里已经叠了五层材料。看懂这五层，才谈得上删得对。</p>
+      <p class="lede">你只打了一句话，发出去的请求里却已经有五层材料。先弄清这五层是什么，才知道该删哪里。</p>
       <ul class="meta">
         <li>约 9 分钟</li>
         <li>前置：第 1 章</li>
@@ -87,20 +87,22 @@ body[data-chapter="intro-02"] .fig .svg-label:not(.svg-label--dark) {
 
       <div class="callout callout--info">
         <p class="callout__title">场景 · 你打的字，常常是最小的一块</p>
-        <p>按下回车时，工具不是把你的那句话单独发出去。它先准备好一份“岗位说明书”，再附上这个岗位能用的全部工具，再贴上项目规矩、当前目录和今天的时间，最后才把对话记录和你这句话接上去。这一整摞，才是模型看到的<strong>请求（request）</strong>。</p>
+        <p>按下回车时，agent 并不只发出你这一句。它先放一份“岗位说明书”（系统提示），再附上能用的全部工具，再贴上项目规矩、当前目录和今天的日期，最后接上对话记录和你刚打的这句话。这些合在一起，才是模型收到的<strong>请求（request）</strong>。</p>
       </div>
 
-      <p class="lead-in">你写的是便签，工具交上去的是一整个文件夹。</p>
-      <p>这一章就做一件事：把文件夹打开，一层一层看。不用记参数，只要记住每层“从哪来、多久变一次”。</p>
+      <p class="lead-in">用第 1 章的白板来说：你写的只是最底下的一行，上面早已被 agent 写满了。</p>
+      <p>这一章就把白板上的内容一层层拆开看。不用记参数，只要记住每层“从哪来、多久变一次”。</p>
     </section>
 
     <section>
-      <p class="sec-no">02 · 骨架：四块加一层历史</p>
+      <p class="sec-no">02 · 请求的骨架</p>
       <h2>系统提示、工具、规则、环境、历史</h2>
-      <p>先拆一个真实请求。不同 agent 的字段名不一样，骨架却很像：以 Codex 为例，它每个采样步都调用 <code>build_prompt</code> 组装一个 <code>Prompt</code>，里面是四块：<code>input</code>（历史条目）、<code>tools</code>（模型可见的工具规格）、<code>base_instructions</code>（岗位说明书）、<code>output_schema</code>（结构化输出格式）。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client_common.rs#L22-L40">client_common.rs#L22-L40</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a></p>
-      <p>Codex 走的是 Responses API 形状，<strong>没有独立的 system 字段</strong>；平时说的“系统提示词”，在它这里是 <code>base_instructions</code>。名字不同，位置一样——都排在最前面。</p>
-      <p>Claude Code 这边，<code>getSystemPrompt</code> 返回的是一个字符串数组：先是静态的七段（身份、系统通则、做事方式、行动准则、工具使用、语气、输出效率），然后插一个字符串常量当<strong>边界标记（boundary）</strong>，再拼上随环境变化的动态段。工具定义不在这串里，单独走 <code>toolSchemas</code> 数组。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/prompts.ts#L444-L577">prompts.ts#L444-L577</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L1358-L1379">claude.ts#L1358-L1379</a></p>
-      <p>打个比方，这像你去外地出差报销：公司财务制度是系统提示，报销系统里能填的那几张表单是工具定义，部门自己那套“打车要选经济型”的惯例是规则文件，今天在哪个城市、是几号是环境信息，前面几封来回的邮件是历史，你刚说的“帮我报一下”才是最后那句。</p>
+      <p>先拆一个真实请求。不同 agent 的字段名不一样，骨架却很像。以 Codex 为例，它每次调用模型前都会重新组装一遍请求，里面有四块：历史记录、模型能用的工具清单、系统提示，以及结构化输出的格式要求。</p>
+      <p class="src-note">出处：Codex 用 <code>build_prompt</code> 组装 <code>Prompt</code>，四块依次是 <code>input</code>、<code>tools</code>、<code>base_instructions</code>、<code>output_schema</code>。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client_common.rs#L22-L40">client_common.rs#L22-L40</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a></p>
+      <p>Codex 用的是 OpenAI 的 Responses API，请求里<strong>没有单独的 system 字段</strong>；平时说的“系统提示词”，在 Codex 里叫 <code>base_instructions</code>。名字不同，位置一样，都排在最前面。</p>
+      <p>Claude Code 的系统提示分前后两部分：前面是固定不变的七段（身份、系统通则、做事方式、行动准则、工具使用、语气、输出效率），后面是随环境变化的动态段，中间插一个<strong>边界标记（boundary）</strong>把两部分隔开。工具定义不放在系统提示里，单独作为一个列表发送。</p>
+      <p class="src-note">出处：系统提示由 <code>getSystemPrompt</code> 返回的字符串数组拼成，工具定义走 <code>toolSchemas</code>。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/prompts.ts#L444-L577">prompts.ts#L444-L577</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L1358-L1379">claude.ts#L1358-L1379</a></p>
+      <p>打个比方，这像出差回来找财务报销：公司的财务制度是系统提示；报销系统里能填的几张表单是工具定义；部门自己的惯例（比如“打车只能选经济型”）是规则文件；你在哪个城市、今天几号是环境信息；之前来回的几封邮件是历史；最后那句“帮我报一下”，才是你这次的输入。</p>
 
       <figure class="fig">
         <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-1-title fig-1-desc">
@@ -132,23 +134,23 @@ body[data-chapter="intro-02"] .fig .svg-label:not(.svg-label--dark) {
 
           <rect class="svg-seg--free" x="70" y="266" width="400" height="26" rx="7"/>
           <text class="svg-label svg-label--dark" x="86" y="284">输出预留</text>
-          <text class="svg-note" x="486" y="284">给回答留的座位</text>
+          <text class="svg-note" x="486" y="284">给回答留的空间</text>
 
           <path class="svg-rule" d="M50 26v218" fill="none"/>
           <path class="svg-rule" d="M50 250l-5-9h10z" fill="none"/>
           <text class="svg-note" x="0" y="42">稳定</text>
           <text class="svg-note" x="0" y="252">易变</text>
         </svg>
-        <figcaption>图 1　一次请求的拼接顺序。越靠上的材料越稳定，越靠下的越容易变；第 5 章会说明，这个顺序不是排版习惯，而是钱。</figcaption>
+        <figcaption>图 1　一次请求的拼接顺序。越靠上的材料越稳定，越靠下的越容易变；第 5 章会说明，这个顺序直接影响要花多少钱。</figcaption>
       </figure>
 
-      <p>并排看会发现一个反直觉的事实：<strong>变化最慢的几层往往体积最大，变化最快的那句往往最小。</strong>所以“省上下文”的第一反应，不该是把自己的话写短。</p>
+      <p>把各层摆在一起看，结论可能和你想的相反：<strong>最少变化的几层往往体积最大，每次都变的那句话反而最小。</strong>所以想省上下文，第一步不该是把自己的话写短。</p>
     </section>
 
     <section>
       <p class="sec-no">03 · 五类材料，五种来源</p>
       <h2>每一层是谁放进去的</h2>
-      <p>下面这张表把五层拆开。第四列是量级，只用来比较相对大小，<strong>不是任何 agent 的真实实测值</strong>；“多久变一次”这一列才是你可以拿去判断的。</p>
+      <p>下表把五层逐一拆开。“量级”一列只用来比较相对大小，<strong>不是任何 agent 的实测值</strong>；真正能拿去做判断的，是“多久变一次”这一列。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
@@ -165,7 +167,7 @@ body[data-chapter="intro-02"] .fig .svg-label:not(.svg-label--dark) {
           <tbody>
             <tr>
               <th scope="row" class="cell-tool">系统提示<span>system prompt</span></th>
-              <td>工具内置；Codex 是 <code>base_instructions</code></td>
+              <td>agent 内置；Codex 里叫 <code>base_instructions</code></td>
               <td>Claude Code 静态 7 段<span class="tag tag--src">源码</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/prompts.ts#L444-L577">prompts.ts#L444</a></td>
               <td>数千到一万</td>
               <td>换版本</td>
@@ -175,7 +177,7 @@ body[data-chapter="intro-02"] .fig .svg-label:not(.svg-label--dark) {
               <td>内置工具 + MCP</td>
               <td>技能描述最多 250 字符<span class="tag tag--src">源码</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/SkillTool/prompt.ts#L20-L50">prompt.ts#L20</a></td>
               <td>随工具数增长</td>
-              <td>装插件</td>
+              <td>装插件、连 MCP</td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">规则文件<span>AGENTS.md / CLAUDE.md</span></th>
@@ -194,58 +196,64 @@ body[data-chapter="intro-02"] .fig .svg-label:not(.svg-label--dark) {
             <tr>
               <th scope="row" class="cell-tool">历史<span>input items</span></th>
               <td>逐轮追加</td>
-              <td>单条结果超 50k 字符落盘<span class="tag tag--src">源码</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolResultStorage.ts#L27-L34">storage.ts#L27</a></td>
+              <td>单条结果超 50k 字符就存到磁盘<span class="tag tag--src">源码</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolResultStorage.ts#L27-L34">storage.ts#L27</a></td>
               <td>可能最大</td>
               <td>每轮</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：量级列是示意，用来比较相对大小，不是实测值；第三列的数字来自源码，已附链接。链接文本为文件名与起始行号，完整路径见本章其他脚注与来源。</p>
+      <p class="table-caption">表注：第三列的数字来自源码，链接文字是文件名和起始行号，点开可看完整路径。</p>
 
       <h3>系统提示：一份写死的岗位说明书</h3>
-      <p>它决定“你是谁、怎么做事、什么时候该问”。为了稳定，agent 尽量让它不变：Claude Code 用边界标记把静态段和动态段隔开，动态段算一次就记住，只有 <code>/clear</code> 或 <code>/compact</code> 才清空<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/systemPromptSections.ts#L16-L58">systemPromptSections.ts#L16-L58</a>）。</p>
+      <p>它告诉模型：你是谁、怎么做事、什么时候该先问。agent 会尽量让这一层保持不变。Claude Code 用边界标记把固定段和动态段隔开；大多数动态段生成一次就缓存起来，直到你执行 <code>/clear</code> 或 <code>/compact</code> 才重新生成。</p>
+      <p class="src-note">出处：<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/systemPromptSections.ts#L16-L58">systemPromptSections.ts#L16-L58</a></p>
 
-      <h3>工具定义：不是“一个工具一句话”</h3>
-      <p>每个工具都要告诉模型：叫什么、干什么、参数有哪些、哪个必填。工具一多，这段就长。Claude Code 的做法是默认把 MCP 工具<strong>延迟</strong>：首轮只给名字，模型要用时再拉完整定义；它还留了一个 10% 的阈值判断<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L46-L49">toolSearch.ts#L46-L49</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L154-L198">#L154-L198</a>）。Codex 也有类似开关，由模型元数据 <code>supports_search_tool</code> 决定 MCP 工具是延迟还是直连<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/mcp_tool_exposure.rs#L63-L90">mcp_tool_exposure.rs#L63-L90</a>）。</p>
+      <h3>工具定义：远不止“一个工具一句话”</h3>
+      <p>每个工具都要向模型交代清楚：叫什么、做什么、有哪些参数、哪些必填。工具一多，这一层就很长。Claude Code 的办法是<strong>延迟加载</strong> MCP 工具：一开始只告诉模型工具名字，模型真要用时再取完整定义；也可以改成按比例判断，这些工具的定义超过窗口的 10% 才延迟加载。Codex 也有类似开关，由模型的元数据决定 MCP 工具是延迟加载，还是一开始就全部给出。</p>
+      <p class="src-note">出处：Claude Code <span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L46-L49">toolSearch.ts#L46-L49</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L154-L198">#L154-L198</a>（10% 阈值在 <code>ENABLE_TOOL_SEARCH=auto</code> 时生效）；Codex 看模型元数据 <code>supports_search_tool</code> <span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/mcp_tool_exposure.rs#L63-L90">mcp_tool_exposure.rs#L63-L90</a></p>
 
-      <h3>规则文件：拼起来，不是覆盖</h3>
-      <p>Codex 从当前目录往上找到项目根，再把沿途每一级的 <code>AGENTS.md</code> 按从浅到深拼起来，总字节数受 <code>project_doc_max_bytes</code> 限制，默认 32 KiB，超出从尾部截掉<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/config/mod.rs#L254">mod.rs#L254</a>）。Claude Code 也是拼接：受管策略、用户目录、项目逐级、本地文件，一层层加，最后包成一条用户消息前插到消息列表头部<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/claudemd.ts#L790-L950">claudemd.ts#L790-L950</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L449-L474">api.ts#L449-L474</a>）。</p>
-      <p>注意最后半句：规则文件<strong>不在系统提示里</strong>，它是一条消息。这个细节在你后面排查“为什么改了 CLAUDE.md 没生效”时会救命。</p>
+      <h3>规则文件：逐级拼接，不互相覆盖</h3>
+      <p>Codex 会从当前目录往上找到项目根目录，再把沿途每一级的 <code>AGENTS.md</code> 从根目录到当前目录依次拼起来；总大小默认不超过 32 KiB，超出的部分从末尾截掉。Claude Code 也是拼接，顺序是：组织统一下发的策略规则、你用户目录下的规则、项目里逐级的规则、本地私有规则。拼好之后，它会被包成一条用户消息，插到消息列表的最前面。</p>
+      <p class="src-note">出处：Codex 的上限由 <code>project_doc_max_bytes</code> 控制 <span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/config/mod.rs#L254">mod.rs#L254</a>；Claude Code <span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/claudemd.ts#L790-L950">claudemd.ts#L790-L950</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L449-L474">api.ts#L449-L474</a></p>
+      <p>请留意最后这一点：在 Claude Code 里，规则文件<strong>不在系统提示里</strong>，而是一条普通消息。以后排查“为什么改了 CLAUDE.md 没生效”时，这个细节很关键。</p>
 
-      <h3>环境与权限：不是单独一段，是插进来的碎片</h3>
-      <p>Codex 没有“环境”这个字段，它把 <code>&lt;environment_context&gt;</code>、<code>&lt;current_time_reminder&gt;</code> 这类片段当普通输入项插进 <code>input</code><span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/contextual_user_message.rs#L1-L40">contextual_user_message.rs#L1-L40</a>）。Claude Code 则把环境信息与规则一起包成 <code>&lt;system-reminder&gt;</code> 前插。所以“现在是几点”这句话，在不同 agent 里位置完全不同。</p>
+      <h3>环境与权限：零散地插在消息里</h3>
+      <p>Codex 的请求里没有单独的“环境”字段：当前目录、时间这类信息会写成几段带标签的文本，当作普通消息放进历史。Claude Code 则把当前日期和规则文件包在一起，放在消息列表最前面。所以“现在几点”这一句，在不同 agent 的请求里位置完全不同。</p>
+      <p class="src-note">出处：Codex 用 <code>&lt;environment_context&gt;</code>、<code>&lt;current_time_reminder&gt;</code> 等片段 <span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/contextual_user_message.rs#L1-L40">contextual_user_message.rs#L1-L40</a>；Claude Code 用 <code>&lt;system-reminder&gt;</code> 包裹 <span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L449-L474">api.ts#L449-L474</a></p>
 
       <h3>历史：唯一每轮都长的部分</h3>
-      <p>你说的话、模型的回复、它调了什么工具、工具返回了什么，都会按顺序追加。第 3 章专门画它的增长曲线。这里先记住：<strong>历史是唯一没有上限感的一层</strong>。</p>
+      <p>你说的话、模型的回复、它调了什么工具、工具返回了什么，都会按顺序追加进来。第 3 章会专门画它的增长曲线。这里先记住：<strong>历史是唯一会随轮次一直变长的一层</strong>，不加控制就没有上限。</p>
     </section>
 
     <section>
-      <p class="sec-no">04 · 顺序不是排版，是钱</p>
+      <p class="sec-no">04 · 顺序决定花多少钱</p>
       <h2>稳定的放前面，易变的放后面</h2>
-      <p>五层的排列顺序看起来理所当然，其实是刻意设计的：<strong>从最稳定排到最易变</strong>。</p>
-      <p>原因要提前说一句：Prompt cache 只认“从头开始一模一样的<strong>前缀（prefix）</strong>”。前面动一个字，后面全部作废。所以 agent 会把几乎不变的说明和工具表放在最前，把每轮都变的时间、提醒、你的新消息放最后。Codex 甚至把当前时间单独做成一个尾部片段，而不是塞进说明书的开头；Claude Code 把 agent 列表、MCP 指令做成“只发增量”的 delta，源码注释里写明：把这些列表放回工具描述，曾经带来约 <strong>10.2%</strong> 的全局 <code>cache_creation</code><span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1490-L1556">attachments.ts#L1490-L1556</a>）。</p>
+      <p>五层的先后顺序看似随意，其实是刻意安排的：<strong>从最稳定排到最容易变</strong>。</p>
+      <p>原因第 5 章细讲，这里先说结论：提示词缓存（prompt cache）只对“从开头起完全相同”的那一段生效，这一段叫<strong>前缀（prefix）</strong>。前面改一个字，后面的缓存就全部失效。所以 agent 会把几乎不变的说明和工具清单放在最前面，把经常变的时间、提醒和你的新消息放在最后。Codex 把当前时间单独做成一段放在末尾，没有写进系统提示的开头；Claude Code 对 agent 列表、MCP 指令只发送变化的部分。它的源码注释提到：agent 列表以前写在工具描述里，列表一变，整段工具定义的缓存就失效，这一项曾占到全体用户缓存写入量（<code>cache_creation</code>）的约 <strong>10.2%</strong>。</p>
+      <p class="src-note">出处：<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1477-L1556">attachments.ts#L1477-L1556</a></p>
 
       <div class="hf hf--think">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>先想一想</p>
         <div class="hf__body">
           <p>如果把“当前时间”写在系统提示的第一行，每一轮都刷新，会发生什么？先别看下一章。</p>
-          <p class="small muted">提示：想想“前缀”两个字，再想想谁在最前面。</p>
+          <p class="small muted">提示：时间每轮都变，又排在最前面，前缀还能保持不变吗？</p>
         </div>
       </div>
     </section>
 
     <section>
-      <p class="sec-no">05 · 收口</p>
-      <h2>先认清这一摞，再谈删哪一张</h2>
-      <p>回到开头那个 2.8 万 token 的请求：你的话可能只有几十 token，剩下的全是工具替你准备好的材料。这不是浪费，是让模型知道“在哪个项目、用什么规矩、有哪些手”。</p>
-      <p>但这也意味着：<strong>想省上下文，先看那几层大而稳定的材料，而不是先删自己的话。</strong>规则写太长、MCP 连太多、工具描述太啰嗦，都是比“少说两句”有效得多的杠杆。</p>
+      <p class="sec-no">05 · 回到开头</p>
+      <h2>先看清请求里有什么，再决定删什么</h2>
+      <p>回到开头那个 2.8 万 token 的请求：你的话可能只有几十 token，其余都是 agent 替你准备的材料。这些材料不算浪费，模型要靠它们知道自己在哪个项目里、要守哪些规矩、手上有哪些工具可用。</p>
+      <p>所以，<strong>想省上下文，先别删自己的提问，先查那几层体积大、又很少变的材料：</strong>规则文件是不是太长，MCP 是不是连得太多，工具描述是不是太啰嗦。在这些地方砍掉几千 token，比每句话少打几个字省得多。</p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
           <p class="hf__q">问：规则文件是不是每轮都要重新读一遍、重新拼一遍？</p>
-          <p class="hf__a">答：读一次、拼一次，之后不一定重发。Codex 用 <code>WorldState</code> 按 section 比较快照，没变就不发，变了发“替换通知 + 新全文”<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/mod.rs#L380-L395">mod.rs#L380-L395</a>）；Claude Code 的动态段算一次就缓存，直到 <code>/clear</code> 或 <code>/compact</code>。所以“我改了规则它没反应”，先确认它有没有被重新读取，而不是怀疑模型不听话。</p>
+          <p class="hf__a">答：不用。规则读一次、拼一次就行，之后也不会每轮再插一份新的。Codex 会把规则和上一次的快照逐段比较：没变就不发；变了，就发一条“已替换”的通知，再附上新的全文。Claude Code 把这部分内容算好一次就缓存起来，直到你执行 <code>/clear</code> 或 <code>/compact</code>。所以遇到“我改了规则，它没反应”，先确认规则有没有被重新读取，别急着怀疑模型不听话。</p>
+          <p class="src-note">出处：Codex 的快照比较在 <code>WorldState</code> 里 <span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/mod.rs#L380-L395">mod.rs#L380-L395</a></p>
         </div>
       </div>
 
@@ -254,16 +262,16 @@ body[data-chapter="intro-02"] .fig .svg-label:not(.svg-label--dark) {
         <div class="hf__body">
           <ul>
             <li>一次请求 = 系统提示 + 工具定义 + 规则 + 环境与权限 + 历史 + 你这句话，再加输出预留。</li>
-            <li>你打的那句话常常是最小的一块；工具定义随工具数量增长，历史随轮次增长，这两层没有天花板。</li>
-            <li>规则文件是“拼起来”的，不是覆盖；Codex 有 32 KiB 上限，超出从尾部截断。</li>
-            <li>环境与权限不是独立字段，是以片段或 system-reminder 插进消息流的。</li>
-            <li>顺序按“稳定 → 易变”排，是为了让缓存前缀尽量不动。</li>
+            <li>你打的那句话常常是最小的一块；工具定义随工具数量增长，历史随轮次增长，这两层都没有固定上限。</li>
+            <li>规则文件逐级拼接，不互相覆盖；Codex 默认上限 32 KiB，超出部分从末尾截掉。</li>
+            <li>环境信息没有单独的字段，而是零散地插在消息里。</li>
+            <li>各层按“稳定 → 易变”排序，是为了让缓存的前缀尽量保持不变。</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <p class="footer-note">下一章：<a href="intro-03.html">Agent 循环中上下文如何增长（第 3 章）</a>——这一摞材料，在一轮一轮的循环里是怎么变胖的。</p>
+    <p class="footer-note">下一章：<a href="intro-03.html">Agent 循环中上下文如何增长（第 3 章）</a>——这些材料在一轮轮循环里是怎么越积越多的。</p>
 
   </article>
 </main>

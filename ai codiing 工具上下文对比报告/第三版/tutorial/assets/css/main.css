@@ -2912,3 +2912,19 @@ h3 {
     min-width: 0;
   }
 }
+
+/* 出处行：入门章把源码标识符与链接移出正文，统一放在段落下方 */
+.prose .src-note {
+  margin-top: -8px;
+  margin-bottom: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.prose .src-note code {
+  font-size: 12px;
+}
+.prose .src-note .tag {
+  margin: 0 2px;
+  font-size: 11px;
+}

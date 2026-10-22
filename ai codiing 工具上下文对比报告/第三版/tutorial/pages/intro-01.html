@@ -357,7 +357,7 @@
     <header class="page-head">
       <p class="kicker"><b>第 1 章</b><span>·</span><span>第一部分 · 入门</span></p>
       <h1>上下文窗口是什么</h1>
-      <p class="lede">AI 没有突然变笨。它只是把你说过的话，挤出了那块看得见的地方。</p>
+      <p class="lede">AI 没有突然变笨，只是你早先说的话，已经不在它这一轮能看到的范围里。</p>
       <ul class="meta">
         <li>约 11 分钟</li>
         <li>1 个交互</li>
@@ -381,17 +381,17 @@
 
       <div class="callout callout--info">
         <p class="callout__title">场景 · 它不是失忆，是看不见</p>
-        <p>模型没有一间叫“记忆”的仓库。每一轮开口前，它只能看见这次请求里装进去的材料；装不进去的，等于没说过。装材料的这块地方，就是<strong>上下文窗口（context window）</strong>。</p>
+        <p>模型没有一个叫“记忆”的仓库。每次回答之前，它只能看到这次请求里装进去的材料；没装进去的，对它来说就等于没说过。装这些材料的地方，就是<strong>上下文窗口（context window）</strong>。</p>
       </div>
 
-      <p class="lead-in">窗口就是模型面前的一块白板：这一轮能看多少，全看板上还剩下多少地方。</p>
-      <p>白板不是仓库。每轮开始，材料都要重新摆上去；上一轮被擦掉的，下一轮不会自己回来。这一章只做一件事：把这块白板量清楚。</p>
+      <p class="lead-in">可以把窗口想成模型面前的一块白板：这一轮它能看到的，只有板上写着的内容，而板子的面积是固定的。</p>
+      <p>白板和仓库不同：每轮开始，材料都要重新写上去；上一轮被擦掉的内容，下一轮不会自己回来。这一章先把这块白板量清楚：它有多大，都被谁占着。</p>
 
       <div class="hf hf--think">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>先想一想</p>
         <div class="hf__body">
           <p>如果 agent 在同一轮里把同一个文件读了两遍，它占的白板会变大吗？</p>
-          <p class="small muted">提示：白板不会因为“内容重复”而自动扩容。</p>
+          <p class="small muted">提示：白板不会自动把重复的内容合并成一份。</p>
         </div>
       </div>
     </section>
@@ -399,32 +399,32 @@
     <section>
       <p class="sec-no">02 · 先统一尺子</p>
       <h2>token 不是字数，是模型切出来的小块</h2>
-      <p>你打开日志，数了数：300 行，大概 6000 个字符。“不多啊。”它却报：约 3000 token。换一份 2000 字的中文需求文档，你以为是“小文件”，它却吃掉一大块白板。</p>
-      <p>token 是模型读写文本时用的最小计量单位。它不按“字”切，按自己的词表切：一个常见英文单词可能是一块，一个汉字也可能是一块，标点、缩进、换行同样要占。</p>
-      <p>所以，同一个文件读两遍，就是两份 token。白板不会因为“内容重复”给你打折。</p>
-      <p>工程上常用的粗估是“4 个字符 ≈ 1 个 token”：Codex 截断工具输出时按 <code>bytes / 4</code> 估算，Claude Code 的本地粗估用 <code>chars / 4</code>。但这把尺子量中文会明显偏小——同一个意思，中文通常比英文更费 token，一个汉字常常就在 1 个 token 上下，甚至更多。别背系数，记量级：一页中文文档，可能就是一两千 token。<span class="tag tag--guess">推断</span></p>
-      <p>代码更阴：缩进、括号、重复的字段名，全都算。一个 500 行的配置文件，可能比一篇 3000 字的文章还重。</p>
+      <p>你打开一份日志：300 行，大约 6000 个字符，看着不多。agent 却显示它占了约 3000 token，因为日志里满是时间戳、路径和编号，这类内容会被切得很碎。换成一份 2000 字的中文需求文档，你以为是个小文件，它同样会占掉一大块白板。</p>
+      <p>token 是模型读写文本时用的计量单位。模型不按“字”切分文本，而是按自己的词表切：一个常见的英文单词可能是一个 token，一个汉字也可能是一个，标点、缩进、换行同样要算。</p>
+      <p>顺便回答上面那道题：同一个文件读两遍，就占两份 token，重复的内容不会打折。</p>
+      <p>工程上常用的粗估是“4 个字符 ≈ 1 个 token”，Codex 和 Claude Code 在本地估算时都这么算（见下面的对照框）。但用它估中文会明显偏少：一个汉字常常就要 1 个 token 左右，甚至更多。不用背系数，记住量级就行：一页中文文档，大概就是一两千 token。<span class="tag tag--guess">推断</span></p>
+      <p>代码也比看上去更费 token：缩进、括号、重复的字段名都要算。一个 500 行的配置文件，占的 token 可能比一篇 3000 字的文章还多。</p>
 
       <div class="callout callout--quiet">
         <p class="callout__title">对照：agent 自己也在估</p>
         <ul>
           <li>Claude Code 的本地粗估是 <code>chars / 4</code>，只求快；精确值要等服务端返回 <code>usage</code>。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/tokenEstimation.ts#L203-L210">tokenEstimation.ts#L203-L210</a></li>
-          <li>Codex 在截断工具输出时按 <code>bytes / 4</code> 估算，并另留 20% 序列化余量。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L17-L29">truncate.rs#L17-L29</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L34">lib.rs#L17-L34</a></li>
+          <li>Codex 在截断工具输出时按 <code>bytes / 4</code> 估算；截断预算还会多算 20%，留给 JSON 包装和“已截断”说明行。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L17-L29">truncate.rs#L17-L29</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/output-truncation/src/lib.rs#L17-L34">lib.rs#L17-L34</a></li>
         </ul>
         <p class="small muted">两家都在“估”，说明本地算出来的 token 数本来就允许有误差；真正结算看服务端。</p>
       </div>
 
       <div class="callout callout--warn">
-        <p class="callout__title">当心：字符数不等于 token 数</p>
-        <p>用 <code>字符数 ÷ 4</code> 估中文，很容易估少。要快，就按“中文 1 字 ≈ 1 token”往上兜；要准，就看服务端返回的 <code>usage</code>。</p>
+        <p class="callout__title">容易踩的坑：字符数不等于 token 数</p>
+        <p>用 <code>字符数 ÷ 4</code> 估中文，很容易估少。想快速估算，就按“1 个汉字 ≈ 1 个 token”，宁可估多；想要准确的数字，就看服务端返回的 <code>usage</code>。</p>
       </div>
     </section>
 
     <section>
       <p class="sec-no">03 · 白板的面积是固定的</p>
       <h2>输入和输出，抢的是同一块地方</h2>
-      <p>一次请求里，模型要先“读”再“写”。读进去的系统提示、工具定义、规则文件、历史消息，是<strong>输入 token</strong>；它写出来的回答和工具调用参数，是<strong>输出 token</strong>。两边不是两个池子，而是同一块白板的上下两半。</p>
-      <p>这就是很多人第一次被绊倒的地方：以为 200k 窗口 = 可以塞 200k 输入。不是。输入塞到 200k，请求连一个字的回答都写不出来——它会在开始前被拒。</p>
+      <p>一次请求里，模型要先“读”再“写”。读进去的系统提示、工具定义、规则文件、历史消息，是<strong>输入 token</strong>；它写出来的回答和工具调用参数，是<strong>输出 token</strong>。两者共用同一块白板：输入写得越多，留给输出的地方就越少。</p>
+      <p>很多人第一次就栽在这里：以为 200k 的窗口能装下 200k 的输入。实际上，输入一旦占满 200k，就没有地方写回答了，请求在模型开始生成之前就会被拒绝。</p>
 
       <figure class="fig">
         <svg viewBox="0 0 640 190" role="img" aria-labelledby="fig-1-title fig-1-desc">
@@ -451,7 +451,7 @@
       </figure>
 
       <div class="hf hf--think">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>先想一想</p>
         <div class="hf__body">
           <p>窗口 200k，输入已经 195k。你让它写一份 10k token 的重构方案，会发生什么？</p>
           <p class="small muted">提示：输出也从同一块白板里扣。先算还剩多少。</p>
@@ -461,10 +461,10 @@
 
     <section>
       <p class="sec-no">04 · 为什么每次都要先留一块</p>
-      <h2>输出预留：给答案留的座位</h2>
-      <p>先回到那道题：195k 输入 + 10k 输出 = 205k，超了 5k。结局不是“方案写得短一点”；没开自动压缩时，请求会在开始写之前被拒。</p>
-      <p>白板的右下角，你用胶带划出一块：这块留给模型写答案。输入写得再满，也不能越过这条胶带。这块被圈起来的地方，就是<strong>输出预留（output reserve）</strong>。</p>
-      <p>预留不是已经写上去的字，而是用胶带围出来的空地：模型不一定写满，但请求必须先圈出“最多可能写多少”。不圈，常见后果不是回答变短，而是请求直接被判超窗。</p>
+      <h2>输出预留：先给回答留出地方</h2>
+      <p>先回答那道题：195k 输入 + 10k 输出 = 205k，超出 5k。结果不会是“方案写短一点”；如果没开自动压缩，请求在开始写之前就会被拒绝。</p>
+      <p>想象你在白板一角用胶带圈出一块，专门留给模型写答案；输入写得再满，也不能越过这条胶带。这块圈出来的地方，就是<strong>输出预留（output reserve）</strong>。</p>
+      <p>圈出来的是一块空地，上面还没有字。模型不一定写满，但请求必须先按“最多可能写多少”把地方圈好。不圈的话，请求常常会直接被判超窗。</p>
       <p>不同 agent 留法不一样：</p>
 
       <div class="callout callout--quiet">
@@ -473,14 +473,14 @@
           <li><strong>Claude Code</strong>：有效窗口 = 模型窗口 − <code>min(模型最大输出, 20_000)</code>；后面的自动压缩线、阻塞线都在这条有效窗口上算。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L28-L49">autoCompact.ts#L28-L49</a></li>
           <li><strong>Codex CLI</strong>：用百分比余量：整段硬线取窗口的 95%，自动压缩软线取 90%。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L393-L395">openai_models.rs#L393-L395</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/context_window.rs#L60-L110">context_window.rs#L60-L110</a></li>
         </ul>
-        <p class="small muted">两条路都在做同一件事：在“塞满”之前刹住。一个把余量写成固定 token 数，一个写成百分比。</p>
+        <p class="small muted">两家做的是同一件事：在窗口塞满之前停下来，给回答留出空间。区别是 Claude Code 按固定 token 数留，Codex 按百分比留。</p>
       </div>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
           <p class="hf__q">问：预留 20k，是不是每次都白白浪费 20k？</p>
-          <p class="hf__a">答：不是。预留是上限，不是消耗；模型写 2k，就只花 2k。真正浪费的是“没留”——那会让请求超窗，或者让 agent 在快满时被迫压缩，把细节挤掉。</p>
+          <p class="hf__a">答：不会。预留的是上限，实际用多少算多少：模型只写了 2k，就只用掉 2k。不留才吃亏：请求可能直接超窗，或者 agent 在快满时被迫压缩，把细节丢掉。</p>
         </div>
       </div>
     </section>
@@ -519,7 +519,7 @@
               </button>
               <span class="cb-actions__hint">回到初始分配</span>
             </div>
-            <p class="demo__hint">鼠标拖动色块，或 <kbd>Tab</kbd> 聚焦后按 <kbd>←</kbd> <kbd>→</kbd> 调整（按住 <kbd>Shift</kbd> 一次 10k）；手机上直接拖。虚线是 80% 警戒线和 95% 危险线。拖乱了，点上面的「重置」。</p>
+            <p class="demo__hint">鼠标拖动色块，或 <kbd>Tab</kbd> 聚焦后按 <kbd>←</kbd> <kbd>→</kbd> 调整（按住 <kbd>Shift</kbd> 一次 10k）；手机上直接拖。两条虚线是演示用的提醒线：超过 80% 显示“警戒”，超过 95% 显示“危险”；各家 agent 真实的触发线见第 6 节。拖乱了，点上面的「重置」。</p>
           </div>
           <div class="demo__canvas">
             <div class="cb-track">
@@ -566,22 +566,23 @@
       </div>
 
       <p class="small"><strong>试一试</strong>：把“历史消息”拉到 60%，看剩余空间怎么变；再拉回去，看警戒色什么时候消失。最后把“输出预留”拉到最小，想想真实请求里会发生什么。</p>
-      <p>多拖几次你会发现：系统提示、工具定义、规则文件一开工就占着，能动的幅度有限；真正一刻不停长胖的是历史消息。第 3 章会专门画它的增长曲线。但真实会话里没人替你拖——它长到头的时候，谁来踩刹车？</p>
+      <p>多拖几次你会发现：系统提示、工具定义、规则文件从会话一开始就占着位置，变化不大；一直在变大的是历史消息，第 3 章会专门画它的增长曲线。可真实会话里没人替你拖，历史涨到白板装不下时，由谁来处理？</p>
     </section>
 
     <section>
       <p class="sec-no">06 · 装不下的时候</p>
       <h2>三种结局，没有一种是免费的</h2>
-      <p>刚才那块白板，是你用手拖满的。真实会话里没人在拖：你只是不停地说、不停让它读文件，历史自己往上长。等它越过某条线，程序才动手。</p>
-      <p>动手的不是模型。模型只负责读和写，看不见自己还剩多少地方；量 token、判断该不该减量、选哪种减法，都是外面那层 agent 运行时干的活。到了那一步，能选的动作只有三个：</p>
+      <p>刚才的白板是你亲手拖满的。真实会话里没人拖：你不停地提要求、让它读文件，历史自己就涨上去了。涨过某条线时，程序才会出手。</p>
+      <p>出手的不是模型。模型只负责读和写；统计 token、判断该不该减量、选哪种减法，都由模型外面那层 agent 程序来做。到了这一步，能选的做法只有三种：</p>
       <ul>
         <li><strong>压缩</strong>：把旧历史交给模型写成摘要，腾出地方。细节会丢，摘要本身还要再占一块。</li>
         <li><strong>截断</strong>：直接丢掉旧消息，或砍掉过长的工具输出。快，但丢掉的东西不会自己回来。</li>
         <li><strong>报错</strong>：什么都不做，请求被拒。最诚实，也最耽误事。</li>
       </ul>
-      <p>三个动作丢掉的东西不一样：压缩丢细节、留下大意；截断连大意一起丢；报错不丢内容，丢的是这一次请求。所以没有哪个选项更好，只有你此刻更能接受哪种损失。</p>
-      <p>各家选的阈值不同：Codex 先在 90% 软线触发压缩，95% 是硬线（来源见上面的输出预留一节）；Claude Code 在有效窗口下留 13,000 token 缓冲，再触发自动压缩<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">autoCompact.ts#L62-L91</a>）。</p>
-      <p>这些取舍会在第 6 章「用户侧怎么管理上下文」和主线「压缩」一章展开。现在只要记住：它们都是“把已经装进去的东西拿掉”，没有一种能凭空扩容。</p>
+      <p>三种做法丢的东西不一样：压缩丢细节、留下大意；截断连大意一起丢；报错不丢内容，丢的是这一次请求。所以没有哪种一定更好，要看你此刻更能接受哪种损失。</p>
+      <p>各家的触发线不同：Codex 用到 90% 就自动压缩（软线），95% 是不能越过的上限（硬线）；Claude Code 在有效窗口下面再留 13,000 token 的缓冲，用到这里就自动压缩。</p>
+      <p class="src-note">出处：Codex 见上面「输出预留」对照框；Claude Code <span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L62-L91">autoCompact.ts#L62-L91</a></p>
+      <p>这些取舍会在第 6 章「用户侧怎么管理上下文」和主线的「压缩」一章展开。现在只要记住：三种做法都是把已经装进去的东西拿掉，没有一种能让白板变大。</p>
     </section>
 
     <section>
@@ -598,7 +599,7 @@
             <li>token 是容量和计价的单位，不是字数；中文通常比英文更费 token。</li>
             <li>上下文窗口 = 输入 + 输出，共用同一块固定空间。</li>
             <li>输出必须预留：不留，请求可能直接超窗。</li>
-            <li>超窗只有三条路：压缩、截断、报错，都要拿掉已有内容。</li>
+            <li>装不下时只有三条路：压缩、截断、报错，没有一条能让窗口变大。</li>
             <li>装得下不等于用得好；下一关是模型能不能找到并用上。</li>
           </ul>
         </div>
