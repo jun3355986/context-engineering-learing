@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>缓存友好设计：让前缀只增不改 · AI Coding Agent 上下文管理</title>
+<title>缓存友好设计：稳定前缀与压缩成本 · AI Coding Agent 上下文管理</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232c6ecb'/%3E%3Cpath d='M9 21V11h4l3 6 3-6h4v10h-3v-6l-3 6h-2l-3-6v6z' fill='white'/%3E%3C/svg%3E">
 <script>
   try {
@@ -123,8 +123,8 @@
 
     <header class="page-head">
       <p class="kicker"><b>第 20 章</b><span>·</span><span>第二部分 · 主线</span></p>
-      <h1>缓存友好设计：让前缀只增不改</h1>
-      <p class="lede">上下文管理的成本大头，往往不是“装了多少”，而是“每次重装多少”。前缀缓存按字节从头匹配：开头改一个字符，后面的全部重算。本章讲三件事：怎么让前缀稳定、天生易变的内容该放哪、以及压缩这笔“用一次失效换长期变小”的交易什么时候划算。</p>
+      <h1>缓存友好设计：稳定前缀与压缩成本</h1>
+      <p class="lede">第 5 章讲过，相同前缀有机会复用计算，但仍占上下文窗口；第 6 章则讨论何时清理。本章进一步看实现：怎样把易变内容放到后面，压缩后哪些内容要重算，以及怎样用实际读写费用判断压缩是否划算。</p>
       <ul class="meta">
         <li>第 13 类</li>
         <li>约 25 分钟</li>
@@ -135,8 +135,8 @@
         <h2>读完你能做到</h2>
         <ol>
           <li>拿到一次请求的拼接顺序，指出哪一处改动会让缓存从哪个位置开始失效。</li>
-          <li>用“失效一次的成本 ÷ 每次省下的成本”估算压缩的回收轮数，并判断任务剩一轮时该不该压。</li>
-          <li>给出一份可执行的观测方案：看哪些 usage 字段、怎么归因、哪些数字跨工具不可比。</li>
+          <li>在明确缓存与计价假设后，用“一次性额外成本 ÷ 每轮节省”估算压缩的回本轮数。</li>
+          <li>给出一份可执行的观测方案：看哪些 usage 字段、怎么归因、哪些数字跨 agent 不可直接比较。</li>
         </ol>
       </div>
     </header>
@@ -144,27 +144,27 @@
     <!-- ========== 01 为什么 ========== -->
     <section id="why-cache">
       <p class="sec-no">01 · 先看账单</p>
-      <h2>“明明只是换了个分支名”</h2>
+      <h2>分支名放在开头，为什么会增加重算</h2>
 
       <div class="callout callout--info">
-        <p class="callout__title">场景 · 一句话改在最前面，整晚都在重算</p>
-        <p>周三晚上，一个小团队把 <code>git status</code> 的输出塞进了系统提示词的第一段，方便 Agent 知道当前分支。那天合并频繁，分支名每十几分钟变一次。任务还是那些任务，代码还是那些代码，但当月账单是上月的三倍。他们删了很多 agent 输出，却没有意识到：每次分支变化，都让整段历史从第一个字节起重新计费。</p>
+        <p class="callout__title">场景 · 分支信息更新，缓存读却少了</p>
+        <p>设想周三晚上，团队为了让 agent 知道当前分支，把 <code>git status</code> 输出放进系统提示词第一段。分支频繁变化，缓存读随之减少。他们先删日志、缩短输出，却没检查改动位置。即使月底账单变成上月的三倍，也不能单凭涨幅认定是缓存造成的，还得对照每轮用量与单价。</p>
       </div>
 
-      <p>这件事反直觉的地方在于：他们做的每一步“减量”都是对的。少读文件、少跑测试、截断日志，token 确实少了。但缓存不是按“总量”算的，它按<strong>前缀</strong>算。</p>
-      <p>把服务端的缓存想成一排已经算好的积木。一次请求进来，它从第一块开始比对；只要第 1 块到第 k 块逐字节相同，这 k 块就可以直接复用上次的计算结果（KV 页），只有第 k+1 块之后需要重算。第 k+1 块就是<strong>失效点</strong>。它由“第一个不同的字节”决定，不由“改了多少”决定。</p>
-      <p>所以一次请求的输入其实分三类计价，而不是两类：</p>
+      <p>删日志、少读无关文件，能减少输入；是否省钱，还要看删改发生在哪里。若改动出现在靠前的位置，后面保留的大段材料可能无法沿用旧计算。第 5 章的<strong>前缀</strong>，就是从请求开头开始的一段连续内容。</p>
+      <p>沿用第 5 章的两排方块：两次请求从第一块开始比较，相同的开头仍有复用机会，第一处不同就是<strong>失效点</strong>。后面的块即使没改，也依赖已经变化的前文，不能直接沿用旧状态。缓存保存的是计算中间状态（KV 状态），实际比较以服务商渲染后的请求与 token 序列为准，不能一概说成按原始文本字节比较。</p>
+      <p>算费用时，要再区分三类用量。它们是否分别收费、单价是多少，取决于供应商、模型与缓存配置：</p>
       <ul>
-        <li><strong>未缓存输入</strong>：没有命中任何缓存、需要从头算的部分。</li>
-        <li><strong>缓存写入</strong>：这次算完，写进缓存供下次复用的部分。单价通常高于普通输入。</li>
-        <li><strong>缓存读取</strong>：命中已有缓存、直接复用的部分。单价通常最低。</li>
+        <li><strong>普通输入</strong>：没有按缓存读取或缓存写入计费的输入。</li>
+        <li><strong>缓存写入</strong>：计算后保存中间状态，供后续复用。部分模型采用高于普通输入的写入价，也有模型不另收写入费。</li>
+        <li><strong>缓存读取</strong>：复用已有状态的输入，通常享有折扣。读写费率要查具体模型，不能由 agent 名称推定。</li>
       </ul>
-      <p class="lead-in">省 token 和省钱是两件事。删掉一万 token 但把前缀改了，可能比不删更贵。</p>
+      <p class="lead-in">少带材料能省窗口；能否省钱，还取决于剩下的材料按什么价格处理。被删除的 token 已经不在新请求里，不会再收一次重写费。</p>
 
       <figure class="fig" id="fig-prefix-match">
         <svg viewBox="0 0 640 186" role="img" aria-labelledby="fig-pm-title fig-pm-desc">
-          <title id="fig-pm-title">前缀缓存从第一个不同字节起失效</title>
-          <desc id="fig-pm-desc">两条各 12 块的请求。上一次请求的第 4 块内容是 main 分支；本次请求改成 feature 分支。前 3 块绿色可复用，第 4 块之后全部红色，需要重算。</desc>
+          <title id="fig-pm-title">前缀缓存从第一处不同起无法沿用旧状态</title>
+          <desc id="fig-pm-desc">两条各 12 块的请求。上一次请求的第 4 块内容是 main 分支；本次请求改成 feature 分支。假设缓存有效，前 3 块绿色有机会复用，第 4 块及之后红色需要重算。</desc>
           <text class="svg-note" x="16" y="20">上一次请求</text>
           <rect class="pm-hit" x="16" y="30" width="44" height="30" rx="4"/>
           <rect class="pm-hit" x="64" y="30" width="44" height="30" rx="4"/>
@@ -194,76 +194,82 @@
           <line class="pm-mark" x1="158" y1="24" x2="158" y2="136"/>
           <circle class="pm-dot" cx="158" cy="20" r="3"/>
           <text class="pm-tag" x="166" y="150">失效点：从第 4 块起全部重算</text>
-          <text class="svg-note" x="16" y="150">前 3 块仍可复用</text>
+          <text class="svg-note" x="16" y="150">前 3 块可能复用</text>
         </svg>
-        <figcaption>图 13-1　缓存命中的长度由“第一个不同的字节”决定。本次只改了第 4 块的一个词，后面 9 块全部从读取变成写入。块数、宽度为示意，非真实比例。</figcaption>
+        <figcaption>图 13-1　假设缓存仍有效，且前缀满足缓存条件：第 4 块出现差异，前 3 块仍可能复用，第 4–12 块共 9 块需要重算。重算部分不一定全部按缓存写入计费。块数、宽度为示意，非真实比例。</figcaption>
       </figure>
 
       <div class="callout callout--warn">
         <p class="callout__title">三个常见误判</p>
-        <p>一，以为“内容一样”就命中——消息顺序、空白、工具定义的排序变了，字节就变了。二，以为“追加一条消息”一定安全——追加在历史末尾安全，追加进系统提示词的中间不安全。三，以为命中率越高越好——下一节会看到，压缩会故意制造一次失效，换取之后每次更小的输入。</p>
+        <p>一，以为“内容一样”就一定命中：还要满足存活时间（TTL）、最低缓存长度、模型设置和服务端路由等条件。二，把缓存断点当作失效点：断点（cache breakpoint）指定缓存到哪里，失效点是两次请求的第一处不同。三，以为命中率越高越好：缓存不减少窗口占用，必要的压缩与裁剪仍要做。</p>
       </div>
     </section>
 
     <!-- ========== 02 Codex ========== -->
     <section id="codex">
       <p class="sec-no">02 · Codex 主线</p>
-      <h2>客户端只做两件事：发键，认账</h2>
-      <p>和压缩、裁剪不同，缓存不是 Codex 在客户端“实现”出来的能力。它由服务端完成，CLI 只负责两件事：给这次请求一个稳定的缓存键，以及把响应里的缓存明细读回来。搞清楚这条边界，才能理解为什么本章的大部分“设计”其实是在约束<strong>拼接顺序</strong>。</p>
+      <h2>Codex 如何发送缓存键和读取用量</h2>
+      <p>前缀能复用多少，由请求内容与服务端缓存共同决定。Codex CLI 在本章所查版本中，负责发送缓存键、解析用量，并组织请求内容；缓存状态由服务端维护。以下先看客户端可确认的部分，再讨论怎样安排内容、核算压缩成本。</p>
 
-      <h3 id="codex-key">2.1 发键：<code>prompt_cache_key</code> 的三种取值</h3>
+      <h3 id="codex-key">2.1 缓存键：<code>prompt_cache_key</code> 的三种取值</h3>
       <p>Codex 在请求里带 <code>prompt_cache_key</code>。取值有三档：显式配置的 <code>prompt_cache_key_override</code> 优先；内部子会话用 <code>{source}:{parent_thread_id}</code>，把同一父会话派生的子任务归到一组；其余情况用 <code>session_id</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client.rs#L646-L665">client.rs#L646-L665</a> <span class="tag tag--ok">已核实</span></p>
-      <p>键的作用是“路由到哪一排缓存”，不是“缓存什么”。同一会话的多轮请求用同一个键，才有可能复用上一轮算好的前缀；一旦换了键，即使内容完全一样，也可能落到另一台机器、另一份缓存上。子会话用父会话 ID 派生键，是为了让子代理的第一段系统提示词尽量复用父会话已经写好的缓存。<span class="tag tag--guess">推断</span></p>
-      <p><strong>为什么不让客户端指定断点。</strong>把断点、TTL、淘汰策略都留在服务端，客户端就不必跟着模型版本改协议；代价是客户端<strong>看不见</strong>缓存的实际状态，只能从 usage 里事后读。<sup class="fn-ref"><a href="#fn-main-13-1" id="fnref-main-13-1">1</a></sup></p>
+      <p>同一键可用于把相关请求归到一组，但不能代替内容匹配，也不能保证命中。上述内部子会话规则会让同来源、同父线程的子会话共用键；它们的键<strong>不等于父会话自己的默认键</strong>，因此不能据此推定会复用父会话的缓存。具体路由与复用效果仍取决于后端。<span class="tag tag--guess">推断</span></p>
+      <p><strong>这个版本把哪些控制留给了服务端。</strong>所查请求构造没有显式缓存断点、TTL 或淘汰参数；客户端只能从返回用量观察结果。这里只描述该提交的 CLI 路径，不据此认定所有 OpenAI API 都不能配置缓存。【待核实】的是该后端的具体保留与路由策略。<sup class="fn-ref"><a href="#fn-main-13-1" id="fnref-main-13-1">1</a></sup></p>
 
-      <h3 id="codex-usage">2.2 认账：三个字段决定你能观测到什么</h3>
-      <p>响应 usage 里的 <code>input_tokens_details.cached_tokens</code> 与 <code>cache_write_tokens</code> 被解析进 <code>TokenUsage.cached_input_tokens</code> 与 <code>cache_write_input_tokens</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/codex-api/src/sse/responses.rs#L117-L151">responses.rs#L117-L151</a> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/protocol.rs#L2362-L2382">protocol.rs#L2362-L2382</a> <span class="tag tag--ok">已核实</span></p>
-      <p>这三个字段（未缓存输入、缓存读、缓存写）足以算出一个会话的“缓存账”，但不足以解释“为什么没命中”。最常用的命中率口径是 <code>cached_input_tokens ÷ 总输入 token</code>；分母是否包含缓存写，各家不同，所以这个数字只在同一口径内可比。Codex 侧没有内置的失效归因；要做归因，只能自己在客户端记录每次请求的拼接哈希，再和 usage 对齐。这一点和 Claude Code 有明确差距：后者有专门的缓存失效检测模块，会对比系统提示词哈希、工具哈希、TTL/scope 变化，给出“本可命中却没命中”的原因<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/promptCacheBreakDetection.ts#L31">promptCacheBreakDetection.ts#L31</a>。<span class="tag tag--src">源码 v2.1.88</span></p>
+      <h3 id="codex-usage">2.2 用量：区分总输入、缓存读与缓存写</h3>
+      <p>响应的用量统计（<code>usage</code>）包含总输入 <code>input_tokens</code>；<code>input_tokens_details.cached_tokens</code> 与其中的 <code>cache_write_tokens</code> 分别进入 <code>TokenUsage.cached_input_tokens</code>、<code>cache_write_input_tokens</code>。缺省的写入量记为 0，不能据此认定服务端没有保存缓存。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/codex-api/src/sse/responses.rs#L117-L151">responses.rs#L117-L151</a> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/protocol.rs#L2362-L2382">protocol.rs#L2362-L2382</a> <span class="tag tag--ok">已核实</span></p>
+      <p>在三类计费互不重叠的接口中，普通输入量为“总输入 − 缓存读 − 缓存写”，费用再分别乘对应单价；多档 TTL 的写入还需要分档明细。</p>
+      <p>Codex 的命中率可用“缓存读 ÷ 总输入”，pi 的总输入则要把其普通输入、读、写相加。观测时每轮记录这些量、模型与费率、键是否变化、各段内容哈希，以及压缩、裁剪等事件；先对齐口径，再定位变化。</p>
+      <p>usage 本身不能解释未命中的原因。Claude Code 的 <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/promptCacheBreakDetection.ts#L31">promptCacheBreakDetection.ts#L31</a> 会比对系统提示、工具、TTL 与缓存共享范围（scope）等变化，提供客户端侧的归因线索。<span class="tag tag--src">源码 v2.1.88</span></p>
 
-      <h3 id="codex-order">2.3 排序：三原则比任何参数都重要</h3>
-      <p>Codex 的请求骨架是 <code>base_instructions</code>（稳定）+ 工具表（稳定）+ 历史（增长）+ 尾部增量。这个顺序不是随手排的，它对应三条可以迁移到任何 agent 的原则。</p>
+      <h3 id="codex-order">2.3 内容顺序：稳定内容在前，更新尽量追加</h3>
+      <p>知道怎样读用量后，再看怎样减少不必要的重算。可把请求示意为“基础说明与工具定义 → 历史 → 本轮新增内容”。Codex 分别传入 <code>base_instructions</code>、<code>tools</code> 与 <code>input</code> 等字段；最终渲染顺序取决于后端，不能把 JSON 字段顺序当作模型收到的顺序。下面三条原则针对渲染后的内容。</p>
 
-      <p><strong>原则一：按变化频率排序。</strong>越稳定的内容越靠前，越易变的内容越靠后。系统提示词的静态段、工具定义、项目规则在前；日期、当前分支、todo 状态、环境提醒在后。顺序一旦反过来，最易变的东西就站在了最前面，后面再稳定也没用。</p>
-      <p>工具定义是前缀里最重、也最容易被“顺手改一下”的部分。三条做法可以让它稳定：<strong>排序固定</strong>——按名字排序，而不是按 map 的插入序，opencode v1 就是这么做的<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/provider/transform.ts#L357-L404">transform.ts#L357-L404</a> <span class="tag tag--ok">已核实</span>；<strong>模式切换不改工具目录</strong>——dsh 的 plan mode 只换提示词约束、不动工具 schema，源码注释明确写了这是为了请求缓存稳定<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/bundle/base/cordis.patch.yml#L340">cordis.patch.yml#L340</a> <span class="tag tag--ok">已核实</span>；<strong>工具表变化走增量</strong>——Codex 的 <code>incremental_tools</code> 在不需要时置空 <code>tools</code>，避免整张表重发<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a> <span class="tag tag--ok">已核实</span>。代价是：按名字排序会让工具顺序不符合语义分组；模式切换不改表，意味着某些模式下模型看得见却用不了某些工具；增量工具要求客户端与服务端都支持，换 provider 就可能退化。</p>
-      <p><strong>原则二：只追加，不改写。</strong>新消息加在历史末尾，不动前面任何一条。追加是唯一“零失效”的写操作：前 k 块全部保持原样，只有新加的第 k+1 块需要计算。omp 把日期与 cwd 提醒从系统提示词尾部移到“每次请求的首个用户轮”，就是这条原则的极端应用：宁可让提醒出现在对话里，也不让它污染系统提示词。<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/date-cwd-reminder.ts#L1-L14">date-cwd-reminder.ts#L1-L14</a> <span class="tag tag--ok">已核实</span></p>
-      <p><strong>原则三：必须改时，从最靠后的位置改。</strong>如果一条信息非改不可（比如规则文件更新了），优先“在末尾追加一条替换说明”，而不是回写到系统提示词中间。Codex 的 AGENTS.md 差分注入就是这个思路：只发变化的那一段，未变的部分字节不动。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/agents_md.rs#L44-L80">agents_md.rs#L44-L80</a> <span class="tag tag--ok">已核实</span> dsh 把系统提示词做成 surface 节点，内容不变就不重写；必须更新时，按路由能力选择“原地替换”或“在缓存历史之后追加一条 update”，后者就是为保住已缓存前缀准备的。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/system-prompt.md#L43">system-prompt.md#L43</a> <span class="tag tag--guess">推断</span></p>
+      <p><strong>原则一：按变化频率排序。</strong>越稳定的内容越靠前，越易变的内容越靠后。静态系统说明、工具定义、项目规则尽量保持稳定；日期、分支、todo 状态、环境提醒尽量作为后续更新。若易变内容出现在前面，后面再稳定，也无法直接接着旧状态复用。</p>
+      <p>工具定义也属于请求内容，名称、描述、参数结构和排列顺序都可能影响匹配。<strong>固定排序</strong>：opencode v1 在 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/llm/request.ts#L184">request.ts#L184</a> 按名称排序，缓存标记另由 <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/provider/transform.ts#L357-L404">transform.ts#L357-L404</a> 设置。<span class="tag tag--ok">已核实</span> <strong>模式切换保留工具目录</strong>：dsh 的 plan mode 用提示词限制行为，注释明确说明保留工具 schema 是为请求缓存稳定。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/bundle/base/cordis.patch.yml#L340">cordis.patch.yml#L340</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>支持时采用增量协议</strong>，即只补充本次新增或变化的定义：Codex 在 <code>incremental_tools=true</code> 时把本次 <code>tools</code> 与 <code>base_instructions</code> 都置空，由历史中的声明与更新承担。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a> <span class="tag tag--ok">已核实</span></p>
+      <p>这些做法也有限制：名称顺序未必符合语义分组，保留工具目录也不等于限制了执行权限。增量协议需要后端支持；少传字段也不等于模型少看了这些定义。</p>
+      <p><strong>原则二：能追加，就不改写旧消息。</strong>在渲染前缀和请求设置都不变时，末尾新增消息不会破坏此前的相同内容；是否命中仍要看缓存条件。omp 的日期与 cwd（当前工作目录）提醒，首次附在首条用户消息上；日期或目录变化时附到新增用户消息，没有新用户消息就追加 developer 提醒，保留此前发过的内容。<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/date-cwd-reminder.ts#L1-L14">date-cwd-reminder.ts#L1-L14</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>原则三：必须更新时，明确替换范围。</strong>在末尾追加更新说明，可以保留此前的前缀，但也要说明旧规则何时失效。Codex 的 AGENTS.md 状态比较在内容未变时不发更新；变化时追加<strong>完整的新规则及替换说明</strong>，删除时发失效通知，并非只发送文件中改过的几行。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/world_state/agents_md.rs#L44-L80">agents_md.rs#L44-L80</a> <span class="tag tag--ok">已核实</span> dsh 则把系统提示记录为 surface 节点，即当前发给模型的消息序列中的一项；按路由能力选择原地替换，或在缓存历史之后追加非空更新。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/system-prompt.md#L43">system-prompt.md#L43</a> <span class="tag tag--guess">推断</span></p>
 
-      <p>把三条原则串起来，就是一句话：<strong>让“相同”尽可能长，让“不同”尽可能靠后。</strong>缓存优化的全部技巧，都是这句话的变形。</p>
+      <p>这三条原则都在争取更长的相同前缀，但不能为了保缓存一直保留过期内容。需要压缩或裁剪时，先保证下一次请求能装下、材料仍准确，再算重算的费用。</p>
 
-      <h3 id="codex-compact-cost">2.4 压缩的账：先失效，再省钱</h3>
-      <p>压缩和缓存的关系，是本章最容易被讲错的地方。常见说法是“压缩会破坏缓存，所以要少压缩”。这只说了一半。压缩确实会让前缀从切点起失效，但它同时把之后每次请求的输入变小了。真正该问的是：<strong>这次失效的成本，能在剩下的对话里赚回来吗？</strong></p>
-      <p>用一个教学模型算，假设摘要在固定前缀之后立即写入。设 <code>P</code> 为系统提示词与工具定义（压缩不动它），<code>B</code> 为压缩前的总输入，<code>A</code> 为压缩后的总输入（摘要 + 保留段 + 尾部），<code>r</code> 为缓存读取相对普通输入的单价，<code>w</code> 为缓存写入相对普通输入的单价。压缩后第一个请求要重写 <code>B − P</code>，之后每次省下 <code>B − A</code>。</p>
+      <h3 id="codex-compact-cost">2.4 压缩成本：比较新写入与后续缓存读取</h3>
+      <p>压缩把一段旧历史换成摘要，从第一处不同开始需要重算；被删掉的旧历史已经不再收费。后续省下的也不是每轮一整份普通输入费：如果不压缩本来能读缓存，比较基准就应是<strong>继续读取旧历史的费用</strong>。</p>
+      <p>设稳定前缀为 <code>P</code>，压缩前总输入为 <code>B</code>，压缩后总输入为 <code>A</code>；<code>A</code> 包含 <code>P</code>、摘要与保留段。读、写单价相对普通输入分别为 <code>r</code>、<code>w</code>。</p>
+      <p>假设 <code>0 ≤ P &lt; A &lt; B</code>、<code>w ≥ r &gt; 0</code>；旧输入已全缓存、<code>P</code> 不变，压缩后 <code>A − P</code> 首次全按写入计费，以后全按读取计费；缓存不过期，两种方案相同的新增输入与输出费用抵消。摘要调用的净增成本记为 <code>C</code>，也换算到同一费用单位。</p>
 
       <div class="codeblock" data-lang="text">
         <div class="codeblock__bar">
-          <span class="codeblock__lang">教学模型 · 不是任何 agent 的真实计价</span>
+          <span class="codeblock__lang">教学模型 · 假设计价互斥，单价以普通输入为 1</span>
           <button class="codeblock__copy" type="button" data-copy>复制</button>
         </div>
-        <pre class="code"><code><span class="code__line code__line--cmt">// 只算缓存这一项，不含压缩请求本身的成本</span>
-<span class="code__line">invalidate  = (B - P) * (w - r)      <span class="cmt">// 一次性重写多付的钱</span></span>
-<span class="code__line">savePerCall = (B - A) * (1 - r)      <span class="cmt">// 之后每次少付的钱</span></span>
-<span class="code__line code__line--cmt">// 回本轮数：还要再跑几次，这次失效才不亏</span>
-<span class="code__line">breakEven   = invalidate / savePerCall</span>
-<span class="code__line"> </span>
-<span class="code__line code__line--cmt">// 例：B=180k, P=30k, A=45k, r=0.1, w=1.25</span>
-<span class="code__line code__line--cmt">// invalidate=172.5k, savePerCall=121.5k, breakEven≈1.4</span>
+        <pre class="code"><code><span class="code__line code__line--cmt">// extraOnce 是新后缀首次写入相对读取的额外费用</span>
+<span class="code__line">extraOnce   = (A - P) * (w - r)      <span class="cmt">// 只对新请求中保留的后缀算写入</span></span>
+<span class="code__line">savePerCall = (B - A) * r           <span class="cmt">// 每轮少读旧历史省下的钱</span></span>
+<span class="code__line">breakEven   = (extraOnce + C) / savePerCall</span>
+<span class="code__line code__line--cmt">// n 包含压缩后的第一次正常调用；累计差额 ≤ 0 才回本</span>
+<span class="code__line">deltaCost   = extraOnce + C - n * savePerCall</span>
+<span class="code__line code__line--cmt">// B=180k, P=30k, A=45k, r=0.1, w=1.25；先设 C=0</span>
+<span class="code__line code__line--cmt">// extraOnce=17.25k, savePerCall=13.5k, breakEven≈1.28</span>
 </code></pre>
       </div>
 
-      <p>这个例子里，压缩后只要再跑两轮就回本。但把场景换一下：任务只剩最后一轮，压缩就是净亏——172.5k 的重写成本只换回一次 121.5k 的节省，还多了一次摘要请求。所以“该不该压”不只取决于窗口够不够，还取决于<strong>任务还剩多长</strong>。</p>
+      <p>这里的 k 表示千个 token 按普通输入单价折算的费用单位，不是金额。首次正常调用中，不压缩读 <code>180k × 0.1 = 18k</code>；压缩后读前缀并写新后缀，付 <code>30k × 0.1 + 15k × 1.25 = 21.75k</code>，多付 3.75k。第二次每轮少付 13.5k，所以忽略摘要调用时，累计两次才回本。任务只剩一次，在这组假设下不省钱；实际还要加 <code>C</code>。若没有写入溢价，应换实际费率重算，不能套用结论。</p>
       <p class="lead-in">优先级应该是：先保证不溢出，再谈缓存；先保证任务做完，再谈省钱。</p>
-      <p>这也解释了为什么各家在压缩时反复强调“复用暖前缀”。pi 的摘要请求显式设 <code>cacheRetention: "none"</code>，理由是“一次性摘要不太可能复用，写缓存反而污染”；<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L619-L639">compaction.ts#L619-L639</a> <span class="tag tag--ok">已核实</span> dsh 则相反，让摘要请求逐字节复用系统提示词、当前工具定义与被遮蔽区间，使这次调用的输入尽量成为原对话的前缀。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/README.md#L108">compaction-basic/README.md#L108</a> <span class="tag tag--guess">推断</span> 两种选择都对：前者赌“摘要不复用”，后者赌“摘要请求本身能命中”。</p>
+      <p>摘要调用的成本也能优化，但“避免新写入”与“读取已有缓存”是两件事。pi 为一次性摘要设 <code>cacheRetention: "none"</code>，同时尽量沿用调用方的 <code>sessionId</code>；这个选项不能单独证明摘要输入一定全额付费。<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/compaction/compaction.ts#L619-L639">compaction.ts#L619-L639</a> <span class="tag tag--ok">已核实</span> dsh 文档则说明，摘要请求复用系统提示、工具定义与被摘要区间，让输入尽量对齐已有前缀；能否命中仍要看路由、缓存状态和请求转换。<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/README.md#L108">compaction-basic/README.md#L108</a> <span class="tag tag--guess">推断</span></p>
 
-      <h3 id="codex-evict">2.5 驱逐：为什么必须一次清到水位</h3>
-      <p>图片驱逐和压缩是同一类操作：它们都在历史的某个位置“替换”内容，因此失效点就在被替换的那一块。区别是压缩只发生一次，驱逐可能反复发生。如果每轮只删一张图，每一轮都会在历史中段产生一个新的失效点，等于每轮都把后半段重写一遍。</p>
-      <p>Grok Build 的做法是滞回：请求体逼近 50MB − 3MB 时触发，一次回收到 25MB。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/image_budget.rs#L19-L35">image_budget.rs#L19-L35</a> <span class="tag tag--ok">已核实</span> opencode v2 是 25MiB 触发、降到 15MiB，从最旧的图片开始删。<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/model-request.ts#L122-L216">model-request.ts#L122-L216</a> <span class="tag tag--ok">已核实</span> 两个数字不同，思路一致：<strong>批量驱逐 + 滞回区间</strong>，把“每轮一次小失效”换成“很久一次大失效”。</p>
-      <p><strong>代价</strong>是峰值内存更高，而且一次删得多，可能删掉本该保留的证据图。但相比每轮都打断缓存，这个代价通常更便宜。</p>
+      <h3 id="codex-evict">2.5 图片驱逐：用两个阈值减少反复改写</h3>
+      <p>图片驱逐就是从发给模型的历史中移除旧图片，通常换成说明文字。它和压缩都会改写历史，但两者都可能发生多次。若每轮只删一张，历史会反复出现新的失效点；原样保留的后续内容也可能要重新计算。</p>
+      <p>可以设置两个阈值：达到上限才清理，一次降到更低的目标，留出一段增长空间，这叫<strong>滞回</strong>。Grok Build 默认按 50MiB 的请求预算计算，序列化对话体达到 <code>50 − 3 = 47MiB</code> 时触发，目标降到 25MiB；实际阈值可随后端的请求体上限变化。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/image_budget.rs#L19-L35">image_budget.rs#L19-L35</a> <span class="tag tag--ok">已核实</span></p>
+      <p>opencode v2 则统计内联图片载荷，超过 25MiB 才从旧到新移除，目标不高于 15MiB；远程引用不计入这份载荷。<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/model-request.ts#L122-L216">model-request.ts#L122-L216</a> <span class="tag tag--ok">已核实</span> MiB 是 1024² 字节，两家的计量对象不同，不能直接比作窗口大小。</p>
+      <p><strong>代价</strong>是一次会移除更多图片，后续若需对照，就得重新取得图片；若光文本就已超预算，删图片也未必够。批量清理减少了频繁改写的机会，实际收益还要结合使用频率与费用判断。</p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
           <p class="hf__q">问：那把系统提示词整个删短，不是每次都更省？</p>
-          <p class="hf__a">答：删短省的是“每次输入”，但如果因此改了前缀，第一次要付全量写入；更关键的是，删掉规则会让任务成功率下降。省下来的钱可能不够赔返工。缓存优化的目标是“单位成功任务成本”，不是“单位请求成本”。第 23 章会把这两个指标分开讲。</p>
+          <p class="hf__a">答：删短确实能减少后续输入；第一次改动可能让仍留在请求里的后缀重新计算，但不会为已经删掉的内容付费。还要看删掉的是重复文字还是必要规则：若任务质量因此下降，返工可能抵消节省。优化应看“单位成功任务成本”，第 23 章会进一步区分它与“单位请求成本”。</p>
         </div>
       </div>
 
@@ -271,11 +277,11 @@
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
         <div class="hf__body">
           <ul>
-            <li>缓存命中的长度由第一个不同字节决定；改一个词和改一万字，失效范围可能一样大。</li>
-            <li>前缀稳定三原则：按变化频率排序、只追加不改写、必须改时从最靠后的位置改。</li>
-            <li>压缩的缓存账 = 一次重写成本 ÷ 每次节省；任务剩得越短，越不该压。</li>
-            <li>工具定义要稳定：排序固定、模式切换不改工具目录、按需加载不要把工具表整体重排。</li>
-            <li>驱逐要批量加滞回，不要每轮删一点；观测只能看 usage 字段，归因要自己做。</li>
+            <li>先找渲染后请求的第一处不同；此前相同的内容仍需满足缓存条件，才可能命中。</li>
+            <li>前缀稳定三原则：稳定内容靠前、更新尽量追加、更新时明确哪些旧内容失效。</li>
+            <li>压缩回本轮数 =（新后缀额外写入费 + 摘要净增成本）÷ 每轮少读旧历史的费用，前提是模型假设成立。</li>
+            <li>工具定义尽量稳定；固定排序、保留目录与增量协议各有适用条件，不能代替执行权限控制。</li>
+            <li>图片可按两个阈值批量清理；把 usage 与请求差异、压缩和裁剪事件对齐，才能解释费用变化。</li>
           </ul>
         </div>
       </div>
@@ -284,8 +290,8 @@
     <!-- ========== 03 引导 ========== -->
     <section id="demo-guide">
       <p class="sec-no">03 · 动手与读图</p>
-      <h2>演示在入门章，本章看失效点</h2>
-      <p>“改哪一段、改几个字节、命中多少”这件事，第 5 章有一个可以直接拖的演示。本章不重复实现它，只把结论落到真实 agent 的拼接位置上。</p>
+      <h2>从演示中的方块定位真实请求的失效点</h2>
+      <p>刚才讨论了压缩与图片驱逐的费用，现在把两种操作放回请求中定位。第 5 章的演示能帮助观察第一处不同；下面的静态图则把方块对应到系统提示、工具定义和历史。</p>
 
       <div class="callout callout--info">
         <p class="callout__title">动手 · 去第 5 章看缓存命中</p>
@@ -293,12 +299,12 @@
         <p><a class="btn btn--primary btn--small" href="intro-05.html#demo-cache-hit">打开演示</a></p>
       </div>
 
-      <p><strong>为什么同一个演示放在入门章更合适。</strong>三个理由。第一，演示要建立的是一个纯概念：前缀匹配。它不需要知道 Codex 的 <code>base_instructions</code> 在哪、Claude Code 的系统提示词怎么分块，放在 L2 的入门章正好。第二，第 20 章要回答的是另一个问题：这些块在真实工具里由谁生成、压缩和驱逐会让失效点落在哪。这个问题用静态图比用滑块更清楚。第三，两章各自维护同一个 DOM 契约，会让演示脚本同时依赖两页的结构，改一处坏两处；分开之后，入门章负责“看见”，主线章负责“定位”。</p>
+      <p>演示把请求分成整块，适合观察“改动越靠前，受影响的后缀越长”。真实请求还要多问一步：压缩或驱逐后，哪些内容仍在请求里？例如旧历史被摘要替换后，要重算的是摘要与仍保留的后缀，不是已经删除的旧历史。下面暂以“系统 → 工具 → 历史”的渲染顺序示意，具体 agent 与 provider 可能不同。</p>
 
       <figure class="fig" id="fig-cache-invalidate">
         <svg viewBox="0 0 640 268" role="img" aria-labelledby="fig-ci-title fig-ci-desc">
           <title id="fig-ci-title">压缩与图片驱逐各自的缓存失效点</title>
-          <desc id="fig-ci-desc">上半图：压缩前依次是系统提示、工具、历史、最近段、尾部；压缩后历史被摘要替换，系统提示与工具仍可复用，失效点从摘要开始。下半图：图片驱逐把一张图换成占位符，失效点落在图片所在位置，之前的文本仍可复用。</desc>
+          <desc id="fig-ci-desc">上半图：压缩前依次是系统提示、工具、历史、最近段、尾部；压缩后历史被摘要替换，系统提示与工具仍可能复用，失效点从摘要开始。下半图：图片驱逐把一张图换成占位符，失效点落在图片所在位置，之前的文本仍可能复用。</desc>
 
           <text class="ci-small" x="16" y="18">压缩：替换历史，失效点从摘要写回的位置开始</text>
           <rect class="ci-ok" x="16" y="30" width="86" height="30" rx="4"/>
@@ -316,7 +322,7 @@
 
           <line class="ci-bound" x1="204" y1="24" x2="204" y2="70"/>
           <text class="ci-tag" x="212" y="86">失效点</text>
-          <text class="ci-small" x="270" y="86">这一侧仍可命中（系统 + 工具）</text>
+          <text class="ci-small" x="270" y="86">边界前可能复用：系统 + 工具</text>
 
           <text class="ci-small" x="16" y="112">压缩后：系统与工具字节未变；摘要、最近段与尾部都要重算</text>
           <rect class="ci-ok" x="16" y="124" width="86" height="30" rx="4"/>
@@ -351,17 +357,17 @@
           <text class="ci-tag" x="296" y="252">失效点</text>
           <text class="ci-small" x="356" y="252">图片之后的文本也要重算，即使它们没变</text>
         </svg>
-        <figcaption>图 13-2　两类“替换”操作的失效点。压缩替换的是历史中段，图片驱逐替换的是图片那一块；两者之前的字节只要没变，就仍可命中。绿色 = 仍可命中，橙色 = 新写入，红色 = 需要重算，灰色 = 不受影响。块宽为示意，非真实比例。</figcaption>
+        <figcaption>图 13-2　两类替换操作：摘要或图片占位说明形成第一处不同，其后仍保留的内容需要基于新前文重算；此前相同的前缀有机会复用。绿色 = 可能复用，橙色 = 摘要，红色 = 将被替换或需要重算，灰色 = 原先保留或新增的内容。块宽为示意，非真实比例。</figcaption>
       </figure>
 
-      <p>读这张图只需要三步。第一步，找到“谁被替换了”——压缩是历史中段，驱逐是一张图。第二步，把失效点画在<strong>被替换块的开头</strong>，不是结尾，也不是“改动量最大”的地方。第三步，问一句：失效点之前的字节，真的一个都没动吗？如果前面还顺手更新了日期或分支名，真正的失效点会比图上更靠前。</p>
+      <p>读图分三步：先找被替换的内容，再找替换后请求的<strong>第一处不同</strong>，最后检查它之前是否也变了。图中把失效点近似画在被替换块的开头；如果块内还有一段相同内容，实际差异可能稍晚。若前面同时更新了日期或分支名，失效点则会提前。</p>
     </section>
 
     <!-- ========== 04 agent 弹窗 ========== -->
     <section id="tools">
       <p class="sec-no">04 · 七个编码智能体</p>
-      <h2>有人发键，有人摆断点，有人只发改动</h2>
-      <p>Codex 已经在主线里拆过。剩下七个 agent 可以分三派：<strong>发键让服务端管</strong>（Codex 自己也属于这派，客户端只发 <code>prompt_cache_key</code>）；<strong>显式摆断点</strong>（Claude Code、opencode v1/v2、Grok Build）；<strong>把提示词 section 化，只发改动</strong>（pi、omp、dsh）。三派的差别不在“知不知道缓存”，而在“愿意把多少控制权交给客户端”。另外，opencode v1/v2 只能证明客户端下发了标记，服务端命中率与 TTL 不可观测<sup class="fn-ref"><a href="#fn-main-13-2" id="fnref-main-13-2">2</a></sup>，所以跨 agent 比命中率之前，先统一口径。</p>
+      <h2>七个 agent 如何配置缓存并保持前缀稳定</h2>
+      <p>这些设计可以同时使用。缓存键用于请求分组，显式断点指定缓存边界，增量更新则尽量不改旧内容。Claude Code、opencode 与 Grok Build 各有断点策略，pi、omp、dsh 也分别处理提示词更新，不能硬分成互斥的几派。对 opencode v1/v2，源码能确认客户端下发什么；具体部署的命中率与实际 TTL 仍需运行数据，标【待核实】<sup class="fn-ref"><a href="#fn-main-13-2" id="fnref-main-13-2">2</a></sup>。弹窗中的参数均以所列版本为限。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -398,8 +404,8 @@
     <!-- ========== 05 对比表 ========== -->
     <section id="matrix">
       <p class="sec-no">05 · 八个编码智能体对比</p>
-      <h2>把“前缀怎么保”排成一张表</h2>
-      <p>看表时先看第二列“前缀怎么保”：它是策略层。第三列“断点/标记”是执行层，决定失效点由谁摆。第四列最容易忽略：易变内容放在哪，往往比断点数量更影响命中率。最后一列是压缩的代价，也是本章与第 8、14 章的接口。</p>
+      <h2>八个 agent 的前缀、标记与压缩策略</h2>
+      <p>看表时先看第二列的前缀策略，再看第三列怎样标记缓存边界。标记不会改变两次请求的失效点；第四列的内容位置决定差异可能出现在哪里。最后一列说明压缩如何改变输入，与第 15、21 章的机制说明衔接。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
@@ -416,99 +422,99 @@
           <tbody>
             <tr>
               <th scope="row" class="cell-tool">Codex<span>codex</span></th>
-              <td>稳定 <code>base_instructions</code> 与工具表在前，变化追加尾部；AGENTS.md 只发差分。</td>
-              <td>客户端只发 <code>prompt_cache_key</code>，断点与 TTL 由服务端定。<span class="tag tag--ok">已核实</span></td>
-              <td>环境、规则变化走 section 差分，不改写已发前缀。<span class="tag tag--ok">已核实</span></td>
-              <td>替换历史，切点即失效点；无缓存调度，只有删最旧重试。<span class="tag tag--ok">已核实</span></td>
+              <td>基础说明与工具定义尽量稳定；AGENTS.md 变化时追加完整替换内容。</td>
+              <td>所查 CLI 发送 <code>prompt_cache_key</code>，未显式配置断点与 TTL。<span class="tag tag--ok">已核实</span></td>
+              <td>按状态变化追加更新，不逐行发送 AGENTS.md 文本差异。<span class="tag tag--ok">已核实</span></td>
+              <td>从变化处重算；不为已删除历史计费。溢出时可删最旧内容重试。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
-              <td>系统提示最多 4 块：头 / CLI 前缀 / 静态（global）/ 动态；动态在后。</td>
-              <td>消息层恰好 1 个标记，放最后一条；fork 时前移到倒数第二条。<span class="tag tag--src">源码 v2.1.88</span></td>
-              <td>动态段在边界之后；TTL 资格一次性锁存，避免中途翻转。</td>
-              <td>边界处插入摘要，之前的前缀仍可复用；压缩前剥图。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>系统提示最多 4 块；global 模式可分静态/动态，其他路径最多 3 块。</td>
+              <td>启用缓存时消息层通常 1 个标记；仅 <code>skipCacheWrite</code> 时前移一条。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>动态段置后；1h TTL 资格在会话内锁定。</td>
+              <td>摘要替换旧历史；未变前缀仍可能复用。摘要调用对齐原前缀，发送前剥图片。<span class="tag tag--src">源码 v2.1.88</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">pi<span>pi</span></th>
-              <td>系统提示 section 化，变化时只追加一个 section patch。</td>
-              <td>按 provider 打点；摘要请求 <code>cacheRetention: "none"</code>。<span class="tag tag--ok">已核实</span></td>
-              <td>section patch 追加在末尾；未变 section 字节不动。</td>
-              <td>压缩重写前缀，必然一次失效；用预热与摘要不写缓存降损。<span class="tag tag--ok">已核实</span></td>
+              <td>系统提示按名称分段（section），变化生成分段更新（section patch）。</td>
+              <td>按 provider 处理；摘要请求 <code>cacheRetention: "none"</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>追加变化的 section，未变部分不重复生成更新。</td>
+              <td>重建历史后的首处差异产生失效；摘要写入策略与缓存预热分别控制。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
-              <td>易变内容移出系统提示；<code>&lt;project-context&gt;</code> 固定为最后一块。</td>
-              <td>缓存断点落在 <code>&lt;project-context&gt;</code> 之前；lookback 留 6 个位置余量。<span class="tag tag--ok">已核实</span></td>
-              <td>日期 / cwd 提醒移到首个用户轮；裁剪有缓存守卫。</td>
-              <td>方法链逐级回退，压缩后要求降到阈值 80% 以下。<span class="tag tag--ok">已核实</span></td>
+              <td>静态块在前，<code>&lt;project-context&gt;</code> 在最后；日期提醒移到消息中。</td>
+              <td>Anthropic 头部断点在项目块之前；已知 lookback 保留 6 个位置余量。<span class="tag tag--ok">已核实</span></td>
+              <td>首次提醒附首条用户消息，变化时追加；裁剪会保护较长的有效缓存后缀。</td>
+              <td>方法链逐级回退；续跑要求降到触发阈值约 80% 以下。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
-              <td>工具定义按名字排序，system 由固定顺序块拼成。</td>
-              <td>前 2 条 system + 后 2 条非 system 打 ephemeral；<code>promptCacheKey = sessionID</code>。<span class="tag tag--ok">已核实</span></td>
-              <td>合成提醒只改最后一条用户消息；任何 system 块变化都会整条失效。</td>
-              <td>替换整段前缀，必然全额失效；无围绕缓存的压缩调度。<span class="tag tag--ok">已核实</span></td>
+              <td>工具按名字排序，system 由固定顺序的块拼成。</td>
+              <td>至多前 2 条 system + 后 2 条非 system，按 provider 映射标记；适用路径以 sessionID 为键。<span class="tag tag--ok">已核实</span></td>
+              <td>提醒加到最近用户消息；system 改动从第一处差异影响后缀。</td>
+              <td>替换对话历史不等于全请求失效；未变的系统与工具仍可能复用。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
-              <td><code>auto</code>：最后一个工具、首末 system、尾部 1 条消息；上限 4 个断点。</td>
-              <td>按协议白名单下发；亲和 id 取 <code>parentID ?? fork 源 ?? 自身</code>。<span class="tag tag--ok">已核实</span></td>
-              <td><code>initial</code> 作为稳定前缀，变化放进增量消息。</td>
-              <td>换掉整段历史，缓存必然失效；溢出预算再乘 0.7。<span class="tag tag--ok">已核实</span></td>
+              <td>支持内联标记的路径默认 <code>auto</code>：工具、首末 system、尾部消息，自动放置预算为 4。</td>
+              <td>先计手工标记，再补自动位置；亲和 id 取 <code>parentID ?? fork 源 ?? 自身</code>。<span class="tag tag--ok">已核实</span></td>
+              <td><code>initial</code> 作为基线，变化放进增量消息；压缩后会刷新基线。</td>
+              <td>从新请求首处差异重算；溢出预算取 <code>min(cap, floor(estimate×0.7))</code>。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
-              <td>日期在会话内固定，跨午夜只追加 reminder；记忆索引存在就跳过。</td>
-              <td>3 处显式 <code>ephemeral</code> + 1 槽留给网关（4 上限）。<span class="tag tag--ok">已核实</span></td>
-              <td>技能 / MCP 公告只在变化时发增量；图片驱逐 50MB→25MB 滞回。</td>
-              <td>replace 语义，从首个被替换 token 起失效；摘要请求重放暖前缀。<span class="tag tag--ok">已核实</span></td>
+              <td>会话内固定日期，跨午夜追加提醒；已有记忆上下文时跳过重复注入。</td>
+              <td>Anthropic Messages 路径最多 3 处显式 <code>ephemeral</code>，留 1 槽给网关。<span class="tag tag--ok">已核实</span></td>
+              <td>技能 / MCP 变化时更新；默认对话体预算 47MiB 触发、目标 25MiB。</td>
+              <td>替换历史会从首处差异重算；摘要请求尽量保持已有输入序列。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
-              <td>系统提示是 surface 节点，不变就不重写；plan mode 不改工具目录。</td>
-              <td>按路由能力选原地替换或 <code>in-history</code> 追加。<span class="tag tag--guess">推断</span></td>
-              <td>日期等易变事实用新增 user 消息注入，不改系统提示。</td>
-              <td>从首个被替换 token 失效，之前前缀仍可复用；摘要请求逐字节复用暖前缀。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-13-3" id="fnref-main-13-3">3</a></sup></td>
+              <td>系统提示作为 surface 节点；未变不重写，plan mode 保留工具目录。</td>
+              <td>按路由能力原地替换或 <code>in-history</code> 追加。<span class="tag tag--guess">推断</span></td>
+              <td>时间以新增 user 消息注入，不回写系统提示。</td>
+              <td>替换处之前仍可能复用；摘要请求按文档设计复用已有前缀。<span class="tag tag--guess">推断</span><sup class="fn-ref"><a href="#fn-main-13-3" id="fnref-main-13-3">3</a></sup></td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格只写结论，permalink 在各自弹窗里。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；DeepSeek Harness <code>5719020</code>。表格比较的是这些版本的客户端设计，不能据此直接比较实际命中率。</p>
     </section>
 
     <!-- ========== 06 取舍 ========== -->
     <section id="tradeoffs">
       <p class="sec-no">06 · 设计取舍</p>
-      <h2>为什么有人只放一个断点，有人放四个</h2>
-      <p>下面五组取舍，是这张表背后真正的分歧。每组都给出“A 派怎么做”“B 派怎么做”和一句代价。本节引用的参数不重复给 permalink，统一见第 05 节表格与各 agent 弹窗。</p>
+      <h2>缓存控制、信息更新与压缩时机的取舍</h2>
+      <p>前面的差异涉及五个可分别决定的问题：缓存边界、更新位置、压缩时机、摘要请求和控制范围。它们并非互斥路线；选择时都要看具体后端与任务，不能仅凭断点数量判断成本。</p>
 
-      <h3>取舍一：一个断点，还是四个断点</h3>
-      <p><strong>少而准</strong>：Claude Code 在消息层每请求只放一个 <code>cache_control</code>，位置是最后一条消息；它把“4”留给系统提示词的分块上限，两者不是一回事。<strong>多而密</strong>：opencode v2 的 <code>auto</code> 会同时给最后一个工具、首末 system、尾部消息打点，上限 4；Grok Build 打 3 处显式断点，第 4 个槽故意留给网关。</p>
-      <p><strong>代价</strong>：断点少，缓存页保留得少，长会话里更早的前缀可能已经过期；断点多，每次请求都可能多写几页 KV，写放大更明显。Claude Code 的源码注释直接说了“多标记会让倒数第二个位置也被保护，白白多留一轮 KV 页”——这是少派的理由；多派的理由是“跨轮复用的机会更多”。谁对，取决于你的会话是“长而连续”还是“短而频繁”。</p>
+      <h3>取舍一：消息尾部一个标记，还是多处分层标记</h3>
+      <p>Claude Code 在正常启用缓存的消息层放一个标记。系统提示最多 4 块是另一项计数，既不等于“全请求只有一个断点”，也不代表 API 的断点上限。opencode v2 的自动放置预算则是全请求最多 4 个，包含工具、system 与消息；Grok 的 Anthropic Messages 路径最多设 3 处，再留 1 槽给网关。比较前必须先统一计数范围。</p>
+      <p><strong>代价</strong>：多处分层标记可以照顾变化频率不同的前缀，也会占用 API 的标记额度；写入费用看实际写入量与 TTL，不按标记个数直接相乘。Claude Code 的注释给出一个特定后端的理由：少一个消息标记，可让上一轮不再需要的局部注意力 KV 页及时释放。这个内存管理理由不能推广为所有 provider 上“断点越多，账单越高”。</p>
 
-      <h3>取舍二：把易变内容移出前缀，还是留在原地</h3>
-      <p><strong>移出派</strong>：omp 把日期与 cwd 提醒从系统提示词尾部挪到首个用户轮；dsh 用新增 user 消息承载时间；Grok 把日期固定在会话启动值，跨午夜才追加一条 reminder。<strong>留在原地派</strong>：不少实现仍把“当前时间、当前分支、当前目录”写在系统提示里，因为它们认为“模型更重视系统提示里的信息”。</p>
-      <p><strong>代价</strong>：移出之后，系统提示词变得完全静态，缓存最稳；但信息离“指令区”更远，模型可能不如以前重视，而且每条提醒都要占一条消息。留在原地则相反：模型更容易遵守，却可能在每次日期变化时打断整段前缀。若你的 Agent 跑的是几分钟的短任务，日期根本不会变，这个取舍几乎不存在；跑整夜的批处理，它就会变成账单上的第一行。</p>
+      <h3>取舍二：追加状态更新，还是原地更新提示词</h3>
+      <p><strong>追加更新</strong>：omp 的日期/cwd 提醒在值变化时追加，dsh 用新增 user 消息承载时间，Grok 在跨午夜后追加日期提醒。<strong>原地更新</strong>：dsh 的另一条路由策略允许直接替换系统提示节点。追加保留旧前缀；原地替换让当前位置直接反映新状态，却可能使后面的大段历史重算。</p>
+      <p><strong>代价</strong>：追加后，旧值与新值同时留在历史中，要写清更新范围，避免歧义；原地更新的状态更集中，但会改变匹配前缀。项目规则和工具仍可能更新，所以系统提示的稳定性要逐项检查。状态更新能否被正确采用，还应通过跨天、换目录等具体任务验证。</p>
 
       <h3>取舍三：压缩早一点，还是晚一点</h3>
-      <p><strong>早压</strong>：在 70%–80% 就压，压缩请求自己有足够空间，失败概率低，之后还有很长的路可以摊薄失效成本。<strong>晚压</strong>：逼近 90%–95% 才压，尽量少压几次，减少信息损失和摘要调用。<strong>不压</strong>：任务只剩最后一两轮时，宁可带着接近满的窗口跑完。</p>
-      <p><strong>代价</strong>：早压会在任务还没走完时丢掉细节，而且多一次摘要成本；晚压可能让压缩请求自己超窗，进入第 21 章的删最旧重试；不压则要承担溢出的风险。用 2.4 的公式看，这个取舍可以量化：<code>breakEven</code> 大于剩余轮数，就不该压；但若剩余轮数大于 0 且窗口已接近上限，溢出的代价通常高于一次失效。</p>
+      <p><strong>早压</strong>给摘要调用与失败重试留空间，之后也可能有更多轮次消化一次性成本。<strong>晚压</strong>可以少丢几次原始细节、少调几次摘要。若只剩少量工作且下一次请求能装下，也可以暂不压缩。用窗口 70%–80% 或 90%–95% 作示意有助于讨论，但这些不是各 agent 通用的触发档位，还要扣输出预留等预算。</p>
+      <p><strong>代价</strong>：早压增加摘要次数与信息损失风险；晚压可能使摘要调用本身超窗，进入第 21 章的失败恢复。第 2.4 节的公式只能在假设成立时判断费用：回本轮数超过剩余调用数，说明缓存账未回本。若不压就装不下，则必须先解决窗口问题，不能让费用公式覆盖这个约束。</p>
 
-      <h3>取舍四：摘要请求写缓存，还是明确不写</h3>
-      <p><strong>不写派</strong>：pi 给摘要请求设 <code>cacheRetention: "none"</code>，因为摘要是一次性的，写进去只会挤占缓存页。<strong>复用派</strong>：dsh 与 Grok 让摘要请求复用系统提示词、工具定义与被遮蔽区间，使这次调用的输入尽量命中已有前缀，只有尾部指令是新的。</p>
-      <p><strong>代价</strong>：不写最干净，但摘要请求要全额付费；复用能省一次输入，却要求“摘要请求的拼接顺序必须和主请求逐字节一致”，实现稍有不慎就会既没命中、又多了耦合。这也是为什么“暖前缀”通常只在大上下文、频繁压缩的实现里出现：小会话省下的钱不够覆盖这段复杂度。</p>
+      <h3>取舍四：避免摘要写缓存，同时争取读取旧缓存</h3>
+      <p>pi 明确给一次性摘要设 <code>cacheRetention: "none"</code>，目的是避免为不太会复用的请求内容新建缓存。它仍尽量沿用调用方的路由标识。dsh 文档要求摘要调用复用系统提示、工具与被摘要区间，Grok 也准备对齐原对话的压缩输入。这是在分别决定“新内容要不要写”与“旧内容能不能读”，两者可以组合。</p>
+      <p><strong>代价</strong>：争取读取旧缓存，要求相同模型/路由下的渲染前缀保持一致；图片移除、工具变化或缓存过期都可能破坏预期。避免写入是否也影响读取，要看 provider 如何实现该选项，不能由 <code>"none"</code> 推导“摘要全额付费”。回本核算中的 <code>C</code> 应采用摘要调用的实际费用。</p>
 
       <h3>取舍五：客户端自己摆断点，还是交给服务端</h3>
-      <p><strong>客户端派</strong>：Claude Code、opencode、Grok 都显式下发断点，能精确控制“哪一块值得缓存”。<strong>服务端派</strong>：Codex 只发 <code>prompt_cache_key</code>，断点、TTL、淘汰都由服务端决定。前者跨 provider 可移植性差（每家字段名不同），后者则完全依赖服务端的策略。</p>
-      <p><strong>代价</strong>：客户端摆断点，控制力强，但要跟着 provider 协议走，字段一改就得适配；服务端托管，接入简单，但你看不见断点，也改不了 TTL。Codex 的 <code>cached_tokens</code> 只能告诉你“命中了多少”，不能告诉你“为什么没命中”；Claude Code 则专门写了失效归因模块。这是控制权换来的可观测性差异。</p>
+      <p><strong>客户端指定</strong>：Claude Code、opencode 和 Grok 的部分后端路径会显式下发断点，指定值得缓存到哪里。<strong>服务端决定</strong>：所查 Codex CLI 请求未显式指定这些边界。两种方式都仍依赖服务端支持；显式标记也不能替服务端决定最终是否命中。</p>
+      <p><strong>代价</strong>：客户端指定断点，需要适配 provider 协议并处理额度与 TTL；交给服务端时，这部分实现较少，边界却较难直接观察。无论哪一种，缓存读取量只能说明用了多少，不能独自解释为什么没命中。Claude Code 的失效检测模块提供请求变化线索，仍需结合实际用量验证。</p>
 
-      <p>还有一组横切的取舍：<strong>命中率作为目标，还是作为诊断</strong>。把命中率当目标，容易走向“为了命中而不敢压缩、不敢裁剪”，最后窗口里塞满过期内容；把它当诊断，才会去问“这次失效是压缩造成的，还是日期变化造成的”。第 23 章会把这个问题展开成指标设计。</p>
+      <p>这些取舍最后都要回到任务结果。若为了命中率而拒绝必要的压缩、裁剪，窗口可能一直被过期内容占用。把命中率用于诊断，再结合成功率、总费用与等待时间判断策略，才知道一次失效是否值得；第 23 章会展开这些指标。</p>
     </section>
 
     <!-- ========== 07 测验 ========== -->
     <section id="quiz">
       <p class="sec-no">07 · 小测验</p>
-      <h2>三道题，检验你是否真的会定位失效点</h2>
+      <h2>练习：定位失效点并核算压缩成本</h2>
 
       <div class="quiz">
         <div class="quiz__head">
@@ -518,19 +524,19 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>第一种情况，失效点在系统提示的第一块，也就是整段请求的最开头：日期变了，系统提示、工具、历史全部要重算。第二种情况，系统提示、工具、历史都保持原样，只有最后一条新输入需要计算，前缀全部可复用。这就是“易变内容放哪”比“断点放几个”更重要的原因。见<a href="#codex-order">2.3 排序</a>与 <a href="#fig-prefix-match">图 13-1</a>。</p>
+          <p>第一种情况，失效点在日期值首次不同的位置，不一定是系统提示的第一个 token。只有它之前仍相同且符合缓存条件的部分有机会命中，后面的工具与历史需基于新前文重算。第二种情况要区分迁移与后续使用。第一次把日期移走也会改旧前缀；布局稳定后，把每次日期作为尾部新输入追加，并保留旧消息，才不会反复改变前面的内容。见<a href="#codex-order">2.3 排序</a>与 <a href="#fig-prefix-match">图 13-1</a>。</p>
         </div>
       </div>
 
       <div class="quiz">
         <div class="quiz__head">
           <span class="quiz__no">Q2</span>
-          <p class="quiz__q">压缩前总输入 180k，系统提示与工具 30k，压缩后 45k。缓存读单价是普通输入的 0.1，写单价是 1.25。只算缓存这一项，压缩后还要跑几轮才回本？如果任务只剩最后一轮，应该压吗？</p>
+          <p class="quiz__q">压缩前总输入 180k，固定前缀 30k，压缩后总输入 45k（含固定前缀）。读、写倍率分别是 0.1、1.25。假设原输入已全缓存，新后缀首次全写、之后全读，缓存不过期，忽略摘要调用及两方案相同的增量费用：从压缩后第一次正常调用起，累计几次回本？只剩一次时呢？</p>
         </div>
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>一次性重写成本 =（180k − 30k）×（1.25 − 0.1）= 172.5k；每次节省 =（180k − 45k）×（1 − 0.1）= 121.5k；回本 ≈ 1.4 轮，也就是再跑两轮才不亏。任务只剩一轮时，压缩在缓存账上是纯亏，还多一次摘要请求；但如果窗口已经接近上限、不压就会溢出，那仍然要压——溢出的代价通常高于一次失效。见<a href="#codex-compact-cost">2.4 压缩的账</a>。</p>
+          <p>新后缀为 <code>45k − 30k = 15k</code>；首次写入相对读取的额外成本是 <code>15k × (1.25 − 0.1) = 17.25k</code>。每轮少读旧历史省 <code>(180k − 45k) × 0.1 = 13.5k</code>，回本为 <code>17.25 ÷ 13.5 ≈ 1.28</code>，所以累计两次正常调用才回本。一次时仍多付 3.75k；计入摘要成本后要再加 <code>C</code>，不能保证两次就够。若下一次请求装不下，应先解决窗口问题。见<a href="#codex-compact-cost">2.4 压缩的账</a>。</p>
         </div>
       </div>
 
@@ -542,7 +548,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>分支名放在最前面，破坏了“按变化频率排序”：最易变的内容站在了最前，后面再稳定也救不回来，应该移到尾部或改成每轮追加的提醒。每轮删一张图，破坏了“最小改写 / 批量驱逐”：失效点会每轮往前挪，等于每轮重写后半段，应该改成滞回区间一次清到目标水位（Grok 是 50MB 触发、回收到 25MB）。见<a href="#codex-order">2.3 排序</a>与<a href="#codex-evict">2.5 驱逐</a>。</p>
+          <p>分支名放在开头，使易变状态早于稳定内容，应在可行时改成尾部追加的更新，并明确旧值失效。每轮删一张图会反复改写历史，但失效点不一定“每轮往前挪”；按旧图顺序删时，它也可能往后移。可设置上限与较低目标，批量清理，减少触发频率；Grok 默认是 47MiB 触发、目标 25MiB，并随后端预算调整。见<a href="#codex-order">2.3 排序</a>与<a href="#codex-evict">2.5 驱逐</a>。</p>
         </div>
       </div>
     </section>
@@ -551,15 +557,15 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-13-1">
-          本次只核实了 CLI 侧“发 <code>prompt_cache_key</code>、解析 cached/write 字段”，未找到断点位置、TTL、淘汰策略的客户端代码；已检查 <code>client.rs</code> 的请求构造与 <code>responses.rs</code> 的 usage 解析，缺失服务端实现。因此本章按“服务端决定、客户端不可见”表述，不给出具体 TTL 数值。
+          已核对固定提交中 <code>client.rs</code> 的键生成与请求构造、<code>responses.rs</code> 的读写用量解析；未见该 CLI 路径显式设置断点或 TTL。缺少所用后端的实际保留、淘汰与路由证据，因此这些服务端细节标【待核实】，不填写具体 TTL，也不外推为所有 OpenAI API 的限制。
           <a class="footnotes__back" href="#fnref-main-13-1">↩</a>
         </li>
         <li id="fn-main-13-2">
-          opencode v1/v2 的“服务端命中率与 TTL”标【待核实】：源码只能证明客户端下发了缓存标记与键，无法证明服务端如何命中。已检查 <code>cache-policy.ts</code> 与 <code>provider/transform.ts</code>，缺服务端侧证据。结论限于“客户端可观测到的字段”，跨工具比较命中率时需注明口径。
+          已核对 opencode v1 的 <code>provider/transform.ts</code>、v2 的 <code>cache-policy.ts</code> 与请求构造，能确认标记和键的下发规则。缺少具体 provider 部署的运行用量与缓存生命周期记录，因此实际命中率与 TTL 标【待核实】；这不等于所有后端都不能通过 usage 观测命中。
           <a class="footnotes__back" href="#fnref-main-13-2">↩</a>
         </li>
         <li id="fn-main-13-3">
-          “从第一个被替换 token 起失效”对 dsh 来自文档而非逐行源码，标【推断】；对 Grok Build 与 pi 有源码或注释支持。已核对 dsh 的 <code>docs/subsystems/compaction.md</code> 与 compaction 包 README，缺运行时验证。结论按“替换语义的一般规律”表述，不当作所有 provider 的统一行为。
+          dsh 的系统提示更新与摘要前缀对齐来自同仓文档和 README，本章保留【推断】，不视为运行时命中的证明。Grok Build 的图片预算与断点有源码依据，但未找到其 xAI Responses 路径显式缓存字段；该路径的具体服务端机制仍标【待核实】。替换造成的重算范围仍须以最终渲染请求为准。
           <a class="footnotes__back" href="#fnref-main-13-3">↩</a>
         </li>
       </ol>
@@ -582,16 +588,16 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">缓存标记分两层。系统提示词被切成最多 4 块：计费/归属头、CLI 前缀、边界前的静态内容、边界后的动态内容。消息层则恰好只放 1 个 <code>cache_control</code>，位置是最后一条消息；fork 时前移到倒数第二条，避免把 fork 自己的尾巴写进缓存。</p>
+      <p class="modal__lead">系统提示分块与消息标记要分别计数。特定 global 缓存模式下，系统提示最多分为归属头、CLI 前缀、静态段、动态段 4 块。第三方 provider、缺边界或跳过 global 缓存的路径最多 3 块。正常启用缓存时，消息层在最后一条设置 1 个标记；仅 <code>skipCacheWrite</code> 的异步 fork 会前移到倒数第二条，并非所有 fork 都这样做。</p>
       <dl class="kv">
         <dt>关键参数</dt>
-        <dd>消息级标记 1 个/请求；系统提示最多 4 块；TTL 默认 <code>ephemeral</code>，满足资格升 <code>1h</code>；<code>skipCacheWrite</code> 时标记前移。<span class="tag tag--src">源码 v2.1.88</span></dd>
+        <dd>消息级标记通常 1 个/请求；系统提示最多 4 块；<code>type: "ephemeral"</code> 是缓存类型，不是 TTL 数值。默认不显式设 TTL，满足用户资格与请求来源白名单时加 <code>ttl: "1h"</code>；Bedrock 可显式开启 1h。<span class="tag tag--src">源码 v2.1.88</span></dd>
         <dt>设计意图</dt>
-        <dd>“只放一个”是为了避免倒数第二个位置也被保护，白留一轮 KV 页。TTL 资格一次性锁存，防止会话中途 overage 翻转导致整段缓存失效。和别家最大的差异是：它把“可见的断点数量”压到最少，把控制力放在分块顺序上。</dd>
+        <dd>非官方源码注释说明：只保留一个消息标记，能让该后端及时释放不再需要的局部注意力 KV 页；这不是所有 provider 的统一规则。1h 资格在会话内锁定，避免超额计费状态（overage）变化导致 TTL 来回切换。系统块是否打标，还要看其 cacheScope 与缓存开关。</dd>
         <dt>来源</dt>
-        <dd><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L3063-L3106">claude.ts#L3063-L3106</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L296-L360">api.ts#L296-L360</a></dd>
+        <dd><a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L3063-L3106">claude.ts#L3063-L3106</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L296-L360">api.ts#L296-L360</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L358-L425">getCacheControl / should1hCacheTTL</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L3211-L3237">buildSystemPromptBlocks</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L387-L460">compact.ts#L387-L460</a></dd>
       </dl>
-      <p class="modal__note">源码与官方文档在“按变化频率排序以优化前缀缓存”上一致；但“4 个断点”在源码里是系统提示词块上限，不是消息层标记数，两者不要混。<span class="tag tag--both">两者一致</span></p>
+      <p class="modal__note">源码与官方文档在“保持可复用前缀稳定”上一致；但系统块数、消息标记数与 API 全请求的断点额度是三种计数，不能混为一谈。<span class="tag tag--both">两者一致</span></p>
     </div>
   </div>
 </div>
@@ -607,16 +613,16 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">pi 走“section 化”路线：系统提示词拆成具名 section，变化时只追加一个 section patch，未变部分字节不变。摘要请求显式不写缓存，另有 <code>CacheWarmer</code> 在 TTL 的 90% 处重放请求保温。</p>
+      <p class="modal__lead">pi 把系统提示拆成带名称的分段（section），比较变化后生成分段更新（section patch），而不是每次重写全部分段。摘要调用设 <code>cacheRetention: "none"</code> 避免一次性内容新写缓存；缓存保温则由 <code>CacheWarmer</code> 再次发送同一请求、只允许很少的输出，争取延长已有前缀的可用时间。</p>
       <dl class="kv">
         <dt>关键参数</dt>
-        <dd><code>cacheWarming: "streaming"</code>；预热触发 TTL × 0.9 且至少提前 10 秒；节省下限 $0.05；安全上限 streaming 60 分钟 / idle 30 分钟；摘要 <code>cacheRetention: "none"</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dd>默认 <code>cacheWarming: "streaming"</code>；TTL 已知且可安全重放时，延时约为 <code>min(TTL×0.9, TTL−10秒)</code>，按毫秒向下取整、至少 1 毫秒；TTL≤10秒不预热。预计净节省至少 $0.05 才发送；streaming / idle 安全上限为 60 / 30 分钟；摘要 <code>cacheRetention: "none"</code>。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>把“改提示词”从“重写整段”降级为“追加一个 patch”，让前缀尽量长；摘要不写缓存，是因为它一次性、复用概率低。代价是多了一套 section 差异计算和预热成本。</dd>
+        <dd>分段更新减少不必要的旧内容改写；摘要是否命中还要看 provider 对 <code>none</code> 的解释，不能直接认定全额付费。保温本身有调用成本：代码计算“续用概率 × 避免失效的额外费用 − 保温费用”，达到门槛才执行；idle 阶段的续用概率取 0.15。</dd>
         <dt>来源</dt>
-        <dd><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/system-prompt.ts#L212-L229">system-prompt.ts#L212-L229</a>、<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/cache-warmer.ts#L14-L31">cache-warmer.ts#L14-L31</a></dd>
+        <dd><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/system-prompt.ts#L212-L229">system-prompt.ts#L212-L229</a>、<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/cache-warmer.ts#L14-L31">cache-warmer.ts#L14-L31</a>、<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/agent-session.ts#L1743-L1755">agent-session.ts#L1743-L1755</a>、<a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/settings-defaults.ts#L61">settings-defaults.ts#L61</a></dd>
       </dl>
-      <p class="modal__note"><code>cache-stats.ts</code> 统计“上次命中、这次未命中”的浪费，噪声下限 1024 token；低于这个量级的差异不要当成回归。</p>
+      <p class="modal__note"><a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/cache-stats.ts#L58-L87">cache-stats.ts#L58-L87</a> 用 <code>min(上次总输入, 本次总输入) − 本次缓存读</code> 估计可复用却未命中的量；≤1024 token 不计入统计。这是统计过滤阈值，不能据此断言小于该量级就没有性能或费用回退。</p>
     </div>
   </div>
 </div>
@@ -632,16 +638,16 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">omp 把“易变内容移出前缀”做得最彻底：静态提示词块在前，<code>&lt;project-context&gt;</code> 永远是最后一块，缓存断点落在它之前；日期与 cwd 提醒从系统提示词尾部移到每次请求的首个用户轮。</p>
+      <p class="modal__lead">omp 将静态系统块放在前面，工作目录与规则等放进最后的 <code>&lt;project-context&gt;</code> 块，Anthropic 头部缓存断点落在它之前。日期/cwd 提醒首次附到首条用户消息；值变化后附到新用户消息，若没有新用户消息则追加 developer 提醒，保持旧消息原样。</p>
       <dl class="kv">
         <dt>关键参数</dt>
-        <dd>断点在 <code>&lt;project-context&gt;</code> 之前；日期/cwd 提醒插首个用户轮；prompt-cache lookback 留 6 个位置余量；预热沿用 pi 的 TTL × 0.9 / $0.05 / 60·30 分钟。<span class="tag tag--ok">已核实</span></dd>
+        <dd>Anthropic 头部断点在 <code>&lt;project-context&gt;</code> 前；已知 prompt-cache lookback（向前查找缓存边界的位置范围）时留 6 个位置余量。保温延时约为 <code>min(TTL×0.9, TTL−10秒)</code>，按毫秒向下取整、至少 1 毫秒；TTL≤10秒不预热。净节省至少 $0.05、streaming / idle 上限 60 / 30 分钟。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>让系统提示词与工具数组在会话内字节稳定，只有跨天或换目录才变。裁剪还有缓存守卫：候选结果之后的 suffix 仍在热前缀里时不动。代价是“当前时间”离指令区更远，模型对时间的敏感度可能下降。</dd>
+        <dd>保护静态前缀，不代表项目规则或工具永远不变。裁剪守卫会推迟改写后面仍有较长有效缓存的旧结果，并在适用模型上检查 lookback 位置余量。代价是旧输出可能多保留一段时间；日期更新还要确保旧值与新值的适用范围清楚。</dd>
         <dt>来源</dt>
-        <dd><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/system-prompt.ts#L1026-L1036">system-prompt.ts#L1026-L1036</a>、<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/date-cwd-reminder.ts#L1-L14">date-cwd-reminder.ts#L1-L14</a></dd>
+        <dd><a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/system-prompt.ts#L1026-L1036">system-prompt.ts#L1026-L1036</a>、<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/date-cwd-reminder.ts#L1-L14">date-cwd-reminder.ts#L1-L14</a>、<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/cache-warmer.ts#L1-L35">cache-warmer.ts#L1-L35</a>、<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/docs/compaction.md#L244-L252">compaction.md#L244-L252</a>、<a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/session/session-maintenance.ts#L328">session-maintenance.ts#L328</a></dd>
       </dl>
-      <p class="modal__note">omp 是 pi 的 fork，预热与缓存统计逻辑同源，但断点位置与“易变内容位置”是它自己改的，不能直接外推到 pi。</p>
+      <p class="modal__note">omp 的保温逻辑来自 pi，但日期提醒、项目块与裁剪守卫有自己的实现，不能直接外推到 pi。首次提醒与后续变更的注入位置不同，判断缓存影响时应对照更新前后的实际消息序列。</p>
     </div>
   </div>
 </div>
@@ -657,16 +663,16 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead"><code>applyCaching</code> 在交给 provider 前，给前 2 条 system 消息和后 2 条非 system 消息打 provider 级 ephemeral 标记。前缀稳定靠两点：工具定义按名字排序、system 由固定顺序的块拼成。</p>
+      <p class="modal__lead"><code>applyCaching</code> 选取至多前 2 条 system 消息、后 2 条非 system 消息并去重，按 provider 映射成缓存标记。Anthropic 等使用 <code>ephemeral</code>，Bedrock 则是 <code>cachePoint: {type: "default"}</code>。前缀还通过工具名称排序和系统块固定拼接顺序保持稳定。</p>
       <dl class="kv">
         <dt>关键参数</dt>
-        <dd>缓存点：前 2 条 system + 后 2 条非 system；<code>promptCacheKey = sessionID</code>，请求头带 <code>x-session-affinity</code>；可按 provider 选项关闭或强制。<span class="tag tag--ok">已核实</span></dd>
+        <dd>候选位置：前 2 条 system + 后 2 条非 system；适用 provider 下 <code>promptCacheKey</code> 或 <code>prompt_cache_key</code> 取 sessionID，<code>setCacheKey</code> 可关闭或强制。非 opencode provider 的请求头可带 <code>x-session-affinity</code>。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>用少量、位置固定的标记覆盖“最值得复用”的两端：系统提示的开头和历史尾部。代价是任何一块 system 内容变化都会让整条 system 字符串变化，前缀立即失效；它没有围绕缓存做压缩调度。</dd>
+        <dd>系统块虽合成一条字符串，缓存仍从实际首处差异受影响，不能推成“字符串任意处变化就整条从头失效”。压缩替换对话历史后，未变的系统与工具仍可能复用；模式提醒追加到最近用户消息的本轮请求版本中，也不一定处在全部历史的最后。</dd>
         <dt>来源</dt>
         <dd><a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/provider/transform.ts#L357-L404">provider/transform.ts#L357-L404</a>、<a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/provider/transform.ts#L1324-L1334">transform.ts#L1324-L1334</a></dd>
       </dl>
-      <p class="modal__note">服务端命中率与 TTL 不可观测，标【待核实】；表里的“已核实”只指客户端确实下发了这些标记。</p>
+      <p class="modal__note">具体部署的实际命中率与 TTL 标【待核实】；“已核实”限于客户端代码。支持的 provider 可以通过 usage 上报缓存用量，不能笼统说服务端命中情况完全不可观测。</p>
     </div>
   </div>
 </div>
@@ -682,14 +688,14 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">v2 把缓存做成策略层，默认 <code>"auto"</code>：给最后一个工具定义、首末两段 system、尾部 1 条消息打断点，总数上限 4。手工设在 part 上的 <code>CacheHint</code> 先占预算，auto 只填剩余槽位。</p>
+      <p class="modal__lead">v2 集中管理缓存策略：适用路由的默认 <code>"auto"</code> 给最后一个工具、首末 system 与尾部 1 条消息放标记；已有手工 <code>CacheHint</code> 先占额度，auto 再补到 4 个以内。<code>"none"</code> 关闭自动放置，仍保留手工标记；它不会强制所有 provider 停用服务端缓存。</p>
       <dl class="kv">
         <dt>关键参数</dt>
-        <dd><code>AUTO = { tools: true, system: true, messages: { tail: 1 } }</code>；<code>BREAKPOINT_CAP = 4</code>；按协议白名单 <code>RESPECTS_INLINE_HINTS</code> 决定是否下发；亲和 id 取 <code>parentID ?? fork 源 ?? 自身</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dd><code>AUTO = { tools: true, system: true, messages: { tail: 1 } }</code>；<code>BREAKPOINT_CAP = 4</code> 限制自动补位，不会裁掉手工超额标记。<code>cacheFormat</code> 声明可覆盖 <code>RESPECTS_INLINE_HINTS</code> 路由判断；亲和 id 取 <code>parentID ?? fork 源 ?? 自身</code>。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>不同 provider 对缓存标记的支持差异很大，策略层把“打不打、打哪里”集中管理，网关还能按模型 ID 特化。代价是多了一层抽象，调试时要同时看策略、白名单和网关规则。</dd>
+        <dd>策略层集中决定是否标记、标记哪里。OpenRouter / Vercel 网关默认按模型特化：Anthropic 用 auto，Qwen 用 system+tail，其他不自动放置；协议中不使用内联标记的路径跳过该步骤。代价是排查时要同时看手工标记、模型兼容声明、路由与网关规则。</dd>
         <dt>来源</dt>
-        <dd><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/ai/src/cache-policy.ts#L17-L47">cache-policy.ts#L17-L47</a>、<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/model-request.ts#L278-L295">model-request.ts#L278-L295</a></dd>
+        <dd><a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/ai/src/cache-policy.ts#L17-L47">cache-policy.ts#L17-L47</a>、<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/model-request.ts#L278-L295">model-request.ts#L278-L295</a>、<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/affinity.ts#L7-L8">affinity.ts#L7-L8</a>、<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/instruction-state.ts#L133-L154">instruction-state.ts#L133-L154</a>、<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/compaction.ts#L226-L228">compaction.ts#L226-L228</a></dd>
       </dl>
       <p class="modal__note">v2 是 beta（<code>v2.0.29</code>），字段与默认值可能在下个版本变化；不要把这里的 4 个断点外推到 v1。</p>
     </div>
@@ -707,16 +713,16 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">缓存分三层：前缀稳定（日期在会话内固定、记忆索引存在就跳过、技能/MCP 公告只发增量）、显式断点（3 处 ephemeral + 1 槽留给网关）、以及替换操作的代价管理（图片驱逐用滞回、压缩后重放暖前缀）。</p>
+      <p class="modal__lead">Grok Build 保持会话内日期稳定，跳过已有记忆上下文，按变化更新技能/MCP 公告。在 Anthropic Messages 路径，它最多标记系统末块、最新可标记消息、上一请求边界 3 处，并留 1 槽给网关。压缩和图片移除仍可能改变前缀，需要另行管理。</p>
       <dl class="kv">
         <dt>关键参数</dt>
-        <dd>断点 3 显式 + 1 槽网关（共 4 上限）；<code>Thinking</code> / <code>RedactedThinking</code> 不可打点，向前找；图片 50MB − 3MB 触发、回收到 25MB。<span class="tag tag--ok">已核实</span></dd>
+        <dd>Anthropic Messages 路径最多 3 个显式断点 + 1 槽网关额度；<code>Thinking</code> / <code>RedactedThinking</code> 不可打点，向前找。默认预算 50MiB 时，序列化对话体 47MiB 触发、目标 25MiB；后端可指定不同请求体上限。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>把第 4 个槽留给网关自动缓存，避免“打第 5 个被拒”；日期固定是为了让跨午夜的会话不因一个数字重写整段。代价是显式断点与网关策略可能互相挤占，需要留槽。</dd>
+        <dd>给网关留槽，避免它再加标记时超过 4 个额度；较早一轮的边界还帮助处理一次追加超过 20 个查找位置的情况。日期固定避免每日更新回写旧前缀，图片预算用两个阈值减少反复改写。摘要输入会尽量沿用原序列，实际命中还需 usage 验证。</dd>
         <dt>来源</dt>
         <dd><a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-sampling-types/src/conversation/messages.rs#L3-L70">messages.rs#L3-L70</a>、<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-chat-state/src/image_budget.rs#L19-L35">image_budget.rs#L19-L35</a></dd>
       </dl>
-      <p class="modal__note">针对 xAI 自家 Responses 后端的 <code>cache_control</code> 字段未在源码中找到，那部分缓存由服务端透明处理，属【推断】。</p>
+      <p class="modal__note">未找到 xAI 自家 Responses 路径显式下发 <code>cache_control</code> 的证据，不能仅凭字段缺失证明其服务端如何缓存。“服务端透明处理”仍属【推断】，具体机制【待核实】，见脚注 3。</p>
     </div>
   </div>
 </div>
@@ -732,16 +738,16 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">dsh 把系统提示词做成 surface 节点：内容不变就不重写；变化时按路由能力选“原地替换节点 0”或“在缓存历史之后追加一条非空 update”。后者专门为保住已缓存前缀而存在。</p>
+      <p class="modal__lead">dsh 将系统提示存为 surface 节点，即当前发给模型的消息序列中的一项。不变则不重写；变化时按路由能力原地替换节点 0，或在历史后追加非空更新（<code>in-history</code>）。后者能避免回头改写旧前缀，但不保证实际缓存命中。</p>
       <dl class="kv">
         <dt>关键参数</dt>
-        <dd>系统提示更新方式：原地替换 / <code>systemPromptUpdate: 'in-history'</code>；plan mode 不改工具目录；压缩、prune、图片 offload 都从首个被替换 token 起失效。<span class="tag tag--guess">推断</span></dd>
+        <dd>系统提示更新：原地替换 / <code>systemPromptUpdate: 'in-history'</code>；plan mode 保持工具目录不变。按文档设计，压缩、prune（裁剪工具结果）、图片 offload（移出内联图片）会改变所替换位置起的前缀状态；此前仍可能复用。<span class="tag tag--guess">推断</span></dd>
         <dt>设计意图</dt>
-        <dd>把“替换”与“追加”分开：能追加就不替换，能只换一个节点就不重写整段。代价是 surface 需要维护节点版本，恢复与回滚时要判断哪个版本对应当前投影。</dd>
+        <dd>将“追加更新”和“原地替换”作为明确策略，同时让摘要请求尽量复用系统提示、工具与被摘要消息。代价是恢复时要从会话记录重建当前有效消息序列（投影），并正确处理更新与压缩后的规则状态。只替换一个节点，仍可能影响它之后的缓存复用。</dd>
         <dt>来源</dt>
         <dd><a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/docs/subsystems/system-prompt.md#L43">system-prompt.md#L43</a>、<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/compaction/compaction-basic/README.md#L108">compaction-basic/README.md#L108</a></dd>
       </dl>
-      <p class="modal__note">这些结论来自同仓文档与包 README，不是逐行源码；plan mode 的缓存注释有源码支持，其余按【推断】表述。</p>
+      <p class="modal__note">系统提示更新与摘要对齐来自同仓文档和包 README，按【推断】表述；plan mode 保留工具目录另有源码注释支持。文档说明设计意图，运行时能复用多少仍需实际请求与 usage 验证。</p>
     </div>
   </div>
 </div>
