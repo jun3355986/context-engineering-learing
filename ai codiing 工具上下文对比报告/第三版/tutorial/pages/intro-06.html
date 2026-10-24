@@ -18,6 +18,52 @@
 body[data-chapter="intro-06"] .fig .svg-label:not(.svg-label--dark) {
   fill: var(--bg);
 }
+/* 情景练习专属样式：全部选择器以 #demo-ctx-choice 开头，避免污染全站。 */
+#demo-ctx-choice .ctx-scene {
+  margin: 0 0 12px;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+#demo-ctx-choice .ctx-scene b {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+#demo-ctx-choice .btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+#demo-ctx-choice .ctx-feedback {
+  min-height: 72px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+#demo-ctx-choice .ctx-feedback[data-state="ok"] {
+  border-style: solid;
+  border-color: var(--green-line);
+  background: var(--green-soft);
+}
+#demo-ctx-choice .ctx-feedback[data-state="bad"] {
+  border-style: solid;
+  border-color: var(--orange-line);
+  background: var(--orange-soft);
+}
+#demo-ctx-choice .ctx-feedback strong {
+  color: var(--text);
+}
+#demo-ctx-choice select {
+  width: 100%;
+  margin-bottom: 10px;
+  font: inherit;
+}
 </style>
 </head>
 <body data-chapter="intro-06">
@@ -63,106 +109,123 @@ body[data-chapter="intro-06"] .fig .svg-label:not(.svg-label--dark) {
     <header class="page-head">
       <p class="kicker"><b>第 6 章</b><span>·</span><span>第一部分 · 入门</span></p>
       <h1>用户侧怎么管理上下文：决策流程图</h1>
-      <p class="lede">你手上只有四个动作。选错的代价，不是慢一点，是把该留的东西丢了。</p>
+      <p class="lede">你管不了模型怎么想，只能管下一次请求里装什么。手上有五个动作，按四个问题的顺序选。</p>
       <ul class="meta">
-        <li>约 9 分钟</li>
-        <li>前置：第 3 章</li>
+        <li>约 15 分钟</li>
+        <li>1 个交互</li>
+        <li>前置：第 3–5 章</li>
         <li>L1 → L2</li>
       </ul>
       <div class="learn">
         <h2>读完你能做到</h2>
         <ol>
-          <li>说出清空、压缩、子代理、新会话四种动作各自的代价。</li>
-          <li>用三个问题判断该用哪一个，并说出理由。</li>
-          <li>判断什么情况下“不要压缩”，改用别的办法。</li>
+          <li>说出继续、回退、压缩、清空、派子代理各自改动了历史的哪一段，各要多花什么。</li>
+          <li>按“换事 → 走错 → 塞满 → 下一步”四个问题选出动作，并说明顺序为什么不能乱。</li>
+          <li>清空之前写出一张交接便条，让新会话能接着干。</li>
         </ol>
       </div>
     </header>
 
     <section>
-      <p class="sec-no">01 · 上一件事的日志，正在回答这一件事</p>
-      <h2>“这个报错我见过，是数据库连接的问题”</h2>
-      <p>你花了一上午排查登录接口的 500，最后定位到一个探活配置。下午两点，你在同一个会话里换成另一个问题：「首页的推荐位为什么不刷新？」</p>
-      <p>它回：「这个报错我见过，是数据库连接的问题，先看连接池。」——上一件事的日志还在上下文里，它顺着上午的模式往下走。</p>
+      <p class="sec-no">01 · 上午的结论，在回答下午的问题</p>
+      <h2>“和上午一样，先查探活配置”</h2>
+      <p>你花了一上午排查登录接口偶发的 500，最后定位到负载均衡的探活（health check）超时太短，改完收工。下午两点，你在同一个会话里问：「首页推荐位为什么不刷新？」</p>
+      <p>它回：「这和上午的问题很像，先检查探活超时配置。」</p>
 
       <div class="callout callout--info">
-        <p class="callout__title">场景 · 不是它固执，是上一件事还没下桌</p>
-        <p>历史不会因为你换了话题就自动退场。上午那份日志、那串报错、那几条“先查连接池”的结论，仍然占着位置，也仍然在影响它怎么理解你的新问题。除了「继续」，你能做的只有四个动作：<strong>清空、压缩、派子代理、另开新会话</strong>。</p>
+        <p class="callout__title">场景 · 它没糊涂，是上午那一摞还在桌上</p>
+        <p>第 3 章说过，每次请求都会把历史整摞重发。上午那几千行日志、那条“探活超时是根因”的结论，下午照样每轮都发给模型。在模型眼里，这些就是“当前任务的背景”。你换了话题，旧历史并不会自己退场。</p>
       </div>
 
-      <p class="lead-in">管上下文不是“多给点信息”，是决定哪些信息该下桌。</p>
-      <p>这张决策图是本章的全部产出。后面几节，只是把图上的每个节点拆开讲清楚。</p>
+      <p class="lead-in">你能管的只有一件事：下一次请求里装什么。</p>
+      <p>agent 给了你五个动作来改它：<strong>继续、回退、压缩、清空、派子代理</strong>。先看清每个动作改的是哪一段，再学什么时候用哪一个。</p>
     </section>
 
     <section>
-      <p class="sec-no">02 · 主图：三个问题，五个出口</p>
-      <h2>先问“还是同一件事吗”</h2>
-      <p>不要一上来就想“要不要压缩”。顺序应该是：先判断任务是否连续，再判断旧结论是否还有用，最后才判断上下文里有没有该清理的噪声。</p>
+      <p class="sec-no">02 · 五个动作</p>
+      <h2>每个动作改的是历史的哪一段</h2>
+      <p>把会话想成一条从左往右长的纸带，也就是第 3 章那摞纸横过来放。最左边是<strong>固定前缀</strong>：系统提示、工具定义、规则文件，每轮都一样；后面是一轮轮历史。为了看出差别，假设历史里既有有效的工作，也有最近几轮走错的路。</p>
 
       <figure class="fig">
-        <svg viewBox="0 0 640 392" role="img" aria-labelledby="fig-1-title fig-1-desc">
-          <title id="fig-1-title">用户侧上下文管理决策流程图</title>
-          <desc id="fig-1-desc">从“现在这件事和刚才还是同一件吗”开始。不是同一件时，再问旧结论还要不要用：不要就清空或开新会话，要就开新会话并贴几行结论。是同一件时，问上下文里有没有大量无关输出：没有就继续，有则再问这些输出还要不要复查，不用就压缩，要就派子代理。</desc>
+        <svg viewBox="0 0 640 404" role="img" aria-labelledby="fig-1-title fig-1-desc">
+          <title id="fig-1-title">五个动作对历史的改动</title>
+          <desc id="fig-1-desc">第一行是此刻的历史：固定前缀、有效工作、走错的几轮、新消息。继续：原样全部重发。回退：剪掉走错的几轮，换成改写后的提问。压缩：有效工作和走错的几轮一起换成一段摘要。清空：只剩固定前缀，加一张交接便条和新消息。派子代理：主会话原样保留，只多一段结论；大量搜索输出留在子代理自己的窗口里。</desc>
 
-          <rect class="svg-track" x="190" y="8" width="260" height="48" rx="8"/>
-          <text class="svg-label svg-label--dark" x="320" y="38" text-anchor="middle" style="font-size:17px">还是同一件事吗？</text>
+          <text class="svg-note" x="96" y="18" style="font-size:12px">固定前缀　→　历史（越往右越新）</text>
 
-          <path class="svg-rule" d="M320 56v12M130 68h390M130 68v18M510 68v18" fill="none"/>
-          <text class="svg-note" x="146" y="64">不是</text>
-          <text class="svg-note" x="486" y="64" text-anchor="end">是</text>
+          <text class="svg-label svg-label--dark" x="8" y="53" style="font-size:15px">此刻</text>
+          <rect class="svg-track" x="96" y="30" width="56" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="124" y="53" text-anchor="middle" style="font-size:14px">前缀</text>
+          <rect class="svg-seg--a" x="156" y="30" width="170" height="36" rx="6"/>
+          <text class="svg-label" x="241" y="53" text-anchor="middle" style="font-size:15px">有效工作</text>
+          <rect class="svg-seg--c" x="330" y="30" width="130" height="36" rx="6"/>
+          <text class="svg-label" x="395" y="53" text-anchor="middle" style="font-size:15px">走错的几轮</text>
+          <rect class="svg-seg--b" x="464" y="30" width="56" height="36" rx="6"/>
+          <text class="svg-label" x="492" y="53" text-anchor="middle" style="font-size:14px">新消息</text>
+          <text class="svg-note" x="532" y="53" style="font-size:13px">现在的样子</text>
 
-          <rect class="svg-track" x="40" y="90" width="180" height="48" rx="8"/>
-          <text class="svg-label svg-label--dark" x="130" y="120" text-anchor="middle" style="font-size:16px">旧结论还要用吗？</text>
+          <text class="svg-label svg-label--dark" x="8" y="105" style="font-size:15px">继续</text>
+          <rect class="svg-track" x="96" y="82" width="56" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="124" y="105" text-anchor="middle" style="font-size:14px">前缀</text>
+          <rect class="svg-seg--a" x="156" y="82" width="170" height="36" rx="6"/>
+          <text class="svg-label" x="241" y="105" text-anchor="middle" style="font-size:15px">有效工作</text>
+          <rect class="svg-seg--c" x="330" y="82" width="130" height="36" rx="6"/>
+          <text class="svg-label" x="395" y="105" text-anchor="middle" style="font-size:15px">走错的几轮</text>
+          <rect class="svg-seg--b" x="464" y="82" width="56" height="36" rx="6"/>
+          <text class="svg-label" x="492" y="105" text-anchor="middle" style="font-size:14px">新消息</text>
+          <text class="svg-note" x="532" y="105" style="font-size:13px">原样全部重发</text>
 
-          <rect class="svg-track" x="420" y="90" width="180" height="48" rx="8"/>
-          <text class="svg-label svg-label--dark" x="510" y="120" text-anchor="middle" style="font-size:16px">有大量无关输出吗？</text>
+          <text class="svg-label svg-label--dark" x="8" y="157" style="font-size:15px">回退</text>
+          <rect class="svg-track" x="96" y="134" width="56" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="124" y="157" text-anchor="middle" style="font-size:14px">前缀</text>
+          <rect class="svg-seg--a" x="156" y="134" width="170" height="36" rx="6"/>
+          <text class="svg-label" x="241" y="157" text-anchor="middle" style="font-size:15px">有效工作</text>
+          <rect class="svg-seg--free" x="330" y="134" width="130" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="395" y="157" text-anchor="middle" style="font-size:14px">已剪掉</text>
+          <rect class="svg-seg--b" x="464" y="134" width="56" height="36" rx="6"/>
+          <text class="svg-label" x="492" y="157" text-anchor="middle" style="font-size:14px">改写</text>
+          <text class="svg-note" x="532" y="157" style="font-size:13px">剪掉错路</text>
 
-          <path class="svg-rule" d="M130 138v12M79 150h138M79 150v18M217 150v18" fill="none"/>
-          <text class="svg-note" x="86" y="146">不要</text>
-          <text class="svg-note" x="222" y="146">要</text>
+          <text class="svg-label svg-label--dark" x="8" y="209" style="font-size:15px">压缩</text>
+          <rect class="svg-track" x="96" y="186" width="56" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="124" y="209" text-anchor="middle" style="font-size:14px">前缀</text>
+          <rect class="svg-seg--free" x="156" y="186" width="80" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="196" y="209" text-anchor="middle" style="font-size:14px">摘要</text>
+          <rect class="svg-seg--b" x="240" y="186" width="56" height="36" rx="6"/>
+          <text class="svg-label" x="268" y="209" text-anchor="middle" style="font-size:14px">新消息</text>
+          <text class="svg-note" x="532" y="209" style="font-size:13px">整段换成摘要</text>
 
-          <path class="svg-rule" d="M510 138v12M359 150h190M359 150v18M525 150v18" fill="none"/>
-          <text class="svg-note" x="366" y="146">没有</text>
-          <text class="svg-note" x="530" y="146">有</text>
+          <text class="svg-label svg-label--dark" x="8" y="261" style="font-size:15px">清空</text>
+          <rect class="svg-track" x="96" y="238" width="56" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="124" y="261" text-anchor="middle" style="font-size:14px">前缀</text>
+          <rect class="svg-seg--free" x="156" y="238" width="56" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="184" y="261" text-anchor="middle" style="font-size:14px">便条</text>
+          <rect class="svg-seg--b" x="216" y="238" width="56" height="36" rx="6"/>
+          <text class="svg-label" x="244" y="261" text-anchor="middle" style="font-size:14px">新消息</text>
+          <text class="svg-note" x="532" y="261" style="font-size:13px">从空白开始</text>
 
-          <rect class="svg-seg--b" x="20" y="172" width="118" height="46" rx="8"/>
-          <text class="svg-label" x="79" y="201" text-anchor="middle" style="font-size:16px">清空</text>
-          <rect class="svg-seg--a" x="158" y="172" width="118" height="46" rx="8"/>
-          <text class="svg-label" x="217" y="201" text-anchor="middle" style="font-size:16px">新会话</text>
-          <rect class="svg-seg--b" x="300" y="172" width="118" height="46" rx="8"/>
-          <text class="svg-label" x="359" y="201" text-anchor="middle" style="font-size:16px">继续</text>
+          <text class="svg-label svg-label--dark" x="8" y="313" style="font-size:15px">派子代理</text>
+          <rect class="svg-track" x="96" y="290" width="56" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="124" y="313" text-anchor="middle" style="font-size:14px">前缀</text>
+          <rect class="svg-seg--a" x="156" y="290" width="170" height="36" rx="6"/>
+          <text class="svg-label" x="241" y="313" text-anchor="middle" style="font-size:15px">有效工作</text>
+          <rect class="svg-seg--c" x="330" y="290" width="130" height="36" rx="6"/>
+          <text class="svg-label" x="395" y="313" text-anchor="middle" style="font-size:15px">走错的几轮</text>
+          <rect class="svg-seg--free" x="464" y="290" width="56" height="36" rx="6"/>
+          <text class="svg-label svg-label--dark" x="492" y="313" text-anchor="middle" style="font-size:14px">结论</text>
+          <text class="svg-note" x="532" y="313" style="font-size:13px">旧账一点没少</text>
 
-          <rect class="svg-track" x="430" y="172" width="190" height="46" rx="8"/>
-          <text class="svg-label svg-label--dark" x="525" y="200" text-anchor="middle" style="font-size:15px">这些输出还要查吗？</text>
+          <path class="svg-rule" d="M492 342v-14M487 333l5-5 5 5" fill="none"/>
+          <text class="svg-note" x="324" y="362" text-anchor="end" style="font-size:12px">子代理自己的窗口 →</text>
+          <rect class="svg-track" x="330" y="344" width="296" height="28" rx="6"/>
+          <text class="svg-label svg-label--dark" x="478" y="363" text-anchor="middle" style="font-size:13px">任务说明 + 200 个文件的搜索输出</text>
 
-          <path class="svg-rule" d="M525 218v12M439 230h172M439 230v18M569 230v18" fill="none"/>
-          <text class="svg-note" x="446" y="226">不用</text>
-          <text class="svg-note" x="574" y="226">要</text>
-
-          <rect class="svg-seg--c" x="380" y="252" width="118" height="46" rx="8"/>
-          <text class="svg-label" x="439" y="281" text-anchor="middle" style="font-size:15px">压缩</text>
-          <rect class="svg-seg--c" x="510" y="252" width="118" height="46" rx="8"/>
-          <text class="svg-label" x="569" y="281" text-anchor="middle" style="font-size:15px">子代理</text>
-
-          <text class="svg-note" x="79" y="238" text-anchor="middle">历史全丢</text>
-          <text class="svg-note" x="217" y="238" text-anchor="middle">只贴 3 行结论</text>
-          <text class="svg-note" x="359" y="238" text-anchor="middle">不折腾</text>
-          <text class="svg-note" x="439" y="314" text-anchor="middle">摘要换空间</text>
-          <text class="svg-note" x="569" y="314" text-anchor="middle">只回结论</text>
-
-          <text class="svg-note" x="20" y="352">绿＝便宜且彻底　蓝＝干净但要重贴　橙＝要花一次模型调用</text>
-          <text class="svg-note" x="20" y="378">图只给判断顺序，具体阈值和参数在正文与主线章节。</text>
+          <text class="svg-note" x="8" y="396" style="font-size:12px">灰＝固定前缀　蓝＝有效工作　橙＝走错的几轮　青＝新消息　虚线框＝几行字</text>
         </svg>
-        <figcaption>图 1　决策图：先判任务是否连续；不连续就看旧结论要不要带走，连续就看噪声多不多；噪声要复查就派子代理，不用复查就压缩。图注复述一遍结论：<strong>换任务先清空或另开，同任务先判断噪声，能只带结论就别带原文。</strong></figcaption>
+        <figcaption>图 1　五个动作改的是纸带的不同位置（示意，非真实比例）。回退只剪最近的错路；压缩把整段历史换成摘要，有效的、走错的一起压；清空只留固定前缀；子代理不动主会话里已有的东西，只是让下一步的大块输出留在别处。</figcaption>
       </figure>
 
-      <p>图上没有“什么时候该继续追问”这种分支，因为那不需要决策——同一件事、上下文干净，继续就是最优解。真正需要判断的，是另外四条岔路。</p>
-    </section>
-
-    <section>
-      <p class="sec-no">03 · 四个动作的代价</p>
-      <h2>没有哪一个全是好处</h2>
-      <p>把这四个动作摊开看，你会发现它们都在拿一样东西换另一样东西：<strong>用“丢信息”换“省空间”，或者用“多一次调用”换“少一点噪声”。</strong></p>
+      <p>落到具体命令上，两家的入口如下。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
@@ -170,87 +233,231 @@ body[data-chapter="intro-06"] .fig .svg-label:not(.svg-label--dark) {
           <thead>
             <tr>
               <th scope="col">动作</th>
-              <th scope="col">付出什么</th>
-              <th scope="col">什么时候用</th>
-              <th scope="col">什么时候别用</th>
+              <th scope="col">Claude Code / Codex 的入口</th>
+              <th scope="col">留下什么</th>
+              <th scope="col">拿掉什么</th>
+              <th scope="col">额外花费</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <th scope="row" class="cell-tool">清空<span>/clear</span></th>
-              <td>全部历史、当前任务状态。</td>
-              <td>任务确实换了，旧结论一个字都不想带。</td>
-              <td>还要引用上午的结论或文件路径。</td>
+              <th scope="row" class="cell-tool">继续<span>默认</span></th>
+              <td>直接发下一条消息。</td>
+              <td>全部。</td>
+              <td>无。</td>
+              <td>无，但历史每轮都整段重发。</td>
+            </tr>
+            <tr>
+              <th scope="row" class="cell-tool">回退<span>rewind</span></th>
+              <td>Claude Code：<code>/rewind</code>，或输入框为空时按两次 <kbd>Esc</kbd>。Codex：按两次 <kbd>Esc</kbd> 选中之前的某次提问，回车。</td>
+              <td>那次提问之前的全部。</td>
+              <td>那次提问及之后的所有轮次。</td>
+              <td>不调模型。</td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">压缩<span>/compact</span></th>
-              <td>一次模型调用；细节变成摘要；前缀缓存失效。</td>
-              <td>同一任务、上下文臃肿、还需要连贯地接着做。</td>
-              <td>任务已经换了，或你只需要结论。</td>
+              <td>两家都是 <code>/compact</code>，后面可以跟一句“保留什么”。</td>
+              <td>一段摘要，外加少量必需品（第 7 章）。</td>
+              <td>原文细节。</td>
+              <td>一次模型调用。</td>
             </tr>
             <tr>
-              <th scope="row" class="cell-tool">子代理<span>subagent</span></th>
-              <td>一次委派；你要写清目标；它看不到主会话。</td>
-              <td>要翻很多文件、跑很多命令，但只需要结论。</td>
-              <td>需要来回讨论、需要它记住你的偏好。</td>
+              <th scope="row" class="cell-tool">清空<span>/clear</span></th>
+              <td>Claude Code：<code>/clear</code>。Codex：<code>/new</code> 或 <code>/clear</code>。</td>
+              <td>只剩固定前缀。</td>
+              <td>全部历史。</td>
+              <td>不调模型；要带走的结论得你自己带。</td>
             </tr>
             <tr>
-              <th scope="row" class="cell-tool">新会话<span>new session</span></th>
-              <td>重新组装系统提示与规则；缓存从零开始。</td>
-              <td>任务干净，旧结论只需几行。</td>
-              <td>还要连续追问细节，重贴成本高于收益。</td>
+              <th scope="row" class="cell-tool">派子代理<span>subagent</span></th>
+              <td>在提示里要求“派一个子代理去做 X，只带回结论”。</td>
+              <td>主会话原样，外加一段结论。</td>
+              <td>什么都不拿掉，只是不让新的大块输出进来。</td>
+              <td>子代理自己的一整套 token。</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="table-caption">表注：四个动作在多数 agent 里都存在，但命令名与触发方式不同；这里按能力描述，不绑定某个具体实现。</p>
+      <p class="table-caption">表注：在这两家里，“清空”和“开新会话”是同一个动作。Claude Code 的 <code>/clear</code> 会重新生成会话 ID<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/commands/clear/conversation.ts#L195-L206">conversation.ts#L195-L206</a>）；Codex 给 <code>/clear</code> 的说明就是“清屏并开始新对话”<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/tui/src/slash_command.rs#L96-L106">slash_command.rs#L96-L106</a>）。回退入口见 <a href="https://code.claude.com/docs/en/checkpointing">Claude Code 文档</a><span class="tag tag--doc">官方文档</span> 与 <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/tui/src/app_backtrack.rs#L1-L14">Codex app_backtrack.rs#L1-L14</a><span class="tag tag--ok">已核实</span>。</p>
 
-      <p>表里没列“继续”，因为它是默认选项，成本为零。但零成本有前提：任务连续，而且上下文里没有正在误导它的东西。这两个前提只要破一个，继续下去就是在给后面挖坑。</p>
-
-      <h3>压缩：最容易被滥用的一招</h3>
-      <p>压缩看起来最“温和”：不丢会话，还能腾地方。但它有三个隐形成本。</p>
-      <p>第一，它要<strong>再发一次请求</strong>。Claude Code 的压缩请求会复用主对话的系统提示、工具和历史，再追加一段“不要调用工具、先写分析再写摘要”的指令<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L387-L460">compact.ts#L387-L460</a>）。历史越长，这次请求越贵。</p>
-      <p>第二，它<strong>会丢细节</strong>。摘要留下的是结论和待办，丢掉的是具体的行号、报错原文、你当时否掉的方案。Codex 的摘要模板要求写“进度与决策 / 约束与偏好 / 待办 / 关键数据”<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/prompts/templates/compact/prompt.md#L1-L9">prompt.md#L1-L9</a>），已经是尽量保住关键项，但仍然不是原文。</p>
-      <p>第三，它<strong>会让缓存失效</strong>。前缀变了，下一轮要从头算。省下的空间和丢掉的钱，得一起算。</p>
-      <p>所以正确姿势是：压缩前先说清“保留什么”。Claude Code 的 <code>/compact</code> 支持附加说明，Codex 的 <code>/compact</code> 也可以带一句补充<span class="tag tag--src">源码 v2.1.88</span> <span class="tag tag--ok">已核实</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/commands/compact/compact.ts#L40-L110">Claude Code compact.ts#L40-L110</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tasks/compact.rs#L25-L60">Codex compact.rs#L25-L60</a>）。“保留探活配置的结论和那个文件路径”，比默认摘要有用得多。</p>
+      <p>最后一列里，只有压缩和子代理会多调模型。另外三个只是改一下要发出去的内容，几乎没有成本。</p>
     </section>
 
     <section>
-      <p class="sec-no">04 · 另外两个动作的细节</p>
-      <h2>清空很便宜，新会话不便宜</h2>
-      <p><strong>清空</strong>最彻底：历史没了，缓存也重新开始。但它还会顺带清掉系统提示里那些“算过一次”的动态段。Claude Code 在 <code>/clear</code> 和 <code>/compact</code> 时会调用 <code>clearSystemPromptSections()</code>，把记忆化的段清空<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/systemPromptSections.ts#L16-L58">systemPromptSections.ts#L16-L58</a>）。所以清空后的第一轮，通常比你想的贵一点。</p>
-      <p><strong>新会话</strong>比清空更干净：连“当前会话的状态”都不带。代价是你要重新交代背景。判断标准很简单——<strong>旧结论能不能压缩成三行？</strong>能，就新会话加三行；不能，就压缩。</p>
-      <p><strong>子代理</strong>解决的是另一种问题：不是“历史太多”，而是“探索太脏”。让它去翻十个文件、跑五次测试，它自己的上下文会被塞满，但回到主会话的只有一段结论。Claude Code 的子代理默认从全新上下文开始，只有显式传 <code>forkContextMessages</code> 才继承父对话<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L248-L330">runAgent.ts#L248-L330</a>）；Codex 的子会话也有独立的历史和 token 计数<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agent/child_config.rs#L55-L160">child_config.rs#L55-L160</a>）。</p>
+      <p class="sec-no">03 · 主图：四个问题</p>
+      <h2>按顺序问，前一问答“是”就停</h2>
+      <p>知道了每个动作改哪一段，选动作就变成按顺序问四个问题。顺序本身就是这张图最重要的内容。</p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 480" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">用户侧上下文管理的四个问题</title>
+          <desc id="fig-2-desc">从上往下依次问四个问题，每个问题答“是”就向右执行对应动作，答“否”就往下问。第一问：接下来换了一件事吗？是则清空并带交接便条。第二问：最近几轮走错方向了吗？是则回退到出错前。第三问：历史里塞满了用不上的原文吗？是则压缩并写明保留什么。第四问：下一步会产出一大堆只需要结论的输出吗？是则派子代理。四问都答否，就继续。</desc>
+
+          <rect class="svg-track" x="20" y="16" width="390" height="52" rx="8"/>
+          <text class="svg-label svg-label--dark" x="215" y="48" text-anchor="middle" style="font-size:16px">① 接下来换了一件事吗？</text>
+          <path class="svg-rule" d="M410 42h36M440 36l6 6-6 6" fill="none"/>
+          <text class="svg-note" x="420" y="34" style="font-size:13px">是</text>
+          <rect class="svg-seg--b" x="450" y="16" width="170" height="52" rx="8"/>
+          <text class="svg-label" x="535" y="48" text-anchor="middle" style="font-size:16px">清空 + 交接便条</text>
+          <path class="svg-rule" d="M215 68v38M209 100l6 6 6-6" fill="none"/>
+          <text class="svg-note" x="226" y="92" style="font-size:13px">否</text>
+
+          <rect class="svg-track" x="20" y="108" width="390" height="52" rx="8"/>
+          <text class="svg-label svg-label--dark" x="215" y="140" text-anchor="middle" style="font-size:16px">② 最近几轮走错方向了吗？</text>
+          <path class="svg-rule" d="M410 134h36M440 128l6 6-6 6" fill="none"/>
+          <text class="svg-note" x="420" y="126" style="font-size:13px">是</text>
+          <rect class="svg-seg--a" x="450" y="108" width="170" height="52" rx="8"/>
+          <text class="svg-label" x="535" y="140" text-anchor="middle" style="font-size:16px">回退到出错前</text>
+          <path class="svg-rule" d="M215 160v38M209 192l6 6 6-6" fill="none"/>
+          <text class="svg-note" x="226" y="184" style="font-size:13px">否</text>
+
+          <rect class="svg-track" x="20" y="200" width="390" height="52" rx="8"/>
+          <text class="svg-label svg-label--dark" x="215" y="232" text-anchor="middle" style="font-size:16px">③ 历史里塞满了用不上的原文吗？</text>
+          <path class="svg-rule" d="M410 226h36M440 220l6 6-6 6" fill="none"/>
+          <text class="svg-note" x="420" y="218" style="font-size:13px">是</text>
+          <rect class="svg-seg--c" x="450" y="200" width="170" height="52" rx="8"/>
+          <text class="svg-label" x="535" y="232" text-anchor="middle" style="font-size:16px">压缩，写明保留什么</text>
+          <path class="svg-rule" d="M215 252v38M209 284l6 6 6-6" fill="none"/>
+          <text class="svg-note" x="226" y="276" style="font-size:13px">否</text>
+
+          <rect class="svg-track" x="20" y="292" width="390" height="52" rx="8"/>
+          <text class="svg-label svg-label--dark" x="215" y="324" text-anchor="middle" style="font-size:15px">④ 下一步会产出一大堆、只需要结论的输出吗？</text>
+          <path class="svg-rule" d="M410 318h36M440 312l6 6-6 6" fill="none"/>
+          <text class="svg-note" x="420" y="310" style="font-size:13px">是</text>
+          <rect class="svg-seg--c" x="450" y="292" width="170" height="52" rx="8"/>
+          <text class="svg-label" x="535" y="324" text-anchor="middle" style="font-size:16px">派子代理</text>
+          <path class="svg-rule" d="M215 344v38M209 376l6 6 6-6" fill="none"/>
+          <text class="svg-note" x="226" y="368" style="font-size:13px">否</text>
+
+          <rect class="svg-track" x="120" y="384" width="190" height="46" rx="8"/>
+          <text class="svg-label svg-label--dark" x="215" y="413" text-anchor="middle" style="font-size:16px">都不是：继续</text>
+
+          <text class="svg-note" x="20" y="454" style="font-size:12px">①②③ 清的是已经在历史里的东西；④ 防的是下一步才会进来的东西。</text>
+          <text class="svg-note" x="20" y="472" style="font-size:12px">橙色动作要额外调用模型；蓝、青两个只改要发出去的内容。</text>
+        </svg>
+        <figcaption>图 2　四个问题从上往下问，答“是”就停在那一行。<strong>先问换没换事，再问走没走错，然后问塞没塞满，最后问下一步脏不脏；都不是就继续。</strong>前三问清旧账，第四问防新账。</figcaption>
+      </figure>
+
+      <p><strong>① 先问换没换事。</strong>换了，后面三问都不用答，因为清空会把错路、冗余一起拿走。开头那个下午，答案就停在这一问。上午有要带走的结论，就写成交接便条（第 06 节）。</p>
+      <p><strong>② 再问走没走错。</strong>这一问必须排在压缩前面，原因见下一节。</p>
+      <p><strong>③ 然后问塞没塞满。</strong>信号见第 3 章：占用贴近软线、开始重复问你答过的事、开头的约束被忘。压缩时补一句保留什么，比如「保留探活超时的结论、upstream.conf 的路径和否掉的两个方案」，比默认摘要可靠。</p>
+      <p><strong>④ 最后问下一步。</strong>前三问处理的都是已经在历史里的东西，这一问是在动手之前预防：接下来要翻两百个文件、跑一长串测试，而你只要一句结论，就把这一步派出去。</p>
 
       <div class="hf hf--think">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
         <div class="hf__body">
-          <p>任务已经做完，你只想问一句“刚才那个配置项叫什么来着”。该清空、压缩，还是接着问？</p>
-          <p class="small muted">提示：你要的是一条信息，还是一段连续的工作？</p>
+          <p>它沿着错误方向连改了三轮代码。你可以在下一条消息里说「不对，别改超时，去看探活路径」，也可以回退到三轮之前重新提问。两种做法，下一次请求里装的东西差在哪？</p>
+          <p class="small muted">提示：对照图 1，纠正是在纸带末尾追加，回退是把一段剪掉。</p>
         </div>
       </div>
     </section>
 
     <section>
-      <p class="sec-no">05 · 规则文件也要维护</p>
-      <h2>它不占“历史”，但占每一轮的前缀</h2>
-      <p>规则文件容易被当成“写完就不管”的东西。实际上它每轮都在前缀里，而且是最贵的那一段——它一改，后面的缓存全废。</p>
-      <p>两条维护原则：<strong>只写模型猜不到的</strong>（目录约定、禁用命令、发布流程），<strong>不写代码里已有的</strong>（框架、语言、目录结构）。前者是信息，后者是噪音。第 4 章说过，噪音会稀释信号；第 5 章说过，改动会让缓存失效。两条加在一起，结论就是：<strong>规则文件要短，而且要少改。</strong></p>
-      <p>要改的时候，攒成一次改完，别一边干活一边微调。每改一次，下一轮就重算一次前缀。</p>
-      <p>两家在“多长算太长”上的态度也不一样：Codex 有硬上限，合并后的 AGENTS.md 默认 32 KiB，超出从尾部截断<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a>）；Claude Code 的 40,000 字符只用来触发“大文件告警”，并不硬截断<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/doctorContextWarnings.ts#L44-L66">doctorContextWarnings.ts#L44-L66</a>）。也就是说，Claude Code 那边“写太长的后果”全靠你自己承担。</p>
+      <p class="sec-no">04 · 两个常见的误用</p>
+      <h2>拿压缩收拾错路，等脏了才派子代理</h2>
+      <p>先回答动动脑。纠正之后，历史里同时躺着错误方向的三轮和你那句“不对”。两种说法同时在场，就是第 4 章说的干扰：模型可能这一轮听你的，下一轮又被前面三轮的“证据”拉回去。回退则把三轮直接剪掉，模型看到的是一个从没走错过的会话。</p>
+
+      <h3>误用一：用压缩处理走错的路</h3>
+      <p>压缩比纠正更糟。写摘要的是同一个模型，它在走错时是相信那条路的。Codex 的压缩模板要求写下“当前进度与关键决策”<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/prompts/templates/compact/prompt.md#L1-L9">prompt.md#L1-L9</a>），错误方向很可能被当成“已做的决策”写进摘要，而原文里那些让你起疑的报错反而被丢掉。错路进了摘要，就没有原文可以对照了。这就是第 ② 问排在第 ③ 问前面的原因。</p>
+      <p>回退时注意一点：<strong>回退对话不等于还原代码。</strong>Claude Code 的回退菜单可以选“只回对话”或“对话和代码一起回”，但只还原它用编辑工具改过的文件<span class="tag tag--doc">官方文档</span>；Codex 的说明只讲了回到那次提问之前、把提问放回输入框重新编辑<span class="tag tag--ok">已核实</span>。错路改过的文件，最稳的兜底是 git。</p>
+
+      <h3>误用二：事后才派子代理</h3>
+      <p>子代理的价值在于大块输出不进主历史。主会话已经读完两百个文件，再派子代理也拿不走那些输出，图 1 最后一行的“旧账一点没少”说的就是这个。所以第 ④ 问问的是下一步，要在动手之前问。</p>
+      <p>子代理还有两个代价要提前想到。第一，它从空白开始，看不到主会话：Claude Code 的子代理默认不继承父对话<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L248-L330">runAgent.ts#L248-L330</a>），Codex 的子会话也有独立的历史<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agent/child_config.rs#L55-L160">child_config.rs#L55-L160</a>），所以任务说明要写全。第二，它只带回结论，结论错了你看不到证据，所以让它附上“文件:行号”，方便你抽查。</p>
+
+      <div class="demo" id="demo-ctx-choice">
+        <div class="demo__head">
+          <span class="demo__tag">交互演示</span>
+          <h3 class="demo__title">情景练习：这时候该用哪个动作</h3>
+        </div>
+        <div class="demo__body">
+          <div class="demo__controls">
+            <label class="field" for="demo-ctx-choice-select">
+              <span class="field__label"><span>情景</span></span>
+              <select id="demo-ctx-choice-select">
+                <option value="0">情景 1 · 下午换了问题</option>
+                <option value="1">情景 2 · 连改三轮都不对</option>
+                <option value="2">情景 3 · 日志读到 85%</option>
+                <option value="3">情景 4 · 要翻 200 个文件</option>
+                <option value="4">情景 5 · 只想问一句</option>
+              </select>
+            </label>
+            <div class="btn-row">
+              <button class="btn btn--small" type="button" id="demo-ctx-choice-next">下一个情景</button>
+              <button class="btn btn--ghost btn--small" type="button" id="demo-ctx-choice-reset">重置</button>
+            </div>
+            <p class="demo__hint">先自己选，再看解释。选错的解释同样值得看，它说明那个动作为什么在这里不合适。</p>
+            <p class="demo__readout" id="demo-ctx-choice-score">第一次就选对：0 / 5</p>
+          </div>
+          <div class="demo__canvas">
+            <p class="ctx-scene" id="demo-ctx-choice-scene"><b>情景 1</b>上午修完了登录接口的 500。下午你在同一个会话里问：首页推荐位为什么不刷新？</p>
+            <div class="btn-row" role="group" aria-label="选择一个动作">
+              <button class="btn btn--small" type="button" data-act="continue" aria-pressed="false">继续</button>
+              <button class="btn btn--small" type="button" data-act="rewind" aria-pressed="false">回退</button>
+              <button class="btn btn--small" type="button" data-act="compact" aria-pressed="false">压缩</button>
+              <button class="btn btn--small" type="button" data-act="clear" aria-pressed="false">清空</button>
+              <button class="btn btn--small" type="button" data-act="sub" aria-pressed="false">派子代理</button>
+            </div>
+            <p class="ctx-feedback" id="demo-ctx-choice-feedback" aria-live="polite">选一个动作，这里会告诉你它会对下一次请求做什么。</p>
+          </div>
+        </div>
+        <p class="demo__note">每个情景按图 2 的顺序只有一个最优动作。真实工作里边界会更模糊，这时就回到四个问题，一问一问地答。</p>
+      </div>
     </section>
 
     <section>
-      <p class="sec-no">06 · 收口</p>
-      <h2>四个动作，一条判断线</h2>
-      <p>把这一章压成一句话：<strong>任务换了就清空或另开，任务没换就判断噪声；噪声只要结论就派子代理，还要接着做就压缩。</strong></p>
-      <p>这也是图 1 想让你记住的东西。图可以忘，这条线别忘。</p>
+      <p class="sec-no">05 · 钱的账</p>
+      <h2>清空和压缩，通常是省钱的</h2>
+      <p>上面算的都是质量账。还有一笔钱的账，常被算反：既然第 5 章说清空、压缩都会让缓存失效，那它们应该很贵？</p>
+      <p>不对。缓存给重复发送的前缀打折，但打折不等于免费。持续花钱的，是你每一轮都要重发的那段历史。用一组示意数字算一下：固定前缀 2 万 token，历史 10 万 token，之后每轮新增约 3 千，再做 10 轮。</p>
+      <ul>
+        <li><strong>继续：</strong>每轮至少重发 12 万，10 轮累计约 137 万 token。大部分走缓存读，有折扣，但窗口一直被占着 12 万以上。</li>
+        <li><strong>清空：</strong>每轮从 2 万起步，10 轮累计约 37 万。固定前缀可能要重写一次缓存（比如 Codex 换会话就换缓存 key，见第 5 章），那也只是一次 2 万。</li>
+        <li><strong>压缩：</strong>多一次请求，把 12 万历史读一遍再写摘要；之后每轮是前缀加一段摘要。连同压缩请求本身，10 轮累计约 54 万。</li>
+      </ul>
+      <p>压缩请求那 12 万也不必按原价算。Claude Code 特意让压缩请求沿用主对话的系统提示、工具和历史，目的就是让它走缓存读。源码注释记录，关掉这一点后压缩请求 98% 缓存未命中<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L431-L438">compact.ts#L431-L438</a>）。</p>
+      <p>所以“压缩让缓存失效”要读准：失效的是被摘要换掉的那段历史，而那段已经不在请求里了，不会再花钱。固定前缀照样命中。选动作时先算质量账；钱的账几乎总是站在“少带点”这一边。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">06 · 跨过清空</p>
+      <h2>带走一张交接便条，而不是整段历史</h2>
+      <p>清空最便宜，可它把有用的结论也一起拿走了。要带走的东西，得写成一张交接便条。</p>
+      <p>压缩其实也是在写便条。Codex 压缩模板的第一句，就是要模型为接手任务的另一个 LLM 写一份交接摘要<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/prompts/templates/compact/prompt.md#L1-L9">prompt.md#L1-L9</a>）。两者的区别在于谁写、谁审：压缩是模型替你写，写完直接生效；清空加便条是让它写、你审一遍，再带进新会话。历史里有错路，或者你想确认带过去的到底是什么时，后者更稳。</p>
+
+      <div class="codeblock" data-lang="text">
+        <div class="codeblock__bar">
+          <span class="codeblock__lang">交接便条 · 示例</span>
+          <button class="codeblock__copy" type="button" data-copy>复制</button>
+        </div>
+        <pre class="code"><code><span class="code__line"># 交接便条：登录接口偶发 500</span>
+<span class="code__line">目标：登录接口不再偶发 500</span>
+<span class="code__line">已确认：探活超时 2s 太短，改为 5s 后不再复现（nginx/upstream.conf:42）</span>
+<span class="code__line">否掉的方案：调大数据库连接池（无效）；关闭 keepalive（副作用太大）</span>
+<span class="code__line">相关文件：nginx/upstream.conf、src/health/HealthController.java</span>
+<span class="code__line">下一步：为探活超时补一个回归测试</span>
+</code></pre>
+      </div>
+
+      <p>用法分三步：清空前让它「把上面的排查按这个格式写成交接便条，存进 NOTES.md」；你审一遍，删掉不确定的；清空后第一句说「先读 NOTES.md」。<strong>“否掉的方案”最容易漏</strong>，漏了，新会话会把它们再试一遍。</p>
+      <p>便条和规则文件的分工也很简单：每个任务都成立的（构建命令、禁用操作、目录约定）写进规则文件；只对这件事成立的写便条。规则文件每轮都在前缀里，所以要短。Codex 合并后的 AGENTS.md 超过 32 KiB 会从尾部截掉<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/agents_md.rs#L60-L160">agents_md.rs#L60-L160</a>）；Claude Code 超过 40,000 字符只告警、不截断<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/doctorContextWarnings.ts#L44-L66">doctorContextWarnings.ts#L44-L66</a>），官方文档建议单个 CLAUDE.md 控制在 200 行以内<span class="tag tag--doc">官方文档</span>（<a href="https://code.claude.com/docs/en/memory">memory</a>）。</p>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">补充 · 会话中途改规则文件，未必马上生效</p>
+        <p>Claude Code 第一次读到 CLAUDE.md 后会把结果缓存起来（<code>getUserContext</code> 做了记忆化），到 <code>/clear</code> 时才清掉重读<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/context.ts#L155-L172">context.ts#L155-L172</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/commands/clear/caches.ts#L45-L56">caches.ts#L45-L56</a>）；官方文档说 <code>/compact</code> 之后也会从磁盘重读项目根的 CLAUDE.md<span class="tag tag--doc">官方文档</span>。由此推断：会话中途改了 CLAUDE.md，当前会话通常看不到，要等清空或压缩之后<span class="tag tag--guess">推断</span>。实用的结论是：规则在开会话前改好；中途改了，就清空一次让它生效。</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="sec-no">07 · 收口</p>
+      <h2>一句话：换事清空，走错回退，塞满压缩，脏活外包</h2>
+      <p>这四个短语对应图 2 的四个问题。都不是的时候，就放心继续，继续本身没有任何问题。</p>
 
       <div class="hf hf--qa">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
         <div class="hf__body">
-          <p class="hf__q">问：压缩这么麻烦，为什么不让工具一直自动压缩，我什么都不管？</p>
-          <p class="hf__a">答：自动压缩解决的是“装不下”，不解决“该不该继续”。它按阈值触发，不会判断你是不是已经换了任务；而且压缩会丢细节、会让缓存失效。Claude Code 还给自动压缩加了熔断：连续 3 次失败就不再尝试，避免每轮都打一次注定失败的请求<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L241-L351">autoCompact.ts#L241-L351</a>）。自动是兜底，不是策略。</p>
+          <p class="hf__q">问：agent 会自动压缩，我是不是什么都不用管？</p>
+          <p class="hf__a">答：自动压缩只看容量，也就是第 3 章那条软线，回答的是“装不装得下”。它不知道你换了任务，也不知道最近几轮走错了，会把上一件事和错路一起写进摘要。四个问题里，它只替你答了第 ③ 个，而且是等到快满了才答。</p>
         </div>
       </div>
 
@@ -258,11 +465,12 @@ body[data-chapter="intro-06"] .fig .svg-label:not(.svg-label--dark) {
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
         <div class="hf__body">
           <ul>
-            <li>四个动作：清空、压缩、子代理、新会话；「继续」是默认选项，不是动作。</li>
-            <li>先判任务是否连续，再判旧结论要不要带走，最后判噪声多不多。</li>
-            <li>压缩要再发一次请求、会丢细节、会让缓存失效；能只带结论就别压缩。</li>
-            <li>清空和新会话都会让缓存从头开始；新会话更干净，但要重贴背景。</li>
-            <li>规则文件短、少改、攒着一次改完——它每轮都在前缀里。</li>
+            <li>你能管的只有下一次请求里装什么；继续、回退、压缩、清空、派子代理，各改历史的一段。</li>
+            <li>按顺序问：换事了吗 → 走错了吗 → 塞满了吗 → 下一步脏吗；都不是就继续。</li>
+            <li>走错的路用回退剪掉。纠正会让对错并存，压缩会把错误写成“决策”。</li>
+            <li>子代理只防新账、不清旧账，要在大块输出出现之前派。</li>
+            <li>清空和压缩通常省钱：持续花钱的是每轮重发的历史，不是一次性的缓存重写。</li>
+            <li>清空前写交接便条，别漏“否掉的方案”；长期规则进规则文件，并在开会话前改好。</li>
           </ul>
         </div>
       </div>
@@ -275,5 +483,6 @@ body[data-chapter="intro-06"] .fig .svg-label:not(.svg-label--dark) {
 
 <script src="../assets/js/toc.js"></script>
 <script src="../assets/js/app.js"></script>
+<script src="../assets/js/demos/ctx-choice.js"></script>
 </body>
 </html>
