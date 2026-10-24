@@ -316,65 +316,108 @@ body[data-chapter="intro-05"] .fig .svg-label:not(.svg-label--dark) {
     <header class="page-head">
       <p class="kicker"><b>第 5 章</b><span>·</span><span>第一部分 · 入门</span></p>
       <h1>Prompt cache 与成本</h1>
-      <p class="lede">同样的材料，同样的模型，账单能差十倍。差别只在你改了哪一块、改在第几位。</p>
+      <p class="lede">第 3 章说过，每轮都会重发此前的材料；但“重新发送”不等于“全部重新计算”。这一章讲清 prompt cache 如何复用相同前缀，并用一笔手算和一次交互看清它能省什么、不能省什么。</p>
       <ul class="meta">
-        <li>约 11 分钟</li>
+        <li>约 14 分钟</li>
         <li>1 个交互</li>
-        <li>前置：第 2 章</li>
+        <li>前置：第 3 章</li>
       </ul>
       <div class="learn">
         <h2>读完你能做到</h2>
         <ol>
-          <li>说出缓存命中的唯一条件，以及为什么“意思一样”不算。</li>
-          <li>判断一次改动会让缓存从哪一块开始失效。</li>
-          <li>用“稳定在前、易变在后”改写自己的提示结构。</li>
+          <li>解释缓存复用的是计算结果，不是模型记住了一段对话。</li>
+          <li>找出两次请求的第一处不同，判断哪段前缀仍有机会复用。</li>
+          <li>用缓存读与普通输入算一笔简化成本账，并知道缓存写入费要另算。</li>
+          <li>说出缓存为什么不能替代第 4 章的上下文清理。</li>
         </ol>
       </div>
     </header>
 
     <section>
-      <p class="sec-no">01 · 同一个项目，账单差五倍</p>
-      <h2>同事只是把规矩放在了前面</h2>
-      <p>你和同事用同一个模型、同一个仓库，干的是同一类活。月底看账单，他的花费只有你的五分之一。</p>
-      <p>你翻了聊天记录，发现他每次开新会话，第一句话都是「按 AGENTS.md 的规矩来」，然后贴同一段需求。你也贴了，只是你习惯先贴一段错误日志，再说需求，最后才提规矩。</p>
-      <p>材料一样多，字数也差不多。差的只是顺序。</p>
-
+      <p class="sec-no">01 · 明明重发了，为什么没全部重算</p>
+      <h2>第二次请求里的 30,000 个缓存 token</h2>
+      <p>你在同一个会话里修 bug。第一轮请求有系统提示、工具定义、规则和你的问题；第二轮只是在末尾追加一句“继续”，前面的材料原样保留。按照第 3 章的说法，第二轮仍要把这些历史一起发给模型。</p>
+      <p>假设第二轮共有 40,000 个输入 token，响应里的<strong>用量统计（usage）</strong>却显示：<code>cached_tokens = 30,000</code>。这说明其中 30,000 个 token 没有按普通输入从头计算，而是复用了此前已经算好的内容。剩下的 10,000 个，才需要按未命中部分处理。</p>
       <div class="callout callout--info">
-        <p class="callout__title">场景 · 缓存只认从头开始的那一段</p>
-        <p>模型读一段材料要花算力。如果两次请求的<strong>开头完全一样</strong>，这份算力可以复用，不必重算。这个复用叫<strong>前缀缓存（prefix caching）</strong>，也叫 prompt caching。它有个硬条件：从第一个 token 起，逐字节一致。你换了顺序、改了一个词、多了一个空格，从那一处往后都不再算“一样”。</p>
+        <p class="callout__title">场景 · 缓存复用的是“已经算过的前缀”</p>
+        <p>模型处理输入需要算力。如果后一次请求能找到与前一次相同的开头，服务端就可能复用这段开头对应的中间计算结果。这种机制叫<strong>提示词缓存（prompt caching）</strong>，也常称<strong>前缀缓存（prefix caching）</strong>。它不是把上一轮答案背下来，更不是让模型拥有了跨请求记忆。</p>
       </div>
 
-      <p class="lead-in">缓存不是记住你说过什么，是记住“这段材料算过一遍”。</p>
-      <p>前半句区别很重要：它不理解语义，只比对字节。所以“意思一样但写法不同”在它眼里就是两段新材料。</p>
+      <p class="lead-in">重发的是文本，复用的是计算；这两件事要分开。</p>
+      <p>上面的数字只是为了讲清账单口径的教学示例，不是某个 agent 的实测结果。真正判断时，要看响应里的 usage，而不是凭“内容看起来差不多”猜命中。</p>
     </section>
 
     <section>
-      <p class="sec-no">02 · 缓存到底存了什么</p>
-      <h2>存的是中间结果，不是记忆</h2>
-      <p>模型处理输入时，每一层都会为前面的 token 算出一批中间状态。这些状态只依赖“它之前看到的内容”。于是工程上有了一个很自然的优化：把一段稳定前缀算出的状态存起来，下次遇到同样的前缀直接接着往下算。</p>
-      <p>几个词要分清：</p>
+      <p class="sec-no">02 · 它到底存了什么</p>
+      <h2>存的是计算的中间状态，不是聊天记忆</h2>
+      <p>以常见的生成式大模型为例，处理输入时会计算一批中间状态，让后面的 token 能利用前面的信息。如果下一次请求的开头相同，这些已算好的状态就有机会继续使用，不必从第一个 token 再算一遍。OpenAI 的文档把它称为 KV 状态；你现阶段不必理解张量细节，只要记住“存的是算到一半的结果”。<a href="https://platform.openai.com/docs/guides/prompt-caching">OpenAI · Prompt caching</a></p>
+      <p>围绕这份中间状态，有四个经常一起出现的词。用开头那次请求来对照，它们就不难分清：</p>
       <ul>
-        <li><strong>缓存写入（cache write）</strong>：第一次见这段前缀，算完顺手存下来。通常比普通输入贵一点。</li>
-        <li><strong>缓存读取（cache read）</strong>：前缀对上了，直接取用。通常只有普通输入价的一小部分。<span class="tag tag--todo">待核实</span><sup class="fn-ref"><a href="#fn-intro-05-1" id="fnref-intro-05-1">1</a></sup></li>
-        <li><strong>缓存命中（cache hit）</strong>：这次请求里有多少 token 走了读取。</li>
-        <li><strong>TTL</strong>：缓存能活多久。过了时间，得重新写。</li>
+        <li><strong>缓存写入（cache write）</strong>：把一段可复用前缀的中间状态存下来。第一次建立缓存，或缓存更新时可能发生。</li>
+        <li><strong>缓存命中（cache hit）</strong>：后续请求找到了可复用的匹配前缀。它描述“有没有复用成功”这件事。</li>
+        <li><strong>缓存读取（cache read）</strong>：在用量统计里，通常指本次按缓存读取处理的 token 数量。例子里就是 <code>cached_tokens = 30,000</code>；不同 API 的字段名可能不同。</li>
+        <li><strong>存活时间（time to live，TTL）</strong>：缓存条目可以保留多久。超过期限，前缀即使没变，也可能需要重新计算和写入。</li>
       </ul>
-      <p>所以缓存省钱的前提是“重复”：同一段前缀在短时间内被反复使用。这也是为什么长会话、连续修 bug 这类场景收益最大——系统提示、工具定义、规则文件每轮都一模一样。</p>
-      <p>反过来，如果你每轮都改规则文件、换工具、在开头加时间戳，那缓存基本等于没有。</p>
+      <p>缓存读取通常有价格折扣；缓存写入是否收费、读写倍率和 TTL 则随供应商与模型而变，不能把某一家某一档价格当成通用规律。<a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">Anthropic · Prompt caching</a> 与 <a href="https://platform.openai.com/docs/guides/prompt-caching">OpenAI · Prompt caching</a> 都把这几类用量分开说明。</p>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">相同前缀，也不保证一定命中</p>
+        <p>前缀一致是必要条件，不是充分条件。缓存可能已过 TTL；模型或相关请求设置可能变了；匹配前缀可能未达到最小缓存长度；请求也可能没有被分配到保存该缓存的服务节点。是否启用缓存也取决于服务端实现。入门阶段先抓住“从开头匹配”，实际排查时再看供应商文档和 usage。</p>
+      </div>
     </section>
 
     <section>
-      <p class="sec-no">03 · 失效点在哪</p>
-      <h2>改动的位置，决定作废的长度</h2>
-      <p>把一次请求想成一排方块，从左到右按拼接顺序排：系统提示、工具定义、规则文件、环境、历史、你这句话。缓存从最左边开始比对，遇到第一处不同就停。</p>
-      <p>那一处，就是<strong>失效点（breakpoint）</strong>。它左边的全部命中，它自己要被重写，它右边的全部作废——哪怕右边一个字都没改。</p>
+      <p class="sec-no">03 · 别和窗口容量混为一谈</p>
+      <h2>命中以后，窗口占用会变小吗</h2>
+      <p>不会。缓存命中只改变“这段输入要不要重算、如何计费”，<strong>不会把这段内容从请求里拿掉</strong>。那 30,000 个缓存 token 仍然属于本次输入，仍然占上下文窗口，也仍然可能带来第 4 章讲的质量问题。</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">你要管哪笔账</th>
+              <th scope="col">窗口账</th>
+              <th scope="col">缓存账</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">关心的问题</th>
+              <td>材料占多少空间，能不能装下？</td>
+              <td>相同前缀有多少可以不用重算？</td>
+            </tr>
+            <tr>
+              <th scope="row">主要收益</th>
+              <td>避免超窗，减少无关材料和干扰。</td>
+              <td>降低重复计算，通常还能降低成本和开始回答前的等待时间。</td>
+            </tr>
+            <tr>
+              <th scope="row">主要办法</th>
+              <td>删减、截断、压缩、隔离。</td>
+              <td>稳定前缀、尾部追加、按服务文档配置缓存。</td>
+            </tr>
+            <tr>
+              <th scope="row">缓存命中后的影响</th>
+              <td>占用不变。</td>
+              <td>复用增加，普通输入计算减少。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <p class="sec-no">04 · 为什么只改一处，后面也不能接着用</p>
+      <h2>先找第一处不同，再看它影响多长</h2>
+      <p><strong>前缀（prefix）</strong>就是从请求开头开始的一段连续内容。把两次请求想成两排方块，都从第一块开始比较：前几块相同，就仍有复用机会；遇到第一处不同，比较停下。本章把这个位置叫作<strong>失效点</strong>。</p>
+      <p>为什么后面的方块自己没改，也不能直接复用旧状态？因为它们的中间状态是“在前文基础上”算出来的。第 5 块虽然文字没变，但第 4 块已经不同，第 5 块所依赖的前文就变了，旧计算结果不能直接当成同一件事继续用。</p>
+      <p>这里比较的不是“意思差不多”。改写一句话、调换工具顺序，甚至一个足以改变 token 切分的标点或空格，都可能让匹配提前停下。实际匹配以服务商渲染后的请求与 token 序列为准。</p>
 
       <figure class="fig">
         <svg viewBox="0 0 640 220" role="img" aria-labelledby="fig-1-title fig-1-desc">
-          <title id="fig-1-title">前缀缓存命中与失效点的位置</title>
-          <desc id="fig-1-desc">一排方块，前三个是绿色表示命中，第四个橙色表示被改写，后面三个灰色表示因前缀断裂而失效。一条虚线标在第四个方块开头，写着“失效点”。</desc>
-          <text class="svg-note" x="0" y="14">第 1 块</text>
-          <text class="svg-note" x="612" y="14" text-anchor="end">第 7 块</text>
+          <title id="fig-1-title">两次请求的第一处不同与缓存失效范围</title>
+          <desc id="fig-1-desc">假设缓存可用，前三个相同方块是绿色，表示仍有机会复用；第四个环境块发生改动，标为橙色；后面三个文字未改的方块标灰，表示由于前文改变，旧状态也不能直接复用。虚线标出第一处不同。</desc>
+          <text class="svg-note" x="0" y="14">从请求开头比较</text>
+          <text class="svg-note" x="612" y="14" text-anchor="end">到第一次不同为止</text>
 
           <rect class="svg-seg--b" x="0" y="28" width="82" height="44" rx="6"/>
           <rect class="svg-seg--b" x="86" y="28" width="82" height="44" rx="6"/>
@@ -393,37 +436,64 @@ body[data-chapter="intro-05"] .fig .svg-label:not(.svg-label--dark) {
           <text class="svg-label svg-label--dark" x="557" y="56" text-anchor="middle">这句话</text>
 
           <line x1="258" y1="18" x2="258" y2="92" stroke="var(--text)" stroke-width="2" stroke-dasharray="4 3"/>
-          <text class="svg-note" x="264" y="110">失效点：从这往后全部重算</text>
+          <text class="svg-note" x="264" y="110">失效点：第一处不同</text>
 
-          <text class="svg-note" x="0" y="140">绿＝命中　橙＝重写　灰＝未命中</text>
-          <text class="svg-note" x="0" y="166">关键：灰块自己没改，只因为前面变了，就得重算。</text>
-          <text class="svg-note" x="0" y="192">方块宽度为示意，不代表真实占比。</text>
+          <text class="svg-note" x="0" y="140">绿＝相同前缀　橙＝发生改动　灰＝旧状态不能直接复用</text>
+          <text class="svg-note" x="0" y="166">关键：灰块自己没改，但它依赖的前文已经变了。</text>
+          <text class="svg-note" x="0" y="192">按块画出是为了读图；真实匹配与计费以 token 和 usage 为准。</text>
         </svg>
-        <figcaption>图 1　失效点左边全部命中，右边全部重算。块的大小是示意；真正决定账单的是“失效点左边有多少 token”。</figcaption>
+        <figcaption>图 1　在缓存仍可用的理想对照里，失效点之前的相同前缀有机会命中；从失效点开始，旧状态不能直接沿用。影响范围取决于改动位置，而不是改动字数。</figcaption>
       </figure>
-    </section>
 
-    <section>
-      <p class="sec-no">04 · 谁在悄悄破坏前缀</p>
-      <h2>四个常见动作，四个不同的代价</h2>
-      <p><strong>一、把易变内容塞到开头。</strong>最典型的是把当前时间、当前分支、当天的 TODO 写进系统提示第一行。这类信息每轮都变，等于每轮把整段前缀作废。所以 agent 会刻意把它们挪到尾部：Codex 把当前时间做成独立的 <code>&lt;current_time_reminder&gt;</code> 片段，按事件插进 <code>input</code>，而不是改说明书<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/current_time_reminder.rs#L9-L45">current_time_reminder.rs#L9-L45</a>）。</p>
-      <p><strong>二、每轮重排工具。</strong>工具定义的顺序变了，字节就变了。Claude Code 的做法是给系统提示切块、在消息层只放<strong>一个</strong>缓存标记，位置固定在最后一条消息；源码注释解释了为什么不放多个：多标记会让倒数第二个位置也被保护，白白多留一轮<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/api/claude.ts#L3063-L3106">claude.ts#L3063-L3106</a>）。系统提示层则最多切成四块，按“计费头 / CLI 前缀 / 静态 / 动态”分开<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L296-L360">api.ts#L296-L360</a>）。</p>
-      <p><strong>三、把动态列表写回工具描述。</strong>这条有实测代价：Claude Code 的注释写明，把 agent 列表放回工具描述，曾带来约 10.2% 的全局 <code>cache_creation</code>；后来改成只发增量 delta<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1490-L1556">attachments.ts#L1490-L1556</a>）。</p>
-      <p><strong>四、压缩。</strong>压缩会把历史换成一摘要，前缀整体变样，缓存自然失效。这不是 bug，是取舍：用一次失效换回一大块空间。第 6 章会讲什么时候这笔买卖划算。</p>
-
-      <div class="hf hf--think">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
-        <div class="hf__body">
-          <p>系统提示第一行写着「当前时间：2026-10-19 09:05」。你在 09:06 发出第二轮请求。缓存命中多少？</p>
-          <p class="small muted">提示：比对是从第一个字节开始的。</p>
-        </div>
+      <div class="callout callout--quiet">
+        <p class="callout__title">“失效点”不等于 API 的缓存断点</p>
+        <p>有些 API 还提供 <strong>cache breakpoint（缓存断点）</strong>，用来指定“把前缀缓存到哪里”。它是缓存写入与查找的边界；本节的失效点则是两次请求比较出来的第一处不同。一个回答“存到哪”，另一个回答“从哪开始不能沿用旧结果”，不要混成一个术语。</p>
       </div>
     </section>
 
     <section>
-      <p class="sec-no">05 · 上手：改一块，看它从哪里失效</p>
-      <h2>七个方块，一条断点</h2>
-      <p>下面这条请求由七个块拼成。点任意一块选中它，改文字或改长度，看绿色从哪里断掉、钱从哪里开始多花。</p>
+      <p class="sec-no">05 · 哪些改动会让失效点提前</p>
+      <h2>越靠前的改动，影响的后缀越长</h2>
+      <p>理解失效点后，很多“缓存突然不生效”的现象就有同一条解释：改动出现在越靠前的位置，后面不能沿用旧状态的内容就越多。常见的不是某一种神秘配置，而是下面三类改动。</p>
+      <ul>
+        <li><strong>把易变内容放在稳定材料之前。</strong>例如系统提示开头写当前时间、分支名或实时 TODO。时间一更新，后面的工具和规则即使没变，也无法接在旧前缀后面。</li>
+        <li><strong>重排或改写稳定定义。</strong>工具顺序、描述、参数结构，以及规则文件的措辞，都属于请求内容。只改顺序不等于内容相同，因为模型收到的序列已经不同。</li>
+        <li><strong>回头修改历史。</strong>编辑一条旧消息、把旧工具结果换成占位符、用摘要替换一段历史，都会从被修改的位置产生失效点。注意，修改点之前的相同前缀仍可能复用，并不是“整条缓存从零开始”。</li>
+      </ul>
+
+      <div class="callout callout--quiet">
+        <p class="callout__title">两个实现例子：都把易变内容移出稳定前缀</p>
+        <ul>
+          <li>Codex 把当前时间做成独立的 <code>&lt;current_time_reminder&gt;</code> 片段，按事件追加到输入消息列表（<code>input</code>），而不是不断更新开头的系统说明。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/current_time_reminder.rs#L9-L45">current_time_reminder.rs#L9-L45</a></li>
+          <li>Claude Code 不再把不断变化的 agent 列表写回工具描述，而是只追加增量（delta）。其源码注释记录，旧做法对应的缓存写入曾约占全局缓存写入量（<code>cache_creation</code>）的 10.2%，用来说明这类前缀改动在工程上的代价。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1490-L1556">attachments.ts#L1490-L1556</a></li>
+        </ul>
+      </div>
+
+      <p>压缩也属于第三类：它用摘要替换旧历史，所以从替换位置开始的缓存会失效，却换回了后续请求的窗口空间。这不是缓存机制出错，而是“用一次重算，换更短的后续输入”的取舍。</p>
+
+      <div class="hf hf--think">
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
+        <div class="hf__body">
+          <p>系统提示第一行写着「当前时间：2026-10-19 09:05」。下一次请求只把时间改成 09:06，后面的工具和历史都没动。整段系统提示还能作为相同前缀复用吗？</p>
+          <p class="small muted">提示：先找第一处不同，不要只数改了几个字符。</p>
+        </div>
+      </div>
+      <p><strong>对照答案</strong>：不能把整段系统提示都视为相同前缀。失效点在时间值第一次出现不同的位置；只有它之前仍然相同、且符合服务端缓存条件的那一小段才有机会命中。后面的工具和历史则需要基于新前缀重新计算。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">06 · 先算账，再动手</p>
+      <h2>先看懂 30,000 个命中 token 值多少钱</h2>
+      <p>沿用开头的教学数字：本次输入 40,000 token，其中 30,000 走缓存读，10,000 走普通输入。为了只练公式，先假设普通输入是 0.020 元/千 token，缓存读是 0.002 元/千 token，并忽略本次缓存写入费与输出费。</p>
+      <ol>
+        <li><strong>如果完全没有缓存</strong>：40 × 0.020 = 0.800 元。这里的 40 表示 40 个“千 token”。</li>
+        <li><strong>如果 30,000 命中</strong>：30 × 0.002 + 10 × 0.020 = 0.060 + 0.200 = 0.260 元。</li>
+        <li><strong>窗口里仍是 40,000 token</strong>：变小的只是本次输入费用和重复计算，不是上下文长度。</li>
+      </ol>
+      <p>这也说明“75% 的 token 命中”不等于“账单直接减少 75%”：只有命中部分享受缓存读价格，其余输入仍按各自类别计费。若还有缓存写入费，要把写入部分单独加进去。</p>
+
+      <h3>再改一块，看失效点怎样改变这笔账</h3>
+      <p>下面把同一套简化单价放进七个方块。点任意一块选中它，改文字或改长度，观察第一处不同出现在哪里、绿色相同前缀还剩多少。颜色帮你定位，费用公式就是刚才那一条。</p>
 
       <div class="demo" id="demo-cache-hit">
         <div class="demo__head">
@@ -433,7 +503,7 @@ body[data-chapter="intro-05"] .fig .svg-label:not(.svg-label--dark) {
         <div class="demo__body">
           <div class="demo__controls">
             <div class="ch-readout">
-              <span class="ch-readout__label">命中前缀</span>
+              <span class="ch-readout__label">相同前缀（理想命中）</span>
               <strong class="ch-readout__value" id="ch-hit">0 token</strong>
               <span class="ch-readout__note" id="ch-break">失效点：—</span>
             </div>
@@ -483,64 +553,54 @@ body[data-chapter="intro-05"] .fig .svg-label:not(.svg-label--dark) {
               <li><button class="ch-row" type="button" data-i="6" aria-pressed="false"><span class="ch-row__dot" aria-hidden="true"></span><span class="ch-row__name">7 · 你这句话</span><span class="ch-row__num">260</span><span class="ch-row__state">命中</span></button></li>
             </ol>
             <ul class="ch-legend">
-              <li><i data-k="hit" aria-hidden="true"></i>命中（缓存读）</li>
-              <li><i data-k="write" aria-hidden="true"></i>改写（缓存写）</li>
-              <li><i data-k="miss" aria-hidden="true"></i>作废（未命中）</li>
+              <li><i data-k="hit" aria-hidden="true"></i>相同前缀（缓存读）</li>
+              <li><i data-k="write" aria-hidden="true"></i>改动块（未命中）</li>
+              <li><i data-k="miss" aria-hidden="true"></i>后续重算（未命中）</li>
             </ul>
             <p class="ch-sr" id="ch-sr" role="status" aria-live="polite"></p>
           </div>
         </div>
-        <p class="demo__note">三档单价是示意值：缓存写 0.0025 元/千 token、缓存读 0.002 元/千 token、未命中 0.020 元/千 token。真实价格随模型、供应商与 TTL 变化，这里只用来看倍数关系。</p>
+        <p class="demo__note">两档单价都是示意值：缓存读 0.002 元/千 token、普通输入 0.020 元/千 token。为突出“改动位置”这一件事，演示按整块近似，并把所有未命中部分统一按普通输入计费；不模拟缓存写入费、最低缓存长度、TTL 或服务商路由。真实结果以响应 usage 和供应商定价为准。</p>
       </div>
 
-      <p class="small"><strong>结论</strong>：缓存只认前缀，改哪儿都一样贵——区别只在“作废多长”。改最后一块，前面几乎全命中；改第一块，整条全废。</p>
+      <p class="small"><strong>演示结论</strong>：改动字数少，不代表需要重算的内容少。只改末尾时，前面的大段相同前缀仍有机会复用；改第一块时，后续内容即使原样不动，也不能直接沿用旧状态。真正要比较的是失效点前后各有多少 token。</p>
 
       <div class="hf hf--qa">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
         <div class="hf__body">
-          <p class="hf__q">问：那我是不是应该把整段对话都塞进前缀，让它永远命中？</p>
-          <p class="hf__a">答：不行。缓存有寿命（TTL），过期要重写；前缀越长，每次改动的代价越大；而且历史一直在尾部增长，本来就在“末尾追加”，天然适合缓存。真正该固定的是前面那几层——系统提示、工具定义、规则文件。</p>
+          <p class="hf__q">问：既然缓存读取便宜，是不是多塞点材料进前缀也划算？</p>
+          <p class="hf__a">答：不能这样算。缓存 token 仍占窗口，也会增加无关信息和干扰；它还可能过期或根本不命中。正确顺序仍是先做第 4 章的“少而准”，再让保留下来的稳定前缀尽量复用。缓存是成本与延迟优化，不是整理上下文的替代品。</p>
         </div>
       </div>
     </section>
 
     <section>
-      <p class="sec-no">06 · 把易变的挪到后面</p>
-      <h2>三条可以今天就用上的规矩</h2>
+      <p class="sec-no">07 · 把易变的挪到后面</p>
+      <h2>三条规矩，都是在保护相同前缀</h2>
+      <p>到此，前面那些看似零散的建议可以收成三条。它们不是让提示词更“整洁”，而是减少失效点提前出现的次数：</p>
       <ul>
-        <li><strong>只追加，不修改。</strong>新信息作为新消息加到末尾，不要回头改前面的内容。</li>
-        <li><strong>先固定，再变化。</strong>规则、工具、长期约定放前面；时间、分支、临时状态放后面。</li>
-        <li><strong>改动要攒。</strong>既然改一次就失效一次，就一次改完，别每轮都微调规则文件。</li>
+        <li><strong>能在末尾追加，就不回头修改。</strong>新信息作为新消息放到尾部，让此前的前缀尽量保持原样；如果必须改旧历史，就接受从修改点开始重算。</li>
+        <li><strong>稳定内容在前，易变内容在后。</strong>长期规则、工具和示例尽量固定；时间、分支、临时状态不要插到它们前面。</li>
+        <li><strong>同一处改动尽量一次完成。</strong>不要每轮都微调规则或工具描述。一次次回头改，会不断制造新的失效点，也会增加可能没有后续复用的缓存写入。</li>
       </ul>
-      <p>这三条听起来像“整洁习惯”，其实是账单习惯。缓存不奖励写得漂亮，只奖励写得稳定。</p>
-      <p>有一点要提前说清：缓存是按“字节前缀”算的，所以同一个意思换个说法、调整一下标点，也会失效。这就是为什么工具生成的提示词往往长得很机械——它们优先保证稳定，而不是好读。</p>
-      <p>Codex 这边只做两件事：发一个 <code>prompt_cache_key</code>（默认取会话 ID），以及解析响应里的 <code>cached_tokens</code> / <code>cache_write_tokens</code>；命中率、TTL、断点位置都由服务端决定<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client.rs#L646-L665">client.rs#L646-L665</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/codex-api/src/sse/responses.rs#L117-L151">responses.rs#L117-L151</a>）。<strong>换会话就换了 key</strong>，缓存也跟着重新开始——这也是“开新会话”比“继续旧会话”贵的原因之一。</p>
+
+      <p>最后把两章连起来：第 4 章决定<strong>哪些材料值得进入请求</strong>，第 5 章决定<strong>保留下来的材料怎样少做重复计算</strong>。先清理，再缓存；顺序反了，就只是在高效地重复处理一堆噪声。</p>
 
       <div class="hf hf--takeaway">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
         <div class="hf__body">
           <ul>
-            <li>缓存复用的是“这段前缀算过一遍”的中间结果，不是记忆；它比对字节，不理解语义。</li>
-            <li>命中要求从第一个 token 起完全一致；失效点之后的内容全部重算。</li>
-            <li>缓存写通常比普通输入贵，缓存读通常便宜很多；TTL 到期要重写。</li>
-            <li>破坏前缀的四个常见动作：开头塞易变内容、重排工具、把动态列表写回工具描述、压缩。</li>
-            <li>工程规矩：只追加不修改、先固定再变化、改动要攒成一次。</li>
+            <li>prompt cache 复用相同前缀的中间计算结果，不是聊天记忆，也不是复用上一条答案。</li>
+            <li>从请求开头找第一处不同；失效点之后的旧状态不能直接沿用，即使文字没变。</li>
+            <li>相同前缀只是命中的前提，TTL、模型与设置、缓存长度和服务端路由也会影响结果。</li>
+            <li>缓存读、缓存写和普通输入是不同用量类别；算成本要看 usage，不能只猜命中率。</li>
+            <li>缓存 token 仍占窗口。先减少噪声，再用“稳定在前、尾部追加、少改旧内容”保护缓存。</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <p class="footer-note">下一章：<a href="intro-06.html">用户侧怎么管理上下文（第 6 章）</a>——知道了钱怎么花，接下来决定什么时候清空、什么时候压缩、什么时候另开一局。</p>
-
-    <div class="footnotes">
-      <p class="footnotes__title">脚注</p>
-      <ol>
-        <li id="fn-intro-05-1">
-          计价倍率未在本次核对范围内：本次只记录“解析 cached_tokens / cache_write_tokens”，没有收录各家定价页。已核对的是三档计价的定性关系（写入更贵、读取显著更便宜、未命中按普通输入计）；缺的是写时倍率与读时倍率的权威数字，因此正文不写具体倍数，演示里的 0.002 / 0.0025 / 0.020 元每千 token 全部标为示意值。写进成本章节前需补官方定价页与生效日期。
-          <a class="footnotes__back" href="#fnref-intro-05-1">↩</a>
-        </li>
-      </ol>
-    </div>
+    <p class="footer-note">下一章：<a href="intro-06.html">用户侧怎么管理上下文（第 6 章）</a>——窗口账和缓存账都能看懂以后，接下来决定什么时候继续、清空、压缩、派子代理或另开新会话。</p>
 
   </article>
 </main>

@@ -4,8 +4,8 @@
   var root = document.getElementById("demo-cache-hit");
   if (!root) return;
 
-  /* 三档示意单价：元 / 千 token */
-  var PRICE = { read: 0.002, write: 0.0025, miss: 0.02 };
+  /* 两档示意单价：元 / 千 token；未命中统一按普通输入，不模拟缓存写费。 */
+  var PRICE = { read: 0.002, miss: 0.02 };
 
   /* 七个块：名字、初始长度、初始内容 */
   var BLOCKS = [
@@ -77,7 +77,7 @@
     var changed = k < 0 ? 0 : tokens[k];
     var rest = k < 0 ? 0 : sum(tokens, k + 1, tokens.length);
 
-    var cost = (hit * PRICE.read + changed * PRICE.write + rest * PRICE.miss) / 1000;
+    var cost = (hit * PRICE.read + (changed + rest) * PRICE.miss) / 1000;
     var ideal = (t * PRICE.read) / 1000;
 
     return { total: t, k: k, hit: hit, changed: changed, rest: rest, cost: cost, extra: cost - ideal };
@@ -100,7 +100,7 @@
       row.setAttribute("aria-pressed", i === selected ? "true" : "false");
       row.querySelector(".ch-row__num").textContent = fmt(tokens[i]);
       row.querySelector(".ch-row__state").textContent =
-        state === "hit" ? "命中" : state === "write" ? "改写" : "作废";
+        state === "hit" ? "命中" : state === "write" ? "改动" : "重算";
       row.querySelector(".ch-row__name").textContent = (i + 1) + " · " + BLOCKS[i].name;
     });
 

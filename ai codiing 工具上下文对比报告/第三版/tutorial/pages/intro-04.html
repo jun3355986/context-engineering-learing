@@ -57,57 +57,87 @@
     <header class="page-head">
       <p class="kicker"><b>第 4 章</b><span>·</span><span>第一部分 · 入门</span></p>
       <h1>窗口装得下，不等于模型用得好</h1>
-      <p class="lede">容量是一回事，注意力是另一回事。塞满窗口，只是把问题从“放不下”换成了“找不到”。</p>
+      <p class="lede">前几章解决“材料能不能装进窗口”，这一章解决“装进去以后，模型能不能稳定找到并用上”。沿着同一个超时报错，我们分清容量、位置、长度和干扰这四件事。</p>
       <ul class="meta">
-        <li>约 10 分钟</li>
-        <li>前置：第 1 章</li>
+        <li>约 12 分钟</li>
+        <li>前置：第 3 章</li>
         <li>L1 → L2</li>
       </ul>
       <div class="learn">
         <h2>读完你能做到</h2>
         <ol>
-          <li>区分名义窗口与有效上下文，各举一个例子。</li>
-          <li>解释位置效应与 context rot，并判断哪类信息会被“看见却没用上”。</li>
-          <li>用“少而准”替换“多而全”，说出三种具体做法。</li>
+          <li>区分“没进入请求”和“进入请求却没用好”，不再把它们都叫失忆。</li>
+          <li>用控制变量的方法分清位置效应、输入变长和干扰信息。</li>
+          <li>重排一次真实请求，并说清每个删改动作解决的是哪类问题。</li>
         </ol>
       </div>
     </header>
 
     <section>
-      <p class="sec-no">01 · 材料都给了，它偏偏漏掉第二条</p>
+      <p class="sec-no">01 · 材料都给了，它偏偏漏掉关键句</p>
       <h2>“测试环境没有外网”</h2>
-      <p>你把两千行网关日志、三个相关文件、外加五条历史约束，一起粘贴进去，问：「这个请求为什么超时？」</p>
-      <p>它给了一段很像样的分析：连接池、重试次数、DNS 缓存。你等着它说“测试环境没有外网，所以这个探活注定失败”，它没说。那条约束就在你消息的第二条，白纸黑字。</p>
-      <p>你把那句话单独再发一遍。它立刻道歉，改口，答案就对了。整段材料一个字没多、一个字没少，变的只是那句话的位置。</p>
+      <p>下午四点二十分，你排查一个网关超时。你把两千行日志、三个相关文件和五条约束一起发给 agent，其中写着：<strong>测试环境不能访问外网，不要用外网探活判断服务状态。</strong>这句话夹在两段日志中间。</p>
+      <p>它给了一段很像样的分析：连接池、重试次数、DNS 缓存，最后建议你检查外网探活。关键句明明在输入里，答案却像没读过它。</p>
+      <p>为了弄清原因，你另开两个对照请求。A 保持原样；B 使用同一批材料，只把那句约束移到末尾，其他内容和顺序都不动。这一次，B 正确地先排除了外网探活。你没有增加新信息，只改变了已有信息的位置。</p>
 
       <div class="callout callout--info">
-        <p class="callout__title">场景 · 装进去，不等于被看见</p>
-        <p>模型这一次确实“读到了”全部材料——它没有超窗，也没有报错。但它把注意力分给了那些更像“典型超时原因”的段落，漏掉了你写的那句例外。这类失败不会报错，只会给你一个看起来合理、实际不对的答案。</p>
+        <p class="callout__title">场景 · 进入输入，不等于进入答案</p>
+        <p>两次请求都没有超窗，也没有发生压缩，关键句都实际进入了模型输入。因此，这不是“材料没装进去”，而是“材料装进去了，却没有稳定地影响回答”。这类失败通常没有报错，只会给你一个看起来合理、实际跑偏的答案。</p>
       </div>
 
-      <p class="lead-in">窗口是桌子的大小，不是屋里所有人的注意力。</p>
-      <p>前两章都在算“装不装得下”。这一章算另一笔账：装进去之后，还有多少真的被用上。</p>
+      <p class="lead-in">窗口决定桌上能摆多少材料；它不能保证模型决策时会用上每一张纸。</p>
+      <p>这一章就追踪这张“被漏掉的纸”：先确认它真的进了请求，再分别检查位置、输入长度和周围干扰。每次只改变一个条件，你才能知道问题究竟出在哪。</p>
     </section>
 
     <section>
-      <p class="sec-no">02 · 两个词要分开</p>
-      <h2>名义窗口与有效上下文</h2>
-      <p><strong>上下文窗口（context window）</strong>是名义容量：模型一次最多能接收多少 token。它是一个硬数字，写在模型规格里。</p>
-      <p><strong>有效上下文（effective context）</strong>是另一回事：在这堆材料里，模型实际能稳定用上的那部分。它没有官方数字，只能靠任务表现去测。</p>
-      <p>开会打比方：会议室能坐五十人，这是容量；但真正能形成结论的，往往是前十分钟的发言和最后拍板那几句。坐满五十人，不等于五十个人都参与了决策。</p>
-      <p>这也是为什么 <code>/context</code> 这类命令解决不了这个问题。它按类别列出系统提示、工具、规则、消息各占多少<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/analyzeContext.ts#L918-L1000">analyzeContext.ts#L918-L1000</a>），量的是容量；它不会告诉你“这段材料里有多少真的会被用上”。</p>
-      <p>所以“我有 100 万 token 窗口”回答的是容量问题；它不回答“放进去 80 万，模型还能不能找到第 2 条约束”。</p>
+      <p class="sec-no">02 · 先分清三道关卡</p>
+      <h2>装得下、真的装进去、最后被用上</h2>
+      <p>第 1 章讲的<strong>上下文窗口（context window）</strong>是名义容量：一次请求最多能容纳多少输入与输出 token。它有明确的规格上限，超了就会被拒绝，或者由 agent 提前压缩、截断。</p>
+      <p>本教程说的<strong>有效上下文（effective context）</strong>不是一个隐藏的 token 额度，而是“模型在某个任务上能稳定利用的信息范围”。100 万 token 的窗口里，并不存在一条固定的“有效上下文只有 30 万”分界线；它要换个模型、换个任务、换种材料重新测。</p>
+      <p>从你说出一句话，到它影响答案，中间至少有三道关卡。排查时按顺序来，能少绕很多弯：</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">关卡</th>
+              <th scope="col">你要确认什么</th>
+              <th scope="col">失败时更像什么</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">1 · 容量</th>
+              <td>输入和输出预留有没有超过窗口？</td>
+              <td>请求报错，或 agent 触发压缩、截断。</td>
+            </tr>
+            <tr>
+              <th scope="row">2 · 组装</th>
+              <td>关键句是否真的进入这次请求，还是已被裁掉？</td>
+              <td>磁盘原文还在，但模型这次拿到的副本里没有。</td>
+            </tr>
+            <tr>
+              <th scope="row">3 · 利用</th>
+              <td>关键句在输入里，答案有没有遵守或引用它？</td>
+              <td>没有报错，却漏约束、答非所问或采用旧结论。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>开头的例子已经通过前两关，所以接下来只查第三关。Claude Code 的 <code>/context</code> 主要帮你观察第一关：它按类别列出系统提示、工具、规则和消息各占多少，却不能证明哪句话最终影响了答案。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/analyzeContext.ts#L918-L1000">analyzeContext.ts#L918-L1000</a></p>
     </section>
 
     <section>
-      <p class="sec-no">03 · 位置效应：中段最容易被跳过</p>
-      <h2>同样的材料，放在不同位置，结果不一样</h2>
-      <p>研究者做过一类很直接的实验：把一段关键信息放在长文档的开头、中间、结尾，其他内容不变，看模型能不能用上它。结论形状很稳定——<strong>两头好，中间差</strong>。这个现象有个形象的名字：<strong>lost in the middle（中段遗失）</strong>。<span class="tag tag--todo">待核实</span><sup class="fn-ref"><a href="#fn-intro-04-1" id="fnref-intro-04-1">1</a></sup></p>
+      <p class="sec-no">03 · 第一个变量：位置</p>
+      <h2>同一批材料，只换顺序，表现也可能变</h2>
+      <p>开头的 A/B 对照，和 2023 年论文《Lost in the Middle》的思路相同。研究者在多文档问答中固定问题和文档集合，只把含答案的那篇文档移到开头、中间或结尾；在键值检索中，也只调整目标键值对的位置。这样，答案本身没变，位置成了主要变量。</p>
+      <p>这些实验在多种模型和设置下反复观察到一种<strong>常见趋势</strong>：关键信息在开头或结尾时表现较好，在中间时较差，曲线因此常呈 U 形。这个现象叫<strong>lost in the middle（中段遗失）</strong>。它不是“所有模型、所有任务都必然如此”的定律；论文里也有特定任务接近满分、位置影响不明显的例子。<span class="tag tag--ok">已核实</span> <a href="https://arxiv.org/html/2307.03172v1">Liu 等，§3–§5</a></p>
 
       <figure class="fig">
         <svg viewBox="0 0 640 260" role="img" aria-labelledby="fig-1-title fig-1-desc">
-          <title id="fig-1-title">关键信息所在位置与它被用上的概率</title>
-          <desc id="fig-1-desc">一条 U 形曲线：关键信息放在材料最开头时概率最高，越往中间越低，到中段最低，接近结尾又开始回升。纵轴只标高低，不标具体数值。</desc>
+          <title id="fig-1-title">位置效应的 U 形趋势示意</title>
+          <desc id="fig-1-desc">一条 U 形示意曲线：在研究所测的若干设置中，关键信息放在开头或结尾时任务表现较好，放在中段时较差。纵轴只标高低，不标具体数值，也不表示所有模型都遵循同一形状。</desc>
           <line class="svg-rule" x1="56" y1="20" x2="56" y2="210"/>
           <line class="svg-rule" x1="56" y1="210" x2="608" y2="210"/>
           <text class="svg-note" x="20" y="34">高</text>
@@ -121,108 +151,161 @@
           <circle cx="332" cy="168" r="5" fill="var(--orange)"/>
           <circle cx="608" cy="66" r="5" fill="var(--accent)"/>
 
-          <text class="svg-note" x="66" y="34">放开头，最容易用上</text>
-          <text class="svg-note" x="332" y="192" text-anchor="middle">放中间，最容易被跳过</text>
-          <text class="svg-note" x="600" y="56" text-anchor="end">放结尾，又回升</text>
-          <text class="svg-note" x="56" y="252">曲线形状为示意，不代表任何具体模型的实测数值。</text>
+          <text class="svg-note" x="66" y="34">开头：这些设置中较好</text>
+          <text class="svg-note" x="332" y="192" text-anchor="middle">中段：这些设置中较差</text>
+          <text class="svg-note" x="600" y="56" text-anchor="end">结尾：又回升</text>
+          <text class="svg-note" x="56" y="252">只画研究中的典型趋势，不代表你的模型必然得到同一条曲线。</text>
         </svg>
-        <figcaption>图 1　位置效应的典型形状（示意）：同样一句话，放在开头或结尾，比放在中间更容易被用上。所以“写在前面”不只是礼貌，是有效性问题。</figcaption>
+        <figcaption>图 1　位置效应的典型趋势（示意）。读图时记住两件事：纵轴是任务表现，不是窗口容量；曲线是行为实验的结果，不是在展示模型内部的注意力权重。</figcaption>
       </figure>
 
-      <p>这解释了很多“它明明看到了”的争论。模型确实读到了那段文字，但在生成答案时，中间位置的信息分到的权重更低。你越往后堆，越容易把关键约束埋进中段。</p>
-      <p>在多轮会话里，“中间”还有第二层含义：不只是某份文档的中段，也是整段会话的中段。第 3 轮到第 15 轮的讨论，既不在最新几条消息里，也不在你开头写的那段背景里，正好落在两头之间。这就是为什么聊得越久，中间那些“说好过”的决定越容易失效。</p>
+      <p>这里的“位置”指<strong>模型实际收到的完整请求</strong>，不只是你输入框里的那段文字。系统提示、工具定义、历史消息和工具结果都在这条序列里。你在第三轮说过的决定，到第二十轮时可能既远离开头，也远离最新一条消息，于是落进了整次请求的“中段”。</p>
+      <p>工程上可以据此提出一个可检验的办法：把简短的关键约束放在任务说明附近，或在最终指令前再强调一次。但它只是降低风险，不是保证命中；如果你的模型和任务不同，最好用自己的 A/B 测试验证。</p>
 
       <div class="hf hf--think">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
         <div class="hf__body">
-          <p>同样一句“不要改数据库 schema”，一次放在任务开头，一次夹在两段日志中间。哪次更容易被遵守？</p>
-          <p class="small muted">提示：想想图 1 的曲线，再想想你平时把约束写在哪。</p>
+          <p>同样一句“不要改数据库 schema”，一次夹在两段日志中间，另一次放在最终任务指令前。哪次更值得先试？</p>
+          <p class="small muted">提示：只移动这句话，不改写，也不额外重复。</p>
         </div>
+      </div>
+      <p><strong>对照答案</strong>：通常先试后者，因为它远离了材料中段，也更靠近最终任务。注意题目特意要求“不额外重复”：如果把原句再发一遍，你同时改变了位置和重复次数，就不能再把效果全归因于位置。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">04 · 第二、三个变量：长度与干扰</p>
+      <h2>位置不动，只增加背景，也可能掉分</h2>
+      <p>把关键句移到末尾，并不能解决所有问题。现在做另一组对照：A 只有关键句和相关日志；B 保留这些内容，关键句位置也不动，只在后面追加一批本轮用不到的旧日志。若 B 的表现变差，这次就不能归因于“关键句被移到中段”，因为位置没有变。</p>
+      <p>Chroma 在 2025 年的技术报告中，把这类“输入 token 增加后，模型使用上下文的可靠性下降”的现象称为 <strong>context rot（上下文腐化）</strong>。报告测试了 18 个模型，并在多组受控任务里尽量固定问题与答案，只改变输入长度、目标位置或干扰条件。结果是：在这些任务中，输入变长时，模型表现往往变得更不稳定，而且下降不一定是平滑的。<span class="tag tag--ok">已核实</span> <a href="https://www.trychroma.com/research/context-rot">Hong 等，Context Rot</a></p>
+      <p>这仍然不是一条“超过某个 token 数就必坏”的规格。报告没有给出通用阈值，也没有证明唯一的内部机制。你只需带走一个可操作的结论：<strong>窗口尚未装满，也可能已经出现质量问题；不要等占用率达到 90% 才开始清理。</strong></p>
+
+      <figure class="fig">
+        <svg viewBox="0 0 640 240" role="img" aria-labelledby="fig-2-title fig-2-desc">
+          <title id="fig-2-title">只增加输入长度与背景材料的对照实验</title>
+          <desc id="fig-2-desc">A 是短输入，包含关键句和相关日志。B 保留相同关键句、相关日志及其位置，只在后面增加旧日志和无关文件。两份输入的问题不变，用来隔离长度与背景变化的影响。</desc>
+          <text class="svg-note" x="0" y="40">A · 短输入</text>
+          <rect class="svg-track" x="110" y="18" width="300" height="38" rx="6"/>
+          <rect class="svg-seg--b" x="111" y="19" width="70" height="36" rx="4"/>
+          <rect class="svg-seg--a" x="181" y="19" width="90" height="36"/>
+          <text class="svg-label" x="146" y="43" text-anchor="middle">关键句</text>
+          <text class="svg-label" x="226" y="43" text-anchor="middle">相关日志</text>
+
+          <text class="svg-note" x="0" y="110">B · 长输入</text>
+          <rect class="svg-track" x="110" y="88" width="500" height="38" rx="6"/>
+          <rect class="svg-seg--b" x="111" y="89" width="70" height="36" rx="4"/>
+          <rect class="svg-seg--a" x="181" y="89" width="90" height="36"/>
+          <text class="svg-label" x="146" y="113" text-anchor="middle">关键句</text>
+          <text class="svg-label" x="226" y="113" text-anchor="middle">相关日志</text>
+          <text class="svg-note" x="292" y="112">追加的旧日志、无关文件</text>
+
+          <text class="svg-note" x="110" y="158">相同：问题、关键句、相关日志，以及关键句的位置</text>
+          <text class="svg-note" x="110" y="184">不同：B 多出一大段本轮用不到的背景</text>
+          <text class="svg-note" x="110" y="216">块宽为示意；本图不把 token 占比当作注意力占比。</text>
+        </svg>
+        <figcaption>图 2　这才是检验“长度与背景”的对照：关键句不动，只增加材料。若 B 更差，应该检查新增内容的数量与干扰，而不是再调整关键句的位置。</figcaption>
+      </figure>
+
+      <p>新增材料并不都是一种东西。为了知道该删什么，可以分成三类：</p>
+      <ul>
+        <li><strong>无关背景</strong>：与当前问题没有关系的旧讨论。例如你正在查网关超时，上午的推荐位日志就只是额外长度。</li>
+        <li><strong>相似干扰（distractor）</strong>：看起来很像答案，却不能回答当前问题。例如另一个服务也报超时，但原因完全不同。Chroma 的实验发现，干扰项的影响并不均匀，有些特别容易把答案带偏。</li>
+        <li><strong>冲突信息</strong>：两处材料给出不能同时遵守的要求。例如规则写“统一用 pnpm”，旧结论却写“这里必须用 npm”。这时首先要消除冲突，而不是把两条都再强调一遍。</li>
+      </ul>
+      <p>工程上常用<strong>信噪比</strong>概括这件事：能帮当前任务作出正确决定的是信号，让它变长、分心或误判的是噪声。注意，“噪声”是相对于本轮任务说的；一份日志此刻该移走，不代表它永远没价值。</p>
+    </section>
+
+    <section>
+      <p class="sec-no">05 · 回到故障，按线索定位</p>
+      <h2>别问“模型怎么又笨了”，先问哪个条件变了</h2>
+      <p>现在可以把前面的概念变成排查顺序。下表不是让你给一次失败贴唯一标签，而是帮你决定<strong>第一步先改什么</strong>。同一次失败可能同时有位置、长度和冲突问题，所以每轮只改一个主要条件，再观察结果。</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">你观察到的线索</th>
+              <th scope="col">优先检查</th>
+              <th scope="col">第一步</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>原文件里有关键句，实际请求里没有</td>
+              <td>请求组装、截断或压缩</td>
+              <td>先把信息重新放进请求，别急着换措辞。</td>
+            </tr>
+            <tr>
+              <td>短材料能答对；材料变长后，关键句又埋在中段</td>
+              <td>位置效应</td>
+              <td>只移动关键句做 A/B，不同时增加重复。</td>
+            </tr>
+            <tr>
+              <td>关键句位置没变，追加旧日志后开始跑偏</td>
+              <td>输入长度、无关背景或相似干扰</td>
+              <td>撤掉新增材料，再按相关性分批加回。</td>
+            </tr>
+            <tr>
+              <td>模型在两种互相矛盾的做法之间摇摆</td>
+              <td>规则与历史是否冲突</td>
+              <td>指定唯一有效版本，删除或标记旧规则。</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
     <section>
-      <p class="sec-no">04 · 变长本身就会掉分</p>
-      <h2>context rot：不是找不到，是用不好</h2>
-      <p>位置效应说的是“放在哪”。还有一层更麻烦的：<strong>只要材料变长，即使任务没变、干扰不多，整体表现也会下降</strong>。社区给这个现象起了个名字，叫 context rot（上下文腐化）。<span class="tag tag--todo">待核实</span><sup class="fn-ref"><a href="#fn-intro-04-2" id="fnref-intro-04-2">2</a></sup></p>
-      <p>原因是多重的：注意力被摊薄；长材料里更容易出现相互矛盾的说法；模型倾向于复用最近看到的模式，而不是最早写下的规则。结果就是那句熟悉的抱怨——“前面说得好好的，怎么到后面就变了”。</p>
+      <p class="sec-no">06 · 把方法用回开头那次请求</p>
+      <h2>不是再补一段提示，而是重新组织材料</h2>
+      <p>开头那次超时排查，可以这样改。每个动作都对应前面的一类原因，不是为了把提示词写得更漂亮：</p>
+      <ol>
+        <li><strong>先给任务和少量硬约束。</strong>开头写清“分析测试环境的网关超时；不能访问外网，不要建议外网探活”。这是在处理位置问题，但不能保证模型一定遵守。</li>
+        <li><strong>只放本轮要用的证据。</strong>先给超时前后三十行、相关配置和报错堆栈；完整日志保留路径，需要时再读。这里解决的是长度和无关背景，不是把信息永久删除。</li>
+        <li><strong>把相似案例标清边界。</strong>如果必须附上另一个服务的超时日志，明确写“仅用于比较格式，不是本次故障原因”，避免它成为相似干扰。</li>
+        <li><strong>先统一冲突，再发请求。</strong>规则已经要求 pnpm，就删除旧记录里“改用 npm”的临时结论，或注明它已失效。不要让模型替你决定哪条规则现在有效。</li>
+      </ol>
 
-      <figure class="fig">
-        <svg viewBox="0 0 640 240" role="img" aria-labelledby="fig-2-title fig-2-desc">
-          <title id="fig-2-title">同一个信号在短上下文与长上下文里的占比</title>
-          <desc id="fig-2-desc">上排是短上下文，一条关键信息占较大比例；下排是长上下文，同一条信息只占很小一段，其余被日志和无关文件填满，信号被稀释。</desc>
-          <text class="svg-note" x="0" y="40">短上下文</text>
-          <rect class="svg-track" x="110" y="22" width="210" height="30" rx="6"/>
-          <rect class="svg-seg--b" x="111" y="23" width="42" height="28" rx="4"/>
-          <text class="svg-note" x="336" y="42">关键信息占 20%</text>
+      <h3>要翻很多文件时，把探索过程隔出去</h3>
+      <p>如果答案需要搜索十个文件，可以把这项工作交给<strong>子代理（subagent）</strong>：它是由主 agent 启动的一次独立 agent 调用，有自己的上下文。子代理读完十份材料，只把结论、必要证据和文件路径带回主会话，十份原文不必全部挤进主上下文。第 17 章会展开它的隔离边界；这里先把它理解为“探索在外面做，结论回到主桌”。</p>
 
-          <text class="svg-note" x="0" y="112">长上下文</text>
-          <rect class="svg-track" x="110" y="94" width="480" height="30" rx="6"/>
-          <rect class="svg-seg--b" x="111" y="95" width="42" height="28" rx="4"/>
-          <text class="svg-note" x="170" y="116" style="font-size:15px" fill="var(--orange)">同一句话只占 8% 左右</text>
-
-          <text class="svg-note" x="110" y="150">灰格＝日志、旧工具结果、无关文件；绿格＝那条关键约束。</text>
-          <path class="svg-rule" d="M590 94v30" fill="none"/>
-          <text class="svg-note" x="110" y="188">模型不是没读到绿格，是它周围的灰格太多，</text>
-          <text class="svg-note" x="110" y="212">生成答案时更可能顺着灰格的模式走。</text>
-        </svg>
-        <figcaption>图 2　同一个信号，在短上下文里占 20%，塞进长上下文后只剩 8% 左右（示意）。信号没变，稀释它的噪声变了。</figcaption>
-      </figure>
-
-      <p>噪声不只是“无关”，还包括<strong>冲突</strong>。规则文件说“用 pnpm”，历史里某条报错说“npm install 失败”，模型就得在这两条里选一个。冲突越多，选错的概率越高——哪怕两条都写得清清楚楚。</p>
-      <p>冲突还分显性和隐性。显性的是两条规则互相打脸；隐性的是同一条规则在不同层级各写了一遍，措辞略不同。后者更麻烦，因为你会以为它们在表达同一件事，模型却可能读成两个约束。维护规则文件时，删掉重复比补充新条目更有价值。</p>
-    </section>
-
-    <section>
-      <p class="sec-no">05 · 所以，少而准</p>
-      <h2>把“多给点总没坏处”改成“只给这一轮要用的”</h2>
-      <p>承认了有效上下文这回事，做法就变了。三个立刻能用的动作：</p>
-      <ul>
-        <li><strong>只贴相关片段</strong>：不要整份日志，给报错前后三十行；不要整个目录，给命中的文件。</li>
-        <li><strong>把约束放在两头</strong>：开头说一次，任务快结束时再说一次。不是啰嗦，是绕开中段。</li>
-        <li><strong>把探索丢给子代理</strong>：让它去翻十个文件，只把结论带回来，别把十份原文带回主会话。</li>
-      </ul>
-      <p>贴材料前，先过三个问题：这段内容这一轮真的会被引用吗？它有没有可能和已有规则冲突？如果它只是“以后可能有用”，那就别贴，等要用时再读。第三个问题的答案通常是“不贴”——因为“以后”真的到了，你可以再读一次。</p>
-      <p>工具自己也在这么做。Claude Code 的只读子代理默认不注入 <code>CLAUDE.md</code>，源码注释给出的理由是每周能省下 5–15 Gtok<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L370-L410">runAgent.ts#L370-L410</a>）。Codex 的压缩摘要模板里专门留了“约束与偏好”一节，就是为了让这类容易被埋掉的信息在压缩后还活着<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/prompts/templates/compact/prompt.md#L1-L9">prompt.md#L1-L9</a>）。</p>
-      <p>对团队来说，这条结论还有一个不客气的推论：<strong>规则文件不是越长越好。</strong>每加一条“以防万一”，都在稀释真正重要的那几条。定期删掉已经失效、重复、和代码里已能看出来的规矩，比继续追加更有收益。</p>
+      <div class="callout callout--quiet">
+        <p class="callout__title">工程印证：agent 也在选择“该带什么”</p>
+        <ul>
+          <li>Claude Code 的部分只读子代理默认不注入 <code>CLAUDE.md</code>，避免把主会话的规则包无差别复制给每个子代理。<span class="tag tag--src">源码 v2.1.88</span> <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/AgentTool/runAgent.ts#L370-L410">runAgent.ts#L370-L410</a></li>
+          <li>Codex 的压缩摘要模板单列“约束与偏好”，让这类信息在摘要里有明确位置，而不是混在过程叙述里。<span class="tag tag--ok">已核实</span> <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/prompts/templates/compact/prompt.md#L1-L9">prompt.md#L1-L9</a></li>
+        </ul>
+        <p class="small muted">这些实现说明 agent 会做上下文选择；它们本身不是位置效应或 context rot 的实验证据，研究证据见第 3、4 节的原始来源。</p>
+      </div>
 
       <div class="hf hf--qa">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
         <div class="hf__body">
           <p class="hf__q">问：那我把所有重要内容都放开头，不就行了？</p>
-          <p class="hf__a">答：开头的位置也有限，而且它会挤掉历史。更划算的做法是“重复关键约束”，而不是“把所有材料前移”。一句话重复两次的成本，远低于把两万 token 的日志搬来搬去。真正的目标是提高信噪比，不是调整搬运顺序。</p>
+          <p class="hf__a">答：不够。所有内容都争“开头”，开头本身也会变长；冲突和相似干扰更不会因换位置而消失。更稳妥的顺序是：先删掉本轮不用的，再统一冲突，最后把少量关键约束放到容易被利用的位置。位置优化是最后一步，不是清理上下文的替代品。</p>
         </div>
       </div>
+    </section>
+
+    <section>
+      <p class="sec-no">07 · 小结</p>
+      <h2>从“多给一点”改成“给本轮真正要用的”</h2>
+      <p>下次再遇到“它明明看过”，你可以用一句话提醒自己：<strong>看过是输入事实，用上是任务结果，中间还隔着组织方式。</strong>先做小规模对照，再决定移动、删减还是统一规则，比凭感觉补一大段提示更可靠。</p>
 
       <div class="hf hf--takeaway">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
         <div class="hf__body">
           <ul>
-            <li>名义窗口是容量，有效上下文是实际用得上的部分，两者不是一回事。</li>
-            <li>位置效应：开头和结尾的信息更容易被用上，中段最容易被跳过。</li>
-            <li>context rot：材料变长，即使任务不变，整体表现也会下降。</li>
-            <li>噪声和冲突都会稀释信号；两条都写清楚的矛盾规则，比一条模糊规则更危险。</li>
-            <li>少而准：只贴相关片段、关键约束放两头、探索交给子代理。</li>
+            <li>先分三道关卡：容量是否够用、材料是否进入请求、进入后是否被用上。</li>
+            <li>有效上下文不是固定的隐藏窗口，要随模型、任务和材料实测。</li>
+            <li>位置效应研究的是“同一信息放在哪”；context rot 关注的是输入变长后可靠性如何变化。</li>
+            <li>无关背景、相似干扰和冲突信息是三类不同问题；先辨认，再清理。</li>
+            <li>实用顺序：排除未装入 → 减少无关材料 → 消除冲突 → 优化关键约束的位置。</li>
           </ul>
         </div>
       </div>
     </section>
 
-    <p class="footer-note">下一章：<a href="intro-05.html">Prompt cache 与成本（第 5 章）</a>——“少而准”省的是注意力，接下来算一笔更直接的钱。</p>
-
-    <div class="footnotes">
-      <p class="footnotes__title">脚注</p>
-      <ol>
-        <li id="fn-intro-04-1">
-          本次未收录 lost in the middle 的实验数据，本章按公开研究的定性结论表述。已核对的是：位置效应的方向（两头优于中段）在多组长上下文实验中反复出现；缺的是本次未重新抓取原论文，因此不引用具体降幅、模型名单与实验设置，图 1 的曲线只表示形状。若要写进评测章节，需补原始论文的表格数据。
-          <a class="footnotes__back" href="#fnref-intro-04-1">↩</a>
-        </li>
-        <li id="fn-intro-04-2">
-          context rot 目前是行业报告与工程观察里的说法，不是模型规格里的官方指标。已核对的是：长输入下任务表现下降这一现象被多家 agent 的设计间接承认（如只读子代理省略 CLAUDE.md、压缩模板单列“约束与偏好”）；缺的是统一的测量口径与跨模型对照数据，所以正文只写趋势，不写百分比。
-          <a class="footnotes__back" href="#fnref-intro-04-2">↩</a>
-        </li>
-      </ol>
-    </div>
+    <p class="footer-note">下一章：<a href="intro-05.html">Prompt cache 与成本（第 5 章）</a>——这一章减少的是无用输入和干扰；下一章换一笔账：同样的输入，哪些重复计算可以不再付钱。</p>
 
   </article>
 </main>
