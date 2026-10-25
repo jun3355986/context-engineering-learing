@@ -83,45 +83,45 @@
     <header class="page-head">
       <p class="kicker"><b>第 8 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>请求组装：系统提示词与工具定义</h1>
-      <p class="lede">模型每次只看到一段平铺的 token 序列。系统提示词、工具定义、环境说明、历史消息，都是这段序列里的片段，谁在前、谁在后、谁每次都变，决定了它能不能命中缓存，也决定了它会不会忽略你的规则。</p>
+      <p class="lede">模型每次只看到一段平铺的 token 序列。系统提示词、工具定义、环境说明、历史消息，都是这段序列里的片段。谁在前、谁在后、谁每次都变，决定了能不能命中缓存，也会影响模型是否照着你的规则做。</p>
       <ul class="meta">
         <li>第 1 类</li>
-        <li>约 21 分钟</li>
+        <li>约 25 分钟</li>
         <li>1 张图</li>
         <li>L2 → L3</li>
       </ul>
       <div class="learn">
         <h2>读完你能做到</h2>
         <ol>
-          <li>画出一次请求的四块拼装，并说出每一块在 API 里的真实位置。</li>
+          <li>画出一次请求的五层结构，并说出每一层在 API 里实际放在哪里。</li>
           <li>判断某个改动会不会打断 prompt cache，以及打断的是哪一段。</li>
-          <li>解释“工具定义增量下发”省下了什么、又付出了什么代价。</li>
+          <li>解释“工具定义增量下发”（把工具表放进历史，之后只追加变化）省下了什么、又付出了什么代价。</li>
         </ol>
       </div>
     </header>
 
     <!-- ========== 01 ========== -->
     <section id="why-assembly">
-      <p class="sec-no">01 · 先看清这张账单</p>
-      <h2>同一个问题，两个仓库，两种答案</h2>
+      <p class="sec-no">01 · 一次请求里装了什么</p>
+      <h2>同一个问题问两个仓库，差别出在请求的内容上</h2>
       <p>上午十点，你在两个仓库里问了同一句话：“把这个模块的错误处理统一一下。”</p>
       <p>A 仓库的回答先读目录、再读两个文件，改完还跑了一遍测试。B 仓库的回答直接给出一个补丁，路径是错的，API 也是旧版的。你把同一句话再问一遍，B 还是错。你开始怀疑模型变笨了。</p>
-      <p>把两次请求拆开看，差别不在模型：A 仓库的工具表里有 <code>read</code>、<code>grep</code>、<code>bash</code>，B 仓库只暴露了三个工具，其中没有搜索；A 的规则文件里写着“改完必须跑 <code>make test</code>”，B 的规则文件在两个月前被移到了子目录，没有生效；A 的历史里已经有上一次的目录树，B 是全新会话。模型没有变，装进去的东西变了。</p>
+      <p>把两次请求拆开看，差别不在模型：A 仓库的工具表里有 <code>read</code>、<code>grep</code>、<code>bash</code>，B 仓库的工具表里没有任何搜索类工具；A 的规则文件里写着“改完必须跑 <code>make test</code>”，B 的规则文件在两个月前被移到了子目录，没有生效；A 的历史里已经有上一次的目录树，B 是全新会话。模型没有变，装进去的东西变了。</p>
       <p class="lead-in">上下文管理的第一件事，不是省钱，而是确认“该在的东西真的在”。</p>
-      <p>这一章只回答三个问题：一次请求由哪几块拼成；它们按什么顺序排；为什么工具定义值得单独拿出来优化。后面的规则文件、按需加载、动态注入，都是在这张底图上加东西。</p>
+      <p>这一章只回答三个问题：一次请求由哪几块拼成；它们按什么顺序排；为什么工具定义值得单独拿出来优化。后面的规则文件、按需加载、动态注入，都是在这个结构上往里加东西。</p>
 
       <figure class="fig" id="fig-request-layers">
         <svg class="reqmap" viewBox="0 0 640 262" role="img" aria-labelledby="fig-req-title fig-req-desc">
           <title id="fig-req-title">一次请求的五层结构，从稳定到易变</title>
-          <desc id="fig-req-desc">自上而下五层：基础指令、工具定义、环境与权限片段、历史消息、本轮输入。前两层构成可缓存的稳定前缀，后三层逐轮变化。右侧标注了先后顺序：指令、工具、历史、本轮输入。</desc>
+          <desc id="fig-req-desc">自上而下五层：工具定义、基础指令、环境与权限片段、历史消息、本轮输入。前两层构成可缓存的稳定前缀，后三层逐轮变化。右侧标注了先后顺序：工具、指令、历史、本轮输入。</desc>
 
-          <rect class="rm-layer rm-layer--stable" x="58" y="18" width="470" height="42" rx="7"/>
-          <text class="rm-name" x="70" y="36">基础指令 base_instructions</text>
-          <text class="rm-sub" x="70" y="51">身份、做事方式、工具使用通则、输出约束</text>
+          <rect class="rm-layer rm-layer--tools" x="58" y="18" width="470" height="42" rx="7"/>
+          <text class="rm-name" x="70" y="36">工具定义 tools</text>
+          <text class="rm-sub" x="70" y="51">名字、描述、JSON Schema、并行调用策略</text>
 
-          <rect class="rm-layer rm-layer--tools" x="58" y="68" width="470" height="42" rx="7"/>
-          <text class="rm-name" x="70" y="86">工具定义 tools</text>
-          <text class="rm-sub" x="70" y="101">名字、描述、JSON Schema、并行调用策略</text>
+          <rect class="rm-layer rm-layer--stable" x="58" y="68" width="470" height="42" rx="7"/>
+          <text class="rm-name" x="70" y="86">基础指令 base_instructions</text>
+          <text class="rm-sub" x="70" y="101">身份、做事方式、工具使用通则、输出约束</text>
 
           <rect class="rm-layer rm-layer--volatile" x="58" y="118" width="470" height="42" rx="7"/>
           <text class="rm-name" x="70" y="136">环境 / 权限片段</text>
@@ -154,63 +154,64 @@
 
           <line class="svg-rule" x1="58" y1="160" x2="528" y2="160" stroke-dasharray="3 4"/>
         </svg>
-        <figcaption>图 01-1　一次请求的五层。①② 是最值得保持稳定的部分，③ 之后逐轮变化。虚线不是协议边界，而是“缓存通常从哪里断开”的经验位置；不同 provider 的实际断点由服务端决定。示意，非真实比例。</figcaption>
+        <figcaption>图 01-1　一次请求的五层，按稳定程度从上到下排。①② 最值得保持稳定，③ 之后逐轮变化。虚线不是协议边界，只表示一个经验位置：多数请求里，两次请求从头比较，第一处不同（失效点）会落在这条线附近。①② 的先后依 <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic 文档</a>（tools → system → messages），Codex 的情况见 2.5。示意，非真实比例。</figcaption>
       </figure>
 
-      <p>这张图有两个容易看错的地方。第一，工具定义不是一个独立段落，它在协议里是<strong>与消息数组并列的字段</strong>，但在计费和缓存上，它和系统提示一起被算进前缀。第二，环境信息在大多数实现里<strong>不是一个字段</strong>，而是若干条插在历史里的合成消息。所以“改系统提示”和“改环境说明”，代价可能完全不同：前者动的是前缀头部，后者只动尾部。</p>
+      <p>这张图有两个容易看错的地方。第一，<strong>层不等于字段</strong>。工具定义在多数 API 里是与消息数组并列的字段，不在消息里（Codex 的部分模型会把它放进 <code>input</code>）。但在缓存上，它和系统提示一起排在历史之前，算进前缀。第二，环境信息在 Codex 里<strong>不是一个字段</strong>，而是插在历史里的若干条片段；别的 agent 放法不同，有的写进系统提示，见本章 03 节的弹窗。所以在 Codex 里，“改系统提示”和“改环境说明”的代价完全不同：前者改在最前面，它之后的缓存全部失效；后者只在历史末尾追加一条新片段。</p>
 
       <div class="hf hf--think">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
         <div class="hf__body">
-          <p>如果只允许你把一样东西从“每轮都发”改成“只发一次”，你会选系统提示、工具定义，还是环境说明？</p>
+          <p>如果只允许你把一样东西从“每次请求都重发”改成“只发一次”，你会选系统提示、工具定义，还是环境说明？</p>
           <p class="small muted">提示：先问“它变了以后，后面的东西还能不能复用”。</p>
         </div>
       </div>
+      <p><strong>对照答案</strong>：环境说明最不该选。它是三者里变得最勤的一块（工作目录、时间都会变），“只发一次”会让模型拿着过期的信息。系统提示和工具定义都很稳定，选哪个都说得通；本章偏向工具定义，因为它的体积随工具数量增长，又排在历史之前，一变就让后面的缓存全部失效（2.4 展开）。</p>
     </section>
 
     <!-- ========== 02 ========== -->
     <section id="codex">
       <p class="sec-no">02 · Codex 主线</p>
-      <h2>四块拼装，和一个“不发”的开关</h2>
-      <p>Codex 的请求体是 Responses API 形状，没有独立的 <code>system</code> 字段。它的对应物叫 <code>base_instructions</code>，作为 <code>instructions</code> 下发；对话内容放在 <code>input</code> 消息数组里。每个采样步，<code>build_prompt</code> 都会返回一个 <code>Prompt</code>，固定四块。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client_common.rs#L22-L40">client_common.rs#L22-L40</a> <span class="tag tag--ok">已核实</span></p>
+      <h2>Codex 怎么拼一次请求</h2>
+      <p>Codex 每次向模型发请求，都先调用 <code>build_prompt</code> 拼出一个 <code>Prompt</code>，里面有四块：<code>input</code>、<code>tools</code>、<code>base_instructions</code>、<code>output_schema</code>。这四块是代码里的逻辑分类，不是线上请求的四个字段。Codex 用的是 OpenAI 的 Responses API，请求里没有独立的 system 或 <code>instructions</code> 字段：<code>base_instructions</code> 会被包成一条 developer 消息，放在 <code>input</code> 的最前面。对一部分模型，<code>tools</code> 也不单独成字段，而是变成 <code>input</code> 最前面的一条 <code>additional_tools</code> 条目。这类模型在模型元数据里标着 <code>use_responses_lite</code>，下文称 Lite 模型。第 30 章会逐行读这段代码。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client_common.rs#L22-L40">client_common.rs#L22-L40</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/codex-api/src/common.rs#L278-L304">common.rs#L278-L304</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client.rs#L975-L1012">client.rs#L975-L1012</a> <span class="tag tag--ok">已核实</span></p>
 
       <h3 id="codex-four">2.1 四块各装什么</h3>
       <ul>
-        <li><strong><code>input</code></strong>：历史条目。由 <code>ContextManager</code> 持有的活历史，写入时已经规范化过，不会出现“有工具结果、没有对应调用”的孤立记录。</li>
-        <li><strong><code>tools</code></strong>：本轮模型可见的工具规格。注意是“本轮可见”，不是“全部注册”。权限、沙箱模式、MCP 暴露策略都会在这里做一次过滤。</li>
-        <li><strong><code>base_instructions</code></strong>：岗位说明书。身份、做事方式、工具使用通则都在这里，是整个前缀里最稳定的一段。</li>
-        <li><strong><code>output_schema</code></strong>：结构化输出约束。普通会话 <code>output_schema_strict = true</code>；guardian / basic 会话为 <code>false</code>。</li>
+        <li><strong><code>input</code></strong>：历史条目。由 <code>ContextManager</code> 持有的活历史（内存里正在使用的那份历史，区别于存在磁盘上的会话日志）。每次生成请求时，Codex 会先复制一份，在副本上做规范化（见 2.3）。所以发出去的 <code>input</code> 里不会有“有工具结果、没有对应调用”的孤立记录。</li>
+        <li><strong><code>tools</code></strong>：这次请求可见的工具规格。注意是“这次请求可见”，不是“全部注册”。权限、沙箱模式、MCP 暴露策略都会在这里做一次过滤。</li>
+        <li><strong><code>base_instructions</code></strong>：岗位说明书，相当于系统提示。身份、做事方式、工具使用通则都在这里，是整个前缀里最稳定的一段。</li>
+        <li><strong><code>output_schema</code></strong>：结构化输出约束。普通会话 <code>output_schema_strict = true</code>；guardian / basic 会话（Codex 里负责审批审查的内部会话）为 <code>false</code>。</li>
       </ul>
-      <p><code>build_prompt</code> 同时还固定写入 <code>parallel_tool_calls = true</code>。这个值不是“建议”，它改变了模型可以一次性发出多少个工具调用，也改变了工具结果的返回形状。很多人以为并行度是模型自己决定的，其实客户端在每次请求里都替它做了选择。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a> <span class="tag tag--ok">已核实</span></p>
-      <p><strong>为什么强调“本轮可见”。</strong>如果把“注册过的工具”直接当成“发出去的工具”，权限系统就形同虚设：一个被禁用的工具仍然占着 schema、仍然能被模型点名。Codex 在组装这一步做过滤，等于把权限判断前移到了请求边界。<strong>代价</strong>是工具表在会话中途可能变化，而变化又会打断前缀缓存——这正是后面 <code>incremental_tools</code> 想解决的问题。</p>
+      <p><code>build_prompt</code> 同时还固定写入 <code>parallel_tool_calls = true</code>。这个值不是“建议”，而是客户端给出的许可：能不能一次发出多个工具调用，由客户端在每次请求里设定，不由模型决定。不过这只是 <code>Prompt</code> 里的值，实际生成请求体时，Lite 模型会被改成 <code>false</code>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client.rs#L1083">client.rs#L1083</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>为什么强调“这次请求可见”。</strong>如果把“注册过的工具”直接当成“发出去的工具”，权限系统就形同虚设：一个被禁用的工具仍然占着 schema，仍然能被模型点名。Codex 在组装这一步做过滤，等于把权限判断前移到了请求边界。<strong>代价</strong>是工具表在会话中途可能变化，而它排在历史之前，一变就会让后面的缓存失效。2.4 的 <code>incremental_tools</code> 与这个问题有关。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/step_context.rs#L47-L48">step_context.rs#L47-L48</a> <span class="tag tag--ok">已核实</span></p>
 
       <h3 id="codex-env">2.2 环境与权限：不是字段，是片段</h3>
-      <p>Codex 没有“环境信息”这个独立字段。它以 contextual user / developer 片段的形式插进 <code>input</code>：<code>&lt;environment_context&gt;</code> 装 cwd、平台等，<code>&lt;current_time_reminder&gt;</code> 装时间，AGENTS.md 的内容也以片段形式参与。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/contextual_user_message.rs#L1-L40">contextual_user_message.rs#L1-L40</a> <span class="tag tag--ok">已核实</span></p>
-      <p>权限与沙箱说明也一样：一部分来自这些片段，一部分写在工具描述里。比如“这个工具在只读沙箱下会失败”这句话，可能出现在工具描述里，而不是系统提示里。这个选择有实际后果：</p>
+      <p>Codex 没有“环境信息”这个独立字段。它以上下文片段（contextual fragment，一小段带标签、角色为 user 或 developer 的消息）的形式插进 <code>input</code>。<code>&lt;environment_context&gt;</code> 装 cwd、平台等，<code>&lt;current_time_reminder&gt;</code> 装时间，AGENTS.md 的内容也是一种片段。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context/contextual_user_message.rs#L1-L40">contextual_user_message.rs#L1-L40</a> <span class="tag tag--ok">已核实</span></p>
+      <p>权限与沙箱说明也一样：一部分来自这些片段，一部分写在工具描述里。比如“这个工具在只读沙箱下会失败”这句话，可能出现在工具描述里，而不是系统提示里。这种放法有三个后果：</p>
       <ul>
-        <li>片段可以逐轮更新，不必重写系统提示。切换工作目录时，只有那一条片段变，前缀不动。</li>
-        <li>片段在历史里，可以被压缩、被裁剪、被回放。它不像系统提示那样“永远在”。</li>
+        <li>片段可以单独追加更新，不必重写系统提示。切换工作目录时，只会在末尾多出一条片段，前缀不动。</li>
+        <li>片段在历史里，会像其他消息一样被压缩、被裁剪，恢复会话时还要从存档里重放出来。它不像系统提示那样“永远在”。</li>
         <li>片段是模型可见的自然语言，不是结构化字段。模型可以引用它，也可以忽略它。</li>
       </ul>
-      <p><strong>代价</strong>是同一类信息有了两个来源。排查“为什么模型不知道现在是只读模式”时，你要同时看系统提示、工具描述和最近的片段，而不是看一个配置项。这是把稳定性换成可维护性的典型交易。</p>
+      <p><strong>代价</strong>是同一类信息有了两个来源。排查“为什么模型不知道现在是只读模式”时，你要同时看系统提示、工具描述和最近的片段，而不是看一个配置项。这是拿可维护性换前缀稳定的典型交易。</p>
 
-      <h3 id="codex-normalize">2.3 写进历史之前，先修一遍</h3>
-      <p>历史不是“发生过什么就存什么”。Codex 在写入时执行一组固定不变量，<code>normalize_history</code> 负责四件事：给缺失的工具调用补上结果、删掉没有对应调用的孤立结果、剥离模型不支持的图片、剥离不支持的音频。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L968-L982">history.rs#L968-L982</a> <span class="tag tag--ok">已核实</span></p>
-      <p>这四件事看起来像清理，实际上是<strong>协议适配</strong>：严格一点的 provider 会直接拒绝不配对的工具记录；宽松一点的会接受，但模型会把孤立结果当成新事实，开始编造它为什么存在。与其在每个 provider 分支里处理，不如在写入时统一成一种合法形状。</p>
-      <p><strong>代价</strong>是不可逆。被剥掉的图片不会在下一轮回来；被补上的空结果会让模型以为工具真的返回了空。这也是为什么“历史规范化”必须和会话日志分开：日志保留原样，活历史才是裁剪过的投影。第 18 章会展开这个区分。</p>
+      <h3 id="codex-normalize">2.3 发给模型之前，先规范化一遍</h3>
+      <p>历史里存的东西，不一定是模型能直接接受的样子。每次生成请求时，Codex 先复制一份历史，在副本上调用 <code>normalize_history</code>。它保证几条规则始终成立（不变量）：给缺失的工具调用补上结果、删掉没有对应调用的孤立结果、剥离模型不支持的图片、剥离模型不支持的音频。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L968-L982">history.rs#L968-L982</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/history.rs#L603-L617">#L603-L617</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L555-L557">turn.rs#L555-L557</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1749-L1751">#L1749-L1751</a> <span class="tag tag--ok">已核实</span></p>
+      <p>这四件事看起来像清理，实际上是<strong>协议适配</strong>：严格一点的 provider 会直接拒绝不配对的工具记录；宽松一点的即使接受，孤立的结果也会让模型看到一条来历不明的信息。</p>
+      <p><strong>代价</strong>：规范化只改副本，存着的历史和磁盘上的会话日志保持原样，所以每次请求都要重做一遍，剥不剥图片和音频也按这次请求所用模型的能力决定。副本和存档因此会不一致：缺失的工具结果会被补成内容为 <code>aborted</code> 的结果，模型看到的是“这次调用被中止了”，存着的历史里却没有这一条。排查时要分清看的是哪一份。第 18 章会展开日志和活历史的区别。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/context_manager/normalize.rs#L53-L66">normalize.rs#L53-L66</a> <span class="tag tag--ok">已核实</span></p>
 
-      <h3 id="codex-incremental">2.4 incremental_tools：把“每次都发”改成“只发变化”</h3>
-      <p>当 <code>incremental_tools = true</code> 时，本次请求把 <code>tools</code> 置空、<code>base_instructions</code> 置为空文本，改由历史里已经写入的工具与指令增量承担。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a> <span class="tag tag--ok">已核实</span></p>
-      <p>这个设计的动机很直接：工具表和大段指令在长会话里被重复发送几百次，而它们几乎不变。把它们挪进历史，只在新工具出现、旧工具消失、指令版本变化时追加一条增量，前缀就变短了，缓存也更容易命中。首次请求仍然要完整发一次，之后才是增量。</p>
-      <p>工具定义值得单独优化，原因有三。第一是<strong>体积</strong>：它和系统提示一起构成每轮都要发送的前缀，工具越多、描述越长，留给对话的空间越小。第二是<strong>稳定性</strong>：工具表在会话中途很少变化，是最适合“发一次就复用”的内容；相反，一旦它变了，通常意味着权限或插件状态变了，值得让模型知道。第三是<strong>缓存</strong>：工具定义排在历史之前，它一变，后面的全部内容都失去相同前缀。三点合起来，才有了“增量下发”这种看起来绕、算下来省的方案。</p>
-      <p>但代价比省下的 token 更值得注意：</p>
+      <h3 id="codex-incremental">2.4 incremental_tools：把工具和指令放进历史，之后只追加变化</h3>
+      <p>当 <code>incremental_tools = true</code> 时，<code>build_prompt</code> 把 <code>tools</code> 置空、<code>base_instructions</code> 置为空文本。工具定义和模型指令不再由请求头部携带，而是作为条目写进历史（工具定义是一条 <code>additional_tools</code> 条目）；之后工具集变了，就往历史末尾追加更新。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/world_state.rs#L94-L101">world_state.rs#L94-L101</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/models.rs#L1037">models.rs#L1037</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/features/src/lib.rs#L266-L267">lib.rs#L266-L267</a> <span class="tag tag--ok">已核实</span></p>
+      <p>这个功能在这份代码里默认关闭，也不是用户直接配置的开关。传给 <code>build_prompt</code> 的布尔值由 <code>current_window_uses_incremental_tools</code> 算出：不是 Lite 模型，一律为假；历史还空着时（一段新历史刚开始），看功能开关 <code>IncrementalTools</code>，它处于“开发中”阶段，默认是 <code>false</code>；历史不空时，看历史里已经有没有 <code>additional_tools</code> 条目。所以“Codex 默认开增量工具”这个说法不成立。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/world_state.rs#L44-L56">world_state.rs#L44-L56</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/step_context.rs#L55-L62">step_context.rs#L55-L62</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/features/src/lib.rs#L1592-L1596">lib.rs#L1592-L1596</a> <span class="tag tag--ok">已核实</span></p>
+      <p>源码没有写这样做的动机，下面是根据结构做的推断。工具定义和指令并没有从请求里消失，只是换了位置：它们成了历史的一部分，随历史一起发送，进入模型的 token 并没有因此减少。变的是以后的改法。<code>tools</code> 字段排在历史之前，改一次就让后面整段历史失去相同前缀；放进历史之后，工具集变化只是末尾多一条更新，前面已缓存的部分不用动。第 30 章对这笔账算得更细。<span class="tag tag--guess">推断</span></p>
+      <p>工具定义值得单独优化，原因有三。第一是<strong>体积</strong>：它和系统提示一起构成每次请求都要发送的前缀，工具越多、描述越长，留给对话的空间越小。第二是<strong>稳定性</strong>：工具表在会话中途很少变化，最适合放在固定位置反复复用；相反，一旦它变了，通常意味着权限或插件状态变了，值得让模型知道。第三是<strong>缓存</strong>：工具定义排在历史之前，它一变，后面的全部内容都失去相同前缀。体积主要靠“延迟加载”去减（见取舍三），稳定性和缓存这两点，才是增量下发要处理的。</p>
+      <p>它的代价有下面几条，同样是根据结构做的推断：</p>
       <ul>
-        <li><strong>历史成了唯一真相</strong>。如果压缩、裁剪、回退把增量条目弄丢了，模型下一轮就看不到那个工具。工具“消失”不会报错，只会表现为模型说“我没有这个能力”。</li>
-        <li><strong>回放要能重建</strong>。恢复会话时不能只回放消息文本，还要回放“当时生效的工具集”。否则同一份日志在不同版本下恢复，工具表会不一致。</li>
-        <li><strong>调试变难</strong>。你在请求体里看不到工具定义，只能看历史。抓包工具、日志查看器都要跟着改。</li>
-        <li><strong>不适合短会话</strong>。首次请求仍要全量发；会话只有三五轮时，增量机制只增加了复杂度，没有省下什么。</li>
+        <li><strong>历史成了唯一依据</strong>。增量是否生效，看的是历史里有没有工具声明（<code>has_tool_declarations()</code>）。声明整条丢掉时，下一次请求会退回完整下发；更隐蔽的是之后追加的更新被裁掉，模型手里的工具表就会和实际可用的不一致。</li>
+        <li><strong>重放要能重建</strong>。恢复会话时要重放存档，不能只重放消息文本，还要把“当时生效的工具集”重建出来。否则同一份日志在不同版本下恢复，工具表会不一致。</li>
+        <li><strong>调试变难</strong>。请求的 <code>tools</code> 字段是空的，工具定义混在 <code>input</code> 的一条条目里，之后的更新又散在历史各处。抓包工具、日志查看器都要跟着改。</li>
+        <li><strong>不适合短会话</strong>。首次请求仍要把完整的工具表和指令写进历史；会话很短、工具集又不变时，增量机制只增加了复杂度，看不到收益。</li>
       </ul>
-      <p>本快照里 <code>build_prompt</code> 只接收这个开关，没有在函数内设默认值，默认值由调用方决定；本次也没有找到统一的全局默认<sup class="fn-ref"><a href="#fn-main-01-1" id="fnref-main-01-1">1</a></sup>。所以“Codex 默认开增量工具”这个说法不成立，能不能用取决于上游怎么传。</p>
 
       <p class="small muted">下面是 <code>build_prompt</code> 的简化摘录，重点看四块的赋值和 <code>incremental_tools</code> 的分支，省略了错误处理与工具过滤。</p>
       <div class="codeblock" data-lang="rust">
@@ -227,26 +228,26 @@
 <span class="code__line">    parallel_tool_calls: true,             <span class="cmt">// 固定写入</span></span>
 <span class="code__line">};</span>
 <span class="code__line"> </span>
-<span class="code__line code__line--cmt">// 增量模式：把两个稳定块挪进历史，本次不再重复下发</span>
+<span class="code__line code__line--cmt">// 增量模式：这两块不再放在请求头部，声明已作为条目记在历史里</span>
 <span class="code__line">if incremental_tools {</span>
 <span class="code__line">    prompt.tools = Vec::new();</span>
 <span class="code__line">    prompt.base_instructions = String::new();</span>
-<span class="code__line">    <span class="cmt">// 增量条目已在写入历史时追加，这里不再补</span></span>
+<span class="code__line">    <span class="cmt">// 声明条目已另行写进历史，这里不再补</span></span>
 <span class="code__line">}</span>
 </code></pre>
       </div>
       <p class="small muted">对照源码：<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/session/turn.rs#L1666-L1695">turn.rs#L1666-L1695</a>。注释为讲解所加，不是原注释；变量名做了简化。</p>
 
       <h3 id="codex-order">2.5 顺序：稳定在前，变化在后</h3>
-      <p>把四块排成一条序列，Codex 的顺序是：<strong>instructions → tools → input（从旧到新）</strong>。这不是审美选择，而是缓存协议的要求：prompt cache 以“前缀完全相同”为命中条件，任何靠前的字节变化，都会让它后面的全部内容重新计费。</p>
-      <p>所以“把规则文件放在系统提示里”和“把规则文件作为一条消息前插”不是等价方案。前者只要规则改一个字，整个前缀作废；后者只影响插入点之后的内容，而插入点通常在历史头部，仍然很贵，但至少工具表还在。真正便宜的位置是<strong>尾部</strong>：把易变信息追加在本轮输入之前，前面的东西一个字都不动。</p>
-      <p>这也是为什么几乎所有 agent 都会把“当前时间”做成一条独立提醒，而不是写进系统提示的第一段。Grok Build 甚至宁可加一条一次性的跨午夜提醒，也不肯改写启动时缓存的 <code>&lt;user_info&gt;</code> 日期。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs#L507-L522">reminders.rs#L507-L522</a> <span class="tag tag--ok">已核实</span> 第 11 章会专门讲这类注入。</p>
+      <p>把请求排成一条序列，Lite 模型的顺序是：<strong>工具声明 → 指令 → 历史（从旧到新）</strong>，三者都在 <code>input</code> 里；其他模型的 <code>tools</code> 仍是顶层字段，<code>input</code> 里是“指令 → 历史”。服务端怎么把顶层字段和 <code>input</code> 排成一段，源码里看不出来。共同点是稳定的内容在前，变化的内容在后。这是缓存的要求：prompt cache 以“前缀完全相同”为命中条件，任何靠前的字节变化，都会让它后面的全部内容重新计费。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/client.rs#L975-L1012">client.rs#L975-L1012</a> <span class="tag tag--ok">已核实</span></p>
+      <p>所以“把规则文件放在系统提示里”和“把规则文件作为一条消息前插”不是等价方案。前者只要规则改一个字，系统提示和排在它后面的全部历史都要重新计费；后者只影响插入点之后的内容，而插入点通常在历史头部，所以也很贵，只是系统提示还能命中。最便宜的位置是<strong>尾部</strong>：易变信息追加在已有历史的末尾，前面的东西一个字都不动。</p>
+      <p>同样的考虑也体现在时间的处理上：Codex、omp、Grok Build 把“当前时间”或日期做成独立的提醒，而不是写进系统提示的第一段。Grok Build 甚至宁可加一条一次性的跨午夜提醒，也不肯改写启动时缓存的 <code>&lt;user_info&gt;</code> 日期。第 11 章会专门讲这类注入。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs#L507-L522">reminders.rs#L507-L522</a> <span class="tag tag--ok">已核实</span></p>
 
       <div class="hf hf--qa">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
-          <p class="hf__q">问：既然工具表最稳定，为什么不把它放在系统提示最前面？</p>
-          <p class="hf__a">答：位置由协议决定，不由实现决定。工具的 schema 是独立字段，provider 在计费和缓存时自己决定拼接顺序；你能控制的是“这一轮发哪些工具”和“工具描述写多长”，不是它在序列里的绝对位置。真正能挪的，是那些以文本片段形式存在的东西：环境、规则、提醒。</p>
+          <p class="hf__q">问：工具表这么稳定，agent 能自己决定它在序列里排第几吗？</p>
+          <p class="hf__a">答：要看它在请求里是什么形式。顶层的 tools 字段排在哪里，是 provider 的接口定的（Anthropic 的文档写明是 tools → system → messages），agent 改不了；它能控制的是这次请求发哪些工具、工具描述写多长。放进 input 或 messages 的文本片段（环境、规则、提醒）由 agent 自己安排位置。Codex 的 Lite 模型把工具声明也做成了这样的条目。</p>
         </div>
       </div>
 
@@ -254,11 +255,11 @@
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">✓</span>要点小结</p>
         <div class="hf__body">
           <ul>
-            <li>Codex 的请求是四块：<code>input</code>、<code>tools</code>、<code>base_instructions</code>、<code>output_schema</code>，没有独立 system 字段。</li>
-            <li>环境、权限、时间都是 contextual 片段，插在历史里，可以逐轮更新，也会被压缩和裁剪。</li>
-            <li>历史写入前先规范化：补结果、删孤立结果、剥不支持的模态，保证协议合法。</li>
-            <li><code>incremental_tools</code> 把稳定块挪进历史，省前缀长度，代价是历史成了唯一真相。</li>
-            <li>稳定在前、变化在后，是缓存友好的唯一通用规则。</li>
+            <li>Codex 的请求在代码里是四块：<code>input</code>、<code>tools</code>、<code>base_instructions</code>、<code>output_schema</code>；线上没有独立的 system 或 <code>instructions</code> 字段，指令是 <code>input</code> 开头的一条 developer 消息。</li>
+            <li>环境、权限、时间都是上下文片段，插在历史里，可以随时追加更新，也会被压缩和裁剪。</li>
+            <li>每次生成请求时，先在历史的副本上规范化：补上缺失的结果、删掉孤立结果、剥掉模型不支持的图片和音频。</li>
+            <li><code>incremental_tools</code>（默认关闭）把工具和指令记进历史，之后只追加变化。请求里的 token 没有减少；好处（推断）是工具集变化时不用改动前面已缓存的部分，代价是历史成了唯一依据。</li>
+            <li>稳定在前、变化在后，是缓存友好最通用的规则。</li>
           </ul>
         </div>
       </div>
@@ -267,8 +268,8 @@
     <!-- ========== 03 ========== -->
     <section id="tools">
       <p class="sec-no">03 · 七个编码智能体</p>
-      <h2>同一张底图，七种画法</h2>
-      <p>下面七个 agent 各有一个弹窗。读的时候盯住三件事：系统提示是<strong>一整块</strong>还是<strong>具名 section</strong>；历史是<strong>内存里追加</strong>还是<strong>每步从存储投影</strong>；工具定义是<strong>全量下发</strong>还是<strong>有增量/延迟</strong>。这三件事决定了它们后面所有章节的行为。</p>
+      <h2>七个 agent 各自怎么拼：系统提示、历史、工具定义</h2>
+      <p>下面七个 agent 各有一个弹窗。读的时候盯住三件事：系统提示是<strong>一整块</strong>还是<strong>具名 section</strong>；历史是<strong>在内存里追加</strong>，还是<strong>每一步都从存储里重新算出这一步要发的消息</strong>（这种做法叫“投影”：日志完整保留，压缩、裁剪只改算出来的那一份）；工具定义是<strong>全量下发</strong>还是<strong>有增量/延迟</strong>。这三件事会反复出现在后面的章节里。</p>
       <p>一个提醒：Claude Code 的结论来自非官方 v2.1.88 源码，只代表该版本；它与官方文档不一致的地方，弹窗里会并列写。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
@@ -307,7 +308,7 @@
     <section id="matrix">
       <p class="sec-no">04 · 八个编码智能体对比</p>
       <h2>把“装什么”排成一张表</h2>
-      <p>看表时先看“系统提示形态”：它决定了你改一句话的代价。再看“历史来源”：内存追加的实现便宜、快，但恢复和分叉要另做一套；每步投影的实现慢一点，却天然支持回退和多分支。最后看“增量与复用”，那是各家对缓存做的功课。</p>
+      <p>看表时先看“系统提示形态”：它决定了你改一句话的代价。再看“历史来源”：内存追加的实现便宜、快，但恢复和分叉要另做一套；每步投影的实现慢一点，却天然支持回退和多分支。最后看“增量与复用”，那一列是各家为缓存做的设计。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
@@ -326,15 +327,15 @@
             <tr>
               <th scope="row" class="cell-tool">Codex<span>codex</span></th>
               <td>一整块 <code>base_instructions</code>，环境与规则走片段。<span class="tag tag--ok">已核实</span></td>
-              <td>独立 <code>tools</code> 字段，按本轮可见集过滤。<span class="tag tag--ok">已核实</span></td>
-              <td><code>ContextManager</code> 活历史，写入时规范化。<span class="tag tag--ok">已核实</span></td>
-              <td>instructions → tools → input（旧到新）。<span class="tag tag--ok">已核实</span></td>
-              <td><code>incremental_tools</code> 把稳定块挪进历史。<span class="tag tag--ok">已核实</span></td>
+              <td><code>tools</code> 按这次请求的可见集过滤；Lite 模型里变成 <code>input</code> 开头的条目。<span class="tag tag--ok">已核实</span></td>
+              <td><code>ContextManager</code> 活历史；生成请求时在副本上规范化。<span class="tag tag--ok">已核实</span></td>
+              <td>Lite：工具声明 → 指令 → 历史；其他模型：顶层 tools，input 里指令 → 历史。<span class="tag tag--ok">已核实</span></td>
+              <td><code>incremental_tools</code>（默认关闭）把工具和指令记进历史，之后只追加变化。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
               <td>字符串数组：静态 7 段 + 边界常量 + 动态段。<span class="tag tag--src">源码 v2.1.88</span></td>
-              <td>独立 <code>toolSchemas</code>，与系统提示分别打缓存标记。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>独立 <code>toolSchemas</code>，与系统提示分别标记缓存断点。<span class="tag tag--src">源码 v2.1.88</span></td>
               <td>消息数组；CLAUDE.md 作为首条 meta 用户消息前插。<span class="tag tag--src">源码 v2.1.88</span></td>
               <td>系统（静态→动态）→ 消息；规则不在系统里。<span class="tag tag--both">两者一致</span></td>
               <td><code>systemPromptSection()</code> 记忆化，<code>/clear</code>、<code>/compact</code> 才清。<span class="tag tag--src">源码 v2.1.88</span></td>
@@ -397,7 +398,7 @@
     <section id="tradeoffs">
       <p class="sec-no">05 · 设计取舍</p>
       <h2>为什么没有一种拼法通吃</h2>
-      <p>下面五组取舍，是这张表背后真正的分歧。每组都写清“A 派在想什么”“B 派在想什么”，以及代价。参数不重复给链接，统一见上一节与各弹窗。</p>
+      <p>下面五组取舍，是这张表背后的主要分歧。每组都写清“A 派在想什么”“B 派在想什么”，以及代价。参数不重复给链接，统一见上一节与各弹窗。各组里的代价多是根据结构推断的，源码没有逐条写明。</p>
 
       <h3>取舍一：系统提示是一整块，还是具名 section</h3>
       <p><strong>一整块</strong>（Codex、Grok Build）实现简单：模板渲染成字符串，改就整段改。调试时你把请求体里的那段话读完，就知道模型看到了什么。<strong>具名 section</strong>（pi、dsh、Claude Code 的动态段）把提示词拆成有名字的块，每块可以单独计算、单独比较、单独替换。</p>
@@ -405,24 +406,24 @@
       <p><strong>代价</strong>：section 化让“最终提示词长什么样”不再是源码里的一段常量，而是运行时拼出来的。排查时必须打印装配结果，不能只读模板。整块方案则相反：可读性最好，运行时能力最弱。</p>
 
       <h3>取舍二：规则放系统提示，还是放消息层</h3>
-      <p>Claude Code 把 CLAUDE.md 放在消息层：一条 <code>isMeta</code> 的用户消息，用 <code>&lt;system-reminder&gt;</code> 包住，前插到消息列表头部。Codex 的 AGENTS.md 则是 <code>WorldState</code> 的一个 section，作为片段进 <code>input</code>。两家都不放系统提示。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L449-L474">api.ts#L449-L474</a> <span class="tag tag--src">源码 v2.1.88</span></p>
-      <p>原因有三点。第一，规则文件会变，系统提示不该跟着变。第二，规则需要“位置语义”：它应该出现在历史开始处，而不是永远排在最前面。第三，消息层的规则可以被压缩、被摘要、被替换，系统提示不行。</p>
-      <p><strong>代价</strong>是规则失去了“不可协商”的地位。它和用户消息在同一个通道里，模型可能把它当成一段普通背景；压缩之后，它可能只剩摘要里的一句“用户偏好某种风格”。Claude Code 的对策是压缩后重新注入，Codex 的对策是压缩后重注初始上下文。两家都在补同一个洞。</p>
+      <p>Claude Code 把 CLAUDE.md 放在消息层：一条 <code>isMeta</code> 的用户消息，用 <code>&lt;system-reminder&gt;</code> 包住，前插到消息列表头部。这条消息不存进会话历史，每次请求时才拼上去，而且发生在压缩之后。Codex 的 AGENTS.md 则是 <code>WorldState</code>（记录“模型当前该看到什么”的状态，哪一块变了才产生一条更新片段）的一个 section，作为片段进 <code>input</code>，是历史的一部分。两家都不放系统提示。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/api.ts#L449-L474">api.ts#L449-L474</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/query.ts#L659-L660">query.ts#L659-L660</a> <span class="tag tag--src">源码 v2.1.88</span></p>
+      <p>可能的原因有两点（源码没有写明动机）。第一，规则文件会变，系统提示不该跟着变。第二，消息层可以随时增删、替换，不必动系统提示。<span class="tag tag--guess">推断</span></p>
+      <p><strong>代价</strong>有两个。一是规则的约束力不如系统提示：它和用户消息走同一个通道，模型有可能把它当成普通背景。Claude Code 前插的那条消息末尾就写着：这些上下文可能与任务相关也可能无关，除非高度相关，否则不必回应。二是压缩。Codex 的规则片段在历史里，压缩时可能被当成旧对话摘要掉，所以压缩后要把初始上下文重新放回去。Claude Code 的情况不同：CLAUDE.md 不在历史里，每次请求都重新前插，压缩改不到它；压缩后要补回的是最近读过或写过的文件和技能，规则不用补。</p>
 
       <h3>取舍三：工具定义全量下发，还是增量/延迟</h3>
-      <p>全量下发（opencode v1、dsh）最可预测：模型每一轮都能看到完整工具表，不存在“工具忽然不见”。代价是长会话里同一份 schema 被重复发送几百次；工具越多，前缀越长，能留给对话的空间越小。</p>
-      <p>增量（Codex <code>incremental_tools</code>）和延迟（Claude Code 的 <code>tst</code> 模式、Codex 的 <code>supports_search_tool</code>、Grok Build 的 <code>search_tool</code>）都在减少“每轮都发”的体积，但机制不同：增量是“发过一次就不再发”，延迟是“先只发名字，用到再取”。前者假设历史可靠，后者假设模型知道自己需要什么。</p>
-      <p><strong>代价</strong>：增量把正确性押在历史上，裁剪、压缩、回退都可能让工具消失；延迟把正确性押在检索上，模型可能搜不到、或者根本不搜就声称自己没有这个能力。全量则把成本押在 token 上——这是唯一一种“贵但不会错”的方案，也是大多数 agent 在工具数量少时的默认选择。</p>
+      <p>全量下发（opencode v1、dsh）最可预测：模型每次请求都能看到完整工具表，不存在“工具忽然不见”。代价是长会话里同一份 schema 要随每次请求重复发送；工具越多，前缀越长，能留给对话的空间越小。</p>
+      <p>要降低工具定义的成本，有两种着力点不同的思路。延迟是少发内容：先只发名字，用到再取。Claude Code 默认的工具搜索模式 <code>tst</code>、Codex 的 <code>supports_search_tool</code>、Grok Build 的 <code>search_tool</code> 都属于这一类，第 10 章会讲。增量（Codex <code>incremental_tools</code>）不少发内容，只是把工具表放进历史，之后的变化只追加更新。前者假设模型知道自己需要什么，后者假设历史可靠。</p>
+      <p><strong>代价</strong>：增量把正确性押在历史上，声明条目和更新条目要在压缩、裁剪、回退、恢复时都保得住、顺序不乱；延迟把正确性押在检索上，模型可能搜不到，或者根本不搜就声称自己没有这个能力。全量下发最直接，成本全在 token 上，但不会因为历史出问题而丢工具。</p>
 
       <h3>取舍四：历史在内存追加，还是每步从存储投影</h3>
-      <p>追加派（Codex 的 <code>ContextManager</code>）快：一次写入，之后只读。投影派（pi 的会话树、opencode v1 的 SQLite、omp 的叶子回溯）慢：每一步都要重新计算“模型现在应该看到什么”，但天然支持回退、分叉、压缩后重建。</p>
+      <p>追加派（Codex 的 <code>ContextManager</code>）快：新内容直接追加进内存里的历史，发请求时只要复制一份再做规范化。投影派（pi 的会话树、opencode v1 的 SQLite、omp 的叶子回溯）慢：每一步都要重新计算“模型现在应该看到什么”，但天然支持回退、分叉、压缩后重建。pi 和 omp 把会话存成一棵树，每条记录指向它的上一条；最新的一条叫叶子，从叶子一路回溯到根，就是这一步要发的历史。</p>
       <p>分野来自“会话是不是线性的”。如果是，追加最简单；如果不是，投影几乎是唯一选择，因为同一份日志要能生成多个不同的可见历史。opencode v1 的注释说得很直白：每一步都从存储投影，而不是在内存里累积。</p>
-      <p><strong>代价</strong>：投影派每次请求都要读库、走树、应用边界，首 token 延迟更高；追加派要做分叉时，得复制或重放历史，而且容易出现“内存里是旧的、磁盘上是新的”这种不一致。Codex 用 checkpoint + 后缀回放来缓解，代价是恢复逻辑变复杂。</p>
+      <p><strong>代价</strong>：投影派每次请求都要读库、走树、应用边界，首 token 延迟更高；追加派要做分叉时，得复制或重放历史，而且容易出现“内存里是旧的、磁盘上是新的”这种不一致。Codex 的办法是以存档为准：恢复时从最近一次压缩的结果开始，再重放之后的记录，代价是恢复逻辑变复杂。</p>
 
       <h3>取舍五：环境信息放头部，还是放尾部</h3>
-      <p>放头部（传统做法）让模型一开始就知道自己在哪、能做什么，符合人类阅读习惯。放尾部（omp 的日期/cwd 提醒、Grok 的跨午夜提醒）牺牲一点“第一印象”，换来前缀稳定。</p>
-      <p>真正的差别在长会话：cwd 一天可能变十次，时间每轮都在变。放头部意味着每次变化都让整个前缀失效；放尾部只让最后几条消息失效。按 token 计费算，这个差距可能是几十倍。</p>
-      <p><strong>代价</strong>：尾部信息更容易被忽略。模型在长上下文里对末尾的注意力并不比开头强，甚至更弱（“lost in the middle”说的是中间，但尾部同样不是万能位置）。所以放尾部时，通常要配合“每轮重复注入”或“关键节点再提醒一次”，这又增加了注入次数。第 11 章会把这条线讲完。</p>
+      <p>放头部（传统做法，写进系统提示）让模型一开始就知道自己在哪、能做什么。放尾部（Codex 的环境变更片段、Grok Build 的跨午夜提醒）不动前面已缓存的内容，变了就在末尾追加一条。omp 取中间：把日期和 cwd 提醒放在第一条用户消息之前，系统提示和工具表保持不变，但这条提醒一变，后面的历史仍要重算。</p>
+      <p>差别在长会话里最明显：cwd 一天可能变十次，时间提醒如果每次请求都更新，就一直在变。放头部意味着每次变化都让整个前缀失效；放尾部只让最后几条消息失效。历史越长，两者的差距越大。</p>
+      <p><strong>代价</strong>：追加在尾部的提醒，会随着对话变长被越来越多的新消息推到历史中间。模型对长上下文中间部分的利用往往较差（“lost in the middle”现象）。所以放尾部时，通常要配合定期重复注入，或者在关键节点再提醒一次，这又增加了注入次数。第 11 章会把这条线讲完。<span class="tag tag--guess">推断</span></p>
 
       <p>还有一条横切的取舍：<strong>要不要让用户看见装配结果</strong>。Codex 没有 <code>/context</code> 类命令，Claude Code 有分类计数，Grok Build 的 <code>/context</code> 分四段。看得见，用户能自己诊断“为什么规则没生效”；看不见，实现方少一层维护负担，但排障只能靠读源码。这是第 12 章的主题。</p>
     </section>
@@ -430,7 +431,7 @@
     <!-- ========== 06 ========== -->
     <section id="quiz">
       <p class="sec-no">06 · 小测验</p>
-      <h2>三道题，检验你是否真的会拼</h2>
+      <h2>缓存失效、增量工具、规则位置：三道题</h2>
 
       <div class="quiz">
         <div class="quiz__head">
@@ -440,7 +441,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>改第一段会让它之后的所有内容失效：系统提示剩余部分、工具定义、全部历史、本轮输入，都要重新计费。因为缓存要求前缀逐字节相同，第一个字节变了，后面就不再有“相同前缀”。改最后一条环境提醒，只影响这条提醒之后的内容，通常是本轮输入，代价小几个数量级。这就是<a href="#codex-order">2.5 顺序</a>与<a href="#fig-request-layers">图 01-1</a>的核心：稳定在前，变化在后。</p>
+          <p>改第一段会让它之后的所有内容失效：系统提示剩余部分、全部历史、本轮输入，都要重新计费。因为缓存要求前缀逐字节相同，第一个字节变了，后面就不再有“相同前缀”。排在系统提示前面的工具定义不受影响（Codex 的 Lite 模型和 Anthropic 的 API 都把工具放在系统提示之前）。改最后一条环境提醒，只影响这条提醒之后的内容，通常是本轮输入，代价小得多。这就是<a href="#codex-order">2.5 顺序</a>与<a href="#fig-request-layers">图 01-1</a>的核心：稳定在前，变化在后。</p>
         </div>
       </div>
 
@@ -452,7 +453,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>第一，承载工具增量的那条历史被裁掉或压缩掉了，模型看不到“这个工具可用”。第二，本轮可见集在过滤时没有包含它（权限、沙箱模式、MCP 暴露策略），<code>tools</code> 本来就是空的，增量里也没有。两者的区别很好判断：前者在会话早期能用、后来忽然不能用；后者从一开始就不能用。见<a href="#codex-incremental">2.4 增量工具</a>与<a href="#codex-four">2.1 四块</a>。</p>
+          <p>第一，这个工具不在这次请求的可见集里：权限、沙箱模式、MCP 暴露策略在过滤时把它去掉了，不管开不开增量，请求里都没有它。第二，会话中途工具集变过，历史里追加过一条“该工具已移除”的更新，模型按最新的声明回答<span class="tag tag--guess">推断</span>。两者的区别在时间：前者从一开始就不能用，后者是在会话中途才消失。注意，如果只是承载声明的那条历史被压缩或裁掉，下一次请求会退回完整下发，一般不会表现为“工具消失”。见<a href="#codex-incremental">2.4 增量工具</a>与<a href="#codex-four">2.1 四块</a>。</p>
         </div>
       </div>
 
@@ -464,20 +465,10 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>换来的是前缀稳定和可替换：规则改了只动消息，不动系统提示；规则也能被压缩、被重注、被回放。失去的是“不可协商”的地位：规则和用户消息同通道，压缩后可能只剩一句摘要。两家的补救方式不同——Claude Code 压缩后按清单重附文件与技能，Codex 压缩后重注初始上下文。见<a href="#tradeoffs">取舍二</a>与第 15 章。</p>
+          <p>换来的是前缀稳定和可替换：规则改了只动消息，不动系统提示。失去的是约束力：规则和用户消息走同一个通道，模型可能把它当成普通背景。压缩时两家也不同：Codex 的规则片段在历史里，压缩后要把初始上下文重新放回去；Claude Code 的 CLAUDE.md 不在历史里，每次请求都重新前插，压缩改不到它，压缩后补回的是文件和技能。见<a href="#tradeoffs">取舍二</a>与第 15 章。</p>
         </div>
       </div>
     </section>
-
-    <div class="footnotes">
-      <p class="footnotes__title">脚注</p>
-      <ol>
-        <li id="fn-main-01-1">
-          【待核实】：<code>build_prompt</code> 只接收 <code>incremental_tools</code> 布尔值，函数内不写默认值；已检查 <code>core/src/session/turn.rs</code> 的组装路径与 <code>core/src/config/mod.rs</code> 的会话配置段，未找到统一默认。缺的是“上层调用方在什么条件下传 true”的完整调用链。因此正文只写“取决于上游”，不写“默认开启”。
-          <a class="footnotes__back" href="#fnref-main-01-1">↩</a>
-        </li>
-      </ol>
-    </div>
 
     <p class="footer-note">下一章：<a href="main-02.html">规则文件的发现与合并</a>。</p>
 
@@ -497,12 +488,12 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead"><code>getSystemPrompt</code> 返回的是<strong>字符串数组</strong>，按“静态前缀 → 边界标记 → 动态段”三段拼。静态段固定 7 块：身份与简介、系统通则、做事方式、行动准则、工具使用、语气风格、输出效率；随后插入常量 <code>__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__</code> 作为缓存边界，再拼动态段（会话指引、记忆、环境、语言、输出风格、MCP 指令、scratchpad、工具结果清理提示等）。动态段用 <code>systemPromptSection()</code> 记忆化，算一次就缓存，直到 <code>/clear</code> 或 <code>/compact</code> 才清空；只有显式标 <code>DANGEROUS_uncachedSystemPromptSection</code> 的段（如 MCP 指令）每轮重算。工具定义独立于系统提示，走 <code>toolSchemas</code> 数组，两者在 API 层分别打缓存标记。最终生效的提示词还有优先级链：<code>override</code> &gt; coordinator &gt; agent 定义 &gt; <code>--system-prompt</code> &gt; 默认，<code>--append-system-prompt</code> 永远追加在末尾。</p>
+      <p class="modal__lead"><code>getSystemPrompt</code> 返回的是<strong>字符串数组</strong>，按“静态前缀 → 边界标记 → 动态段”三段拼。静态段固定 7 块：身份与简介、系统通则、做事方式、行动准则、工具使用、语气风格、输出效率；随后插入常量 <code>__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__</code> 作为缓存边界，再拼动态段（会话指引、记忆、环境、语言、输出风格、MCP 指令、scratchpad、工具结果清理提示等）。动态段用 <code>systemPromptSection()</code> 记忆化，算一次就缓存，直到 <code>/clear</code> 或 <code>/compact</code> 才清空；只有显式标 <code>DANGEROUS_uncachedSystemPromptSection</code> 的段（如 MCP 指令）每次请求重算。工具定义独立于系统提示，走 <code>toolSchemas</code> 数组，两者在 API 层分别标记缓存断点。最终生效的提示词还有优先级链：<code>override</code> &gt; coordinator &gt; agent 定义 &gt; <code>--system-prompt</code> &gt; 默认，<code>--append-system-prompt</code> 永远追加在末尾。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd>静态 7 段 + 动态 N 段（随功能开关变化）；记忆化生命周期由 <code>/clear</code>、<code>/compact</code> 触发 <code>clearSystemPromptSections()</code>，同时重置 beta header latch；环境信息由 <code>computeSimpleEnvInfo</code> 生成（cwd、git、平台、日期）。<span class="tag tag--src">源码 v2.1.88</span></dd>
         <dt>设计意图</dt>
-        <dd>把“几乎不变”和“可能每轮变”的内容用一条显式边界隔开，让缓存只保护前半段。记忆化是为了避免重复计算，但代价是段内容会“过期”：一次计算后到下次 <code>/clear</code> 前都不再刷新，所以真正易变的东西必须标成 uncached 或挪到消息层。与 Codex 最大差异：Claude Code 明确画出了缓存边界常量，Codex 靠“稳定在前”的排序隐式实现。<span class="tag tag--guess">推断</span></dd>
+        <dd>把“几乎不变”和“可能每次请求都变”的内容用一条显式边界隔开，让缓存只保护前半段。记忆化是为了避免重复计算，但代价是段内容会“过期”：一次计算后到下次 <code>/clear</code> 或 <code>/compact</code> 前都不再刷新，所以确实易变的东西必须标成 uncached 或挪到消息层。与 Codex 最大差异：Claude Code 明确画出了缓存边界常量，Codex 靠“稳定在前”的排序隐式实现。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/constants/prompts.ts#L444-L577">constants/prompts.ts#L444-L577</a>（全貌与静态段顺序）·
@@ -527,7 +518,7 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">pi 发请求前不算“消息数组”，而是让 <code>SessionManager</code> 生成一份<strong>会话投影</strong>：沿当前叶子回溯成树路径，应用最新 <code>compaction</code> 的 <code>firstKeptEntryId</code>，再叠加 <code>context_edit</code> 的省略与替换，得到模型真正看到的消息序列。<code>_installAgentRequestProjection()</code> 劫持 agent 内核的 <code>prepareRequest</code>，把 <code>projection.messages</code> 装进 <code>context.messages</code>，把 <code>agent.state.tools</code> 作为可执行实现装进 <code>context.tools</code>。两者刻意分开：消息声明“provider 可见的装载清单”，<code>tools</code> 保留“可执行实现”，避免实现层元数据进入请求体。系统提示不是一整块字符串，而是<strong>具名 section</strong>：<code>preamble</code> 裸文本，其余每个 section 用同名 XML 标签包裹，按声明顺序拼接。</p>
+      <p class="modal__lead">pi 发请求前不算“消息数组”，而是让 <code>SessionManager</code> 生成一份<strong>会话投影</strong>：沿当前叶子（会话树里最新的那条记录）回溯成树路径，应用最新 <code>compaction</code> 的 <code>firstKeptEntryId</code>，再叠加 <code>context_edit</code> 的省略与替换，得到模型实际看到的消息序列。<code>_installAgentRequestProjection()</code> 接管 agent 内核的 <code>prepareRequest</code>，把 <code>projection.messages</code> 装进 <code>context.messages</code>，把 <code>agent.state.tools</code> 作为可执行实现装进 <code>context.tools</code>。两者刻意分开：消息声明“provider 可见的装载清单”，<code>tools</code> 保留“可执行实现”，避免实现层元数据进入请求体。系统提示不是一整块字符串，而是<strong>具名 section</strong>：<code>preamble</code> 裸文本，其余每个 section 用同名 XML 标签包裹，按声明顺序拼接。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd>section 顺序：<code>preamble → tools → rules → docs → addendum → project_context → skills → cwd → 自定义 section</code>；压缩摘要被包装成一条 user 消息，前缀为 “The conversation history before this point was compacted into the following summary:”，正文包在 <code>&lt;summary&gt;</code> 里；未找到“按 provider 动态裁剪工具定义”的逻辑。<span class="tag tag--ok">已核实</span></dd>
@@ -541,7 +532,7 @@
           <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/session-manager.ts#L543-L573">session-manager.ts#L543-L573</a>（树投影）
         </dd>
       </dl>
-      <p class="modal__note">pi 自我定位是“minimal, extensible agent harness”，README 明确跳过子代理和 plan mode。因此它没有 plan 状态注入，也没有周期性环境提醒——第 11 章会看到，这是与 omp 的重要差别。</p>
+      <p class="modal__note">pi 自我定位是“minimal, extensible agent harness”，README 明确跳过子代理和 plan mode。因此它没有 plan 状态注入，也没有周期性环境提醒，这是与 omp 的重要差别（第 11 章会看到）。</p>
     </div>
   </div>
 </div>
@@ -557,7 +548,7 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">omp 每次请求都从<strong>会话树叶子向根回溯</strong>得到当前分支，再按“最新 compaction / <code>/clear</code> 边界”重建上下文。有压缩时顺序固定：摘要消息在最前 → <code>firstKeptEntryId</code> 起的保留段 → 压缩之后的条目。摘要消息会携带 <code>providerPayload</code>（OpenAI remote / Anthropic native 回放载荷）、snapcompact 图像块和 <code>historyRewriteAt</code>。重建后统一做两道清理：剥离悬挂的 <code>tool_use</code>（没有配对 <code>tool_result</code> 的调用，连同受保护推理签名一起中和），丢弃 <code>stopReason</code> 为 <code>aborted</code> / <code>error</code> 的助手轮及其配对合成结果。系统提示由模板渲染，静态块之后统一追加一个 <code>&lt;project-context&gt;</code> 块（上下文文件、workspace tree / roots、active repo、会话追加文本），这样不同目录的会话共享静态前缀。</p>
+      <p class="modal__lead">omp 每次请求都从<strong>会话树叶子向根回溯</strong>得到当前分支，再按“最新 compaction / <code>/clear</code> 边界”重建上下文。有压缩时顺序固定：摘要消息在最前 → <code>firstKeptEntryId</code> 起的保留段 → 压缩之后的条目。摘要消息会携带 <code>providerPayload</code>（OpenAI remote / Anthropic native 回放载荷）、snapcompact 图像块和 <code>historyRewriteAt</code>。重建后统一做两道清理：剥离悬挂的 <code>tool_use</code>（没有配对 <code>tool_result</code> 的调用，连同受保护的推理签名一并处理掉），丢弃 <code>stopReason</code> 为 <code>aborted</code> / <code>error</code> 的助手轮及其配对合成结果。系统提示由模板渲染，静态块之后统一追加一个 <code>&lt;project-context&gt;</code> 块（上下文文件、workspace tree / roots、active repo、会话追加文本），这样不同目录的会话共享静态前缀。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd>路径遍历有环保护：遇到重复 <code>id</code> 即停；<code>&lt;project-context&gt;</code> 永远在静态块之后，Anthropic 的缓存断点正好落在这个块之前；日期/cwd 提醒不写进系统提示，而是插在本请求的首个用户轮之前。<span class="tag tag--ok">已核实</span></dd>
@@ -616,12 +607,12 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">v2 每一步先 <code>context.select</code>（固定 session / agent / 指令源 / 工具快照），再 <code>context.load</code>（解析模型、按 boundary 读历史、渲染指令基线）。<code>runStep</code> 先跑一次自动压缩，若刚压完就重建上下文重来；否则 <code>baseTranscript</code> 生成<strong>至多两段</strong> system：<code>[agent.system ?? 基础提示词, initial]</code>，其中 <code>initial</code> 是指令基线的渲染结果——环境、规则、MCP 指令、技能清单、code mode 目录全部折叠在这里。消息来自 <code>toLLMMessages(投影消息)</code>；到步数上限的最后一轮，把 <code>MAX_STEPS_PROMPT</code> 作为一条 assistant 消息追加，并设 <code>toolChoice: "none"</code>。工具由 registry 快照产出：<code>codemode: false</code> 的内置工具按名字排序进 <code>definitions</code>，<code>execute</code> 追加在末尾。</p>
+      <p class="modal__lead">v2 每一步先 <code>context.select</code>（固定 session / agent / 指令源 / 工具快照），再 <code>context.load</code>（解析模型、按 boundary 读历史、渲染指令基线）。<code>runStep</code> 先跑一次自动压缩，若刚压完就重建上下文重来；否则 <code>baseTranscript</code> 生成<strong>至多两段</strong> system：<code>[agent.system ?? 基础提示词, initial]</code>，其中 <code>initial</code> 是指令基线的渲染结果，环境、规则、MCP 指令、技能清单、code mode 目录全部折叠在这里。消息来自 <code>toLLMMessages(投影消息)</code>；到步数上限的最后一轮，把 <code>MAX_STEPS_PROMPT</code> 作为一条 assistant 消息追加，并设 <code>toolChoice: "none"</code>。工具由 registry 快照产出：<code>codemode: false</code> 的内置工具按名字排序进 <code>definitions</code>，<code>execute</code> 追加在末尾。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd>system 至多 2 段（空段被过滤）；基础提示词按当前工具名注入 <code>${OPENCODE_TOOL_GUIDANCE}</code>（shell / write / edit 三组）；末步保留工具定义只设 <code>toolChoice: "none"</code>，注释说明是为了维持 provider 缓存前缀；插件 <code>session.context</code> 钩子可以改名、删除工具，凭空新增的会被丢弃。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>把 v1 的四类块折叠成“基座 + 一条可复用基线”，让基线成为稳定的缓存前缀；末步用 <code>toolChoice: none</code> 而不是删工具，也是同一个目的。代价是指令源必须按“最共享 → 最不共享”严格排序，排错序就会让缓存断在最贵的位置。本快照是 beta，字段可能继续变。<span class="tag tag--guess">推断</span></dd>
+        <dd>把 v1 的四类块折叠成“基座 + 一条可复用基线”，让基线成为稳定的缓存前缀；末步用 <code>toolChoice: none</code> 而不是删工具，也是同一个目的。代价是指令源必须按“最共享 → 最不共享”严格排序，排错序就会让缓存断在最贵的位置。这个版本是 beta，字段可能继续变。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/context.ts#L121-L179">session/context.ts#L121-L179</a>（select / load）·
@@ -651,7 +642,7 @@
         <dt>关键参数与默认值</dt>
         <dd>默认身份标签 <code>"Grok"</code>；<code>PromptMode</code> 默认 <code>Extend</code>；<code>PromptAudience</code> 默认 <code>Primary</code>；模板变体 <code>none</code> / <code>codex</code> / 自定义，<code>codex</code> 走 <code>apply_patch_prompt.md</code>；压缩后系统提示固定为两句话的 <code>COMPACT_SYSTEM_PROMPT</code>。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>把“一次性的开场信息”压进第一条用户消息，而不是系统提示，这样系统模板保持稳定、换目录或换规则不必重渲染；只有在模型族切换或身份标签变更时才改写会话里的 system 项，同一模型内不每轮重写。代价是首条消息很重，而且规则与请求混在同一条消息里，模型需要自己区分“背景”和“任务”。<span class="tag tag--guess">推断</span></dd>
+        <dd>把“一次性的开场信息”压进第一条用户消息，而不是系统提示，这样系统模板保持稳定、换目录或换规则不必重渲染；只有在模型族切换或身份标签变更时才改写会话里的 system 项，同一模型内不会每次请求都重写。代价是首条消息很重，而且规则与请求混在同一条消息里，模型需要自己区分“背景”和“任务”。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-agent/templates/prompt.md#L1-L40">templates/prompt.md#L1-L40</a>（模板）·
@@ -675,7 +666,7 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">系统提示由 <code>ctx.systemPrompt</code> 的<strong>具名 section 注册表</strong>拼装：section 带 <code>order</code>，升序拼接，同序按名字的 code unit 排序；装配后由 agent-loop 用 <code>renderPrompt</code> 渲染，并<strong>作为一条 <code>system/message</code> 会话事件提交</strong>（surface 节点 0），而不是作为请求的 system 字段——这样系统提示本身也进入可重放、可替换的模型历史。固定顺序片段：harness 身份开场白 <code>order = -1000</code>、persona prefix <code>0</code>、第一方指导居中、persona suffix <code>10200</code>。工具 schema 由 <code>ctx.tools</code> 的 provider 在本轮装配时给出，<code>ToolProviderResult.schemas</code> 是“本轮可见集”，<code>knownNames</code> 用来区分“配置写错的工具名”和“本作用域故意隐藏的工具”。</p>
+      <p class="modal__lead">系统提示由 <code>ctx.systemPrompt</code> 的<strong>具名 section 注册表</strong>拼装：section 带 <code>order</code>，升序拼接，同序按名字的 code unit 排序；装配后由 agent-loop 用 <code>renderPrompt</code> 渲染，并<strong>作为一条 <code>system/message</code> 会话事件提交</strong>（surface 节点 0），而不是作为请求的 system 字段。这样系统提示本身也进入可重放、可替换的模型历史。固定顺序片段：harness 身份开场白 <code>order = -1000</code>、persona prefix <code>0</code>、第一方指导居中、persona suffix <code>10200</code>。工具 schema 由 <code>ctx.tools</code> 的 provider 在本轮装配时给出，<code>ToolProviderResult.schemas</code> 是“本轮可见集”，<code>knownNames</code> 用来区分“配置写错的工具名”和“本作用域故意隐藏的工具”。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd><code>includeHarnessIdentity = true</code>；<code>includeRuntimeContext = true</code>；<code>personaPrefix</code> / <code>personaSuffix</code> 默认空串；<code>toolOrder</code> 未设时按注册序，且必须含且仅含一个 <code>'&lt;unlisted-tools&gt;'</code> 占位；多个 <code>complete: true</code> section、未解析变量、<code>toolOrder</code> 列出未注册工具，都会直接失败而不发畸形提示词。<span class="tag tag--guess">推断</span></dd>
