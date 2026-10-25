@@ -10,11 +10,13 @@
   python3 -I review/tools/prose_check.py terms main-13            行话第一次出现的位置，用来检查有没有白话解释
   python3 -I review/tools/prose_check.py time  main-13            按 CONVENTIONS 公式算阅读时长，并和页头对比
   python3 -I review/tools/prose_check.py check main-13            标签配对、h1 个数、重复 id
+  python3 -I review/tools/prose_check.py hedge main-13 [--base 提交]  限定语密度和改前比，并列出新增的限定句（默认和 HEAD 比）
 
 命中不等于错误：脚本只负责把可疑的地方找出来，改不改由人判断。
 """
 import os
 import re
+import subprocess
 import sys
 from html.parser import HTMLParser
 
@@ -41,6 +43,14 @@ PATTERNS = {
     "工序泄漏": r"Karpathy|第 ?[1-4] ?级（|受控中文|输出级别|样章|任务票",
     "破折号": r"——",
 }
+
+# 限定语：核查型改写最容易堆出来的句式，如「不能据此推定」「仍取决于」「不一定」。
+# 第 20 章第一轮 GPT 改写后，这类句子从每千字 0.9 处涨到 7.3 处。合理的限定也会被数进来，要逐条判断。
+HEDGE = (r"不能(?:据此|单凭|仅凭|只凭|直接|一概|笼统|由|推定|认定|推出|推导|推广|代替|保证|证明|当作|视为|硬分)"
+         r"|不等于|不一定|未必|并非|不足以|无法(?:据此|单独|证明)|不意味着|不代表"
+         r"|仍(?:需|要|须|取决于|可能|依赖|有待)|取决于|有机会|(?:只|仅)(?:代表|限于)|为限|以[^，。；]{1,12}为准")
+PATTERNS["限定语"] = HEDGE
+HEDGE_ALLOWANCE = 1.0  # 每千字最多比改前多几处
 
 # 只给 hits 用的查询（不进 scan 的统计列）：核对跨章口径时用
 QUERIES = {
@@ -130,18 +140,27 @@ def all_ids():
     return ids
 
 
-def blocks(pid, mode="article"):
+def blocks(pid, mode="article", html=None):
     p = Extract(mode)
-    p.feed(open(path_of(pid), encoding="utf-8").read())
+    p.feed(html if html is not None else open(path_of(pid), encoding="utf-8").read())
     p.flush()
     return p.blocks
 
 
-def prose(pid, with_modals=True):
-    out = [t for _, t in blocks(pid)]
+def prose(pid, with_modals=True, html=None):
+    out = [t for _, t in blocks(pid, html=html)]
     if with_modals:
-        out += [t for _, t in blocks(pid, "modals")]
+        out += [t for _, t in blocks(pid, "modals", html=html)]
     return out
+
+
+def html_at(pid, rev):
+    """取某个 git 提交里的页面原文。"""
+    folder, name = os.path.split(os.path.abspath(path_of(pid)))
+    r = subprocess.run(["git", "-C", folder, "show", f"{rev}:./{name}"], capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.exit(f"取不到 {rev} 里的 {name}：{r.stderr.strip()}")
+    return r.stdout
 
 
 def cmd_text(args):
@@ -215,6 +234,42 @@ def cmd_time(args):
         print(f"{pid}\t正文 {han} 字 / 图 {figs} / 演示 {demos} / 代码块 {codes} → {minutes} 分钟；页头写 {stated}{flag}")
 
 
+def hedge_sentences(pid, html=None):
+    """按句切开正文和弹窗，返回 (来源, 句子) 列表。"""
+    out = []
+    for src, mode in (("正文", "article"), ("弹窗", "modals")):
+        for _, t in blocks(pid, mode, html=html):
+            out += [(src, s.strip()) for s in re.split(r"(?<=[。！？；])", t) if s.strip()]
+    return out
+
+
+def hedge_rate(sents):
+    text = "\n".join(s for _, s in sents)
+    han = len(HAN.findall(text))
+    n = len(re.findall(HEDGE, text))
+    return n, n * 1000 / max(han, 1)
+
+
+def cmd_hedge(args):
+    base = "HEAD"
+    if "--base" in args:
+        i = args.index("--base")
+        base, args = args[i + 1], args[:i] + args[i + 2:]
+    for pid in args:
+        now, old = hedge_sentences(pid), hedge_sentences(pid, html_at(pid, base))
+        (n_now, r_now), (n_old, r_old) = hedge_rate(now), hedge_rate(old)
+        limit = r_old + HEDGE_ALLOWANCE
+        verdict = "通过" if r_now <= limit else "超出：逐条处理下面的句子"
+        print(f"{pid}  限定语 改前（{base}）{n_old} 处，每千字 {r_old:.1f} → 现在 {n_now} 处，每千字 {r_now:.1f}；"
+              f"上限 {limit:.1f}  {verdict}")
+        before = {s for _, s in old}
+        fresh = [(src, s) for src, s in now if s not in before and re.search(HEDGE, s)]
+        if fresh:
+            print(f"新增或改写过、含限定语的句子（{len(fresh)} 句）。每句要么写明依据和它纠正的误解，要么删掉限定：")
+        for src, s in fresh:
+            print(f"  {src}｜" + re.sub(HEDGE, lambda m: f"【{m.group(0)}】", s))
+
+
 class Balance(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -270,12 +325,12 @@ def cmd_check(args):
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("text", "scan", "hits", "terms", "time", "check"):
+    if len(sys.argv) < 2 or sys.argv[1] not in ("text", "scan", "hits", "terms", "time", "check", "hedge"):
         print(__doc__)
         sys.exit(2)
     cmd, args = sys.argv[1], sys.argv[2:]
     {"text": cmd_text, "scan": cmd_scan, "hits": cmd_hits, "terms": cmd_terms,
-     "time": cmd_time, "check": cmd_check}[cmd](args)
+     "time": cmd_time, "check": cmd_check, "hedge": cmd_hedge}[cmd](args)
 
 
 if __name__ == "__main__":
