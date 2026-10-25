@@ -97,7 +97,7 @@
     <header class="page-head">
       <p class="kicker"><b>第 10 章</b><span>·</span><span>第二部分 · 主线</span></p>
       <h1>按需加载与渐进披露</h1>
-      <p class="lede">工具和技能的清单会随插件数量线性增长，但一次任务真正用到的往往只有两三个。渐进披露（progressive disclosure）做的就是“先给目录，再给正文”：启动时只放名字和一句描述，模型需要时再拉全文。</p>
+      <p class="lede">接入的工具和技能越多，随请求发送的清单就越长，一次任务却只用得到其中一部分。渐进披露（progressive disclosure）把详细内容留到需要时再加载：先让模型看到名称、描述或检索入口，选中后再读取技能正文、获取工具定义。</p>
       <ul class="meta">
         <li>第 3 类</li>
         <li>约 19 分钟</li>
@@ -117,17 +117,17 @@
     <!-- ========== 01 ========== -->
     <section id="why-lazy">
       <p class="sec-no">01 · 一份越来越长的清单</p>
-      <h2>“工具太多，它反而不会用了”</h2>
-      <p>你给 Agent 接了 6 个 MCP 服务器：GitHub、Jira、Sentry、数据库、Figma、内部知识库。每个服务器暴露 8 到 15 个工具，加起来 60 多个。接完之后，它开始犯一些奇怪的错：查 issue 时去调用数据库工具，改代码前先查一遍 Figma，偶尔还会把两个名字很像的工具参数搞混。</p>
-      <p>你以为是模型不够聪明。实际上是工具表太长：60 个工具，每个平均 200 token 的描述和 schema，光工具定义就占了一万多 token，而且它们全部排在前缀里，每一轮都重复。模型要在这么长的列表里做选择，选错的概率自然上升。</p>
-      <p class="lead-in">渐进披露的第一性原理：<strong>选择成本与候选数量成正比</strong>，所以先缩小候选，再让模型做选择。</p>
-      <p>这一章讲三种按需加载。它们的共同点是“目录先行、正文后到”，但触发者、目录形态、失败模式完全不同：</p>
+      <h2>工具清单为什么要按需展开</h2>
+      <p>你给 agent 接了 6 个 MCP 服务器：GitHub、Jira、Sentry、数据库、Figma、内部知识库。MCP 是让 agent 接入外部工具和数据的协议。每个服务器提供 8 到 15 个工具，加起来 60 多个。接完之后，agent 开始选错工具：查 issue 时调用数据库工具，偶尔还把两个名字很像的工具参数搞混。</p>
+      <p>先看工具清单占了多少上下文。假设每个工具的名称、描述和参数结构（schema）合计平均占 200 token，60 个工具就是 12,000 token。全量发送时，这部分会随每次模型请求重复发送，也增加了模型要比较的候选。减少候选是一个排查方向，效果要用同一任务对照验证。</p>
+      <p class="lead-in">渐进披露的基本道理是：<strong>先提供选择所需的信息，再加载被选中的详细内容</strong>。</p>
+      <p>本章比较三种加载入口：前两种让模型选择，第三种由用户点名。它们放入上下文的内容也不同。</p>
       <ul>
-        <li><strong>Skills</strong>：目录是名字 + 描述，触发者是模型（它决定要不要读正文）。</li>
-        <li><strong>MCP 延迟</strong>：目录可能只是名字，甚至只是一行“有这些工具”，触发者是模型的一次检索或一次代码调用。</li>
-        <li><strong><code>@</code> 引用</strong>：没有目录，触发者是用户（他明确点名一个文件）。</li>
+        <li><strong>Skills（技能）</strong>：先给名称和描述，模型按任务读取操作指引；用户也可以直接点名技能。</li>
+        <li><strong>MCP 延迟</strong>：先给名称、目录或检索入口，完整工具定义等到检索后才提供；代码模式则通过代码调用工具。</li>
+        <li><strong><code>@</code> 文件引用</strong>：用户选文件。有的 agent 读取并附上内容，有的只插入路径，随后还要读文件。</li>
       </ul>
-      <p>把三者混为一谈，是这一章最常见的误解。尤其是“MCP 延迟加载是 Claude Code 独有能力”这句话——它是错的，而且错得很具体：Codex 有、Grok Build 有、opencode v2 有，只是机制不同。</p>
+      <p>因此，看到“支持按需加载”，还要继续查：模型最初看到了什么，谁触发加载，加载后拿到什么。Codex、Claude Code、Grok Build、opencode v2 都有减少初始工具定义的路径，下面分别看它们怎样实现。</p>
     </section>
 
     <!-- ========== 02 ========== -->
@@ -135,48 +135,48 @@
       <p class="sec-no">02 · Codex 主线</p>
       <h2>两条通道：技能看描述，MCP 看模型能力</h2>
 
-      <h3 id="codex-skills">2.1 Skills：frontmatter 变目录，正文按需读</h3>
-      <p>Codex 把 <code>SKILL.md</code> 的 frontmatter 解析成元数据，按根目录加载技能（包括内置的 <code>.system</code> 技能），再按显式的 <code>@skill</code> 提及或命令匹配选中。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/skills/src/lib.rs#L1-L60">skills/src/lib.rs#L1-L60</a> <span class="tag tag--ok">已核实</span> 配置项 <code>skills.include_instructions</code> 控制是否注入 <code>&lt;skills_instructions&gt;</code> 这个 developer 块；本次核对没有在配置段找到它的显式默认值<sup class="fn-ref"><a href="#fn-main-03-1" id="fnref-main-03-1">1</a></sup>。</p>
-      <p>注意“按显式提及或命令匹配选中”这句话。它意味着 Codex 的技能选择有两条路：用户明确点名（<code>@skill</code>），或者命令名恰好匹配。它不像 Claude Code 那样把“名称 + 描述 + whenToUse”全部列出来让模型自己判断。两种做法各有代价：</p>
+      <h3 id="codex-skills">2.1 Skills：先列名称和描述，再读操作指引</h3>
+      <p>技能把操作步骤写在 <code>SKILL.md</code> 里。文件开头的 frontmatter 是一段 YAML 元数据，用来声明名称、描述等字段。Codex 从配置的技能目录发现文件，也加载内置的 <code>.system</code> 技能；提供给模型的目录包含<strong>名称、描述和来源位置</strong>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/skills/src/lib.rs#L1-L60">技能加载 API</a> · <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/ext/skills/src/catalog_prompt.rs#L3-L13">目录与触发规则</a> <span class="tag tag--ok">已核实</span></p>
+      <p>模型看到任务与描述匹配，就按来源位置读取技能指引；用户也可以直接选技能。CLI 支持 <code>$skill-name</code>，结构化选择按技能路径解析。源码里另有“隐式调用识别”：识别命令是否读了技能文件或执行了技能脚本，用来记录调用，不能把它理解为“命令名称匹配后才选技能”。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/skills/src/selection.rs#L33-L39">显式选择</a> · <a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/skills/src/invocation.rs#L26-L46">调用识别</a> <span class="tag tag--ok">已核实</span></p>
       <ul>
-        <li>只给名字，目录短，但模型不知道什么时候该用，容易漏。</li>
-        <li>给名字 + 描述 + 使用时机，命中率高，但目录长，而且描述写不好会误导。</li>
+        <li>目录负责说明“有哪些技能、什么时候用、去哪读”，无需预先塞入所有操作步骤。</li>
+        <li>选中后的加载才负责提供操作指引；本地技能可以读文件，环境提供的技能包使用 <code>skills.read</code>。</li>
       </ul>
-      <p>Codex 偏向前者。它的假设是“技能由用户或命令触发”，不是“模型自己发现”。这个假设在技能少的团队里成立，在技能几十个的团队里就开始漏。</p>
+      <p>目录也有预算：默认按模型窗口的 2% 估算 token，窗口未知时用 8,000 字符；超预算先缩短描述，再省略条目并告警。<code>skills.max_context_tokens</code> 可覆盖预算，上限 10,000 token。<code>skills.include_instructions</code> 默认开启，控制目录指令的注入<sup class="fn-ref"><a href="#fn-main-03-1" id="fnref-main-03-1">1</a></sup>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/ext/skills/src/render.rs#L126-L151">预算算法</a> <span class="tag tag--ok">已核实</span></p>
 
       <h3 id="codex-mcp">2.2 MCP：由模型元数据决定“直连”还是“延迟”</h3>
-      <p>这是 Codex 最容易被忽略的一段。当模型元数据 <code>supports_search_tool = true</code> 时，MCP 工具以 <code>ToolExposure::Deferred</code> 注册——<strong>不进首轮 <code>Prompt.tools</code></strong>，只保留检索元数据，由 <code>tool_search</code> 工具按需拉取；为 false 时退回 <code>Direct</code>，全部工具一次性下发。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/mcp_tool_exposure.rs#L63-L90">mcp_tool_exposure.rs#L63-L90</a> <span class="tag tag--ok">已核实</span></p>
+      <p>技能加载的是操作指引，MCP 工具加载的是名称、描述和参数定义。普通 MCP 工具的默认注册策略由模型元数据 <code>supports_search_tool</code> 决定：true 时设为 <code>Deferred</code>，完整定义先不直接提供给模型，由 <code>tool_search</code> 按需检索；false 时设为 <code>Direct</code>，直接提供定义。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/mcp_tool_exposure.rs#L63-L90">mcp_tool_exposure.rs#L63-L90</a> <span class="tag tag--ok">已核实</span></p>
       <p>三个细节值得记住：</p>
       <ol>
-        <li><code>supports_search_tool</code> 是 <code>#[serde(default)]</code> 布尔，缺省 <strong>false</strong>。也就是说，默认是不延迟的，延迟是“模型声明自己支持”才开启。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L481-L482">openai_models.rs#L481-L482</a> <span class="tag tag--ok">已核实</span></li>
-        <li>即使模型支持，<code>tool_search</code> 本身也只在“至少有一个可检索的延迟工具、且有 <code>search_info</code>”时才出现在工具表里。否则模型连检索入口都没有。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tools/spec_plan.rs#L368-L413">spec_plan.rs#L368-L413</a> <span class="tag tag--ok">已核实</span></li>
-        <li>延迟与否是<strong>按工具</strong>决定的，不是按服务器。同一个 MCP 服务器可以一部分工具直连、一部分延迟。</li>
+        <li><code>supports_search_tool</code> 字段未填写时取 <strong>false</strong>；已填写的模型元数据决定实际值。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/protocol/src/openai_models.rs#L481-L482">openai_models.rs#L481-L482</a> <span class="tag tag--ok">已核实</span></li>
+        <li><code>tool_search</code> 的出现还要求策略允许该入口，并存在带 <code>search_info</code>（检索信息）的延迟工具。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tools/spec_plan.rs#L368-L413">spec_plan.rs#L368-L413</a> <span class="tag tag--ok">已核实</span></li>
+        <li>最终暴露方式还受服务器/连接器的 <code>omit_tools_from</code>、命名空间与 Code Mode（代码调用模式）策略影响。注册时的默认值只是第一步，排查时要看最终工具表。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/tools/spec_plan.rs#L195-L290">暴露策略</a> <span class="tag tag--ok">已核实</span></li>
       </ol>
-      <p><strong>为什么交给模型元数据，而不是配置项。</strong>因为延迟加载依赖一个模型能力：它得知道“自己可以去检索工具”，并且能理解检索结果的格式。老模型没有这个训练，给它 <code>tool_search</code> 反而会增加误用。把开关放在模型元数据里，等于让“能力”决定“策略”。<strong>代价</strong>是用户无法强制开启：模型说不支持，你就只能全量下发，哪怕工具表已经很长。</p>
+      <p><strong>这里要查的是模型配置与实际暴露策略。</strong>只看“服务器已经接入”还不够：模型必须拿到工具定义，或拿到能找到它的入口。这也解释了开头的场景为什么要同时检查工具表和检索结果。</p>
 
-      <h3 id="codex-at">2.3 <code>@</code> 引用：Codex 没有通用文件展开</h3>
-      <p>Codex 的 <code>@</code> 在本次核对的源码里表现为结构化的工具提及（<code>ToolMentionKind</code>、<code>app://</code>、<code>plugin://</code>），没有找到“把 <code>@file</code> 内容直接展开进提示词”的通用路径<sup class="fn-ref"><a href="#fn-main-03-2" id="fnref-main-03-2">2</a></sup>。它更接近“点名一个工具或资源”，而不是“把文件内容塞进来”。</p>
-      <p>这和 Claude Code 的 <code>@</code> 是两件事。Claude Code 的 <code>processAtMentionedFiles</code> 会把文件内容作为<strong>附件</strong>插入，不是用户原文的一部分；opencode v1 的 <code>resolvePromptParts</code> 会把 <code>@name</code> 转成 <code>file</code> part；dsh 的 <code>@file</code> 只插入<strong>路径文本</strong>，不读内容。三种语义，三种代价，后面会展开。</p>
+      <h3 id="codex-at">2.3 <code>@</code> 引用：先分清路径和附件</h3>
+      <p>Codex TUI（终端界面）的文件选择会把普通文件路径插入输入框，文件内容随后由模型调用工具读取；图片另走附件路径。<code>@</code> 还可以选择插件等对象，形成带 <code>app://</code>、<code>plugin://</code> 的结构化提及。这几种输入要分开看<sup class="fn-ref"><a href="#fn-main-03-2" id="fnref-main-03-2">2</a></sup>。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/tui/src/bottom_pane/chat_composer.rs#L2468-L2493">文件与图片分支</a> <span class="tag tag--ok">已核实</span></p>
+      <p>Claude Code 的 <code>processAtMentionedFiles</code> 则在发送请求前尝试读取文件，生成附带内容的消息；opencode v1 把 <code>@name</code> 解析成 <code>file</code> part（文件附件条目），v2 在处理输入时读取附件。dsh 的 <code>@file</code> 只插入路径文本。用户点名同一文件，各家进入上下文的内容不同。</p>
 
-      <h3 id="codex-tradeoff">2.4 为什么 Codex 把两条通道分开</h3>
-      <p>技能是“知识”，MCP 是“能力”。知识可以只给摘要，让模型自己判断要不要深入；能力必须先知道“存在”，否则模型不会去调用一个它不知道的工具。所以 Codex 对技能用“描述 + 显式提及”，对 MCP 用“延迟 + 检索入口”。</p>
-      <p>这个划分有一个隐含前提：<strong>模型知道自己缺什么</strong>。技能场景里，模型看到“有一个叫 pdf 的技能”，能判断当前任务要不要用它；MCP 场景里，模型看到“有一批延迟工具”，得先检索才知道有没有能用的。前者靠语义匹配，后者靠关键词检索。检索失败时，模型不会说“我搜不到”，它会说“我没有这个能力”——这是延迟加载最典型的失败模式。</p>
+      <h3 id="codex-tradeoff">2.4 技能正文和工具定义分别怎样到达模型</h3>
+      <p>现在可以把两条路径接起来：技能目录帮助模型判断“这套操作步骤适不适合任务”，选中后读取指引。MCP 的检索入口帮助模型找到可调用工具，再取得参数定义。文件路径则只提供读取位置。</p>
+      <p>这三条路径都可能停在“知道存在、还没拿到内容”这一步。排查漏用技能，就看目录、描述和读取记录；排查工具不可用，就看注册、权限与检索结果。模型回答“没有这个能力”时，先核对这条信息链，再判断是否确实缺少能力。</p>
     </section>
 
     <!-- ========== 03 ========== -->
     <section id="three-kinds">
       <p class="sec-no">03 · 三种按需加载</p>
-      <h2>谁触发、给什么、怎么坏</h2>
-      <p>把三种机制放在一条时间线上，差别一眼就能看出来：Skills 在启动时给“描述”，MCP 延迟给“名字或目录”，<code>@</code> 引用在用户输入时直接给“内容”。前两者的正文都要等一次主动动作，后者没有“后到”这一步。</p>
+      <h2>加载由谁触发，失败后查什么</h2>
+      <p>沿着刚才的三条路径看时序：技能先给描述，MCP 先给检索入口或目录，详细内容在后续动作中取得。文件引用分两支：附件式在请求前读内容，路径式等模型调用读取工具。图中最后一行把这两个结果并列列出。</p>
 
       <figure class="fig" id="fig-lazy-seq">
         <svg class="lazymap" viewBox="0 0 640 330" role="img" aria-labelledby="fig-lazy-title fig-lazy-desc">
-          <title id="fig-lazy-title">三种按需加载的时序：目录先行，正文后到</title>
-          <desc id="fig-lazy-desc">三条泳道。技能：启动时给名称与描述，模型调用技能工具后才注入正文。MCP 延迟：启动时只给名字或目录行，模型检索或写代码后才拿到完整定义。@ 引用：用户输入时就把文件内容物化为附件，没有第二次往返。每条泳道下方标出典型失败模式。</desc>
+          <title id="fig-lazy-title">技能、MCP 与文件引用的加载时序</title>
+          <desc id="fig-lazy-desc">三条泳道。技能：先给名称与描述，再由读取工具或显式选择加载正文。MCP：先给入口或目录，检索定义或通过代码调用。文件引用：用户选路径后，附件式在请求前读取内容，路径式还需后续读取。最后一列列出各自的排查线索。</desc>
 
-          <text class="lz-sub" x="110" y="16">启动</text>
+          <text class="lz-sub" x="110" y="16">初始信息</text>
           <text class="lz-sub" x="250" y="16">模型 / 用户动作</text>
-          <text class="lz-sub" x="400" y="16">正文到位</text>
+          <text class="lz-sub" x="400" y="16">加载结果</text>
           <text class="lz-sub" x="530" y="16">典型失败</text>
           <line class="lz-axis" x1="100" y1="22" x2="100" y2="318"/>
           <line class="lz-axis" x1="240" y1="22" x2="240" y2="318"/>
@@ -192,21 +192,21 @@
           <line class="lz-arrow" x1="232" y1="57" x2="252" y2="57" marker-end="url(#lz-arrow)"/>
           <rect class="lz-step lz-step--hot" x="258" y="38" width="120" height="38" rx="5"/>
           <text class="lz-label lz-label--hot" x="318" y="54" text-anchor="middle">模型选技能</text>
-          <text class="lz-sub" x="318" y="67" text-anchor="middle">调用 skill 工具</text>
+          <text class="lz-sub" x="318" y="67" text-anchor="middle">读文件 / 技能工具</text>
           <line class="lz-arrow" x1="384" y1="57" x2="404" y2="57" marker-end="url(#lz-arrow)"/>
           <rect class="lz-step lz-step--body" x="410" y="38" width="118" height="38" rx="5"/>
           <text class="lz-label" x="469" y="54" text-anchor="middle">SKILL.md 正文</text>
-          <text class="lz-sub" x="469" y="67" text-anchor="middle">作为工具结果</text>
+          <text class="lz-sub" x="469" y="67" text-anchor="middle">读取或直接注入</text>
           <text class="lz-fail" x="540" y="50">描述被截断→漏选</text>
-          <text class="lz-fail" x="540" y="64">正文太长→压掉上下文</text>
+          <text class="lz-fail" x="540" y="64">正文过长→占用窗口</text>
 
           <!-- MCP -->
           <rect class="lz-lane" x="8" y="122" width="624" height="92" rx="8"/>
           <text class="lz-title" x="16" y="142">MCP 延迟</text>
           <text class="lz-sub" x="16" y="156">能力型</text>
           <rect class="lz-step" x="106" y="134" width="120" height="38" rx="5"/>
-          <text class="lz-label" x="166" y="150" text-anchor="middle">仅名字 / 目录行</text>
-          <text class="lz-sub" x="166" y="163" text-anchor="middle">不进 tool schema</text>
+          <text class="lz-label" x="166" y="150" text-anchor="middle">检索入口 / 目录</text>
+          <text class="lz-sub" x="166" y="163" text-anchor="middle">先不展开定义</text>
           <line class="lz-arrow" x1="232" y1="153" x2="252" y2="153" marker-end="url(#lz-arrow)"/>
           <rect class="lz-step lz-step--hot" x="258" y="134" width="120" height="38" rx="5"/>
           <text class="lz-label lz-label--hot" x="318" y="150" text-anchor="middle">检索 / 写代码</text>
@@ -224,17 +224,17 @@
           <text class="lz-sub" x="16" y="252">用户指定</text>
           <rect class="lz-step lz-step--hot" x="106" y="230" width="120" height="38" rx="5"/>
           <text class="lz-label lz-label--hot" x="166" y="246" text-anchor="middle">用户输入 @path</text>
-          <text class="lz-sub" x="166" y="259" text-anchor="middle">入场即解析</text>
+          <text class="lz-sub" x="166" y="259" text-anchor="middle">由用户选择文件</text>
           <line class="lz-arrow" x1="232" y1="249" x2="252" y2="249" marker-end="url(#lz-arrow)"/>
           <rect class="lz-step" x="258" y="230" width="120" height="38" rx="5"/>
-          <text class="lz-label" x="318" y="246" text-anchor="middle">物化为附件</text>
-          <text class="lz-sub" x="318" y="259" text-anchor="middle">或只留路径</text>
+          <text class="lz-label" x="318" y="246" text-anchor="middle">附内容 / 留路径</text>
+          <text class="lz-sub" x="318" y="259" text-anchor="middle">两种实现分别处理</text>
           <line class="lz-arrow" x1="384" y1="249" x2="404" y2="249" marker-end="url(#lz-arrow)"/>
           <rect class="lz-step lz-step--body" x="410" y="230" width="118" height="38" rx="5"/>
-          <text class="lz-label" x="469" y="246" text-anchor="middle">内容进本轮</text>
-          <text class="lz-sub" x="469" y="259" text-anchor="middle">无第二次往返</text>
-          <text class="lz-fail" x="540" y="242">路径不存在→静默</text>
-          <text class="lz-fail" x="540" y="256">大文件→一次吃满</text>
+          <text class="lz-label" x="469" y="246" text-anchor="middle">附件式：内容已读</text>
+          <text class="lz-sub" x="469" y="259" text-anchor="middle">路径式：还需读取</text>
+          <text class="lz-fail" x="540" y="242">路径错误 / 读取被拒</text>
+          <text class="lz-fail" x="540" y="256">超出附件大小限制</text>
 
           <line class="lz-axis" x1="8" y1="318" x2="632" y2="318"/>
           <text class="lz-sub" x="8" y="326">虚线 = 时间推进，不是真实耗时；三条泳道可同时发生。</text>
@@ -245,37 +245,37 @@
             </marker>
           </defs>
         </svg>
-        <figcaption>图 03-1　三种按需加载的时序。技能与 MCP 都有“第二次往返”，<code>@</code> 引用没有：用户点名的那一刻内容就进来了。所以 <code>@</code> 不是渐进披露，而是“精确预加载”——它省的是模型的选择成本，不是 token。示意，非真实耗时。</figcaption>
+        <figcaption>图 03-1　三种加载入口的时序。模型主动读技能或检索工具时，要先发起工具调用，得到结果后再继续生成。附件式文件引用把读取放在模型请求之前；路径式引用还要等后续读取。图示不表示真实耗时，技能也支持用户显式加载。</figcaption>
       </figure>
 
       <h3 id="three-trigger">3.1 触发时机</h3>
-      <p><strong>Skills</strong> 的触发是语义匹配：模型读目录里的名字和描述，判断“这个任务像不像它”。所以触发质量完全取决于描述写得好不好。描述里写“处理 PDF”，模型只会在遇到 PDF 时想起它；写“处理文档”，它可能在处理 Markdown 时也去读，读完发现不对，浪费一次往返。</p>
-      <p><strong>MCP 延迟</strong> 的触发是检索或代码调用。Claude Code 的 <code>ToolSearchTool</code>、Codex 的 <code>tool_search</code>、Grok Build 的 <code>search_tool</code> 都是“给关键词，返回工具定义”；opencode v2 的 Code Mode 则是“给一段代码，代码里调用工具”。前者要求模型会写检索词，后者要求模型会写代码。</p>
-      <p><strong><code>@</code> 引用</strong> 的触发是用户输入。它不需要模型判断，也不需要检索，代价是把“选什么”完全交给用户。用户忘了写 <code>@</code>，模型就看不到那个文件；用户写了 20 个 <code>@</code>，上下文一次被塞满。</p>
+      <p><strong>Skills</strong> 通常由模型按名称和描述匹配任务，用户也可以直接指定。描述写得过宽，例如“处理文档”，容易和 Markdown、PDF 等任务都匹配；写清“生成、读取或编辑 PDF”更有助于模型选择。触发还受目录可见性、技能策略和模型判断影响。</p>
+      <p><strong>MCP 延迟</strong>由检索或代码调用触发。Claude Code 的 <code>ToolSearchTool</code>、Codex 的 <code>tool_search</code> 负责找到工具定义；Grok Build 的 <code>search_tool</code> 返回匹配工具，再用 <code>use_tool</code> 调用。opencode v2 的 Code Mode 则让模型把工具调用写进交给 <code>execute</code> 执行的代码。</p>
+      <p><strong><code>@</code> 文件引用</strong>由用户输入触发。附件式引用省掉模型自己选择、读取文件的步骤，但内容会占用窗口；路径式引用先指定位置，正文延后读取。不写 <code>@</code> 时，模型也可以通过搜索、读取工具找到文件。</p>
 
       <h3 id="three-fail">3.2 失败模式</h3>
       <p>三种机制的失败方式不一样，排查方法也不一样：</p>
       <ul>
-        <li><strong>Skills 漏选</strong>：模型没读正文就开始干活。先看目录里有没有这条技能，再看描述是否被截断，最后看模型是不是根本不认为任务相关。Claude Code 的单条描述上限是 250 字符，超出会被截；Grok Build 的清单有总预算，超出按条目裁剪；dsh 每条 500 字符。</li>
-        <li><strong>MCP 搜不到</strong>：模型说“我没有这个工具”。先看延迟工具是否真的注册了 <code>search_info</code>，再看检索词是否匹配工具名，最后看网关是否支持 <code>tool_reference</code> 这类返回块。Claude Code 在非第一方 <code>ANTHROPIC_BASE_URL</code> 且未显式设置 <code>ENABLE_TOOL_SEARCH</code> 时会禁用延迟，原因就是代理不一定转发这些块。</li>
-        <li><strong><code>@</code> 静默失败</strong>：路径写错、文件是二进制、文件太大。多数实现不会报错，只是不附内容；模型于是基于“用户提到了这个文件”却看不到内容，开始编造。</li>
+        <li><strong>Skills 漏选</strong>：先看模型是否收到这条技能，再检查描述被缩短后是否还保留用途和触发条件，最后检查有没有读取正文的记录。Claude Code v2.1.88 单条描述上限为 250 字符；Grok 的总预算不足时会缩短描述，最后退为只列名称并省略条目；dsh 默认每条 500 字符。</li>
+        <li><strong>MCP 搜不到</strong>：先查服务器连接和权限，再查检索入口与结果。Codex 检查 <code>search_info</code>；Grok 检查检索词与名称、描述是否匹配；Claude Code 检查网关是否支持 <code>tool_reference</code>（检索结果里的工具引用块）。它的 v2.1.88 默认路径会对非第一方代理地址关闭搜索，显式配置后再按模型支持情况判断。</li>
+        <li><strong>文件引用没带来内容</strong>：先分清当前 agent 采用附件还是路径文本，再查权限、路径、大小与读取结果。Claude Code 的这段附件路径会过滤读取失败项；opencode v2 则会返回附件错误，不能统一按“静默跳过”排查。<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/session/prompt.ts#L151-L199">附件错误处理</a> <span class="tag tag--ok">已核实</span></li>
       </ul>
-      <p>三者共同的失败是<strong>“目录过期”</strong>：技能清单、MCP 公告、工具目录都是在某个时刻生成的快照，如果中途装了新插件而目录没更新，模型会不知道新工具存在。所以几乎所有实现都有“变更检测 + 增量公告”：Grok 用 <code>(tool_count, description_hash, tool_names_hash)</code> 指纹，Claude Code 用 <code>deferred_tools_delta</code>，Codex 在每轮重新组装工具表。</p>
+      <p>技能与工具目录还有一个共同问题：内容已经变化，模型收到的清单却没更新。这里的“快照”就是某个时刻保存的一份清单；“差异更新”只追加新增、移除等变化。Grok 用指纹检测公告变化，Claude Code 用 <code>deferred_tools_delta</code> 记录工具变化，opencode v2 也会更新清单。更新的范围和时机要分别检查，文件引用则检查所指文件是否读到了最新内容。</p>
 
-      <h3 id="three-mcp">3.3 四种“MCP 延迟”，别混为一谈</h3>
-      <p>这是本章最需要说清的一段。四种机制都叫“延迟”，但决定权、目录形态、失败模式都不同：</p>
-      <p><strong>一、模型能力开关（Codex）。</strong><code>supports_search_tool</code> 为 true 才延迟，默认 false。目录是检索元数据，入口是 <code>tool_search</code>。决定权在模型元数据，用户不能强制。失败模式是“模型不支持 → 全量下发 → 前缀变长”，不是“搜不到”。</p>
-      <p><strong>二、客户端默认延迟（Claude Code）。</strong><code>getToolSearchMode()</code> 在未设置环境变量时返回 <code>tst</code>，即所有 MCP 工具与标记为 <code>shouldDefer</code> 的工具都不进首轮 schema，只暴露名字，模型用 <code>ToolSearchTool</code> 拉完整定义（<code>defer_loading</code> + <code>tool_reference</code> 块）。<code>ENABLE_TOOL_SEARCH=auto</code> 时改为按阈值判断：延迟工具定义超过窗口 10% 才启用延迟。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L46-L49">toolSearch.ts#L46-L49</a> <span class="tag tag--src">源码 v2.1.88</span> 决定权在客户端，默认就延迟；失败模式是网关不转发 <code>tool_reference</code> 时整条链路不可用。</p>
-      <p><strong>三、检索式调用（Grok Build）。</strong>MCP 工具<strong>根本不进 function tools</strong>，只注入一段“服务器公告”。模型先用 <code>search_tool</code>（BM25 关键词检索）找工具，再用 <code>use_tool</code> 调用；单个 MCP 工具或服务器描述硬截断到 2048 字符。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-tools/src/implementations/search_tool/mod.rs#L1-L34">search_tool/mod.rs#L1-L34</a> <span class="tag tag--ok">已核实</span> 决定权在客户端架构，失败模式是“检索词不对 → 找不到 → 模型以为没有”。</p>
-      <p><strong>四、代码模式目录（opencode v2）。</strong>除 <code>codemode: false</code> 的内置工具外，<strong>全部 MCP 工具与元工具都不进工具定义</strong>，只以“目录行”形式写进指令基线；模型必须通过 <code>execute</code> 工具写代码来调用，目录不完整时在代码里用同步的 <code>search(...)</code> 查工具名。<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/codemode/instructions.ts#L8-L46">codemode/instructions.ts#L8-L46</a> <span class="tag tag--ok">已核实</span> 决定权在工具注册时的 <code>codemode</code> 选项；失败模式是模型不会写代码，或者 <code>execute</code> 被权限禁掉导致整条通道关闭。</p>
-      <p>四者的共同点是“工具定义不占首轮 schema”，共同点之外几乎全不一样。写评测或做选型时，把它们当成同一种能力，会得出完全错误的结论。</p>
+      <h3 id="three-mcp">3.3 四种减少初始工具定义的机制</h3>
+      <p>上面的失败线索要与具体机制对应。下面四条路径分别看“如何启用”和“怎样调用”：</p>
+      <p><strong>一、模型能力开关（Codex）。</strong>普通 MCP 工具默认按 <code>supports_search_tool</code> 选择直接或延迟暴露，最终还受 §2.2 的策略影响。模型通过 <code>tool_search</code> 获取定义。能力标志为 false 时先查直接工具表；为 true 时再查检索入口和结果。</p>
+      <p><strong>二、客户端搜索模式（Claude Code）。</strong>v2.1.88 的 <code>getToolSearchMode()</code> 未配置时返回 <code>tst</code>，表示使用工具搜索；模型支持、网关和工具可见性还会影响实际启用。<code>ENABLE_TOOL_SEARCH=auto</code> 则在可延迟工具定义超过窗口 10% 时启用。延迟定义以 <code>defer_loading</code> 标记发送，模型通过 <code>ToolSearchTool</code> 的 <code>tool_reference</code> 结果取用。<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L46-L49">auto 阈值</a> · <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L154-L198">模式默认值</a> <span class="tag tag--src">源码 v2.1.88</span></p>
+      <p><strong>三、检索后间接调用（Grok Build）。</strong>MCP 工具不进入模型的 function tools 数组，先提供服务器公告。模型用 <code>search_tool</code> 做 BM25 检索（一种按词语匹配与相关性评分的检索），再用 <code>use_tool</code> 调用。单个工具或服务器描述在检索展示中截断到 2048 字符；检索词和描述匹配不好时，要检查返回候选。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-tools/src/implementations/search_tool/mod.rs#L1-L34">search_tool/mod.rs#L1-L34</a> <span class="tag tag--ok">已核实</span></p>
+      <p><strong>四、代码调用模式（opencode v2）。</strong><code>codemode: false</code> 的工具直接提供定义；其余工具，包括 MCP 工具，列入目录并通过 <code>execute</code> 内的代码调用。目录只展示一部分时，代码先用同步的 <code>search(...)</code> 查工具，取回结果中的调用路径。禁用 <code>execute</code> 会关闭这条调用路径。<a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/codemode/instructions.ts#L8-L46">codemode/instructions.ts#L8-L46</a> <span class="tag tag--ok">已核实</span></p>
+      <p>比较时应分别记录：初始可见内容、发现入口、调用入口，以及关闭后的行为。尤其要区分“客户端不发送定义”和“已发送、由 API 延迟向模型展开”，两者的传输开销不同。</p>
     </section>
 
     <!-- ========== 04 ========== -->
     <section id="tools">
       <p class="sec-no">04 · 七个编码智能体</p>
-      <h2>七种“先给目录”的做法</h2>
-      <p>下面七个弹窗各写四块。对照上一节的四种 MCP 延迟，看每个工具落在哪一类；再看它的技能目录给了多少信息、预算怎么算。</p>
+      <h2>其余七个 agent 怎样加载技能与工具</h2>
+      <p>带着上一节的比较项读弹窗：先比加载入口，再看技能目录包含什么、预算怎么算。</p>
       <div class="tool-grid">
         <button class="tool-btn" type="button" data-modal="claude-code">
           <span class="tool-btn__name">Claude Code</span>
@@ -312,8 +312,8 @@
     <!-- ========== 05 ========== -->
     <section id="matrix">
       <p class="sec-no">05 · 八个编码智能体对比</p>
-      <h2>目录给多少，入口走哪条</h2>
-      <p>第一列看技能目录的“信息量”，第二列看 MCP 是否延迟、走什么入口，第三列看目录预算，第四列看 <code>@</code> 的语义。最后一列是这一章最实用的部分：出问题时先查哪里。</p>
+      <h2>八个 agent 的目录、预算与调用入口</h2>
+      <p>把弹窗里的细节放回同一张表：依次比较技能目录、MCP 入口、预算和文件引用。最后一列给出各自的排查线索。</p>
 
       <p class="table-hint">← 左右滑动查看全部列，首列固定 →</p>
       <div class="table-wrap">
@@ -331,117 +331,117 @@
           <tbody>
             <tr>
               <th scope="row" class="cell-tool">Codex<span>codex</span></th>
-              <td>frontmatter 元数据；按 <code>@skill</code> 提及或命令匹配选中。<span class="tag tag--ok">已核实</span></td>
-              <td>模型支持 <code>supports_search_tool</code> 时延迟，否则直连。<span class="tag tag--ok">已核实</span></td>
-              <td>目录预算未找到；<code>skills.include_instructions</code> 控制是否注入。<span class="tag tag--todo">待核实</span></td>
-              <td>结构化工具提及，无通用文件展开。<span class="tag tag--guess">推断</span></td>
-              <td>模型不支持 → 全量下发；技能没被点名 → 漏用。<span class="tag tag--guess">推断</span></td>
+              <td>名称 + 描述 + 来源位置；支持模型匹配与用户显式选择。<span class="tag tag--ok">已核实</span></td>
+              <td>默认按 <code>supports_search_tool</code> 分流，叠加暴露策略；入口 <code>tool_search</code>。<span class="tag tag--ok">已核实</span></td>
+              <td>默认窗口 2%；未知窗口 8,000 字符；覆盖值上限 10,000 token；目录指令默认开启。<span class="tag tag--ok">已核实</span></td>
+              <td>TUI 普通文件插入路径；图片走附件；插件等对象是结构化提及。<span class="tag tag--ok">已核实</span></td>
+              <td>先查目录是否省略技能，再查检索入口、权限与结果。<span class="tag tag--guess">推断</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">Claude Code<span>claude-code</span></th>
-              <td>名称 + 描述 + whenToUse；单条 250 字符。<span class="tag tag--src">源码 v2.1.88</span></td>
-              <td>默认 <code>tst</code>：全部 MCP 延迟，<code>ToolSearchTool</code> 拉取。<span class="tag tag--src">源码 v2.1.88</span></td>
-              <td>窗口 1% 折算字符（×4），默认 8000；内置技能不截断。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>名称 + 描述（含 whenToUse）；合并描述上限 250 字符。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>默认模式 <code>tst</code>；按模型/网关条件启用，<code>ToolSearchTool</code> 取用定义。<span class="tag tag--src">源码 v2.1.88</span></td>
+              <td>窗口 1% ×4 折为字符；未知时 8,000；bundled 免总预算追加缩短，仍受单条上限约束。<span class="tag tag--src">源码 v2.1.88</span></td>
               <td>文件内容作为附件，不是用户原文。<span class="tag tag--src">源码 v2.1.88</span></td>
               <td>非第一方网关不转发 <code>tool_reference</code> → 降级或不可用。<span class="tag tag--src">源码 v2.1.88</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">pi<span>pi</span></th>
-              <td>4 行：name / description / location，正文用 <code>read</code> 取。<span class="tag tag--ok">已核实</span></td>
+              <td>name / description / location 三个字段；正文用读取工具取。<span class="tag tag--ok">已核实</span></td>
               <td>MCP 作为扩展提供，核心不实现延迟。<span class="tag tag--ok">已核实</span></td>
               <td>名称 64 字符、描述 1024 字符；超长是校验告警，不截断。<span class="tag tag--ok">已核实</span></td>
-              <td>未找到 <code>@</code> 文件引用机制。<span class="tag tag--ok">已核实</span></td>
-              <td>描述超长直接告警；模型不读正文就按摘要猜。<span class="tag tag--guess">推断</span></td>
+              <td>模型通过读取工具取得文件内容。<span class="tag tag--ok">已核实</span></td>
+              <td>描述超长直接告警；模型没读正文就按描述猜用法。<span class="tag tag--guess">推断</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">oh-my-pi<span>omp</span></th>
               <td>名称 + 描述 + 位置；正文走 <code>skill://</code>，<code>hide</code> 技能不进目录。<span class="tag tag--ok">已核实</span></td>
               <td>工具全启用，但按 <code>loadMode</code> 收进 <code>xd://</code> 目录。<span class="tag tag--ok">已核实</span></td>
-              <td>技能描述长度上限未找到；规则目录只给 description。<span class="tag tag--todo">待核实</span></td>
+              <td>技能描述上限待核；规则目录只给 description。<a href="#fn-main-03-1">证据缺口</a> <span class="tag tag--todo">待核实</span></td>
               <td>由 <code>read</code> 与内部 URL 承担，无专门附件通道。<span class="tag tag--guess">推断</span></td>
               <td><code>xd://</code> 目录不展开 → 模型只用顶层工具。<span class="tag tag--guess">推断</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">opencode v1<span>opencode-v1</span></th>
-              <td>标准三段式：清单（verbose）+ <code>skill</code> 工具读正文。<span class="tag tag--ok">已核实</span></td>
+              <td>清单给名称、描述和位置；<code>skill</code> 工具读正文。<span class="tag tag--ok">已核实</span></td>
               <td>默认全量下发；仅 <code>experimentalCodeMode</code> 时多一个 <code>execute</code>。<span class="tag tag--ok">已核实</span></td>
-              <td>未找到目录预算；<code>skill</code> 被权限禁用时整块省略。<span class="tag tag--ok">已核实</span></td>
+              <td>目录预算待核；<code>skill</code> 被权限禁用时整块省略。<a href="#fn-main-03-1">证据缺口</a> <span class="tag tag--todo">待核实</span></td>
               <td><code>@name</code> 解析为 <code>file</code> part 或 agent 名。<span class="tag tag--ok">已核实</span></td>
               <td>MCP 不延迟 → 工具多时前缀膨胀。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">opencode v2<span>opencode-v2</span></th>
-              <td><code>id / name / description</code>；清单变化走差分。<span class="tag tag--ok">已核实</span></td>
+              <td><code>id / name / description</code>；清单变化时发差异更新。<span class="tag tag--ok">已核实</span></td>
               <td>Code Mode：MCP 全部不进定义，只给目录行 + <code>execute</code>。<span class="tag tag--ok">已核实</span></td>
               <td>技能清单可整段重述；目录可部分展示 <code>catalog.shown &lt; total</code>。<span class="tag tag--ok">已核实</span></td>
-              <td><code>files</code> 物化为 file part，技能正文直接写入。<span class="tag tag--ok">已核实</span></td>
+              <td><code>files</code> 读取后转成附件条目；显式选中的技能指引写入用户消息。<span class="tag tag--ok">已核实</span></td>
               <td><code>execute</code> 被权限禁 → code mode 关闭，MCP 不可达。<span class="tag tag--ok">已核实</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">Grok Build<span>grok-build</span></th>
               <td>名称 + 截断后的描述，清单有硬预算。<span class="tag tag--ok">已核实</span></td>
               <td>MCP 不进 function tools；<code>search_tool</code>（BM25）+ <code>use_tool</code>。<span class="tag tag--ok">已核实</span></td>
-              <td>技能清单按窗口比例算（<code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code>）；MCP 描述 2048 字符。<span class="tag tag--todo">待核实</span></td>
+              <td>技能预算 = 窗口 token ×4×0.5 字节；描述与使用时机合计先限 400 字节；MCP 描述 2048 字符。<span class="tag tag--ok">已核实</span></td>
               <td>无独立附件通道，文件走 <code>read_file</code>。<span class="tag tag--ok">已核实</span></td>
               <td>检索词不匹配 → 找不到工具；公告指纹不变则不重发。<span class="tag tag--guess">推断</span></td>
             </tr>
             <tr>
               <th scope="row" class="cell-tool">DeepSeek Harness<span>dsh</span></th>
-              <td>持久 user 消息目录：名称 + 描述，默认每条 500 字符。<span class="tag tag--guess">推断</span></td>
-              <td>MCP 直接注册，<code>mcp__server__tool</code>，不延迟。<span class="tag tag--guess">推断</span></td>
-              <td><code>catalogDescriptionMaxLength = 500</code>（最小 3）。<span class="tag tag--guess">推断</span></td>
-              <td><code>@file</code> 只插路径文本；<code>@session</code> 生成只读快照。<span class="tag tag--guess">推断</span></td>
+              <td>持久 user 消息目录：名称 + 描述，默认每条 500 字符。<span class="tag tag--doc">文档</span></td>
+              <td>MCP 直接注册，<code>mcp__server__tool</code>，不延迟。<span class="tag tag--doc">文档</span></td>
+              <td><code>catalogDescriptionMaxLength = 500</code>（最小 3）。<span class="tag tag--doc">文档</span></td>
+              <td><code>@file</code> 只插路径文本；<code>@session</code> 生成只读快照。<span class="tag tag--doc">文档</span></td>
               <td>不延迟 → MCP 多时 schema 挤占；<code>@file</code> 不读内容易被误解。<span class="tag tag--guess">推断</span></td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；dsh <code>5719020</code>。dsh 全行为【推断】，来自同仓文档与包 README<sup class="fn-ref"><a href="#fn-main-03-3" id="fnref-main-03-3">3</a></sup>。</p>
+      <p class="table-caption">版本口径：Codex <code>76ed3b4</code>；Claude Code 非官方源码 v2.1.88；pi <code>b45e0eb</code>；omp <code>f979f46</code>；opencode v1 <code>v1.19.0</code>、v2 <code>v2.0.29</code>（beta）；Grok Build <code>2bdd1d6</code>；dsh <code>5719020</code>。dsh 的直接行为按同仓文档标【文档】，设计动机与排查判断另标【推断】<sup class="fn-ref"><a href="#fn-main-03-3" id="fnref-main-03-3">3</a></sup>。</p>
     </section>
 
     <!-- ========== 06 ========== -->
     <section id="tradeoffs">
       <p class="sec-no">06 · 设计取舍</p>
-      <h2>目录越详细，越省往返，也越占地方</h2>
+      <h2>怎样权衡目录大小、检索和读取成本</h2>
 
       <h3>取舍一：目录给“名字”，还是给“名字 + 描述 + 时机”</h3>
-      <p>pi 给 4 行：name、description、location，正文靠 <code>read</code>。Claude Code 给名称 + 描述 + whenToUse，单条 250 字符。dsh 给名称 + 描述，500 字符。Grok 给名称 + 截断描述，清单有按窗口比例算的总预算。</p>
-      <p>信息越多，模型越容易判断“该不该用”，往返次数越少；但目录本身占前缀，而且每条描述都要维护。250 字符大约是三句话，够写“什么时候用、什么时候不用”；500 字符能加一个例子；4 行 pi 式目录最省，但模型常常要靠猜。</p>
-      <p><strong>代价</strong>：描述写得好是资产，写得差是负债。一句“处理文档”会让模型在十几个场景里都去读正文，每次都花一次往返；一句“仅在用户要求生成 PDF 时使用”能挡掉大部分误触发，但也可能挡掉真正的需求。</p>
+      <p>Codex 与 pi 都提供名称、描述和读取位置。Claude Code v2.1.88 把描述与 whenToUse 合并后限到 250 字符，dsh 默认每条描述 500 字符。Grok 先限制描述与使用时机合计 400 字节，再受清单总预算约束。</p>
+      <p>这些预算控制的是目录，不是操作指引。描述应优先说明用途和触发条件，把具体步骤留在正文。目录太短时容易丢失选用依据，太长则挤占窗口；字符数和字节数也不能当作同一种上限直接排名。</p>
+      <p><strong>建议</strong>：用实际任务检查描述。例如“处理文档”范围太宽；“只在生成 PDF 时使用”又会漏掉读取 PDF。把应该触发和不该触发的任务各选几例，检查目录匹配和正文读取记录，再调整描述。</p>
 
-      <h3>取舍二：延迟的开关交给模型、客户端，还是用户</h3>
-      <p>Codex 交给模型元数据（<code>supports_search_tool</code>），Claude Code 交给客户端默认值（<code>tst</code>），Grok 交给架构（MCP 一律不进 function tools），opencode v2 交给工具注册选项（<code>codemode</code>）。</p>
-      <p>交给模型最保守：不支持就不延迟，绝不会因为延迟而让模型失去能力。交给客户端最激进：默认全延迟，模型必须学会检索。交给架构最彻底：连“直连”这条路都不留。交给注册选项最灵活：同一个工具可以按需选择进不进目录。</p>
-      <p><strong>代价</strong>：越激进，省下的前缀越多，失败时的表现越差——模型不会说“检索失败”，它说“我没有这个工具”。越保守，越安全，但工具一多就回到“清单太长、选择困难”的原点。</p>
+      <h3>取舍二：延迟策略由哪些条件决定</h3>
+      <p>Codex 先看模型元数据，再应用暴露策略；Claude Code v2.1.88 先取 <code>tst</code> 等搜索模式，再检查模型、网关和工具入口。Grok 的 MCP 调用固定经过搜索与调用工具，opencode v2 则按 <code>codemode</code> 分流。</p>
+      <p>这些条件分布在不同层，不能简化成“交给模型”或“交给用户”。排查配置时，应依次记录默认策略、覆盖配置、最终可见工具，以及检索入口是否可用。</p>
+      <p><strong>代价</strong>：直接提供定义少一个发现步骤，却要持续携带工具清单；延迟可以减少初始定义，但增加发现步骤。比较时用实际工具定义的 token 数、调用频率和失败率，才能判断收益。</p>
 
       <h3>取舍三：检索式、目录式，还是代码式</h3>
-      <p>检索式（Codex <code>tool_search</code>、Claude Code <code>ToolSearchTool</code>、Grok <code>search_tool</code>）把“找工具”变成一次关键词查询，优点是目录可以极简，缺点是把负担转给模型的检索词。目录式（omp 的 <code>xd://</code>、v2 的 catalog 行）把工具分组，模型先选组再展开，优点是结构清晰，缺点是组名起不好就没人点。代码式（v2 的 Code Mode）让模型写代码调用工具，优点是一次可以串多个调用、省往返，缺点是模型得会写代码，而且错误更难定位。</p>
-      <p><strong>代价</strong>：检索式对工具命名最敏感——工具名里没有“issue”这个词，搜“issue”就找不到。目录式对分类最敏感。代码式对沙箱和权限最敏感：<code>execute</code> 一被禁，整条通道关闭。</p>
+      <p>检索式通过查询找到工具，目录式帮助模型先看分组再展开。代码式让模型把多个调用写进一次 <code>execute</code>，还可以在代码里检索；因此这三种方式可以组合，opencode v2 就同时使用目录和代码。</p>
+      <p><strong>代价</strong>：检索式要检查名称、描述和检索结果，不能只看工具名是否含有某个词；目录式要检查分类是否清楚；代码式要检查执行权限及代码错误。以 Grok 的 BM25 为例，名称与描述都会影响匹配。<span class="tag tag--guess">推断</span></p>
 
       <h3>取舍四：<code>@</code> 是“附件”，还是“路径文本”</h3>
-      <p>Claude Code 与 opencode v1/v2 把 <code>@</code> 物化成附件，内容直接进本轮；dsh 的 <code>@file</code> 只插路径文本，模型还得调用文件工具去读；Grok 与 pi 没有专门的 <code>@</code> 通道，一律走 <code>read</code>。</p>
-      <p>物化的好处是“用户点名 = 一定看到”，不依赖模型是否愿意读；坏处是一次可以塞进很大的内容，而且用户很难感知它占了多少 token。路径文本的好处是体积可控、模型可以分页读；坏处是用户以为“我已经给它了”，模型却还没读。</p>
-      <p><strong>代价</strong>：物化派要处理“文件太大”“二进制”“路径不存在”三种边界，多数实现选择静默跳过；路径派要把“我提到了但没读”这个歧义留给模型解释。</p>
+      <p>Claude Code 与 opencode v1/v2 有读取附件内容的路径；Codex TUI 的普通文件选择和 dsh <code>@file</code> 先插入路径，模型随后再读。Grok 与 pi 的文件内容也通过读取工具取得。</p>
+      <p>附件式把读取提前到模型请求前，省掉模型主动读文件的步骤；路径式先提供位置，让模型按需读取或分页。两者都要检查读取是否成功，附件式还要检查大小和格式限制。</p>
+      <p><strong>代价</strong>：自动附上内容会提前占用窗口；只给路径则容易让用户误以为文件已经读过。验收时应看实际附件或读取结果，光看输入框里的文件名无法判断。</p>
 
-      <h3>取舍五：目录快照，还是每次重算</h3>
-      <p>Grok 用指纹 <code>(tool_count, description_hash, tool_names_hash)</code> 判断公告是否变化，只在变化时重发；Claude Code 从历史里的旧 delta 重建“已公告集合”；opencode v2 在技能清单变化时用差分，新增删除出小增量，其余整段重述；Codex 每轮重新组装工具表。</p>
-      <p>快照省 token，但会“过期”；重算不会过期，但每轮都要付一次组装的代价，而且容易打断缓存。真正的分界是“工具集在会话中途变不变”：插件装完就不动的场景，快照够用；会动态加载 MCP 的场景，必须能检测变化。</p>
+      <h3>取舍五：怎样发现目录变化并通知模型</h3>
+      <p>Grok 用 <code>(tool_count, description_hash, tool_names_hash)</code> 指纹比较工具公告；Claude Code 从历史里的差异消息（delta）重建已公告集合。opencode v2 的技能新增、移除用小段更新，描述修改等情况重述清单；dsh 则追加完整替换目录。</p>
+      <p>“检查有没有变化”和“向模型追加什么”是两个步骤。每次重算得到相同文本，不会因为重算本身改变缓存前缀；只追加变化也不表示旧目录不再占上下文。选型时应测试中途增加、删除和修改工具后，模型能否及时看到正确清单。</p>
     </section>
 
     <!-- ========== 07 ========== -->
     <section id="quiz">
       <p class="sec-no">07 · 小测验</p>
-      <h2>三道题，检验你是否分得清</h2>
+      <h2>小测验</h2>
 
       <div class="quiz">
         <div class="quiz__head">
           <span class="quiz__no">Q1</span>
-          <p class="quiz__q">用户说“帮我看看这个 issue”，但 Agent 回答“我没有访问 Jira 的能力”。Jira 已经接好了。列出三种可能原因，并说明分别该查哪里。</p>
+          <p class="quiz__q">用户说“帮我看看这个 issue”，但 agent 回答“我没有访问 Jira 的能力”。Jira 已经接好了。列出三种可能原因，并说明分别该查哪里。</p>
         </div>
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>一、MCP 延迟生效但检索没命中：查工具名与检索词是否匹配，看 <code>tool_search</code> / <code>search_tool</code> 的返回。二、延迟未生效但工具没进可见集：查权限、服务器是否连接、<code>supports_search_tool</code> 或 <code>tst</code> 的取值。三、目录过期：会话中途接的服务器，公告还没更新，查 delta / 指纹。见<a href="#three-fail">3.2 失败模式</a>与<a href="#three-mcp">3.3 四种延迟</a>。</p>
+          <p>一、延迟工具没有被找到：看检索词、名称和描述，并检查 <code>tool_search</code> / <code>search_tool</code> 的候选结果。二、工具未进入当前可见集：查连接、权限、最终暴露策略和搜索入口，不能只看 <code>supports_search_tool</code> 或 <code>tst</code>。三、中途接入后目录没更新：查公告、指纹或差异消息。参照<a href="#three-fail">3.2 失败模式</a>与<a href="#three-mcp">3.3 四种机制</a>。</p>
         </div>
       </div>
 
@@ -453,7 +453,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>Codex：模型元数据决定，模型调 <code>tool_search</code> 检索。Claude Code：客户端默认 <code>tst</code> 决定，模型调 <code>ToolSearchTool</code> 拉定义。<code>Grok</code>：架构决定（MCP 不进 function tools），模型先 <code>search_tool</code>（BM25）再 <code>use_tool</code>。v2：工具注册选项决定，模型写一段代码用 <code>execute</code> 调用。四者都叫延迟，决定权与动作都不同。见<a href="#three-mcp">3.3</a>。</p>
+          <p>Codex：能力标志与暴露策略共同决定，模型用 <code>tool_search</code> 取定义。Claude Code v2.1.88：默认模式是 <code>tst</code>，模型与网关等条件通过后，由 <code>ToolSearchTool</code> 取得工具引用。Grok：MCP 固定走 <code>search_tool</code> 检索、<code>use_tool</code> 调用。opencode v2：按工具的 <code>codemode</code> 选项分流，目录里的工具由 <code>execute</code> 代码调用。参照<a href="#three-mcp">3.3</a>。</p>
         </div>
       </div>
 
@@ -465,7 +465,7 @@
         <button class="btn btn--small quiz__toggle" type="button" data-quiz-toggle aria-expanded="false">看答案</button>
         <div class="quiz__answer" hidden>
           <span class="quiz__label">解析</span>
-          <p>不必开。12 个工具的前缀成本有限，而延迟会引入“检索失败”这一新失败模式，还会让模型多一次往返。延迟的收益随工具数量增长，成本却是固定的：多一个检索步骤、多一种失败可能。等到工具超过 30 个、或者大部分工具在单次任务里用不到时，再考虑延迟。见<a href="#tradeoffs">取舍二</a>与<a href="#why-lazy">01 节</a>。</p>
+          <p>我会先测试直接加载，前提是产品支持切换策略，再与延迟加载对照。题目还缺每个工具定义的 token 数和实际使用频率，12 个工具也可能带来很大的清单。若定义较短且经常使用，直接加载省一次发现步骤；若定义很长而大部分任务用不到，延迟更值得测试。记录定义占用、检索耗时和调用成功率，不设“超过 30 个”这样的通用阈值。参照<a href="#tradeoffs">取舍二</a>与<a href="#why-lazy">01 节</a>。</p>
         </div>
       </div>
     </section>
@@ -474,19 +474,19 @@
       <p class="footnotes__title">脚注</p>
       <ol>
         <li id="fn-main-03-1">
-          【待核实】：<code>skills.include_instructions</code> 的注释说明它控制 <code>&lt;skills_instructions&gt;</code> 是否注入，但查 <code>core/src/config/mod.rs</code> 的 skills 配置段未找到显式 default。缺的是配置反序列化时的缺省值来源（可能在别处的 derive 或上层 bundle）。因此正文只写“控制是否注入”，不写默认开或关。
+          【订正】：<code>skills.include_instructions</code> 在<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/config/mod.rs#L4133-L4141">配置组装</a>中用 <code>unwrap_or(true)</code>，默认开启；目录预算见 §2.1。显式选中后自动注入的技能指引另有 8,000 字节上限，超出会截断并告警，不能用目录预算代替这项限制（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/ext/skills/src/render.rs#L19-L23">常量</a>、<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/ext/skills/src/extension.rs#L460-L491">注入路径</a>）。【待核实】：omp 的技能描述上限、opencode v1 的目录总预算尚未查清。已读本页所链的技能渲染与工具入口，缺完整加载链的预算检查；表中不把“未找到”当作“无限制”。
           <a class="footnotes__back" href="#fnref-main-03-1">↩</a>
         </li>
         <li id="fn-main-03-2">
-          【推断】：Codex 的 <code>@</code> 在源码里表现为 <code>ToolMentionKind</code>、<code>app://</code>、<code>plugin://</code> 等结构化提及；检索 <code>@file</code> 的通用展开路径未命中。缺的是“是否存在只在 TUI 层做的文件展开”。因此正文说“没有找到通用路径”，不断言“完全没有”。
+          【订正】：原文只检查结构化提及，遗漏了 TUI 文件选择。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/tui/src/bottom_pane/chat_composer.rs#L2468-L2493">选择文件</a>时，普通文件进入 <code>insert_selected_path</code>，图片可进入 <code>attach_image</code>；<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/tui/src/bottom_pane/chat_composer.rs#L2750-L2770">路径插入函数</a>只改输入框文本。本页据此说明该 TUI 路径，不将普通文件与图片附件混用。
           <a class="footnotes__back" href="#fnref-main-03-2">↩</a>
         </li>
         <li id="fn-main-03-3">
-          dsh 的技能目录、MCP 注册与 <code>@file</code> 语义均来自同仓 <code>docs/subsystems</code> 与包 README，未逐行核对源码，整体标【推断】。已检查 <code>packages/skill/tool-skill/README.md</code>、<code>packages/mcp/mcp-client/README.md</code>、<code>packages/context/file-reference/README.md</code>；缺的是运行时实际注册顺序。表中相应格子按【推断】标注。
+          【来源说明】：dsh 的<a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/skill/tool-skill/README.md#L48-L61">技能目录与 500 字符配置</a>、MCP 直接注册、<code>@file</code> 不读文件，均由同仓包 README 明确说明，按【文档】标注。设计动机保留【推断】。这里引用文档规定的行为，未以运行实验核对实际注册顺序。
           <a class="footnotes__back" href="#fnref-main-03-3">↩</a>
         </li>
         <li id="fn-main-03-4">
-          【待核实】：Grok Build 的技能清单预算同时出现三种表述——<code>context_window_tokens × 4 × 0.005</code>、<code>× 4 × 0.5%</code>、以及“200k 窗口约 400k 字符”。前两种按字面算分别得 4,000 与 4,000 字符，与 400k 示例相差 100 倍；只有把 <code>0.5</code> 当作比例（50%）才能得到 400k。已核对常量名 <code>SKILL_BUDGET_CONTEXT_PERCENT</code> 与示例值，缺的是 <code>listing.rs</code> 里实际参与乘法的表达式。因此正文只写常量名与示例值，不给百分比结论。
+          【订正】：Grok 的 <code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code> 表示 50%。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-tools/src/types/skill_discovery_tracker/mod.rs#L321-L336">实际乘法</a>为 <code>窗口 token × 4 × percent</code>；<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-tools/src/types/skill_discovery_tracker/listing.rs#L208-L260">渲染器</a>按 UTF-8 字节长度扣预算。因此 200,000 token 的默认预算是 400,000 字节，原来的 0.5% 和“字符”单位均订正。这是该提交的预算实现，不是建议给技能目录分配半个窗口。
           <a class="footnotes__back" href="#fnref-main-03-4">↩</a>
         </li>
       </ol>
@@ -510,21 +510,22 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead"><strong>Skills 两段式</strong>：启动时只把「技能名 + 描述 + whenToUse」放进 <code>skill_listing</code> 附件；完整 <code>SKILL.md</code> 只有被调用时才作为一条用户消息注入。列表有预算：按上下文窗口的 <strong>1% 折算成字符</strong>（×4 字符/token），每条描述硬截断 <strong>250 字符</strong>，内置技能不参与截断。<strong>MCP 工具默认延迟</strong>：<code>getToolSearchMode()</code> 在未设置环境变量时返回 <code>tst</code>，即所有 MCP 工具与标记为 <code>shouldDefer</code> 的工具都不进首轮 schema，只暴露名字，模型需要时用 <code>ToolSearchTool</code> 拉完整定义（<code>defer_loading</code> + <code>tool_reference</code> 块）。<code>ENABLE_TOOL_SEARCH=auto</code> 时改为按阈值判断：延迟工具定义超过窗口 10% 才启用延迟。<code>@</code> 引用走 <code>processAtMentionedFiles</code>，把文件内容作为附件插入，而不是用户原文。</p>
+      <p class="modal__lead"><strong>Skills 先给目录，再载入正文</strong>：<code>skill_listing</code> 附件列出名称和描述，描述中包含 whenToUse（使用时机）；调用技能时再注入指引。总预算按窗口的 1% ×4 折为字符，未知时用 8,000 字符。合并描述先受 250 字符上限约束，包括内置技能；总预算不足时，bundled 技能免于进一步缩短。MCP 搜索模式默认 <code>tst</code>，实际启用还检查模型支持、网关和搜索工具可见性。延迟定义带 <code>defer_loading</code> 发送，模型用 <code>ToolSearchTool</code> 返回的 <code>tool_reference</code> 取用。<code>auto</code> 模式按工具定义是否超过窗口 10% 判断。<code>@</code> 文件引用由 <code>processAtMentionedFiles</code> 读取并生成附件。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
         <dd><code>SKILL_BUDGET_CONTEXT_PERCENT = 0.01</code>、<code>CHARS_PER_TOKEN = 4</code>、<code>DEFAULT_CHAR_BUDGET = 8000</code>；<code>MAX_LISTING_DESC_CHARS = 250</code>；工具搜索默认 <code>tst</code>，<code>auto</code> 阈值 <code>DEFAULT_AUTO_TOOL_SEARCH_PERCENTAGE = 10</code>；非第一方 <code>ANTHROPIC_BASE_URL</code> 且未显式设置 <code>ENABLE_TOOL_SEARCH</code> 时禁用延迟。<span class="tag tag--src">源码 v2.1.88</span></dd>
         <dt>设计意图</dt>
-        <dd>用“预算”而不是“固定条数”控制目录，让窗口大的模型能放更多技能；用 <code>tst</code> 做默认，是因为 MCP 工具数量不可预测，默认延迟比默认全量更稳。代价是默认值很强硬：一旦网关不支持 <code>tool_reference</code>，整条链路要手动关掉延迟才能用。<span class="tag tag--guess">推断</span></dd>
+        <dd>按窗口比例分配预算，可以让目录随模型容量调整。工具搜索减少初始展开的定义，增加一次发现步骤；网关还必须接受相关字段和引用块。遇到不兼容错误时，应检查搜索模式及网关能力。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/tools/SkillTool/prompt.ts#L20-L50">SkillTool/prompt.ts#L20-L50</a>（预算与单条上限）·
           <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L2661-L2753">attachments.ts#L2661-L2753</a>（技能列表附件）·
-          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L46-L49">toolSearch.ts#L46-L49</a>（默认 tst）·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L46-L49">toolSearch.ts#L46-L49</a>（auto 阈值）·
+          <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/toolSearch.ts#L154-L316">模式、模型与网关条件</a> ·
           <a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/utils/attachments.ts#L1894-L1965">attachments.ts#L1894-L1965</a>（@ 引用）
         </dd>
       </dl>
-      <p class="modal__note">来源类型：<span class="tag tag--src">源码 v2.1.88</span> <span class="tag tag--doc">官方文档</span>。官方文档说描述在 1,536 字符处截断，与源码 250 字符不一致（版本差异），本页采用源码并标【可能已变化】。“MCP 默认延迟 / 10% 阈值”与文档一致。源码为非官方泄露版本。</p>
+      <p class="modal__note">来源类型：<span class="tag tag--src">源码 v2.1.88</span> <span class="tag tag--doc">官方文档</span>。本页以非官方 v2.1.88 源码为主。2026-10-26 的<a href="https://code.claude.com/docs/en/skills#frontmatter-reference">官方技能文档</a>把合并描述上限写为 1,536 字符；<a href="https://code.claude.com/docs/en/mcp#tool-search-through-an-llm-gateway">MCP 文档</a>说明 v2.1.304 起网关后也默认启用工具搜索。这里保留旧版的 250 字符与网关判断，避免混用版本。</p>
     </div>
   </div>
 </div>
@@ -540,12 +541,12 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">技能只在系统提示里暴露「名称 + 一句描述 + 文件位置」，完整 <code>SKILL.md</code> 由模型在任务匹配时用 <code>read</code>（或 <code>bash</code>，取决于可用工具）自行读取；<code>formatSkillsForPrompt()</code> 会跳过 <code>disableModelInvocation</code> 的技能。技能描述有长度校验：名称上限 64 字符、描述上限 1024 字符，<strong>超长不截断，而是产生校验告警</strong>。MCP 不在核心内实现，而以 <code>extensions/mcp</code> 扩展形式提供，扩展可注册工具、命令、provider、渲染器。<code>read</code> 工具支持 <code>offset/limit</code> 分页续读，因此“先看局部、需要再放大”是通用读取模式，而不是专门的文件引用语法。</p>
+      <p class="modal__lead">系统提示中的技能目录列出“名称、描述、文件位置”。模型按任务匹配后，用可用的 <code>read</code> 或 <code>bash</code> 读取 <code>SKILL.md</code>；<code>formatSkillsForPrompt()</code> 跳过禁用模型调用的技能。名称 64 字符、描述 1024 字符是校验上限，超长会告警并继续加载，不会截断。MCP 由扩展提供，核心没有实现 MCP 延迟。<code>read</code> 的 <code>offset/limit</code> 用于分页读取；它控制一次读多少内容。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
-        <dd>技能名 64 字符、描述 1024 字符；提示词中每技能固定 4 行（name / description / location）；未找到 <code>@</code> 文件引用的注入机制——检索 <code>mention</code> / <code>fileMention</code> 无命中，CLI 参数层对 <code>@</code> 开头实参有处理但不属于上下文注入。<span class="tag tag--ok">已核实</span></dd>
+        <dd>技能名 64 字符、描述 1024 字符；目录含 name / description / location 三个字段，外面有 XML 标签。文件内容由读取工具取得。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>把“技能正文”完全交给通用读取工具，不再造一套专用加载器：模型已经会用 <code>read</code>，技能正文只是另一个文件。代价是没有“技能专属”的预算与截断，正文多长就进多少；描述超长时只有告警，坏描述会一直留在目录里。<span class="tag tag--guess">推断</span></dd>
+        <dd>复用通用读取工具，技能正文按文件处理；读取量受 <code>read</code> 的分页与输出限制影响。描述超长只告警，维护者需要主动精简，才能控制目录占用。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/skills.ts#L358-L391">skills.ts#L358-L391</a>（目录格式）·
@@ -553,7 +554,7 @@
           <a href="https://github.com/earendil-works/pi/blob/b45e0ebcc5ae2fc42a6f2f23104d10e656e6bedb/packages/coding-agent/src/core/system-prompt.ts#L174-L182">system-prompt.ts#L174-L182</a>（skills section）
         </dd>
       </dl>
-      <p class="modal__note">pi 的“按需”只有两条路：技能正文与 <code>read/grep/glob</code> 的主动检索。它没有 MCP 延迟，也没有 <code>@</code> 附件通道，因此工具一多，前缀压力会直接体现出来。</p>
+      <p class="modal__note">这里比较的是 pi 核心的技能目录与主动读取路径。MCP 扩展的工具展示策略要查看具体扩展，不能由核心的技能实现推出。</p>
     </div>
   </div>
 </div>
@@ -574,7 +575,7 @@
         <dt>关键参数与默认值</dt>
         <dd><code>skill://</code> 支持三种形态：<code>skill://&lt;name&gt;</code>、<code>skill://&lt;name&gt;/&lt;path&gt;</code>、<code>skill://&lt;namespace&gt;/&lt;name&gt;[/&lt;path&gt;]</code>；MCP 展示分区由 <code>loadMode</code> 决定（顶层 vs <code>xd://</code>）；rulebook 只给描述，<code>alwaysApply</code> 才全文注入；未找到技能描述长度上限。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>把“工具定义”和“知识正文”都做成可寻址资源：<code>skill://</code>、<code>rule://</code>、<code>xd://</code> 三套 URL 共用同一套读取能力。这样目录可以做得极薄，正文按需取。代价是模型必须知道这些 scheme 存在，而且每次读取都是一次工具调用；<code>hide</code> 技能不会出现在目录里，模型只能靠用户点名。<span class="tag tag--guess">推断</span></dd>
+        <dd><code>skill://</code>、<code>rule://</code>、<code>xd://</code> 分别定位技能、规则和工具目录，可复用读取能力。目录可以少放细节，模型按需展开；代价是必须提供这些内部地址及使用说明。<code>hide</code> 技能不出现在目录里，使用前还要通过用户点名等方式获得位置。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/internal-urls/skill-protocol.ts#L1-L20">skill-protocol.ts#L1-L20</a>（skill:// 形态）·
@@ -583,7 +584,7 @@
           <a href="https://github.com/can1357/oh-my-pi/blob/f979f4639777858de28e6ecb99d577443abe0b7b/packages/coding-agent/src/capability/rule-buckets.ts#L8-L15">rule-buckets.ts#L8-L15</a>（rulebook）
         </dd>
       </dl>
-      <p class="modal__note">omp 的 MCP 不是“延迟加载”，而是“延迟展示”：工具仍然启用、仍然可调用，只是不在顶层列表里。这与 Claude Code 的 <code>defer_loading</code> 语义不同——后者是连 schema 都不发。</p>
+      <p class="modal__note">omp 通过 <code>loadMode</code> 把工具放在顶层或可展开目录，工具在运行时保持启用。Claude Code 则通过 API 的 <code>defer_loading</code> 延迟向模型展开定义；该标记本身会随定义发送，不能解释成客户端完全不发送 schema。</p>
     </div>
   </div>
 </div>
@@ -599,12 +600,12 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">技能是标准三段式：发现 <code>skills/**/SKILL.md</code>，系统提示里只放 <code>Skill.fmt(list, {verbose:true})</code> 渲染的清单（名称、描述、位置），正文由 <code>skill</code> 工具按名字读取后返回 <code>&lt;skill_content&gt;</code> 块。MCP 这一侧默认<strong>没有</strong>按需加载：服务端暴露的每个工具都注册成完整工具定义进入请求，系统提示只额外附上各 server 的 <code>instructions</code>；只有打开实验开关 <code>experimentalCodeMode</code> 时才会多出一个 <code>execute</code> 工具，并在它的 description 里附带 MCP 工具目录。<code>@</code> 引用由 <code>resolvePromptParts</code> 在入场时解析：文本中的 <code>@name</code> 若能 stat 到文件就转成 <code>file</code> part，否则尝试当作 agent 名。</p>
+      <p class="modal__lead">发现 <code>skills/**/SKILL.md</code> 后，系统提示用 <code>Skill.fmt(list, {verbose:true})</code> 列出名称、描述和位置；<code>verbose</code> 表示详细清单。正文由 <code>skill</code> 工具按名称读取，返回 <code>&lt;skill_content&gt;</code> 块。MCP 默认全量提供工具定义，系统提示另附服务器的 <code>instructions</code>。打开实验开关 <code>experimentalCodeMode</code> 后，还会增加一个 <code>execute</code>，其描述包含 MCP 工具目录。<code>@</code> 引用在处理用户输入时由 <code>resolvePromptParts</code> 解析：<code>@name</code> 对应文件时转成附件条目，否则尝试解析为 agent 名称。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
-        <dd>技能清单 <code>Skill.fmt(..., { verbose: true })</code>，<code>skill</code> 工具被权限禁用时整块省略；MCP 仅当 server 有 <code>instructions</code> 时注入；<code>@</code> 解析：<code>~/</code> 展开为 home，其余相对 worktree，目录 mime 记为 <code>application/x-directory</code>；<code>experimentalCodeMode</code> 默认关。<span class="tag tag--ok">已核实</span></dd>
+        <dd>技能清单 <code>Skill.fmt(..., { verbose: true })</code>，<code>skill</code> 工具被权限禁用时整块省略；服务器另有 <code>instructions</code> 才追加指令；<code>@</code> 解析中 <code>~/</code> 展开为 home，其余相对 worktree，目录类型为 <code>application/x-directory</code>；<code>experimentalCodeMode</code> 默认关。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>MCP 默认全量是最保守的选择：不会出现“模型不知道工具存在”，代价是工具多时前缀膨胀。Code Mode 作为实验开关，把“要不要延迟”交给用户，而不是默认开启。这与 Claude Code 的 <code>tst</code> 默认值正好相反。<span class="tag tag--guess">推断</span></dd>
+        <dd>完整工具定义直接进入请求，省去检索定义的步骤，代价是持续占用上下文。实验性的 Code Mode 增加代码调用入口，仍保留完整工具定义，不能把开启它等同于开启延迟。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/system.ts#L107-L119">session/system.ts#L107-L119</a>（技能清单）·
@@ -613,7 +614,7 @@
           <a href="https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/prompt.ts#L157-L191">session/prompt.ts#L157-L191</a>（@ 解析）
         </dd>
       </dl>
-      <p class="modal__note">v1 的“按需”默认只有技能正文与 <code>read/grep/glob</code> 的主动检索两条路。MCP 延迟要等 <code>experimentalCodeMode</code>，而且只是把目录塞进 <code>execute</code> 的 description。</p>
+      <p class="modal__note">v1 的技能正文按需读取；MCP 默认全量提供定义。<code>experimentalCodeMode</code> 只是增加带目录的 <code>execute</code>，与 v2 把 MCP 移出直接定义的机制不同。</p>
     </div>
   </div>
 </div>
@@ -629,12 +630,12 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">技能与 v1 同构：<code>&lt;available_skills&gt;</code> 只列 <code>id / name / description</code>，正文由 <code>skill</code> 工具读取，清单变化时用差分更新（新增删除出小增量，其余整段重述）。新增一条更彻底的渐进披露通道：<strong>Code Mode</strong>。工具按 <code>codemode</code> 选项分流——<code>codemode: false</code> 的内置工具（read / write / edit / patch / glob / grep / shell / skill / subagent / webfetch / websearch / question）作为工具定义直接进请求；其余（<strong>全部 MCP 工具</strong>与 opencode 元工具）<strong>不进工具定义</strong>，只以“目录行”形式写进指令基线，模型必须通过 <code>execute</code> 工具写代码来调用，目录不完整时在代码里用同步的 <code>search(...)</code> 查工具名。</p>
+      <p class="modal__lead">与 v1 一样，技能先列目录，再用 <code>skill</code> 读正文。<code>&lt;available_skills&gt;</code> 里有 <code>id / name / description</code>；新增、删除技能时发小段更新，描述改变等情况重述清单。<strong>Code Mode</strong> 按 <code>codemode</code> 选项分流：标为 false 的内置工具直接提供定义，包括 read / write / edit / patch / glob / grep / shell / skill / subagent / webfetch / websearch / question。其余工具，包括全部 MCP 工具与 opencode 的管理工具，只在指令中列目录。模型通过 <code>execute</code> 内的代码调用；目录不完整时，先用同步的 <code>search(...)</code> 查找调用路径。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
-        <dd>技能清单字段 <code>id / name / description</code>，空列表时给 “No skills are currently available.”；Code Mode 由 <code>execute</code> 是否被权限整体禁用来开关；<code>options.codemode === false</code> → 直接进 <code>definitions</code>（按名字排序），否则只进目录；<code>@</code> 的 <code>files</code> 并发 8 物化，技能正文在入场时读取并写入用户消息。<span class="tag tag--ok">已核实</span></dd>
+        <dd>技能清单字段 <code>id / name / description</code>，空列表时给 “No skills are currently available.”。禁用 <code>execute</code> 会关闭 Code Mode。<code>options.codemode === false</code> 的工具按名称排序后直接提供定义，其余进入目录。文件附件以并发 8 读取并转换，显式选中的技能指引在处理输入时写入用户消息。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>Code Mode 把“工具调用”变成“写一段代码”，一次可以串多个调用，省往返也省 schema；代价是把正确性押在模型的代码能力上，而且 <code>execute</code> 被禁时整条通道直接消失，不是降级到全量。<span class="tag tag--guess">推断</span></dd>
+        <dd>Code Mode 把多个工具调用合并到一段代码，减少往返和直接工具定义。代价是模型要能正确编写调用代码。<code>execute</code> 被禁时，该路径关闭，不会自动改为全量直接提供定义。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/anomalyco/opencode/blob/042d0832f5f3a73eaa039a58a7d565776f6d4290/packages/core/src/skill/instructions.ts#L16-L58">skill/instructions.ts#L16-L58</a>（技能清单）·
@@ -659,12 +660,12 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">Skills 只在首条用户消息里给出「名称 + 截断后的描述」清单，模型要用时调用 skill 工具读取 <code>SKILL.md</code> 正文；清单有硬预算：按上下文窗口 token 数折算成字符（<code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code>，文档给的 200k 窗口示例约 400k 字符<sup class="fn-ref"><a href="#fn-main-03-4" id="fnref-main-03-4">4</a></sup>），超出后按条目裁剪而不是整段丢弃。MCP 走另一条路：服务器与工具<strong>不进入 function tools</strong>，只注入一段「服务器公告」，模型先用 <code>search_tool</code>（BM25 关键词检索）找工具，再用 <code>use_tool</code> 调用；单个 MCP 工具或服务器描述硬截断到 2048 字符，公告用 <code>(tool_count, description_hash, tool_names_hash)</code> 指纹做变更检测，只在变化时重发。<code>@</code> 文件引用在本版源码中没有独立的附件注入通道，文件内容一律通过 <code>read_file</code> 按需读取。</p>
+      <p class="modal__lead">Skills 起初给出名称、截短后的描述、使用时机（若有）和文件位置，模型用技能工具读取正文。默认总预算为“窗口 token ×4×0.5”字节，200k 窗口对应 400,000 字节<sup class="fn-ref"><a href="#fn-main-03-4" id="fnref-main-03-4">4</a></sup>。先把单条描述与使用时机合计限制到 400 字节；总预算不足时继续缩短描述，最后退为只列名称并省略放不下的条目。MCP 不进入 function tools 数组，先提供服务器公告；模型用 <code>search_tool</code> 检索，再用 <code>use_tool</code> 调用。单个工具或服务器描述在检索展示中截断到 2048 字符，公告以 <code>(tool_count, description_hash, tool_names_hash)</code> 指纹检测变化。文件内容通过 <code>read_file</code> 按需读取。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
-        <dd>技能清单预算由 <code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code> 控制，未知窗口时按 200k 折算；文档给的示例值是 400k 字符，换算口径见脚注 4。<span class="tag tag--todo">待核实</span> MCP 描述上限 2048 字符 + <code>… [truncated]</code>；检索 BM25，工具名 <code>search_tool</code> / <code>use_tool</code>。<span class="tag tag--ok">已核实</span></dd>
+        <dd><code>SKILL_BUDGET_CONTEXT_PERCENT = 0.5</code> 即 50%，未知窗口默认 400,000 字节；<code>MAX_LISTING_COMBINED_BYTES = 400</code>；MCP 描述上限 2048 字符 + <code>… [truncated]</code>；检索用 BM25，工具名 <code>search_tool</code> / <code>use_tool</code>。<span class="tag tag--ok">已核实</span></dd>
         <dt>设计意图</dt>
-        <dd>把 MCP 彻底移出工具数组，换来最短的前缀；用 BM25 而不是语义检索，是因为工具名与描述本身就是关键词，BM25 足够且可解释。代价是检索成为必经步骤，检索词写不好就找不到；2048 字符的截断也可能切掉关键参数说明。<span class="tag tag--guess">推断</span></dd>
+        <dd>将 MCP 定义移出工具数组，可减少直接提供的定义；公告和检索结果仍占上下文。BM25 按词语匹配工具，便于检查名称与描述如何影响结果；代价是多一步检索，截短的描述也可能丢失选择依据。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-tools/src/types/skill_discovery_tracker/listing.rs#L10-L16">listing.rs#L10-L16</a>（预算常量）·
@@ -673,7 +674,7 @@
           <a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-pager/docs/user-guide/17-sessions.md#L30-L42">17-sessions.md#L30-L42</a>（MCP 不进 tools）
         </dd>
       </dl>
-      <p class="modal__note">Grok Build 只对应提交 <code>2bdd1d6</code>。它的 <code>search_tool</code> 与 Codex 的 <code>tool_search</code> 名字像，机制不同：前者是 BM25 检索后 <code>use_tool</code> 调用，后者是取回 schema 再由模型正常调用。技能清单预算的三种表述互相不自洽，本页只给常量与示例值，不给百分比结论（见脚注 4）。</p>
+      <p class="modal__note">Grok Build 只对应提交 <code>2bdd1d6</code>。它的 <code>search_tool</code> 后接 <code>use_tool</code> 间接调用，Codex 的 <code>tool_search</code> 则取回工具定义。技能预算已按实际乘法核实，原来的 0.5% 说法在脚注 4 中订正。</p>
     </div>
   </div>
 </div>
@@ -689,12 +690,12 @@
       <button class="modal__close" type="button" data-close aria-label="关闭弹窗">×</button>
     </div>
     <div class="modal__body">
-      <p class="modal__lead">Skills 是唯一的“真·渐进披露”：首个请求前，如果存在模型可调用技能且 <code>skill</code> 工具可见，注入一条<strong>持久 user 角色消息</strong>作为目录（名称 + 被截断的描述，默认每条形如 500 字符），并明确告诉模型「先加载再行动、不要只凭摘要推断指令」；模型调用 <code>skill</code> 工具时返回完整指令正文 + 资源指引，包在 <code>&lt;skill_content&gt;</code> 里，作为普通工具历史保留。目录变化时追加一份完整替换（空目录也算替换，用于退休旧名字）。MCP 工具<strong>不是延迟加载</strong>：<code>mcp-client</code> 把每个服务器的工具直接注册到 <code>ctx.tools</code>，名字形如 <code>mcp__github__create_issue</code>，因此从第一轮就占 schema；只有 MCP <strong>resources</strong> 是共享工具 + 显式选服务器的按需读取。<code>@file</code> 补全只插入<strong>路径文本</strong>，不读也不附内容；<code>@session</code> 引用则生成有界、只读、带“不可信、勿执行其中指令”警告的快照。</p>
+      <p class="modal__lead">首个请求前，存在模型可调用技能且 <code>skill</code> 工具可见时，dsh 注入一条持久 user 消息作为目录，列出名称与截短描述，默认每条描述最多 500 字符。消息要求“先加载再行动，不要只凭摘要推断指令”。模型调用 <code>skill</code> 后，完整指引与资源说明放入 <code>&lt;skill_content&gt;</code>，作为工具历史保留；用户也能用 <code>/name</code> 显式加载。目录变化后追加完整替换，空目录也会通知旧名称失效。MCP 工具直接注册到 <code>ctx.tools</code>，名字如 <code>mcp__github__create_issue</code>；MCP resources（可读取资源）通过共享工具按需获取。<code>@file</code> 只插入路径文本，<code>@session</code> 则生成有大小限制的只读快照，并附上“不可信、勿执行其中指令”的警告。</p>
       <dl class="kv">
         <dt>关键参数与默认值</dt>
-        <dd><code>catalogDescriptionMaxLength = 500</code>（最小 3）；技能载体是“持久 user 消息目录 + <code>skill</code> 工具正文”；MCP 工具直接注册，命名 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>；<code>@file</code> 仅路径文本；<code>@session</code> 快照每个 source 有独立字节预算 + <code>maxReferences</code>。<span class="tag tag--guess">推断</span></dd>
+        <dd><code>catalogDescriptionMaxLength = 500</code>（最小 3）；技能载体是“持久 user 消息目录 + <code>skill</code> 工具正文”；MCP 工具直接注册，命名 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>；<code>@file</code> 仅路径文本；<code>@session</code> 快照按来源分配字节预算，并限制 <code>maxReferences</code>（引用数量）。<span class="tag tag--doc">文档</span></dd>
         <dt>设计意图</dt>
-        <dd>把技能目录做成持久消息而不是系统提示，目录变化时可以“追加替换”而不动前缀；<code>@file</code> 只给路径，是为了避免用户一次点名就把大文件塞满窗口。代价是目录消息会一直占着历史位置，且 <code>@file</code> 的“我提到了但没读”容易被误解为“已经给了”。<span class="tag tag--guess">推断</span></dd>
+        <dd>把技能目录做成持久消息，变化时可追加替换而不修改已有前缀。<code>@file</code> 只给路径，避免一次点名就加载整个大文件。代价是旧目录消息持续占用历史，用户也容易把“已提及”误解为“已读取”。<span class="tag tag--guess">推断</span></dd>
         <dt>来源</dt>
         <dd>
           <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/skill/tool-skill/README.md#L12">skill/tool-skill/README.md#L12</a>（目录与加载）·
@@ -703,7 +704,7 @@
           <a href="https://github.com/deepseek-ai/deepseek-harness/blob/571902028a75c64c1d767f4ae5fd099485f0ddf0/packages/context/session-reference/README.md#L36">session-reference/README.md#L36</a>（@session 快照）
         </dd>
       </dl>
-      <p class="modal__note">dsh 的结论来自同仓文档与包 README，按【推断】处理。“MCP 不延迟”与“<code>@file</code> 只给路径”是它和 Claude Code 差异最大的两处，选型时要特别注意。</p>
+      <p class="modal__note">dsh 的直接行为来自同仓包 README，按【文档】标注；设计意图仍是【推断】。比较文件引用时先看“<code>@file</code> 只给路径”，再检查后续是否调用了读取工具。</p>
     </div>
   </div>
 </div>
