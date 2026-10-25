@@ -65,15 +65,15 @@ body[data-chapter="intro-07"] .fig .svg-label:not(.svg-label--dark) {
       <h1>总流程图</h1>
       <p class="lede">六章拆下来的碎片，在这一张图里各就各位。以后每读一章主线，回来找一个格子。</p>
       <ul class="meta">
-        <li>约 9 分钟</li>
+        <li>约 10 分钟</li>
         <li>前置：第 2–6 章</li>
         <li>L2</li>
       </ul>
       <div class="learn">
         <h2>读完你能做到</h2>
         <ol>
-          <li>用五个阶段复述一次请求从组装到回收的全链路。</li>
-          <li>把 16 类能力放进对应阶段，说出每类解决什么问题。</li>
+          <li>用五段流水线复述一次请求从组装到质量兜底的全过程。</li>
+          <li>把 16 类能力放进对应的那一段，说出每类解决什么问题。</li>
           <li>指出哪些环节会调用模型，哪些只是一次本地改写。</li>
         </ol>
       </div>
@@ -82,7 +82,7 @@ body[data-chapter="intro-07"] .fig .svg-label:not(.svg-label--dark) {
     <section>
       <p class="sec-no">01 · 六个碎片，拼不成一句话</p>
       <h2>“你都懂，但你说不清”</h2>
-      <p>面试官问你：「你怎么理解 Agent 的上下文管理？」你脑子里冒出窗口、token、context rot、缓存、压缩、子代理，六个词各说两句，说完自己都觉得散。</p>
+      <p>面试官问你：“你怎么理解 agent 的上下文管理？”你脑子里冒出窗口、token、context rot、缓存、压缩、子代理，六个词各说两句，说完自己都觉得散。</p>
       <p>问题不在知识量，在缺一张把它们串起来的图。串不起来的知识，用的时候调不出来。</p>
 
       <div class="callout callout--info">
@@ -90,7 +90,7 @@ body[data-chapter="intro-07"] .fig .svg-label:not(.svg-label--dark) {
         <p>上下文管理不是六个并列的技巧，是一条有先后顺序的流水线：先决定<strong>装什么</strong>，再算<strong>装了多少</strong>，装不下就<strong>减</strong>，减不动就<strong>隔离</strong>，最后用<strong>缓存、恢复、扩展、评估</strong>保证它长期跑得稳。顺序错了，技巧就互相打架。</p>
       </div>
 
-      <p class="lead-in">一次请求有它的一生：组装、计量、减量、隔离、质量兜底。</p>
+      <p class="lead-in">一次请求从组装开始，依次经过计量、减量、隔离，最后由质量这一段兜底。</p>
     </section>
 
     <section>
@@ -165,14 +165,14 @@ body[data-chapter="intro-07"] .fig .svg-label:not(.svg-label--dark) {
       <p class="sec-no">03 · 五段各自在干什么</p>
       <h2>每段只回答一个问题</h2>
       <p><strong>组装：装什么。</strong>决定这次请求里放哪些材料、按什么顺序放。第 1 到第 4 类都在这一段：请求骨架、规则合并、按需加载、动态注入。这一段决定了前缀长什么样，也就决定了第 5 章那笔缓存账。</p>
-      <p>这也是第 2 章要花一整章拆骨架的原因：第一段拼错了，后面每一段都在替它擦屁股。</p>
-      <p><strong>计量：装了多少。</strong>第 5 类。用服务端 <code>usage</code> 加本地增量算占用，再和阈值比。它本身不改内容，只负责“报数”和“报警”。</p>
-      <p><strong>减量：装不下怎么办。</strong>第 6 到第 9 类，按代价从低到高排：先控制单次工具输出，再裁剪历史，再压缩，最后才动多模态。这个顺序不是随意排的——越靠前越便宜，也越不容易丢关键信息。</p>
-      <p><strong>隔离与延续：怎么不让它互相污染。</strong>第 10 到 12 类。子代理把探索关在另一个上下文里；会话时间线让历史可恢复、可分叉；跨会话记忆决定哪些东西值得带到下一次。</p>
-      <p><strong>质量：怎么长期跑得稳。</strong>第 13 到 16 类。缓存友好让重复的部分不变贵；失败恢复处理溢出和压缩失败；扩展点让你在不改核心的情况下介入；评估回答“这套策略到底有没有变好”。</p>
+      <p>这也是第 2 章要花一整章拆骨架的原因：组装这一段拼错了，后面每一段都得替它补救。</p>
+      <p><strong>计量：装了多少。</strong>第 5 类。用服务端返回的 <code>usage</code>（精确值），加上之后新增内容的本地粗估，得出当前占用，再和阈值比较。它本身不改内容，只负责“报数”和“报警”。</p>
+      <p><strong>减量：装不下怎么办。</strong>第 6 到第 9 类：先管单次工具输出，再裁剪历史里的旧工具结果，再压缩整段历史，多模态则专门处理图片这类大块内容。前两种只是本地改写，压缩要再发一次模型请求，所以通常先用便宜的办法，不够了再压缩。这是常见的做法，不是固定的先后顺序。</p>
+      <p><strong>隔离与延续：怎么让探索不污染主会话，又接得上历史。</strong>第 10 到 12 类。子代理把探索关在另一个上下文里；会话时间线让历史可恢复、可分叉（从历史中间岔出一条新支线）；跨会话记忆决定哪些东西值得带到下一次。</p>
+      <p><strong>质量：怎么长期跑得稳。</strong>第 13 到 16 类。缓存友好让重复发送的部分不用每次都付全价；失败恢复处理溢出和压缩失败；扩展点让你在不改核心的情况下介入；评估回答“这套策略到底有没有变好”。</p>
       <p>五段不是五个独立模块，是一条链：组装出问题，计量看得见；计量报警，减量才启动；减量失手，失败恢复兜底；兜底之后，缓存又成了新的约束。</p>
-      <p>拿一次普通请求走一遍：组装把系统提示、工具、规则、环境、历史拼成四万 token 的前缀；计量算出四万一千，离软线还远，于是这一段直接跳过；没有需要隔离的探索，子代理不启动；缓存因为前缀没变而命中大半。整条链上真正“动手”的只有第一个格子和最后一个格子，中间三段都在待命。</p>
-      <p>只有出问题时，中间三段才登场。这也是为什么很多人对它们没感觉——平时它们确实什么都不做。</p>
+      <p>拿一次普通请求走一遍。组装把系统提示词、工具定义、规则、环境信息和历史拼成约四万 token 的输入。计量算出实际占用四万一千，离第 3 章那条软线（自动压缩的触发线）还远，所以减量什么也不用做。没有需要隔离的探索，子代理不启动；缓存因为前缀没变而命中大半。五段里，每次请求都在工作的只有组装和计量（计量只报数，不改内容），减量和隔离都在待命。</p>
+      <p>只有出问题时，减量、隔离和质量里的失败恢复才会登场。平时它们什么都不做，所以很多人对它们没有感觉。</p>
     </section>
 
     <section>
@@ -180,42 +180,43 @@ body[data-chapter="intro-07"] .fig .svg-label:not(.svg-label--dark) {
       <h2>大多数环节是“改写文本”，不是“再问一次”</h2>
       <p>这张图最实用的一层信息，是分清“花钱的环节”。</p>
       <ul>
-        <li><strong>不调模型</strong>：规则合并、按需加载、注入、计量、工具输出截断、历史裁剪、缓存打点、评估统计。它们是本地计算，快，也便宜。</li>
+        <li><strong>不调模型</strong>：规则合并、按需加载、注入、计量、工具输出截断、历史裁剪、标记缓存断点、评估统计。它们是本地计算，快，也便宜。</li>
         <li><strong>调模型</strong>：压缩、子代理、以及失败恢复里的压缩重试。它们要再发一次请求，慢，也贵。</li>
         <li><strong>看实现</strong>：跨会话记忆的写入通常是一次后台调用，读路径只是注入；多模态的“转文字描述”如果由模型生成，也算一次调用，但 Codex 与 Claude Code 目前都没有这条路径。</li>
       </ul>
-      <p>分清这一点，你就能预判动作的代价：裁剪旧工具结果是“改投影”，几乎瞬间完成；压缩是“再跑一遍模型”，要等，要钱，还可能丢细节。第 3 章那条增长曲线上的每次回落，背后都是一次真实的模型调用。</p>
-      <p>还有一层容易被忽略：压缩产出的不只是摘要。Claude Code 压缩完会按固定清单重新附带最近修改的最多 5 个文件（每个不超过 5,000 token，总预算 50,000）、plan 文件、本会话调用过的技能正文<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L122-L131">compact.ts#L122-L131</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L517-L585">#L517-L585</a>）。所以压缩后的上下文不是“只剩一段摘要”，而是“摘要 + 一批必需品”。这也解释了为什么压缩省下的空间，往往比你估的少。</p>
+      <p>分清这一点，你就能预判动作的代价：裁剪旧工具结果只是把已有内容换成占位符，几乎瞬间完成；压缩是“再跑一遍模型”，要等，要钱，还可能丢细节。第 3 章那条曲线在软线处掉下来的一截，背后就是一次真实的模型调用。</p>
+      <p>还有一层容易被忽略：压缩产出的不只是摘要。压缩之后重新送进窗口的，还有一批压缩前就在用的必需内容，所以压缩后的上下文是“摘要 + 一批必需品”，压缩省下的空间往往比你估的少。以 Claude Code 为例，它会按固定清单重新附带最近读过或写过的最多 5 个文件（每个不超过 5,000 token，总预算 50,000）、plan 文件和本会话调用过的技能正文<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L122-L131">compact.ts#L122-L131</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L517-L585">#L517-L585</a>、<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/compact.ts#L1415-L1462">#L1415-L1462</a>）。</p>
 
       <div class="hf hf--think">
         <p class="hf__label"><span class="hf__icon" aria-hidden="true">?</span>动动脑</p>
         <div class="hf__body">
-          <p>图里哪个环节会让第 5 章讲的缓存立刻失效？能说出两个就算过关。</p>
-          <p class="small muted">提示：看“什么变了”和“变在第几位”。</p>
+          <p>图里哪些环节会产生第 5 章讲的失效点？能说出两个就算过关。</p>
+          <p class="small muted">提示：看每个环节改了什么，改在请求的前面还是后面。</p>
         </div>
       </div>
+      <p><strong>对照答案</strong>：至少有三处。第 4 类动态注入：如果把当前时间这类每次都变的内容放在请求开头，失效点就落在它所在的位置，后面的工具和历史都沿用不了。第 7 类历史裁剪：旧工具结果被换成占位符，失效点落在被改的那一条，它之后的历史要重新写入缓存。第 8 类压缩：旧历史被摘要替换，失效点落在被替换那一段的开头。共同点是第 5 章那条规律：改动的位置越靠前，后面沿用不了的内容越多。压缩是个特例，被换掉的旧历史之后本来就不再发送，所以它的主要代价不在缓存上，第 6 章算过这笔账。</p>
     </section>
 
     <section>
       <p class="sec-no">05 · 回边：失败不是终点</p>
       <h2>溢出之后，流程会往回走</h2>
-      <p>主链是向下的，但真实运行里有一条向上的虚线：请求溢出或压缩失败时，流程回到减量，重新选切点、重新压缩，再试一次。</p>
-      <p>这条回边有两个现实约束。第一，<strong>重试有次数上限</strong>：Claude Code 连续 3 次自动压缩失败就熔断，本会话不再尝试，避免每轮都打一次注定失败的请求<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L241-L351">autoCompact.ts#L241-L351</a>）。第二，<strong>压缩请求自己也可能超窗</strong>：Codex 的做法是删掉最旧一条再重试，只剩一条还超，就只能报错<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L345-L380">compact.rs#L345-L380</a>）。</p>
+      <p>主链是向下的，但真实运行里有一条向上的虚线：请求溢出或压缩失败时，流程回到减量，重新选切点，再压缩一次。切点是压缩时新旧历史的分界：切点之前的写进摘要，之后的原样保留。</p>
+      <p>这条回边有两个现实约束。第一，<strong>重试有次数上限</strong>：Claude Code 连续 3 次自动压缩失败就熔断，本会话不再尝试，避免反复发出注定失败的压缩请求<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/services/compact/autoCompact.ts#L241-L351">autoCompact.ts#L241-L351</a>）。第二，<strong>压缩请求自己也可能超窗</strong>：Codex 的做法是删掉最旧一条再重试，只剩一条还超，就只能报错<span class="tag tag--ok">已核实</span>（<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/core/src/compact.rs#L345-L380">compact.rs#L345-L380</a>）。</p>
       <p>所以“回边”不是万能补救。到了某一步，系统只能承认失败，把错误交给你——这也是为什么第 6 章那几个动作仍然需要人来选。</p>
-      <p>回边还分主动和被动。主动的是“快到线了就压缩”，由计量触发；被动的是“服务端已经拒绝，再压缩一次重试”。Claude Code 的被动路径每轮只允许尝试一次，成功后用专门的状态重跑本轮<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/query.ts#L1150-L1183">query.ts#L1150-L1183</a>）。被动压缩的代价更高：你已经付了一次被拒绝的请求。</p>
+      <p>回边还分主动和被动。主动的是“快到线了就压缩”，由计量触发；被动的是“服务端已经拒绝，再压缩一次重试”。Claude Code 的被动路径对同一次请求只试一次，压缩成功就重发这次请求<span class="tag tag--src">源码 v2.1.88</span>（<a href="https://github.com/jun3355986/civil-engineering-cloud-claude-code-source-v2.1.88/blob/988438af9293b198b03b8c01f97ee5556d2c74e2/02-claude-code-source-research/src/query.ts#L1150-L1183">query.ts#L1150-L1183</a>）。被动压缩的代价更高：先白白发了一次被拒绝的请求，才开始压缩。</p>
     </section>
 
     <section>
-      <p class="sec-no">06 · 收口：入门结束</p>
+      <p class="sec-no">06 · 复习与衔接</p>
       <h2>你现在有一张地图了</h2>
       <p>七章下来，你应该能回答四个问题：窗口是什么、里面装了什么、它怎么变多、怎么才能既装得下又用得好。剩下的，是把这张图上的每一格拆开，看八个 agent 各自怎么做。</p>
       <p>这张图也可以当复习工具用。合上教程，自己画一遍五段；画不出来，说明某一段你还没真的理解。画出来之后，再把 16 个编号填进去；填错的那一格，就是下一章该精读的地方。</p>
       <p>第二部分每一章开头，你都可以回到图 1 找一个编号：那一章讲的就是那个格子。第 13 类讲缓存，你会想起第 5 章的失效点；第 8 类讲压缩，你会想起第 3 章的曲线和第 6 章的取舍。</p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
-          <p class="hf__q">问：如果我要自己写一个 Agent，这 16 类要全做吗？</p>
+          <p class="hf__q">问：如果我要自己写一个 agent，这 16 类要全做吗？</p>
           <p class="hf__a">答：不用。最小可用版本只需要三样：组装（第 1 类）、计量（第 5 类）、单次工具输出控制（第 6 类）。这三样能让你看见上下文、并且不让它瞬间爆掉。压缩、子代理、记忆这些，等你真的遇到“一轮任务跑几十步”的场景再加——先加复杂度，往往会先得到一堆难查的 bug。</p>
         </div>
       </div>
@@ -225,7 +226,7 @@ body[data-chapter="intro-07"] .fig .svg-label:not(.svg-label--dark) {
         <div class="hf__body">
           <ul>
             <li>五段主链：组装 → 计量 → 减量 → 隔离与延续 → 质量。</li>
-            <li>16 类各归其位；减量内部按代价从低到高排：输出 → 裁剪 → 压缩 → 多模态。</li>
+            <li>16 类各归其位；减量里，输出控制和裁剪只是本地改写，压缩要再发一次模型请求，所以通常先用前两者。</li>
             <li>会再发模型请求的是压缩、子代理和压缩重试；跨会话记忆的写入多在后台另算。</li>
             <li>失败有一条向上的回边，但受重试次数限制，不是万能兜底。</li>
             <li>最小可用版本：组装 + 计量 + 单次输出控制，其余按需加。</li>
@@ -234,7 +235,7 @@ body[data-chapter="intro-07"] .fig .svg-label:not(.svg-label--dark) {
       </div>
     </section>
 
-    <p class="footer-note">入门部分到此结束。下一章进入第二部分主线：<a href="main-01.html">第 8 章「请求组装：系统提示词与工具定义」</a>。</p>
+    <p class="footer-note">入门部分到此结束。下一章进入第二部分主线：<a href="main-01.html">第 8 章“请求组装：系统提示词与工具定义”</a>。</p>
 
   </article>
 </main>

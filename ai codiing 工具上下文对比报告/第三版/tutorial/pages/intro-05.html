@@ -566,7 +566,7 @@ body[data-chapter="intro-05"] .fig .svg-label:not(.svg-label--dark) {
       <p class="small"><strong>演示结论</strong>：改动字数少，不代表需要重算的内容少。只改末尾时，前面的大段相同前缀仍有机会复用；改第一块时，后续内容即使原样不动，也不能直接沿用旧状态。真正要比较的是失效点前后各有多少 token。</p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
           <p class="hf__q">问：既然缓存读取便宜，是不是多塞点材料进前缀也划算？</p>
           <p class="hf__a">答：不能这样算。缓存 token 仍占窗口，也会增加无关信息和干扰；它还可能过期或根本不命中。正确顺序仍是先做第 4 章的“少而准”，再让保留下来的稳定前缀尽量复用。缓存是成本与延迟优化，不是整理上下文的替代品。</p>
@@ -600,7 +600,7 @@ body[data-chapter="intro-05"] .fig .svg-label:not(.svg-label--dark) {
       </div>
     </section>
 
-    <p class="footer-note">下一章：<a href="intro-06.html">用户侧怎么管理上下文（第 6 章）</a>——窗口账和缓存账都能看懂以后，接下来决定什么时候继续、清空、压缩、派子代理或另开新会话。</p>
+    <p class="footer-note">下一章：<a href="intro-06.html">用户侧怎么管理上下文（第 6 章）</a>——窗口账和缓存账都能看懂以后，接下来决定什么时候继续、回退、压缩、清空，或者派子代理。</p>
 
   </article>
 </main>

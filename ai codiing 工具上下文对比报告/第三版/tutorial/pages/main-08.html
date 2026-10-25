@@ -521,7 +521,7 @@
       <p class="muted small">估算口径是 <code>ceil(字节数 / 4)</code>，不是分词器实测。对中文、代码和 JSON，这个比例会偏。<a href="https://github.com/openai/codex/blob/76ed3b484d62ccceb9fa512ff4dd139f421814c3/codex-rs/utils/string/src/truncate.rs#L89-L98">truncate.rs#L89-L98</a> <span class="tag tag--ok">已核实</span> 偏差方向取决于内容，本教程不把它当成精确值 <span class="tag tag--guess">推断</span>。</p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
           <p class="hf__q">问：为什么不把工具结果也摘要进去？反正都是模型写。</p>
           <p class="hf__a">答：摘要模型看到的也是同一段历史，工具结果往往占 70% 以上的 token，却只贡献少量决策。Codex 把 20k 全留给用户原话，是在赌“意图比日志更难重建”。这个赌注在“需要精确行号”的任务上会输，所以压缩后要重新读文件。</p>

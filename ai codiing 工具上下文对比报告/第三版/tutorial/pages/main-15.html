@@ -178,7 +178,7 @@
       <p>前缀一旦成为约定，就不能随便改。改了，模型对技能来源的判断会变，已有提示词里写死的“用 <code>foo:</code> 开头的技能”也会失效。扩展点的稳定性，往往就藏在这些看起来像文案的细节里。</p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
           <p class="hf__q">问：既然 Codex 压缩不可替换，那写 hook 还有什么意义？</p>
           <p class="hf__a">答：hook 的意义不在“改压缩”，而在“压缩之后补一条”。比如压缩后把当前任务的验收命令、未完成的 todo、最近改过的文件清单再注入一次。它不能阻止摘要丢信息，但能让模型在下一轮马上看到“接着做什么”。这是“追加”而不是“改写”，代价小，也不会破坏前缀。</p>

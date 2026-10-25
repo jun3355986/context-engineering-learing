@@ -243,7 +243,7 @@
       <p>这也是为什么几乎所有 agent 都会把“当前时间”做成一条独立提醒，而不是写进系统提示的第一段。Grok Build 甚至宁可加一条一次性的跨午夜提醒，也不肯改写启动时缓存的 <code>&lt;user_info&gt;</code> 日期。<a href="https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-shell/src/session/acp_session_impl/reminders.rs#L507-L522">reminders.rs#L507-L522</a> <span class="tag tag--ok">已核实</span> 第 11 章会专门讲这类注入。</p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
           <p class="hf__q">问：既然工具表最稳定，为什么不把它放在系统提示最前面？</p>
           <p class="hf__a">答：位置由协议决定，不由实现决定。工具的 schema 是独立字段，provider 在计费和缓存时自己决定拼接顺序；你能控制的是“这一轮发哪些工具”和“工具描述写多长”，不是它在序列里的绝对位置。真正能挪的，是那些以文本片段形式存在的东西：环境、规则、提醒。</p>

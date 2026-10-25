@@ -227,7 +227,7 @@
       <p>顺序影响两件事。第一，模型读到的因果链：先看到“目录变了”，再看到“用户要求改文件”，它才能理解为什么要改这个目录。第二，缓存断点：越靠前的注入，影响的范围越大。所以同一个事实，能放尾部就不要放头部；必须放头部时，尽量让它稳定。</p>
 
       <div class="hf hf--qa">
-        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>没有傻问题</p>
+        <p class="hf__label"><span class="hf__icon" aria-hidden="true">Q</span>你可能会问</p>
         <div class="hf__body">
           <p class="hf__q">问：既然 section 差分这么麻烦，为什么不每轮都把完整状态发一遍？</p>
           <p class="hf__a">答：因为“完整状态”会随着历史累积变成几十条重复。模型看到十遍“当前目录是 X”，不会更遵守，只会更困惑：到底哪一条还有效？差分的本质不是省 token，而是让历史里每个事实只有一条有效版本。</p>
