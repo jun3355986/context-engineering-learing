@@ -1,0 +1,29 @@
+| # | 位置 | 原文 | 改成 | 方式 |
+|---|---|---|---|---|
+| 1 | §2.1 发键，第一段「Codex 在请求里带 prompt_cache_key。取值有三档」 | 显式配置的 `prompt_cache_key_override` 优先 | `prompt_cache_key_override` 优先，它由代码设定：Guardian 审查会话设为 `guardian:{parent_thread_id}`，临时 fork 会话沿用被 fork 会话的 `session_id`。 | 直接陈述 |
+| 2 | §2.1 发键，第二段「键的作用是…」末句 | 子会话用父会话 ID 派生键，是为了让子代理的第一段系统提示词尽量复用父会话已经写好的缓存。【推断】 | 记忆整理、Guardian 审查这类内部会话用 `{source}:{parent_thread_id}` 作键，同一父会话下的同类内部会话共用这个键；这个键与父会话自己的键（`session_id`）不同。 | 直接陈述 |
+| 3 | §2.2 认账，第二段「这三个字段（未缓存输入、缓存读、缓存写）…」 | 这三个字段（未缓存输入、缓存读、缓存写）足以算出一个会话的“缓存账” | Codex 解析的三个用量字段是 `input_tokens`（总输入，已包含缓存读和缓存写）、`cached_input_tokens`（缓存读）和 `cache_write_input_tokens`（缓存写）；扣掉后两者，剩下的才是按普通输入价计费的部分。 | 直接陈述 |
+| 4 | §2.3，第二段「工具定义是前缀里最重…」中的 opencode v1 链接 | 按名字排序，而不是按 map 的插入序，opencode v1 就是这么做的 [transform.ts#L357-L404](https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/provider/transform.ts#L357-L404) 已核实 | opencode v1 在组装请求时把工具表按名字排序后再发出：[llm/request.ts#L184](https://github.com/anomalyco/opencode/blob/733b2c627e5aec39cb33cc22373bdce33053ef2c/packages/opencode/src/session/llm/request.ts#L184)。 | 直接陈述 |
+| 5 | §2.3，同一段，Codex 的 `incremental_tools` | 工具表变化走增量——Codex 的 `incremental_tools` 在不需要时置空 `tools`，避免整张表重发 | Codex 的 `incremental_tools` 是开发中的特性，默认关闭，只对 `use_responses_lite` 的模型生效：开启后请求里的 `tools` 和 `base_instructions` 字段为空，工具声明以 `AdditionalTools` 条目记入历史，之后只追加有变化的工具定义和移除通知，避免整张表重发。 | 直接陈述 |
+| 6 | §2.3 原则二「只追加，不改写」，omp 一句 | omp 把日期与 cwd 提醒从系统提示词尾部移到“每次请求的首个用户轮” | omp 把日期与 cwd 提醒从系统提示词尾部移出：第一次附在首个用户消息前面，日期或 cwd 变化后，新提醒附在新追加的用户消息（或一条 developer 消息）上，此前发出的消息一字节都不改。 | 直接陈述 |
+| 7 | §2.3 原则三，Codex 一句 | Codex 的 AGENTS.md 差分注入就是这个思路：只发变化的那一段，未变的部分字节不动。 | Codex 按整段比较 AGENTS.md：内容没变就不再发；变了就把新的完整内容连同「这些指令替换此前所有 AGENTS.md 指令」的声明作为新片段追加，旧内容留在原位、字节不动。 | 直接陈述 |
+| 8 | §2.4，第二段「用一个教学模型算…」末句 | 压缩后第一个请求要重写 `B − P`，之后每次省下 `B − A`。 | 压缩后第一个请求只需重写 `A − P`（摘要、保留段和尾部），而不压缩时这个请求读取的是缓存里的 `B − P`；之后每个请求读取的前缀从 `B` 缩短到 `A`，每次少付 `(B − A) × r`。 | 直接陈述 |
+| 9 | §2.4 代码块「教学模型」 | `invalidate = (B - P) * (w - r)`；`savePerCall = (B - A) * (1 - r)`；例：`invalidate=172.5k, savePerCall=121.5k, breakEven≈1.4` | `invalidate  = (A - P) * w - (B - P) * r`（压缩后第一个请求比不压缩多付的钱）<br>`savePerCall = (B - A) * r`（之后每个请求少付的钱）<br>`breakEven   = invalidate / savePerCall`（第一个请求之后还要再跑几个请求，这次失效才不亏）<br>例：`B=180k, P=30k, A=45k, r=0.1, w=1.25` 时，`invalidate=3.75k, savePerCall=13.5k, breakEven≈0.28` | 直接陈述 |
+| 10 | §2.4，代码块后第一段 | 这个例子里，压缩后只要再跑两轮就回本。但把场景换一下：任务只剩最后一轮，压缩就是净亏——172.5k 的重写成本只换回一次 121.5k 的节省，还多了一次摘要请求。 | 这个例子里，压缩后的第一个请求多付 3.75k，此后每个请求少付 13.5k，所以第一个请求之后再多跑一个请求就回本。但把场景换一下：任务只剩最后一轮，压缩就是净亏——多付的 3.75k 没有后续请求来摊，还多了一次摘要请求。 | 直接陈述 |
+| 11 | §2.4，最后一段，pi 一句 | pi 的摘要请求显式设 `cacheRetention: "none"`，理由是“一次性摘要不太可能复用，写缓存反而污染”； | pi 的摘要请求显式设 `cacheRetention: "none"`，源码注释写的是「Avoid cache writes for one-off summaries」，即不为一次性摘要写缓存； | 直接陈述 |
+| 12 | §2.5，第二段末句 | 两个数字不同，思路一致：批量驱逐 + 滞回区间，把“每轮一次小失效”换成“很久一次大失效”。 | 两个数字不同，思路一致：都设触发线和更低的回收线，超过触发线时从最旧的图片起一次清到回收线。但两者都只改请求副本、不写回历史，超过触发线后每次请求都要重新计算，新增图片会让更多旧图被替换，失效点落在刚被替换的那张图上，所以滞回区间带不来「很久才失效一次」，每新增一张图仍会失效一次。 | 加【推断】标签 |
+| 13 | 图 13-1 图注 | 本次只改了第 4 块的一个词，后面 9 块全部从读取变成写入。 | 本次只改了第 4 块的一个词，从第 4 块起的 9 块全部从读取变成写入。 | 直接陈述 |
+| 14 | §04 弹窗「oh-my-pi」第一段 | 日期与 cwd 提醒从系统提示词尾部移到每次请求的首个用户轮。 | 日期与 cwd 提醒从系统提示词尾部移出：第一次附在首个用户消息前面，之后值变化时附在新追加的用户消息（或一条 developer 消息）上，此前发出的消息字节不变。 | 直接陈述 |
+| 15 | §04 弹窗「oh-my-pi」设计意图 | 让系统提示词与工具数组在会话内字节稳定，只有跨天或换目录才变。 | 让系统提示词与工具数组在会话内字节稳定，跨天也不变：日期和 cwd 的变化只以新追加的一条消息出现在尾部。 | 直接陈述 |
+| 16 | §04 弹窗「opencode v1」第一段 | applyCaching 在交给 provider 前，给前 2 条 system 消息和后 2 条非 system 消息打 provider 级 ephemeral 标记。 | 对 Claude 系模型（providerID 为 anthropic 或 google-vertex-anthropic，模型 id 含 claude，或 npm 包为 `@ai-sdk/anthropic`、`@ai-sdk/alibaba`），applyCaching 在交给 provider 前给前 2 条 system 消息和后 2 条非 system 消息打 ephemeral 标记；其他 provider 不走这条路径。 | 直接陈述 |
+| 17 | §04 弹窗「opencode v1」关键参数 | 缓存点：前 2 条 system + 后 2 条非 system；`promptCacheKey = sessionID`，请求头带 `x-session-affinity`；可按 provider 选项关闭或强制。 | 缓存点（Claude 系模型）：前 2 条 system + 后 2 条非 system；`promptCacheKey = sessionID`（OpenAI、Azure、xAI、Mistral、Venice 等 provider；deepinfra、cerebras 用 `prompt_cache_key`），请求头带 `x-session-affinity`；provider 选项 `setCacheKey` 可关闭或强制。 | 直接陈述 |
+| 18 | §05 表格前一段「看表时先看第二列…」末句 | 最后一列是压缩的代价，也是本章与第 8、14 章的接口。 | 最后一列是压缩的代价，也是本章与第 15、21 章的接口。 | 直接陈述 |
+| 19 | §05 表格，Codex 行「前缀怎么保」 | 稳定 base_instructions 与工具表在前，变化追加尾部；AGENTS.md 只发差分。 | 稳定 base_instructions 与工具表在前，变化追加尾部；AGENTS.md 没变就不发，变了就追加一份完整的新版本。 | 直接陈述 |
+| 20 | §05 表格，opencode v1 行「断点 / 标记」 | 前 2 条 system + 后 2 条非 system 打 ephemeral；promptCacheKey = sessionID。已核实 | Claude 系模型：前 2 条 system + 后 2 条非 system 打 ephemeral；OpenAI、Azure、xAI、Mistral 等 provider：promptCacheKey = sessionID。已核实 | 直接陈述 |
+| 21 | §05 表格，pi 行「压缩的缓存代价」 | 压缩重写前缀，必然一次失效；用预热与摘要不写缓存降损。已核实 | 压缩重写前缀，必然一次失效；摘要请求设 `cacheRetention: "none"`，不为一次性摘要写缓存。预热由 agent 运行结束触发，用来在 TTL 到期前刷新最近一次真实请求的缓存，不针对压缩。已核实 | 直接陈述 |
+| 22 | §06 取舍三「压缩早一点，还是晚一点」，代价段 | 用 2.4 的公式看，这个取舍可以量化：breakEven 大于剩余轮数，就不该压； | 用 2.4 的公式看，这个取舍可以量化：breakEven 大于压缩后第一个请求之后还要跑的请求数，就不该压； | 直接陈述 |
+| 23 | §06 取舍四，pi 一句 | pi 给摘要请求设 `cacheRetention: "none"`，因为摘要是一次性的，写进去只会挤占缓存页。 | pi 给摘要请求设 `cacheRetention: "none"`，源码注释的说法是不为一次性摘要写缓存。 | 直接陈述 |
+| 24 | §07 Q1 解析，第一句 | 第一种情况，失效点在系统提示的第一块，也就是整段请求的最开头：日期变了，系统提示、工具、历史全部要重算。 | 第一种情况，失效点在系统提示里日期所在的位置：该位置之前的系统提示仍可命中，之后的系统提示、工具、历史全部要重算；日期写在系统提示开头时，就是整段请求的最开头。 | 直接陈述 |
+| 25 | §07 Q2 解析，第一句 | 一次性重写成本 =（180k − 30k）×（1.25 − 0.1）= 172.5k；每次节省 =（180k − 45k）×（1 − 0.1）= 121.5k；回本 ≈ 1.4 轮，也就是再跑两轮才不亏。任务只剩一轮时，压缩在缓存账上是纯亏，还多一次摘要请求； | 压缩后第一个请求多付 =（45k − 30k）×1.25 −（180k − 30k）×0.1 = 18.75k − 15k = 3.75k；此后每个请求少付 =（180k − 45k）×0.1 = 13.5k；回本 ≈ 0.28 轮，也就是第一个请求之后再多跑一个请求就回本。任务只剩一轮时，多付的 3.75k 没有后续请求来摊，压缩在缓存账上是纯亏，还多一次摘要请求； | 直接陈述 |
+| 26 | §07 Q3 解析，第二句 | 每轮删一张图，破坏了“最小改写 / 批量驱逐”： | 每轮删一张图，违背了 2.5 讲的“批量驱逐加滞回”： | 直接陈述 |
+| 27 | §07 Q3 解析，末尾括号 | （Grok 是 50MB 触发、回收到 25MB） | （Grok Build 在请求体达到 50MB − 3MB 时触发、回收到 25MB） | 直接陈述 |
