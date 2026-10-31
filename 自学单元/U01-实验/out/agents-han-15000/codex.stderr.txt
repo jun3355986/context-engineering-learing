@@ -1,0 +1,20 @@
+WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("/tmp/u01-h_kb6lbg/home"))
+Reading additional input from stdin...
+OpenAI Codex v0.165.0
+--------
+workdir: /tmp/u01-h_kb6lbg/ws
+model: gpt-6.1-sol
+provider: mock
+approval: never
+sandbox: read-only
+reasoning effort: low
+reasoning summaries: none
+session id: 01a19292-16be-7d42-b5a5-6d8ddc7d4629
+--------
+user
+帮我看下这个报错
+warning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.
+codex
+MOCK_REPLY
+tokens used
+0
