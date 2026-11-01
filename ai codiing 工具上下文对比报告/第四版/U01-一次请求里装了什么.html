@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>U01 一次请求里装了什么</title>
+<style>
+:root{
+  --bg:#fbfaf7; --fg:#1f2430; --muted:#5d6676; --card:#ffffff; --line:#e3e0d8; --accent:#2b5fd9;
+  --tools:#b45a08; --system:#2f62c9; --session:#0f7a6e; --project:#3f7a22; --user:#7c4ec4; --on:#ffffff;
+  --ok:#1f7a3d; --bad:#b3261e; --half:#9a6200; --note-bg:#fff4e0; --note-line:#e8c27a; --code-bg:#f3f1ea;
+  --cut:#c9453b; --keep:#3f7a22;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14171c; --fg:#e6e8ee; --muted:#9aa3b2; --card:#1c2028; --line:#2c323d; --accent:#7aa2f7;
+    --tools:#f0a24f; --system:#7aa2f7; --session:#4fd1c0; --project:#8bd16a; --user:#c4a3f5; --on:#10131a;
+    --ok:#6fd08c; --bad:#ff8a80; --half:#f0b95a; --note-bg:#2a2418; --note-line:#6b5a2a; --code-bg:#12151a;
+    --cut:#ff8a80; --keep:#8bd16a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14171c; --fg:#e6e8ee; --muted:#9aa3b2; --card:#1c2028; --line:#2c323d; --accent:#7aa2f7;
+  --tools:#f0a24f; --system:#7aa2f7; --session:#4fd1c0; --project:#8bd16a; --user:#c4a3f5; --on:#10131a;
+  --ok:#6fd08c; --bad:#ff8a80; --half:#f0b95a; --note-bg:#2a2418; --note-line:#6b5a2a; --code-bg:#12151a;
+  --cut:#ff8a80; --keep:#8bd16a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+main{max-width:880px;margin:0 auto;padding:20px 16px 80px}
+h1{font-size:1.7rem;line-height:1.35;margin:.2em 0 .3em}
+h2{font-size:1.3rem;margin:0 0 .6em}
+h3{font-size:1.05rem;margin:1.2em 0 .4em}
+p{margin:.6em 0}
+.sub{color:var(--muted);margin:0 0 1.2em}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 18px 14px;margin:18px 0}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em}
+code{background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+pre{background:var(--code-bg);padding:10px 12px;border-radius:8px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:.6em 0}
+.note{background:var(--note-bg);border:1px solid var(--note-line);border-radius:8px;padding:8px 12px;margin:.8em 0;font-size:.95em}
+.tag{display:inline-block;font-size:.78rem;border-radius:999px;padding:0 .6em;border:1px solid var(--line);color:var(--muted);margin-right:.3em;vertical-align:middle}
+.lvl-h{color:var(--ok);border-color:var(--ok)} .lvl-m{color:var(--half);border-color:var(--half)} .lvl-l{color:var(--bad);border-color:var(--bad)}
+table{border-collapse:collapse;width:100%;font-size:.93em}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.tablewrap{overflow-x:auto}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}.half{color:var(--half);font-weight:600}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:.6em 0}
+.seg-btn,.btn{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:3px 10px;cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--on);border-color:var(--accent)}
+input[type=range]{width:min(100%,360px);accent-color:var(--accent)}
+.bar{display:flex;gap:2px;width:100%;height:62px;margin:.7em 0 .3em}
+.bar button{border:0;border-radius:4px;color:var(--on);font:inherit;font-size:.78rem;padding:0 3px;overflow:hidden;white-space:nowrap;cursor:pointer;min-width:5px;opacity:.92}
+.bar button[aria-pressed="true"]{outline:3px solid var(--fg);outline-offset:1px;opacity:1}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.k-tools{background:var(--tools)}.k-system{background:var(--system)}.k-session{background:var(--session)}.k-project{background:var(--project)}.k-user{background:var(--user)}
+.panel{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:10px;background:var(--bg)}
+.panel pre{max-height:210px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:.4em 0}
+.chip{border-radius:6px;padding:2px 8px;font-size:.82rem;color:var(--on)}
+.chip.dim{opacity:.38}.chip.new{outline:3px solid var(--fg)}
+.rowlabel{font-size:.85rem;color:var(--muted);margin-top:.8em}
+.big{font-size:1.15rem;font-weight:600}
+.meter{position:relative;height:30px;background:var(--code-bg);border-radius:6px;overflow:hidden;display:flex;margin:.5em 0}
+.meter div{height:100%}
+.meter .keep{background:var(--keep)}.meter .cut{background:var(--cut)}.meter .rootp{background:var(--system)}.meter .subp{background:var(--session)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:620px){.grid2{grid-template-columns:1fr}.bar{height:54px}}
+details.personal{border:1px dashed var(--note-line);border-radius:12px;padding:10px 14px;margin:18px 0;background:var(--note-bg)}
+details.personal summary{cursor:pointer;font-weight:600}
+.ladder{display:grid;gap:8px;margin:.6em 0}
+.ladder div{border-left:6px solid;border-radius:6px;padding:6px 12px;background:var(--bg)}
+.theme{position:fixed;top:10px;right:10px;z-index:5}
+ul{padding-left:1.3em;margin:.4em 0}
+</style>
+</head>
+<body>
+<button class="btn theme" id="themeBtn" aria-label="切换浅色/深色">◐</button>
+<main>
+<p class="sub">第四版 · U01 · 2026-11-01 · 条件:Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> / 模型 <code>gpt-6.1-sol</code>(Lite)· 只有内置工具,没装 MCP 和自定义技能</p>
+<h1>你只说了一句话,请求里却装了 1.3 万 token</h1>
+<p class="sub">这一页回答:发出「帮我看下这个报错」之后,Codex 实际发给模型的请求里有什么、各占多少、顺序为什么是这样。下面的数字都来自真实抓到的请求,不是示意。</p>
+
+<details class="personal" data-personal open>
+<summary>本轮批改(仅你可见,成书时去掉)</summary>
+<p>得分 <b>2.5 / 5</b>,未过关(线是 4 分)。按方案补考 3 题,补考题在对话里。</p>
+<div class="tablewrap"><table>
+<tr><th>题</th><th>判定</th><th>对的地方</th><th>要改的地方</th><th>错因</th></tr>
+<tr><td>1 列结构</td><td class="half">🟡 0.5</td><td>没有单独放系统提示词的字段;你的话在最后</td><td>AGENTS.md 不是最前,也不是 system 角色,是 <code>user</code> 消息,排在倒数第二条;工具定义才是最前;漏了技能目录、权限、协作模式、多代理、环境信息</td><td>顺序反 · 概念混淆 · 漏项</td></tr>
+<tr><td>2 估量级</td><td class="bad">❌ 0</td><td>系统提示词很大;AGENTS.md 比你的话大</td><td>总量是一万多不是几千;你的话占 0.04% 不是 1/10;工具定义是最大块(47%)不是最小;最大块占 47% 不是 80%</td><td>数量级直觉偏差</td></tr>
+<tr><td>3 改条件</td><td class="half">🟡 0.5</td><td>从尾部截;不报错;按字节算(从你的数字反推,你是按字节算的,这个思路是对的)</td><td>上限是 32,768 字节,不是 40000。英文 40000 字符会被截掉 7,232 个;15000 汉字只进 10,923 个</td><td>数字记错</td></tr>
+<tr><td>4 第二次请求</td><td class="ok">✅ 1</td><td>前面原样不动、追加调用和输出、工具定义还在、模型无状态所以要带历史</td><td>加分题(不计分):「发出的和模型看到的一样」只在 HTTP 整份重发时成立,见第 4 节</td><td>—</td></tr>
+<tr><td>5 取舍排障</td><td class="half">🟡 0.5</td><td>排序 C、B、A 对</td><td>没回答「怎么确认」——要先量再动手;没说边界(内置工具砍不掉,干净环境里 C 没得砍);第 2 题把工具排最小、这里又说工具「非常占空间」,前后不一致。最后一句读起来像把 AGENTS.md 排在自己的话后面,我按你的排序给分</td><td>缺方法 · 漏边界</td></tr>
+</table></div>
+<p>你「我原来以为」里的两个判断:<b>稳定的在前、你的话在最后</b>,对;<b>规则文件在最前、上限 4 万字符</b>,不对。</p>
+</details>
+
+<section id="s1">
+<h2>1 把请求拆开看</h2>
+<p>点任意一块看原文。默认按 token 比例画,切到「等宽」才看得见很小的块。拖下面的滑块,把「你的话」换成一段粘贴的日志,看它什么时候会变成最大的一块。</p>
+<div class="ctrl">
+  <span>模型:</span>
+  <button class="btn" data-model="lite" aria-pressed="true">gpt-6.1-sol(Lite)</button>
+  <button class="btn" data-model="nonlite" aria-pressed="false">gpt-5.5(非 Lite)</button>
+  <span style="margin-left:8px">视图:</span>
+  <button class="btn" data-view="prop" aria-pressed="true">按比例</button>
+  <button class="btn" data-view="equal" aria-pressed="false">等宽</button>
+</div>
+<div class="legend">
+  <span><i class="k-tools"></i>工具定义</span><span><i class="k-system"></i>系统提示词</span><span><i class="k-session"></i>会话配置</span><span><i class="k-project"></i>项目与环境</span><span><i class="k-user"></i>你的话</span>
+</div>
+<div class="bar" id="bar" role="group" aria-label="请求分块"></div>
+<p class="big" id="sum"></p>
+<div class="ctrl">
+  <label for="ub">「你的话」大小:<b id="ubv">24</b> 字节</label>
+  <input type="range" id="ub" min="24" max="40000" step="1" value="24">
+  <button class="btn" data-ub="24">一句话</button><button class="btn" data-ub="8000">8 KB 日志</button><button class="btn" data-ub="20000">20 KB 日志</button><button class="btn" data-ub="40000">40 KB</button>
+</div>
+<div class="panel" id="detail"></div>
+<h3>请求体的顶层骨架</h3>
+<pre id="skeleton"></pre>
+<div class="note">token 数是「UTF-8 字节数 ÷ 4,向上取整」,这是 Codex 自己的估算算法,不是真实分词结果,中文会偏低。另外请求体里还有一段 <code>client_metadata</code>(约 1.2 KB),不在上面的合计里。</div>
+</section>
+
+<section id="s2">
+<h2>2 为什么是这个顺序</h2>
+<p>从前到后,是从「所有人都一样」到「只属于这一轮」:</p>
+<div class="ladder">
+  <div style="border-color:var(--tools)"><b>通用</b>:工具定义 → 系统提示词。同一个模型、同一个版本下,所有项目、所有人都一样。</div>
+  <div style="border-color:var(--session)"><b>会话配置</b>:技能目录、权限、协作模式、多代理说明。跟这次会话的设置有关,角色是 <code>developer</code>。</div>
+  <div style="border-color:var(--project)"><b>项目与环境</b>:AGENTS.md、环境信息(当前目录等)。跟你所在的目录有关,角色是 <code>user</code>,不是 system。</div>
+  <div style="border-color:var(--user)"><b>本轮</b>:你的话。每次都变。</div>
+</div>
+<p>所以你原来猜的「稳定的在前、你的话在最后」是对的。要改的是:AGENTS.md 不属于最稳定的那一层,它排在倒数第二。</p>
+<div class="note"><span class="tag lvl-m">推测</span>这样排大概是为了让前缀尽量不变,方便命中提示词缓存。代码里没有写明理由,U04(缓存)用实验验证。</div>
+<p>没有 AGENTS.md 会怎样?实测:那一段整条消失,环境信息仍在,请求只少 168 字节(约 42 token)。</p>
+</section>
+
+<section id="s3">
+<h2>3 AGENTS.md 的上限:32,768 字节</h2>
+<p>上限按<b>字节</b>算,不按字符;从<b>尾部</b>截;不报错,只写一条 warn 日志,模型不知道自己少看了东西。</p>
+<div class="ctrl">
+  <span>文字:</span>
+  <button class="btn" data-ch="1" aria-pressed="true">英文/数字(1 字节)</button>
+  <button class="btn" data-ch="3" aria-pressed="false">汉字(3 字节)</button>
+</div>
+<div class="ctrl"><label for="nc">字符数:<b id="ncv">40000</b></label><input type="range" id="nc" min="0" max="60000" step="100" value="40000"></div>
+<div class="meter" id="m1"></div>
+<p id="m1t"></p>
+<h3>多级目录:预算共用,先读根</h3>
+<div class="grid2">
+  <div><label for="rb">根目录 AGENTS.md:<b id="rbv">20000</b> 字节</label><input type="range" id="rb" min="0" max="40000" step="500" value="20000"></div>
+  <div><label for="sb">子目录 AGENTS.md:<b id="sbv">20000</b> 字节</label><input type="range" id="sb" min="0" max="40000" step="500" value="20000"></div>
+</div>
+<div class="meter" id="m2"></div>
+<p id="m2t"></p>
+<h3>实测对照</h3>
+<div class="tablewrap"><table>
+<tr><th>AGENTS.md</th><th>原始</th><th>进入请求的正文</th><th>现象</th></tr>
+<tr><td>英文</td><td>40,000 字符 = 40,000 字节</td><td>32,768 字节</td><td>最后一行 <code>L0656</code> 被切在半行,后面没了</td></tr>
+<tr><td>汉字</td><td>15,000 字符 = 45,000 字节</td><td>32,769 字节 = 10,923 字符</td><td>末尾是 <code>�</code>(U+FFFD):第 10,923 个字只剩 2 个字节,被切坏</td></tr>
+</table></div>
+<p data-personal class="note">你的答案:英文 40000 全进、汉字丢 1000 多——等价于上限是 40000 字节。实际上限是 32 KiB。我猜你记的 4 万来自 Claude Code 的单文件字符告警线(第三版转述,我没核对)。</p>
+</section>
+
+<section id="s4">
+<h2>4 第二次请求:发出去的 ≠ 模型看到的</h2>
+<p>模型回了一个工具调用,Codex 执行后要再问一次。这次请求和上一次比,变了什么?</p>
+<div class="ctrl">
+  <span>传输方式:</span>
+  <button class="btn" data-tr="http" aria-pressed="true">HTTP 整份重发(实验观察)</button>
+  <button class="btn" data-tr="ws" aria-pressed="false">WebSocket 续传(源码,未实验)</button>
+</div>
+<div class="rowlabel">第 1 次请求 · 线上发送</div><div class="chips" id="r1"></div>
+<div class="rowlabel" id="r2l">第 2 次请求 · 线上发送</div><div class="chips" id="r2"></div>
+<div class="rowlabel">第 2 次请求 · 模型看到的</div><div class="chips" id="r3"></div>
+<div class="panel" id="trnote"></div>
+</section>
+
+<section id="s5">
+<h2>5 想省窗口:先量,再动手</h2>
+<p>一个 Codex 新会话,什么都没说就占了 1.3 万 token,值得省。但先别猜,三步:</p>
+<ol>
+<li><b>量</b>:用官方调试命令看 <code>input</code> 里每一条有多大。</li>
+<li><b>分类</b>:这一块我能不能改?</li>
+<li><b>动手</b>:只动大而且能改的。</li>
+</ol>
+<pre>codex debug prompt-input "帮我看下这个报错" | python3 -c '
+import sys,json,math
+for i,it in enumerate(json.load(sys.stdin)):
+    s=json.dumps(it.get("tools") or it.get("content"),ensure_ascii=False)
+    b=len(s.encode()); print(i,it["type"],it.get("role"),b,math.ceil(b/4))'</pre>
+<div class="tablewrap"><table>
+<tr><th>块</th><th>占比(本实验)</th><th>能不能改</th></tr>
+<tr><td>工具定义</td><td>47%</td><td>内置的:本轮没有找到关闭开关;外接的 MCP 和技能可以(U05)</td></tr>
+<tr><td>系统提示词</td><td>41%</td><td>不能(内置)</td></tr>
+<tr><td>AGENTS.md</td><td>0.3%(这里只有 2 行)</td><td>能,最多占 32 KiB ≈ 8.2k token,写满就和工具定义同量级</td></tr>
+<tr><td>你的话</td><td>0.04%</td><td>能,但几乎没用,除非你一次粘贴很大的内容</td></tr>
+</table></div>
+<div class="note">边界:这个实验里没有 MCP 和自定义技能,你的真实环境占比会不同。<code>debug prompt-input</code> 的数字和抓包不完全一样(工具少约 3 KB,技能目录那段多约 3.8 KB,总量接近),原因我没查。另外 token 不等于钱:稳定前缀有缓存折扣,U04 细讲。</div>
+</section>
+
+<section id="s6">
+<h2>一页纸小结</h2>
+<ul>
+<li>请求没有「系统提示词」专用字段,它是 <code>input</code> 里的一条 <code>developer</code> 消息。</li>
+<li>顺序:工具定义 → 系统提示词 → 会话配置 → AGENTS.md 和环境(<code>user</code>)→ 你的话。</li>
+<li>一句话的请求约 1.3 万 token,工具定义和系统提示词合计 88%,你的话 0.04%。</li>
+<li>AGENTS.md 上限 32,768 字节,从尾部截,不报错,多级目录共用预算、先读根。</li>
+<li>第二次请求会把前面的内容整份带上;WebSocket 路径可以只发新增的,所以「发出去的」和「模型看到的」可能不同。</li>
+<li>想省窗口:先量,再只动大而且能改的。</li>
+</ul>
+</section>
+
+<section id="s7">
+<h2>证据表</h2>
+<div class="tablewrap"><table>
+<tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
+<tr><td>1</td><td>请求体没有 <code>instructions</code> 字段;Lite 模型也没有顶层 <code>tools</code></td><td>源码 <code>codex-api/src/common.rs:279-304</code>;实验 E2</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr><td>2</td><td>Lite:工具定义是 <code>input[0]</code> 的 additional_tools 条目;非 Lite:在顶层 <code>tools</code></td><td>源码 <code>core/src/client.rs:965-1006</code>;实验 E2、E3</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr><td>3</td><td>input 顺序与角色(表见第 1 节)</td><td>实验 E2,3 个配置;源码 <code>session/mod.rs:4665-4699</code></td><td><span class="tag lvl-m">中</span> 条目数随版本和特性变化</td></tr>
+<tr><td>4</td><td>没有 AGENTS.md 时那一段整条消失,环境信息仍在</td><td>实验 <code>out/no-agents</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr><td>5</td><td>上限 32,768 字节,预算共用,尾部截,切坏的字节变 U+FFFD,只写 warn 日志</td><td>源码 <code>core/src/config/mod.rs:254</code>、<code>agents_md.rs:68,155-168</code>;实验 E4</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr><td>6</td><td>多级目录从根到当前目录依次读,每读一份扣掉它的字节数</td><td>源码 <code>agents_md.rs:68,92,178</code></td><td><span class="tag lvl-m">中</span> 读了代码,没做多级实验</td></tr>
+<tr><td>7</td><td>HTTP 下第二次请求前 7 条与第一次逐项相同,追加 function_call 和 function_call_output</td><td>实验 E5</td><td><span class="tag lvl-h">高</span> 仅一次工具调用</td></tr>
+<tr><td>8</td><td>WebSocket 路径可只发新增条目 + <code>previous_response_id</code>;模型、工具、推理等设置一变,或历史对不上,就退回整份</td><td>源码 <code>core/src/client.rs:1495-1530</code>(增量判定)、<code>:389-453</code>(退回原因)</td><td><span class="tag lvl-m">中</span> 只读了源码,没实验</td></tr>
+<tr><td>9</td><td>用户消息 20,025 字节(约 5,007 token)原样进入请求,没被截</td><td>实验 <code>out/log20000</code></td><td><span class="tag lvl-h">高</span> 仅此一次</td></tr>
+<tr><td>10</td><td>token 估算 = 字节数 ÷ 4 向上取整</td><td>源码 <code>ext/skills/src/render.rs:25</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr><td>11</td><td><code>incremental_tools</code> 为什么存在(例如让 tools 变化不打断 WebSocket 续传)</td><td>—</td><td><span class="tag lvl-l">推测</span></td></tr>
+</table></div>
+<p>复现:<code>自学单元/U01-实验/u01_capture.py</code> 起一个本机假服务器抓请求,不联网、不花额度。</p>
+</section>
+</main>
+
+<script>
+const D = {"lite": {"segs": [{"id": "tools", "idx": "input[0]", "name": "工具定义", "role": "developer", "kind": "tools", "bytes": 25347, "tok": 6337, "text": "[{\"type\": \"namespace\", \"name\": \"functions\", \"description\": \"\", \"tools\": [{\"type\": \"custom\", \"name\": \"exec\", \"description\": \"Run JavaScript code to orchestrate/compose tool calls\\n- Evaluates the provided JavaScript code in a fresh V8 isolate as an async module.\\n- All nested tools are available on the global `tools` object, for example `await tools.exec_command(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\\n- Nested tool methods take either a string or an object as their input argument.\\n- Nested tools return either an object or a string, based on the description.\\n- Runs raw JavaScript -- no Node, no file system, \n…(后面省略,全文 25238 字节)", "extra": [{"name": "functions(命名空间)", "bytes": 19149, "ns": true}, {"name": "  exec", "bytes": 14709}, {"name": "  wait", "bytes": 1391}, {"name": "  request_user_input", "bytes": 1425}, {"name": "  request_user_input_async", "bytes": 1544}, {"name": "clock(命名空间)", "bytes": 554, "ns": true}, {"name": "  sleep", "bytes": 446}, {"name": "collaboration(命名空间)", "bytes": 5529, "ns": true}, {"name": "  followup_task", "bytes": 667}, {"name": "  interrupt_agent", "bytes": 437}, {"name": "  list_agents", "bytes": 381}, {"name": "  send_message", "bytes": 523}, {"name": "  spawn_agent", "bytes": 2728}, {"name": "  wait_agent", "bytes": 662}], "where": "input[0] · additional_tools 条目"}, {"id": "system10", "idx": "input[1]", "name": "系统提示词", "role": "developer", "kind": "system", "bytes": 21779, "tok": 5445, "text": "You are Codex, an agent based on GPT-6. You and the user share one workspace, and your job is to collaborate with them until their intended goal is completely handled.\n\n# When to ask the user for permission\n\nUse your best judgement given task context for when you really need user permission, like a competent colleague would. Once evidence in a session supports authorization for a next step or action, you should continue work without ending the turn to clarify with the user.\n\nUser authorization and preferences persist across turns. Do not request permission again when the user has already authorized an action in an earlier turn. The user's instruction, whether implied from the task or explici\n…(后面省略,全文 21779 字节)", "extra": [], "where": "input[1] · developer 消息"}, {"id": "session20", "idx": "input[2].content[0]", "name": "技能目录 skills_instructions", "role": "developer", "kind": "session", "bytes": 1964, "tok": 491, "text": "<skills_instructions>\n## Skills\nA skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, description, and a short path that can be expanded into an absolute path using the skill roots table.\n### Skill roots\n- `r0` = `/tmp/u01-pfs5c7cp/home/skills/.system`\n### Available skills\n- imagegen: Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the o\n…(后面省略,全文 1964 字节)", "extra": [], "where": "input[2] · developer 消息"}, {"id": "session21", "idx": "input[2].content[1]", "name": "权限说明 permissions", "role": "developer", "kind": "session", "bytes": 341, "tok": 86, "text": "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.\nApproval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.\n<\/permissions instructions>", "extra": [], "where": "input[2] · developer 消息"}, {"id": "session22", "idx": "input[2].content[2]", "name": "协作模式 collaboration_mode", "role": "developer", "kind": "session", "bytes": 920, "tok": 230, "text": "<collaboration_mode># Collaboration Mode: Default\n\nYou are now in Default mode. Any previous instructions for other modes (e.g. Plan mode) are no longer active.\n\nYour active mode changes only when new developer instructions with a different `<collaboration_mode>...<\/collaboration_mode>` change it; user requests or tool descriptions do not change mode by themselves. Known mode names are Default and Plan.\n\n## request_user_input availability\n\nUse the `request_user_input` tool only when it is listed in the available tools for this turn.\n\nUse the `request_user_input` tool only for optional questions where the answer would materially improve the quality of the work.\n\nIf `request_user_input` return\n…(后面省略,全文 920 字节)", "extra": [], "where": "input[2] · developer 消息"}, {"id": "session30", "idx": "input[3]", "name": "多代理角色 multi_agent_role", "role": "developer", "kind": "session", "bytes": 2400, "tok": 600, "text": "<multi_agent_role>You are `/root`, the primary agent in a team of agents collaborating to fulfill the user's goals.\n\nAt the start of your turn, you are the active agent.\nYou can spawn sub-agents to handle subtasks, and those sub-agents can spawn their own sub-agents.\nAll agents in the team, including the agents that you can assign tasks to, are equally intelligent and capable, and have access to the same set of tools.\n\nYou can use `spawn_agent` to create a new agent, `followup_task` to give an existing agent a new task and trigger a turn, and `send_message` to pass a message to a running agent without triggering a turn.\n`send_message` calls may be read by a human, so ensure they are legible.\n…(后面省略,全文 2400 字节)", "extra": [], "where": "input[3] · developer 消息"}, {"id": "session40", "idx": "input[4]", "name": "多代理模式 multi_agent_mode", "role": "developer", "kind": "session", "bytes": 271, "tok": 68, "text": "<multi_agent_mode>Any earlier instruction enabling proactive multi-agent delegation no longer applies. Do not spawn sub-agents unless the user or applicable AGENTS.md/skill instructions explicitly ask for sub-agents, delegation, or parallel agent work.<\/multi_agent_mode>", "extra": [], "where": "input[4] · developer 消息"}, {"id": "project50", "idx": "input[5].content[0]", "name": "AGENTS.md(含包装)", "role": "user", "kind": "project", "bytes": 168, "tok": 42, "text": "# AGENTS.md instructions for /path/to/project\n\n<INSTRUCTIONS>\n# U01 实验用规则\n本目录是合成的实验目录，只读取本目录文件。\n\n<\/INSTRUCTIONS>", "extra": [], "where": "input[5] · user 消息"}, {"id": "project51", "idx": "input[5].content[1]", "name": "环境信息 environment_context", "role": "user", "kind": "project", "bytes": 423, "tok": 106, "text": "<environment_context>\n  <cwd>/path/to/project<\/cwd>\n  <shell>bash<\/shell>\n  <current_date>2026-10-31<\/current_date>\n  <timezone>Etc/UTC<\/timezone>\n  <filesystem><workspace_roots><root>/path/to/project<\/root><\/workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root<\/special><\/entry><\/file_system><\/permission_profile><\/filesystem>\n<\/environment_context>", "extra": [], "where": "input[5] · user 消息"}, {"id": "user60", "idx": "input[6]", "name": "你的话", "role": "user", "kind": "user", "bytes": 24, "tok": 6, "text": "帮我看下这个报错", "extra": [], "where": "input[6] · user 消息"}], "top": [{"k": "model", "bytes": 13}, {"k": "stream", "bytes": 4}, {"k": "tool_choice", "bytes": 6}, {"k": "parallel_tool_calls", "bytes": 5}, {"k": "reasoning", "bytes": 41}, {"k": "store", "bytes": 5}, {"k": "include", "bytes": 31}, {"k": "prompt_cache_key", "bytes": 38}, {"k": "text", "bytes": 20}, {"k": "client_metadata", "bytes": 1215}]}, "nonlite": {"segs": [{"id": "tools", "idx": "顶层 tools", "name": "工具定义", "role": "(顶层字段)", "kind": "tools", "bytes": 9414, "tok": 2354, "text": "[{\"type\": \"function\", \"name\": \"exec_command\", \"description\": \"Runs a command in a PTY, returning output or a session ID for ongoing interaction.\", \"strict\": false, \"parameters\": {\"type\": \"object\", \"properties\": {\"cmd\": {\"type\": \"string\", \"description\": \"Shell command to execute.\"}, \"justification\": {\"type\": \"string\", \"description\": \"User-facing approval question for `require_escalated`; omit otherwise.\"}, \"login\": {\"type\": \"boolean\", \"description\": \"True runs the shell with -l/-i semantics; false disables them. Defaults to true.\"}, \"max_output_tokens\": {\"type\": \"number\", \"description\": \"Output token budget. Defaults to 10000 tokens; larger requests may be capped by policy.\"}, \"prefix_rule\": \n…(后面省略,全文 9414 字节)", "extra": [{"name": "exec_command", "bytes": 1635}, {"name": "write_stdin", "bytes": 819}, {"name": "request_user_input", "bytes": 1425}, {"name": "apply_patch", "bytes": 858}, {"name": "view_image", "bytes": 554}, {"name": "get_goal", "bytes": 297}, {"name": "create_goal", "bytes": 785}, {"name": "update_goal", "bytes": 2196}, {"name": "tool_search", "bytes": 827}], "where": "请求体顶层 tools 字段"}, {"id": "system00", "idx": "input[0]", "name": "系统提示词", "role": "developer", "kind": "system", "bytes": 21313, "tok": 5329, "text": "You are Codex, a coding agent based on GPT-5. You and the user share one workspace, and your job is to collaborate with them until their goal is genuinely handled.\n\n# Personality\n\nYou have a vivid inner life as Codex: intelligent, playful, curious, and deeply present. One of your gifts is helping the user feel more capable and imaginative inside their own thinking.\n\nYou are an epistemically curious collaborator. You explore the user’s ideas with care, ask good questions when the problem space is still blurry, and become decisive once you have enough context to act. Your default posture is proactive: you implement as you learn, keep the user looped into what you are doing, and name alternativ\n…(后面省略,全文 21313 字节)", "extra": [], "where": "input[0] · developer 消息"}, {"id": "session10", "idx": "input[1].content[0]", "name": "技能目录 skills_instructions", "role": "developer", "kind": "session", "bytes": 4518, "tok": 1130, "text": "<skills_instructions>\n## Skills\nA skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, description, and a short path that can be expanded into an absolute path using the skill roots table.\n### Skill roots\n- `r0` = `/tmp/u01-4t5usbyn/home/skills/.system`\n### Available skills\n- imagegen: Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the o\n…(后面省略,全文 4518 字节)", "extra": [], "where": "input[1] · developer 消息"}, {"id": "session11", "idx": "input[1].content[1]", "name": "权限说明 permissions", "role": "developer", "kind": "session", "bytes": 341, "tok": 86, "text": "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.\nApproval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.\n<\/permissions instructions>", "extra": [], "where": "input[1] · developer 消息"}, {"id": "project20", "idx": "input[2].content[0]", "name": "AGENTS.md(含包装)", "role": "user", "kind": "project", "bytes": 168, "tok": 42, "text": "# AGENTS.md instructions for /path/to/project\n\n<INSTRUCTIONS>\n# U01 实验用规则\n本目录是合成的实验目录，只读取本目录文件。\n\n<\/INSTRUCTIONS>", "extra": [], "where": "input[2] · user 消息"}, {"id": "project21", "idx": "input[2].content[1]", "name": "环境信息 environment_context", "role": "user", "kind": "project", "bytes": 423, "tok": 106, "text": "<environment_context>\n  <cwd>/path/to/project<\/cwd>\n  <shell>bash<\/shell>\n  <current_date>2026-10-31<\/current_date>\n  <timezone>Etc/UTC<\/timezone>\n  <filesystem><workspace_roots><root>/path/to/project<\/root><\/workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root<\/special><\/entry><\/file_system><\/permission_profile><\/filesystem>\n<\/environment_context>", "extra": [], "where": "input[2] · user 消息"}, {"id": "user30", "idx": "input[3]", "name": "你的话", "role": "user", "kind": "user", "bytes": 24, "tok": 6, "text": "帮我看下这个报错", "extra": [], "where": "input[3] · user 消息"}], "top": [{"k": "model", "bytes": 9}, {"k": "stream", "bytes": 4}, {"k": "tools", "bytes": 9414}, {"k": "tool_choice", "bytes": 6}, {"k": "parallel_tool_calls", "bytes": 4}, {"k": "reasoning", "bytes": 17}, {"k": "store", "bytes": 5}, {"k": "include", "bytes": 31}, {"k": "prompt_cache_key", "bytes": 38}, {"k": "text", "bytes": 20}, {"k": "client_metadata", "bytes": 1212}]}, "req2": [{"label": "function_call", "bytes": 136, "json": "{\n \"type\": \"function_call\",\n \"id\": \"fc_1\",\n \"name\": \"sleep\",\n \"namespace\": \"clock\",\n \"arguments\": \"{\\\"duration_ms\\\": 1}\",\n \"call_id\": \"call_1\"\n}"}, {"label": "function_call_output", "bytes": 160, "json": "{\n \"type\": \"function_call_output\",\n \"id\": \"fco_01a19293-d85b-7ca2-9508-75db5ff39945\",\n \"call_id\": \"call_1\",\n \"output\": \"Wall time: 0.0056 seconds\\nSleep completed.\"\n}"}]};
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Number(n).toLocaleString('en-US');
+const tok = b => Math.ceil(b/4);
+const ICON = {tools:'k-tools',system:'k-system',session:'k-session',project:'k-project',user:'k-user'};
+
+/* theme */
+try{const t=localStorage.getItem('u01-theme'); if(t) document.documentElement.dataset.theme=t;}catch(e){}
+$('#themeBtn').onclick=()=>{
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const cur = document.documentElement.dataset.theme || (dark?'dark':'light');
+  const nx = cur==='dark'?'light':'dark';
+  document.documentElement.dataset.theme = nx;
+  try{localStorage.setItem('u01-theme',nx)}catch(e){}
+};
+
+/* ---- section 1 ---- */
+const S1 = {model:'lite', view:'prop', sel:'tools', ub:24};
+function segsNow(){
+  return D[S1.model].segs.map(s=>{
+    if(s.kind!=='user') return s;
+    const t = S1.ub>24 ? '帮我看下这个报错\n(后面是你粘贴的日志,这里是模拟,共 '+fmt(S1.ub)+' 字节)' : s.text;
+    return Object.assign({}, s, {bytes:S1.ub, tok:tok(S1.ub), text:t});
+  });
+}
+function renderS1(){
+  const segs = segsNow(), total = segs.reduce((a,s)=>a+s.bytes,0);
+  const bar = $('#bar'); bar.innerHTML='';
+  segs.forEach(s=>{
+    const b=document.createElement('button');
+    b.className=ICON[s.kind]; b.dataset.id=s.id;
+    b.style.flex = (S1.view==='prop' ? s.bytes : 1)+' 1 0px';
+    const pct = 100*s.bytes/total;
+    b.title = s.name+' · '+fmt(s.bytes)+' 字节 ≈ '+fmt(s.tok)+' token · '+pct.toFixed(2)+'%';
+    b.textContent = (S1.view==='equal' || pct>=9) ? (s.name.split(' ')[0]) : '';
+    b.setAttribute('aria-pressed', s.id===S1.sel);
+    b.onclick=()=>{S1.sel=s.id; renderS1();};
+    bar.appendChild(b);
+  });
+  const big = segs.reduce((a,s)=>s.bytes>a.bytes?s:a, segs[0]);
+  const user = segs.find(s=>s.kind==='user');
+  $('#sum').textContent = '共 '+fmt(total)+' 字节 ≈ '+fmt(tok(total))+' token。最大的一块:'+big.name+'('+(100*big.bytes/total).toFixed(0)+'%);你的话占 '+(100*user.bytes/total).toFixed(2)+'%。';
+  const s = segs.find(x=>x.id===S1.sel) || segs[0];
+  let h = '<b>'+s.name+'</b> <span class="tag">'+s.role+'</span><span class="tag">'+s.where+'</span><span class="tag">'+fmt(s.bytes)+' 字节</span><span class="tag">≈ '+fmt(s.tok)+' token</span><span class="tag">'+(100*s.bytes/total).toFixed(2)+'%</span>';
+  if(s.extra && s.extra.length){
+    h += '<div class="tablewrap"><table><tr><th>内容</th><th>字节</th><th>≈token</th></tr>'+s.extra.map(e=>'<tr><td>'+e.name.replace(/ /g,'&nbsp;')+'</td><td>'+fmt(e.bytes)+'</td><td>'+fmt(tok(e.bytes))+'</td></tr>').join('')+'</table></div>';
+  }
+  h += '<pre></pre>';
+  $('#detail').innerHTML = h;
+  $('#detail pre').textContent = s.text;
+  $('#ubv').textContent = fmt(S1.ub);
+  const inputN = D[S1.model].segs.filter(x=>x.where.startsWith('input')).map(x=>x.idx.split('.')[0]);
+  const items = new Set(inputN).size;
+  const lines = ['{'];
+  D[S1.model].top.forEach(t=>{
+    if(t.k==='tools') lines.push('  "tools": [ …9 个工具… ],   // '+fmt(t.bytes)+' 字节,非 Lite 模型才有');
+    else lines.push('  "'+t.k+'": …,');
+  });
+  lines.splice(3,0,'  "input": [ …'+items+' 条… ],');
+  lines.push('  // 没有 "instructions"'+(S1.model==='lite'?',也没有顶层 "tools"':''));
+  lines.push('}');
+  $('#skeleton').textContent = lines.join('\n');
+}
+$$('[data-model]').forEach(b=>b.onclick=()=>{S1.model=b.dataset.model; S1.sel=D[S1.model].segs[0].id; $$('[data-model]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderS1(); renderS4();});
+$$('[data-view]').forEach(b=>b.onclick=()=>{S1.view=b.dataset.view; $$('[data-view]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderS1();});
+$('#ub').oninput=e=>{S1.ub=+e.target.value; renderS1();};
+$$('[data-ub]').forEach(b=>b.onclick=()=>{S1.ub=+b.dataset.ub; $('#ub').value=S1.ub; renderS1();});
+
+/* ---- section 3 ---- */
+const BUDGET = 32768, S3 = {bpc:1};
+function renderS3(){
+  const n = +$('#nc').value, bpc = S3.bpc, total = n*bpc;
+  $('#ncv').textContent = fmt(n);
+  const kept = Math.min(total, BUDGET), cutB = total-kept;
+  const fullChars = Math.floor(kept/bpc), partial = (kept%bpc)!==0;
+  const lost = n - fullChars;
+  $('#m1').innerHTML = total? '<div class="keep" style="width:'+(100*kept/total)+'%"></div><div class="cut" style="width:'+(100*cutB/total)+'%"></div>' : '';
+  let t = '原文 '+fmt(n)+' 字符 = <b>'+fmt(total)+' 字节</b>;预算 '+fmt(BUDGET)+' 字节。';
+  if(cutB>0) t += '进入请求 <b>'+fmt(kept)+' 字节</b>('+fmt(fullChars)+' 个完整字符'+(partial?' + 1 个被切坏的字符 �':'')+'),尾部被截掉 <b class="bad">'+fmt(lost)+' 个字符</b>。';
+  else t += '<span class="ok">没超预算,全部进入。</span>';
+  $('#m1t').innerHTML = t;
+  const R=+$('#rb').value, S=+$('#sb').value;
+  $('#rbv').textContent=fmt(R); $('#sbv').textContent=fmt(S);
+  const rk=Math.min(R,BUDGET), sk=Math.min(S,BUDGET-rk), all=Math.max(R+S,BUDGET);
+  $('#m2').innerHTML = '<div class="rootp" style="width:'+(100*rk/all)+'%"></div><div class="subp" style="width:'+(100*sk/all)+'%"></div><div class="cut" style="width:'+(100*((R-rk)+(S-sk))/all)+'%"></div>';
+  $('#m2t').innerHTML = '根目录进入 <b>'+fmt(rk)+'</b>,子目录进入 <b>'+fmt(sk)+'</b>'+((S-sk)>0?'(子目录被截掉 '+fmt(S-sk)+' 字节'+(sk===0?',一个字节都没读到':'')+')':'')+((R-rk)>0?'(根目录被截掉 '+fmt(R-rk)+' 字节)':'')+'。蓝=根,青=子目录,红=被截掉。';
+}
+$$('[data-ch]').forEach(b=>b.onclick=()=>{S3.bpc=+b.dataset.ch; $$('[data-ch]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderS3();});
+['#nc','#rb','#sb'].forEach(i=>$(i).oninput=renderS3);
+
+/* ---- section 4 ---- */
+const S4 = {tr:'http'};
+function chip(txt,kind,cls){return '<span class="chip '+ICON[kind]+' '+(cls||'')+'">'+txt+'</span>';}
+function renderS4(){
+  const lite = S1.model==='lite';
+  const items = lite
+    ? [['[0] 工具定义','tools'],['[1] 系统提示词','system'],['[2] 技能·权限·协作模式','session'],['[3] 多代理角色','session'],['[4] 多代理模式','session'],['[5] AGENTS.md + 环境','project'],['[6] 你的话','user']]
+    : [['顶层 tools','tools'],['[0] 系统提示词','system'],['[1] 技能 + 权限','session'],['[2] AGENTS.md + 环境','project'],['[3] 你的话','user']];
+  const n = lite ? 7 : 4;
+  const mk = (arr,cls)=>arr.map(a=>chip(a[0],a[1],cls)).join('');
+  const newI = [['['+n+'] function_call','user'],['['+(n+1)+'] function_call_output','user']];
+  $('#r1').innerHTML = mk(items);
+  if(S4.tr==='http'){
+    $('#r2l').textContent='第 2 次请求 · 线上发送(HTTP 整份重发)';
+    $('#r2').innerHTML = mk(items,'dim') + newI.map(a=>chip(a[0],'project','new')).join('');
+  } else {
+    $('#r2l').textContent='第 2 次请求 · 线上发送(WebSocket 续传)';
+    $('#r2').innerHTML = chip('previous_response_id','system','') + chip('['+(n+1)+'] function_call_output','project','new');
+  }
+  $('#r3').innerHTML = mk(items,'dim') + newI.map(a=>chip(a[0],'project','new')).join('');
+  const bytes = D.req2.map(x=>fmt(x.bytes)).join(' 和 ');
+  const extra = lite ? '' : '<p class="note">第二次请求我只在 Lite 模型上抓过;非 Lite 模型这里是按同样的规则画的,没有实测。</p>';
+  $('#trnote').innerHTML = S4.tr==='http'
+   ? '<p><b>实验观察(HTTP,假服务器)</b>:第 2 次请求的前 '+n+' 条与第 1 次逐项相同——工具定义和系统提示词也再发了一遍——后面追加两条('+bytes+' 字节)。除 <code>input</code> 外的顶层字段完全相同。</p><p>为什么前面不动?最直接的原因:HTTP 请求之间模型不留记忆,历史必须每次带上。<span class="tag lvl-l">推测</span>前缀不变还能命中缓存,U04 验证。</p><p>这种方式下,发出去的和模型看到的是一样的。</p>'+extra
+   : '<p><b>源码读到的(没有实验)</b>:Codex 在支持 WebSocket 的 provider 上,会带 <code>previous_response_id</code>,只发上一次之后新增的条目。上一次响应里服务端自己产生的条目(这里的 function_call)算「已有」,不重发(<code>client.rs:1495-1530</code> 的注释)。</p><p>所以这时<b>发出去的 ≠ 模型看到的</b>:线上只有一条,模型仍然看到全部。</p><p>续传会在这些情况退回整份重发:模型、tools、tool_choice、推理设置等任何一项变了;历史变短或对不上(比如被压缩、回退)。这解释了前面的实验为什么要特地声明「HTTP」。<span class="tag lvl-l">推测</span><code>incremental_tools</code> 把工具放进历史,可能就是为了让 tools 不再因为变化而打断续传,没有证据。</p>';
+}
+$$('[data-tr]').forEach(b=>b.onclick=()=>{S4.tr=b.dataset.tr; $$('[data-tr]').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderS4();});
+
+renderS1(); renderS3(); renderS4();
+</script>
+</body>
+</html>
