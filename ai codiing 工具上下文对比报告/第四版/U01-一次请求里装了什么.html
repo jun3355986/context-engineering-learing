@@ -84,16 +84,25 @@ ul{padding-left:1.3em;margin:.4em 0}
 
 <details class="personal" data-personal open>
 <summary>本轮批改(仅你可见,成书时去掉)</summary>
-<p>得分 <b>2.5 / 5</b>,未过关(线是 4 分)。按方案补考 3 题,补考题在对话里。</p>
+<p>第 1 轮得分 <b>2.5 / 5</b>,未过关(线是 4 分)。补考 <b>2.0 / 3</b>,过关(线是 2 分),可以进 U02。</p>
 <div class="tablewrap"><table>
 <tr><th>题</th><th>判定</th><th>对的地方</th><th>要改的地方</th><th>错因</th></tr>
 <tr><td>1 列结构</td><td class="half">🟡 0.5</td><td>没有单独放系统提示词的字段;你的话在最后</td><td>AGENTS.md 不是最前,也不是 system 角色,是 <code>user</code> 消息,排在倒数第二条;工具定义才是最前;漏了技能目录、权限、协作模式、多代理、环境信息</td><td>顺序反 · 概念混淆 · 漏项</td></tr>
 <tr><td>2 估量级</td><td class="bad">❌ 0</td><td>系统提示词很大;AGENTS.md 比你的话大</td><td>总量是一万多不是几千;你的话占 0.04% 不是 1/10;工具定义是最大块(47%)不是最小;最大块占 47% 不是 80%</td><td>数量级直觉偏差</td></tr>
 <tr><td>3 改条件</td><td class="half">🟡 0.5</td><td>从尾部截;不报错;按字节算(从你的数字反推,你是按字节算的,这个思路是对的)</td><td>上限是 32,768 字节,不是 40000。英文 40000 字符会被截掉 7,232 个;15000 汉字只进 10,923 个</td><td>数字记错</td></tr>
 <tr><td>4 第二次请求</td><td class="ok">✅ 1</td><td>前面原样不动、追加调用和输出、工具定义还在、模型无状态所以要带历史</td><td>加分题(不计分):「发出的和模型看到的一样」只在 HTTP 整份重发时成立,见第 4 节</td><td>—</td></tr>
-<tr><td>5 取舍排障</td><td class="half">🟡 0.5</td><td>排序 C、B、A 对</td><td>没回答「怎么确认」——要先量再动手;没说边界(内置工具砍不掉,干净环境里 C 没得砍);第 2 题把工具排最小、这里又说工具「非常占空间」,前后不一致。最后一句读起来像把 AGENTS.md 排在自己的话后面,我按你的排序给分</td><td>缺方法 · 漏边界</td></tr>
+<tr><td>5 取舍排障</td><td class="half">🟡 0.5</td><td>排序 C、B、A:我原先判为对,现收回(外接 MCP 占不占空间我没测到,见疑问卡 ②),分数不动</td><td>没回答「怎么确认」——要先量再动手;没说边界(内置工具砍不掉,干净环境里 C 没得砍);第 2 题把工具排最小、这里又说工具「非常占空间」,前后不一致。最后一句读起来像把 AGENTS.md 排在自己的话后面,我按你的排序给分</td><td>缺方法 · 漏边界</td></tr>
 </table></div>
 <p>你「我原来以为」里的两个判断:<b>稳定的在前、你的话在最后</b>,对;<b>规则文件在最前、上限 4 万字符</b>,不对。</p>
+<h3>补考(2.0 / 3,过关)</h3>
+<div class="tablewrap"><table>
+<tr><th>题</th><th>判定</th><th>说明</th></tr>
+<tr><td>补 1 删掉 AGENTS.md</td><td class="ok">✅ 1</td><td>AGENTS.md 那段消失、其余不变;少约 42 token、占 0.31%,都对。严格说,变的是 <code>input[5]</code> 这一条 user 消息:它还在,只剩环境信息</td></tr>
+<tr><td>补 2 粘贴 20 KB 日志</td><td class="half">🟡 0.5</td><td>原样进入、前三块的排序、你的话是其中之一,都对。第 (a) 问要的是总量(≈1.84 万 token),你写的 27.17% 其实是你的话占总量的比例,数是对的,但不是所问的</td></tr>
+<tr><td>补 3 排障</td><td class="half">🟡 0.5</td><td>(a)(b) 对:先量每块大小,AGENTS.md 最大才说明他对。(c) 你答不上来:这一问是我写得含糊,见下面「排障补讲」</td></tr>
+</table></div>
+<h3>排障补讲</h3>
+<p>补 3 的 (c) 我本意是:量出来 AGENTS.md 只占一点点,说明「AGENTS.md 太大」猜错了,那 1.3 万 token 花在哪、下一步看什么?答案:花在工具定义(47%)和系统提示词(41%)上,这两块是 Codex 内置的,新会话本来就有这个底子,<b>1.3 万是基线,不是毛病</b>。下一步只看你自己加的东西:技能目录、外接 MCP 工具、AGENTS.md。但外接 MCP 工具到底占不占,见疑问卡 ②,我这次没测到它们占空间。</p>
 </details>
 
 <section id="s1">
@@ -167,6 +176,7 @@ ul{padding-left:1.3em;margin:.4em 0}
 <section id="s4">
 <h2>4 第二次请求:发出去的 ≠ 模型看到的</h2>
 <p>模型回了一个工具调用,Codex 执行后要再问一次。这次请求和上一次比,变了什么?</p>
+<p class="note">先说默认走哪个:官方通道默认先走 <b>WebSocket</b>,出错才退回 HTTP;自定义通道只走 HTTP(详见疑问卡 ④)。下面「HTTP」是我用假服务器实测的,假服务器是自定义通道,所以走了 HTTP;「WebSocket」是读源码得出的,没实验。</p>
 <div class="ctrl">
   <span>传输方式:</span>
   <button class="btn" data-tr="http" aria-pressed="true">HTTP 整份重发(实验观察)</button>
@@ -193,23 +203,80 @@ for i,it in enumerate(json.load(sys.stdin)):
     b=len(s.encode()); print(i,it["type"],it.get("role"),b,math.ceil(b/4))'</pre>
 <div class="tablewrap"><table>
 <tr><th>块</th><th>占比(本实验)</th><th>能不能改</th></tr>
-<tr><td>工具定义</td><td>47%</td><td>内置的:本轮没有找到关闭开关;外接的 MCP 和技能可以(U05)</td></tr>
+<tr><td>工具定义</td><td>47%</td><td>内置的:没找到关闭开关。外接 MCP:我挂了 40 个假工具,请求一字节没变,原因待核实(疑问卡 ②,U05)</td></tr>
 <tr><td>系统提示词</td><td>41%</td><td>不能(内置)</td></tr>
 <tr><td>AGENTS.md</td><td>0.3%(这里只有 2 行)</td><td>能,最多占 32 KiB ≈ 8.2k token,写满就和工具定义同量级</td></tr>
 <tr><td>你的话</td><td>0.04%</td><td>能,但几乎没用,除非你一次粘贴很大的内容</td></tr>
 </table></div>
-<div class="note">边界:这个实验里没有 MCP 和自定义技能,你的真实环境占比会不同。<code>debug prompt-input</code> 的数字和抓包不完全一样(工具少约 3 KB,技能目录那段多约 3.8 KB,总量接近),原因我没查。另外 token 不等于钱:稳定前缀有缓存折扣,U04 细讲。</div>
+<div class="note">边界:主实验里没有 MCP 和自定义技能,你的真实环境占比会不同。<code>debug prompt-input</code> 的数字和抓包不完全一样(工具少约 3 KB,技能目录那段多约 3.8 KB,总量接近),原因我没查。另外 token 不等于钱:稳定前缀有缓存折扣,U04 细讲。</div>
+</section>
+
+<section id="sq">
+<h2>疑问卡:你问的 4 个问题</h2>
+<p class="sub" style="margin-top:0">读完本轮之后提的,都和「请求里装了什么」有关,归在 U01。点开看。</p>
+
+<details class="panel" open>
+<summary><b>① 「多代理两条」是什么?</b></summary>
+<p>请求里 <code>input[3]</code> 和 <code>input[4]</code> 两条 <code>developer</code> 消息,都是讲「子代理」的:</p>
+<div class="tablewrap"><table>
+<tr><th>条</th><th>大小</th><th>里面写的</th></tr>
+<tr><td><code>[3] &lt;multi_agent_role&gt;</code></td><td>2,400 字节 ≈ 600 token</td><td>「你是 /root,一个代理团队里的主代理。你可以用 spawn_agent 派出子代理,用 send_message 给它们发消息……同时最多 4 个代理(含你)。」相当于子代理功能的说明书</td></tr>
+<tr><td><code>[4] &lt;multi_agent_mode&gt;</code></td><td>271 字节 ≈ 68 token</td><td>「除非用户、AGENTS.md 或技能明确要求,否则不要派子代理。」相当于一个默认关着的开关</td></tr>
+</table></div>
+<p>合计约 668 token,占请求 5%。你没用子代理,它们也照样发。子代理到底替主会话省了什么,U06 细讲。能不能关掉,我没验证【待核实】。</p>
+<p class="note">批改里我写「多代理两条」是简称,没解释,是我的问题。</p>
+</details>
+
+<details class="panel">
+<summary><b>② 「先量再动手」是 Codex 自动取舍吗?</b></summary>
+<p>不是。「确认」是<b>你</b>排查时做的事:运行一条命令,让 Codex 把「这次会发什么」打印出来,看哪一块大,再决定动哪块。Codex 不会替你判断「这块没用就不发」。</p>
+<div class="tablewrap"><table>
+<tr><th>谁做</th><th>做什么</th></tr>
+<tr><td>Codex 自动</td><td>AGENTS.md 超过 32 KiB 就从尾部截掉(不提示);对话太长自动压缩(U03);命令输出太长自动截断(U02)</td></tr>
+<tr><td>你来做</td><td>量每块多大 → 判断哪块你能改 → 只改大而且能改的</td></tr>
+<tr><td>谁都不动</td><td>内置的工具定义和系统提示词,每次整份发,我没找到关闭的开关</td></tr>
+</table></div>
+<p><b>一个例外,我还没弄清:外接的 MCP 工具。</b>我给 Codex 挂了一个有 40 个工具的假 MCP 服务器(工具描述共约 23 KB,比整个内置工具块还大)。Codex 连上了这个服务器,但请求体 55,950 字节前后<b>一字节没变</b>,请求里搜不到这些工具。源码里有「延后加载」的逻辑(用到时再用 <code>tool_search</code> 搜),本机模型目录里这个模型也标了 <code>supports_search_tool = true</code>,但我没确认这就是原因【待核实】,留到 U05。</p>
+<p class="note">所以你答案里「MCP 多了非常占空间」,在这个版本、这个模型上我没测到,先别当结论。我批改第 5 题时认可了这个说法,当时没测过,这一点我收回,第 5 题的标准答案按这里改。</p>
+</details>
+
+<details class="panel">
+<summary><b>③ 请求里怎么没看到 system 角色?</b></summary>
+<p>因为这个请求里<b>根本没有 system 角色</b>。7 条 <code>input</code>:5 条 <code>developer</code>、2 条 <code>user</code>。</p>
+<div class="tablewrap"><table>
+<tr><th>条</th><th>角色</th><th>内容</th></tr>
+<tr><td>[0]–[4]</td><td><code>developer</code></td><td>工具定义、系统提示词、技能/权限/协作模式、多代理两条</td></tr>
+<tr><td>[5]</td><td><code>user</code></td><td>AGENTS.md + 环境信息</td></tr>
+<tr><td>[6]</td><td><code>user</code></td><td>你的话</td></tr>
+</table></div>
+<p>Codex 的做法:所有「给模型的规则」放 <code>developer</code>;从用户这边来的内容(AGENTS.md、环境信息、你的话)放 <code>user</code>。源码里还有一道过滤:历史里的 system 消息一概不保留(<code>core/src/context_manager/history.rs:1033-1036</code>)。</p>
+<p>为什么用 developer 而不是 system:我的理解是,OpenAI 较新的模型接口里,developer 取代了原来 system 的位置,指「应用开发者给模型的指令」这一层。这是我对接口约定的理解,本轮没有查官方文档,标【推测】。</p>
+<p class="note">对照你一开始写的「AGENTS.md(system)」:没有 system,AGENTS.md 是 user。</p>
+</details>
+
+<details class="panel">
+<summary><b>④ Codex 用 HTTP 还是 WebSocket?</b></summary>
+<p>两种都用:<b>官方通道默认先走 WebSocket,出错才退回 HTTP;自定义的第三方通道只走 HTTP。</b></p>
+<div class="ladder">
+<div style="border-color:var(--system)"><b>① 通道支持 WebSocket 吗?</b>官方通道写死支持(<code>model-provider-info/src/lib.rs:561</code>);你自己在 config.toml 里加的通道默认不支持(<code>:199</code>)。不支持就走 HTTP,到此为止。</div>
+<div style="border-color:var(--session)"><b>② 支持 → 先走 WebSocket。</b>能续传就只发新增条目(见第 4 节)。</div>
+<div style="border-color:var(--tools)"><b>③ WebSocket 连接出错、重试用尽 → 本会话剩下的请求全部改走 HTTP,</b>不会再切回来,并提示「Falling back from WebSockets to HTTPS transport」(<code>client.rs:719-735</code>、<code>responses_retry.rs:120-140</code>)。</div>
+</div>
+<p>没有用户开关:原来的 <code>responses_websockets</code> 特性已经移除(<code>features/src/lib.rs:2048-2058</code>)。</p>
+<p>这台机器上 Codex 的日志(10 月 29–31 日)里有 488 条 WebSocket 请求记录,没有「退回 HTTP」的记录。我没数 HTTP 请求有没有同样的日志,所以只能说:这台机器上主要走的是 WebSocket。</p>
+<p class="note">我前面的实验走的是 HTTP,因为假服务器属于自定义通道。所以「第二次请求整份重发」是 HTTP 路径的行为,你平时用官方通道,更可能是 WebSocket 续传。这一点我之前没讲清,是我的疏漏。WebSocket 路径还没做实验,留到 U04。</p>
+</details>
 </section>
 
 <section id="s6">
 <h2>一页纸小结</h2>
 <ul>
-<li>请求没有「系统提示词」专用字段,它是 <code>input</code> 里的一条 <code>developer</code> 消息。</li>
+<li>请求没有「系统提示词」专用字段,它是 <code>input</code> 里的一条 <code>developer</code> 消息。整个请求里没有 <code>system</code> 角色,只有 <code>developer</code> 和 <code>user</code>。</li>
 <li>顺序:工具定义 → 系统提示词 → 会话配置 → AGENTS.md 和环境(<code>user</code>)→ 你的话。</li>
 <li>一句话的请求约 1.3 万 token,工具定义和系统提示词合计 88%,你的话 0.04%。</li>
 <li>AGENTS.md 上限 32,768 字节,从尾部截,不报错,多级目录共用预算、先读根。</li>
-<li>第二次请求会把前面的内容整份带上;WebSocket 路径可以只发新增的,所以「发出去的」和「模型看到的」可能不同。</li>
-<li>想省窗口:先量,再只动大而且能改的。</li>
+<li>第二次请求,HTTP 会把前面的内容整份带上;官方通道默认走 WebSocket,可以只发新增的,所以「发出去的」和「模型看到的」可能不同。</li>
+<li>想省窗口:先量,再只动大而且能改的。量是你做的事,Codex 不会自动替你取舍内置的那两大块。外接 MCP 工具占不占空间,这一轮没测明白(U05)。</li>
 </ul>
 </section>
 
@@ -228,6 +295,10 @@ for i,it in enumerate(json.load(sys.stdin)):
 <tr><td>9</td><td>用户消息 20,025 字节(约 5,007 token)原样进入请求,没被截</td><td>实验 <code>out/log20000</code></td><td><span class="tag lvl-h">高</span> 仅此一次</td></tr>
 <tr><td>10</td><td>token 估算 = 字节数 ÷ 4 向上取整</td><td>源码 <code>ext/skills/src/render.rs:25</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr><td>11</td><td><code>incremental_tools</code> 为什么存在(例如让 tools 变化不打断 WebSocket 续传)</td><td>—</td><td><span class="tag lvl-l">推测</span></td></tr>
+<tr><td>12</td><td>请求里没有 system 角色:7 条 input = 5 条 developer + 2 条 user;历史里 system 消息不保留</td><td>实验 <code>out/latest</code>;源码 <code>core/src/context_manager/history.rs:1033-1036</code></td><td><span class="tag lvl-h">高</span> 为什么选 developer 是<span class="tag lvl-l">推测</span></td></tr>
+<tr><td>13</td><td>多代理两条:<code>input[3]</code> 2,400 B ≈ 600 token,<code>input[4]</code> 271 B ≈ 68 token</td><td>实验 <code>out/latest</code></td><td><span class="tag lvl-h">高</span> 能否关闭未验证</td></tr>
+<tr><td>14</td><td>官方通道默认支持 WebSocket、自定义通道默认不支持;出错重试用尽后本会话永久退回 HTTP;无用户开关</td><td>源码 <code>model-provider-info/src/lib.rs:199,561</code>、<code>core/src/client.rs:719-735,1112-1120</code>、<code>responses_retry.rs:120-140</code>、<code>features/src/lib.rs:2048-2058</code></td><td><span class="tag lvl-m">中</span> 读了源码;本机日志有 488 条 WebSocket 记录、无退回记录,没做对照实验</td></tr>
+<tr><td>15</td><td>挂 40 个假 MCP 工具(约 23 KB)后,请求体 55,950 B 不变,请求里没有这些工具;原因未查清</td><td>实验 <code>out/mcp40</code>(<code>u01_capture.py --mcp-tools 40</code>);源码 <code>core/src/tools/spec_plan.rs:265-270</code> 有延后加载逻辑</td><td><span class="tag lvl-h">高</span> 现象;<span class="tag lvl-l">推测</span> 原因</td></tr>
 </table></div>
 <p>复现:<code>自学单元/U01-实验/u01_capture.py</code> 起一个本机假服务器抓请求,不联网、不花额度。</p>
 </section>

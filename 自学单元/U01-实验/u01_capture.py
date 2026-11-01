@@ -153,6 +153,7 @@ def main():
     ap.add_argument("--disable", action="append", default=[], help="关闭某个特性，可重复")
     ap.add_argument("--enable", action="append", default=[], help="打开某个特性，可重复")
     ap.add_argument("--tool-call", action="store_true", help="第一次回一个工具调用，抓第二次请求")
+    ap.add_argument("--mcp-tools", type=int, default=0, help="挂一个有 N 个工具的假 MCP 服务器")
     ap.add_argument("--out", help="输出目录，默认 ./out/latest")
     args = ap.parse_args()
 
@@ -194,6 +195,14 @@ requires_openai_auth = false
 [projects.'{ws}']
 trust_level = "trusted"
 '''
+        + (
+            f'''[mcp_servers.fake]
+command = "{sys.executable}"
+args = ["{HERE / "u01_fake_mcp.py"}", "{args.mcp_tools}"]
+'''
+            if args.mcp_tools
+            else ""
+        )
     )
 
     cmd = [args.codex, "exec", "--skip-git-repo-check", "-C", str(ws)]
