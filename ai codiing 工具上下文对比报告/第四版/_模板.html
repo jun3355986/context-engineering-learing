@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- title：6–10 字的短名，左侧栏和窄屏顶栏用；要和 assets/book.js 里 BOOK.chapters 的 name 一致 -->
+<title>短标题</title>
+<link rel="stylesheet" href="assets/book.css">
+<script src="assets/book.js"></script>
+<!-- 本章交互专用的样式写这里，颜色只用 book.css 里的变量；没有就删掉这个 style -->
+<style>
+</style>
+</head>
+<body class="chapter">
+<main class="page">
+
+<!-- ① 标题区：章号 / 标题 / 条件 -->
+<header class="chap-head">
+<p class="kicker">第 N 章</p>
+<h1>标题写结论或问题，不写「××详解」</h1>
+<p class="meta">YYYY-MM-DD · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code></p>
+</header>
+
+<p class="lede">开头最多 3 句，用真实数字或现象，不编场景。</p>
+<p class="note">补充说明：本章的实验条件、估算方法、和前面章节的关系。没有就删掉。</p>
+
+<!-- ② 开篇问题：li 的 id 是 q1…；跳转链接指向答案框 a1… -->
+<section class="qs" id="qs">
+<h2 data-toc="开篇问题">带着这 N 个问题往下读</h2>
+<ol>
+<li id="q1">先交代前提，再问一件具体的事？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">第二个问题？<a class="jump" href="#a2">答案 ↓</a></li>
+</ol>
+</section>
+
+<!-- ③ 正文：一个 section 一节；节号写在 span.sn 里；h3 自动进左侧目录第二级 -->
+<section id="s1">
+<h2><span class="sn">1</span>第一节标题</h2>
+<p>段首第一句是这段的结论。数字带条件。<sup><a href="#e1">1</a></sup></p>
+
+<h3>动手看：改什么条件，看什么结果</h3>
+<p>一句话说明怎么操作、数据从哪来（实验，或「按源码规则画，未实验」）。</p>
+<div class="ctrl">
+  <button class="btn" aria-pressed="true">选项 A</button><button class="btn">选项 B</button>
+</div>
+<div class="meter"><div class="keep" style="width:30%"></div><div class="cut" style="width:70%"></div></div>
+<div class="panel">交互的读数和解释写在 panel 里。</div>
+
+<div class="answer" id="a1">
+<p class="qh">回答问题 1</p>
+<p class="qq">把问题重复一遍？</p>
+<p>短答案，单独看也能懂。</p>
+</div>
+
+<div class="compare">
+<h3>对照：Claude Code 的做法</h3>
+<p>只写思路差别，其他 agent 思路明显不同时才写。</p>
+</div>
+</section>
+
+<section id="s2">
+<h2><span class="sn">2</span>第二节标题</h2>
+<p>……</p>
+
+<div class="answer" id="a2">
+<p class="qh">回答问题 2</p>
+<p class="qq">把问题重复一遍？</p>
+<p>短答案。</p>
+</div>
+
+<div class="source">
+<h3>看源码：一句话说这段代码干什么</h3>
+<p><code>路径/文件.rs</code> 第 x–y 行，节选，注释是我加的。<sup><a href="#e1">1</a></sup></p>
+<pre>// 每章最多一个看源码框，30 行以内</pre>
+</div>
+</section>
+
+<!-- ④ 章末三节，顺序固定 -->
+<section id="notes">
+<h2>设计笔记</h2>
+<ul>
+<li><b>一句话说取舍。</b>理由和代价；代码里没写理由的标【推测】。</li>
+</ul>
+</section>
+
+<section id="summary">
+<h2>小结</h2>
+<ol>
+<li>问题 1 的一句话答案。</li>
+<li>问题 2 的一句话答案。</li>
+</ol>
+</section>
+
+<section id="evidence">
+<h2>证据表</h2>
+<p>版本和路径说明：源码路径相对 <code>codex-rs/</code>。</p>
+<div class="tablewrap"><table>
+<tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
+<tr id="e1"><td>1</td><td>结论</td><td>源码 <code>path/file.rs:1-2</code>；实验 <code>目录名</code></td><td><span class="tag lvl-h">高</span></td></tr>
+</table></div>
+</section>
+
+</main>
+<script>
+/* 本章交互脚本写这里。主题切换、左侧目录、翻页、「回到问题」由 assets/book.js 负责，不要再写。 */
+</script>
+</body>
+</html>

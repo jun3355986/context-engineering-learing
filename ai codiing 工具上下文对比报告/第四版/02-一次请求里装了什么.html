@@ -4,97 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>一次请求里装了什么</title>
-<style>
-:root{
-  --bg:#fbfaf7; --fg:#1f2430; --muted:#5d6676; --card:#ffffff; --line:#e3e0d8; --accent:#2b5fd9;
-  --tools:#b45a08; --system:#2f62c9; --session:#0f7a6e; --project:#3f7a22; --user:#7c4ec4; --reply:#6b7280; --on:#ffffff;
-  --ok:#1f7a3d; --bad:#b3261e; --half:#9a6200; --note-bg:#fff4e0; --note-line:#e8c27a; --code-bg:#f3f1ea;
-  --cut:#c9453b; --keep:#3f7a22; --ans-bg:#eef6ef; --ans-line:#9cc9a6; --cmp-bg:#eef2fb; --cmp-line:#a9bce6;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#14171c; --fg:#e6e8ee; --muted:#9aa3b2; --card:#1c2028; --line:#2c323d; --accent:#7aa2f7;
-    --tools:#f0a24f; --system:#7aa2f7; --session:#4fd1c0; --project:#8bd16a; --user:#c4a3f5; --reply:#9aa3b2; --on:#10131a;
-    --ok:#6fd08c; --bad:#ff8a80; --half:#f0b95a; --note-bg:#2a2418; --note-line:#6b5a2a; --code-bg:#12151a;
-    --cut:#ff8a80; --keep:#8bd16a; --ans-bg:#17251b; --ans-line:#3c6b47; --cmp-bg:#18202f; --cmp-line:#3a4d75;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#14171c; --fg:#e6e8ee; --muted:#9aa3b2; --card:#1c2028; --line:#2c323d; --accent:#7aa2f7;
-  --tools:#f0a24f; --system:#7aa2f7; --session:#4fd1c0; --project:#8bd16a; --user:#c4a3f5; --reply:#9aa3b2; --on:#10131a;
-  --ok:#6fd08c; --bad:#ff8a80; --half:#f0b95a; --note-bg:#2a2418; --note-line:#6b5a2a; --code-bg:#12151a;
-  --cut:#ff8a80; --keep:#8bd16a; --ans-bg:#17251b; --ans-line:#3c6b47; --cmp-bg:#18202f; --cmp-line:#3a4d75;
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
-main{max-width:880px;margin:0 auto;padding:20px 16px 80px}
-a{color:var(--accent)}
-h1{font-size:1.7rem;line-height:1.35;margin:.2em 0 .4em}
-h2{font-size:1.3rem;margin:0 0 .6em}
-h3{font-size:1.05rem;margin:1.3em 0 .4em}
-p{margin:.6em 0}
-.kicker{color:var(--muted);font-size:.9rem;margin:0}
-.lede{font-size:1.05rem}
-section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 18px 14px;margin:18px 0}
-code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em}
-code{background:var(--code-bg);padding:.08em .35em;border-radius:4px;word-break:break-word}
-pre{background:var(--code-bg);padding:10px 12px;border-radius:8px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:.6em 0}
-sup a{text-decoration:none;font-size:.75em;padding:0 1px}
-.note{background:var(--note-bg);border:1px solid var(--note-line);border-radius:8px;padding:8px 12px;margin:.8em 0;font-size:.95em}
-.answer{background:var(--ans-bg);border:1px solid var(--ans-line);border-left:6px solid var(--ok);border-radius:8px;padding:10px 14px;margin:1em 0}
-.answer .qh{font-size:.85rem;color:var(--ok);font-weight:700;margin:0}
-.answer .qq{font-weight:600;margin:.2em 0 .3em}
-.compare{background:var(--cmp-bg);border:1px solid var(--cmp-line);border-radius:8px;padding:10px 14px;margin:1em 0}
-.compare h3{margin-top:.2em}
-.qs ol{padding-left:1.4em;margin:.4em 0}
-.qs li{margin:.5em 0}
-.qs .jump{font-size:.85rem;margin-left:.4em;white-space:nowrap}
-.tag{display:inline-block;font-size:.78rem;border-radius:999px;padding:0 .6em;border:1px solid var(--line);color:var(--muted);margin-right:.3em;vertical-align:middle}
-.lvl-h{color:var(--ok);border-color:var(--ok)} .lvl-m{color:var(--half);border-color:var(--half)} .lvl-l{color:var(--bad);border-color:var(--bad)}
-table{border-collapse:collapse;width:100%;font-size:.93em}
-th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
-th{color:var(--muted);font-weight:600}
-td.num{text-align:right;white-space:nowrap}
-.tablewrap{overflow-x:auto}
-.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
-.ctrl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:.6em 0}
-.btn{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:3px 10px;cursor:pointer}
-.btn[aria-pressed="true"]{background:var(--accent);color:var(--on);border-color:var(--accent)}
-input[type=range]{width:min(100%,360px);accent-color:var(--accent)}
-.bar{display:flex;gap:2px;width:100%;height:62px;margin:.7em 0 .3em}
-.bar button{border:0;border-radius:4px;color:var(--on);font:inherit;font-size:.78rem;padding:0 3px;overflow:hidden;white-space:nowrap;cursor:pointer;min-width:5px;opacity:.92}
-.bar button[aria-pressed="true"]{outline:3px solid var(--fg);outline-offset:1px;opacity:1}
-.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;color:var(--muted)}
-.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.k-tools{background:var(--tools)}.k-system{background:var(--system)}.k-session{background:var(--session)}.k-project{background:var(--project)}.k-user{background:var(--user)}.k-reply{background:var(--reply)}
-.panel{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:10px;background:var(--bg)}
-.panel pre{max-height:210px}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin:.4em 0}
-.chip{border-radius:6px;padding:2px 8px;font-size:.82rem;color:var(--on)}
-.chip.dim{opacity:.38}.chip.new{outline:3px solid var(--fg)}
-.rowlabel{font-size:.85rem;color:var(--muted);margin-top:.8em}
-.big{font-size:1.1rem;font-weight:600}
-.meter{position:relative;height:30px;background:var(--code-bg);border-radius:6px;overflow:hidden;display:flex;margin:.5em 0}
-.meter div{height:100%}
-.meter .keep{background:var(--keep)}.meter .cut{background:var(--cut)}.meter .rootp{background:var(--system)}.meter .subp{background:var(--session)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.ladder{display:grid;gap:8px;margin:.6em 0}
-.ladder div{border-left:6px solid;border-radius:6px;padding:6px 12px;background:var(--bg)}
-.theme{position:fixed;top:10px;right:10px;z-index:5}
-ul,ol{padding-left:1.3em;margin:.4em 0}
-@media (max-width:620px){.grid2{grid-template-columns:1fr}.bar{height:54px}h1{font-size:1.45rem}}
-</style>
+<link rel="stylesheet" href="assets/book.css">
+<script src="assets/book.js"></script>
 </head>
-<body>
-<button class="btn theme" id="themeBtn" aria-label="切换浅色/深色">◐</button>
-<main>
-<p class="kicker">第 2 章 · 一次请求里装了什么 · 2026-11-02 · 条件：Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> / 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 只有内置工具，没装 MCP 和自定义技能</p>
+<body class="chapter">
+<main class="page">
+<header class="chap-head">
+<p class="kicker">第 2 章</p>
 <h1>你只说了一句话，请求里装了 1.3 万 token</h1>
+<p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 只有内置工具，没装 MCP 和自定义技能</p>
+</header>
 <p class="lede">你在 Codex 里打一句「帮我看下这个报错」，它发给模型的远不止这句话：还有工具说明、系统提示词、会话设置、项目规则和环境信息。这一章把这次请求拆开，看每块是什么、占多少、为什么这样排，以及会话往下走时请求怎么变。</p>
 <p class="note">本章的数字都来自上面这个模型。思考级别（reasoning effort）指模型回答前想得多深，分 low、medium、high 等几档。换一个模型，请求的结构和大小都会变，第 1 节末尾用 <code>gpt-5.5</code> 做了对比。</p>
 
 <section class="qs" id="qs">
-<h2>带着这 5 个问题往下读</h2>
+<h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
 <ol>
 <li id="q1">你只说了「帮我看下这个报错」，一共 24 字节。整个请求大约多少 token（模型计量文本的单位）？你的话占多少？<a class="jump" href="#a1">答案 ↓</a></li>
 <li id="q2">请求由哪几块组成？谁排最前、谁排最后？里面有没有 <code>system</code> 角色（接口里专门放「系统级指令」的那种消息）？<a class="jump" href="#a2">答案 ↓</a></li>
@@ -105,7 +29,7 @@ ul,ol{padding-left:1.3em;margin:.4em 0}
 </section>
 
 <section id="s1">
-<h2>1 一句话的请求，拆开看</h2>
+<h2><span class="sn">1</span>一句话的请求，拆开看</h2>
 <p>真实抓到的这次请求有 <b>53,637 字节，约 13,410 token</b>，你的那句话只占 6 token。<sup><a href="#e1">1</a></sup> <code>input</code> 是请求里按顺序排好的消息列表，一共 7 条：</p>
 <div class="tablewrap"><table>
 <tr><th>位置</th><th>角色</th><th>内容</th><th>字节</th><th>约 token</th><th>占比</th></tr>
@@ -167,7 +91,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 </section>
 
 <section id="s2">
-<h2>2 为什么这样排</h2>
+<h2><span class="sn">2</span>为什么这样排</h2>
 <p>从前往后，是从「所有人都一样」到「只属于这一轮」：</p>
 <div class="ladder">
   <div style="border-color:var(--tools)"><b>通用</b>：工具定义 → 系统提示词。同一个模型、同一个版本，所有人、所有项目都一样。</div>
@@ -185,7 +109,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 </section>
 
 <section id="s3">
-<h2>3 AGENTS.md：读哪几份，怎么拼，多长会被截</h2>
+<h2><span class="sn">3</span>AGENTS.md：读哪几份，怎么拼，多长会被截</h2>
 <p>最简单的做法是只读当前目录那一份。可大项目常在根目录写通用规则、在子模块写局部规则，只读一份就丢了另一半。Codex 沿着目录链把每一级都读进来，再用一个总预算封顶。</p>
 
 <h3>读哪几份</h3>
@@ -243,7 +167,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 </section>
 
 <section id="s4">
-<h2>4 第二次请求：发出去的不一定等于模型看到的</h2>
+<h2><span class="sn">4</span>第二次请求：发出去的不一定等于模型看到的</h2>
 <p>模型回了一个工具调用（比如「执行这条命令」），Codex 执行完，要把结果交回模型，于是发第二次请求。最直接的做法是把整个请求再发一遍，末尾加上这次的工具调用和执行结果。Codex 走 HTTP 时正是这样；走 WebSocket（一条一直开着的连接）时，可以只发新增的部分。</p>
 <p>走哪条：官方通道默认先走 WebSocket，出错且重试用尽后，这个会话剩下的请求全改走 HTTP；你在配置里自己加的第三方通道只走 HTTP。没有用户开关。<sup><a href="#e12">12</a></sup></p>
 <div class="ctrl">
@@ -263,7 +187,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 </section>
 
 <section id="s5">
-<h2>5 会话中途变了，请求怎么变</h2>
+<h2><span class="sn">5</span>会话中途变了，请求怎么变</h2>
 <p>最直接的做法是每次请求都重新拼一遍：重读 AGENTS.md、重新生成环境信息，替换掉旧的。这样请求的前半段会跟着变。Codex 不这么做。它把这些设置当成一组<b>状态</b>，每次请求前和上一次比：没变，什么都不加；变了，就在历史末尾追加一条更新，前面发过的内容一字不改。<sup><a href="#e14">14</a></sup> 第 1 节的会话配置（权限、协作模式、子代理说明）、AGENTS.md、环境信息都按这个规则走。追加的更新排在你的新消息前面。<sup><a href="#e14">14</a></sup></p>
 
 <h3>环境信息：变了才追加</h3>
@@ -290,7 +214,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 <div class="chips" id="r5"></div>
 <div class="panel" id="scnote"></div>
 
-<div class="compare">
+<div class="source">
 <h3>看源码：AGENTS.md 变了，追加什么</h3>
 <p><code>core/src/context/world_state/agents_md.rs</code> 第 11–13、44–80 行，节选，省略了 <code>current</code> 的构造，注释是我加的。<sup><a href="#e16">16</a></sup></p>
 <pre>const REPLACEMENT_NOTICE: &amp;str =
@@ -391,16 +315,6 @@ const fmt = n => Number(n).toLocaleString('en-US');
 const tok = b => Math.ceil(b/4);
 const ICON = {tools:'k-tools',system:'k-system',session:'k-session',project:'k-project',user:'k-user',reply:'k-reply'};
 const press = (sel, el) => $$(sel).forEach(x => x.setAttribute('aria-pressed', x === el));
-
-/* 主题 */
-try{const t=localStorage.getItem('ctx4-theme'); if(t) document.documentElement.dataset.theme=t;}catch(e){}
-$('#themeBtn').onclick=()=>{
-  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-  const cur = document.documentElement.dataset.theme || (dark?'dark':'light');
-  const nx = cur==='dark'?'light':'dark';
-  document.documentElement.dataset.theme = nx;
-  try{localStorage.setItem('ctx4-theme',nx)}catch(e){}
-};
 
 /* 第 1 节：请求分块 */
 const S1 = {model:'lite', view:'prop', sel:'tools', ub:24};

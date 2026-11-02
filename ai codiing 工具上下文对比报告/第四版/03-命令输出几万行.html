@@ -4,104 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>命令输出几万行</title>
+<link rel="stylesheet" href="assets/book.css">
+<script src="assets/book.js"></script>
 <style>
-:root{
-  --bg:#fbfaf7; --fg:#1f2430; --muted:#5d6676; --card:#ffffff; --line:#e3e0d8; --accent:#2b5fd9;
-  --tools:#b45a08; --system:#2f62c9; --session:#0f7a6e; --project:#3f7a22; --user:#7c4ec4; --reply:#6b7280; --on:#ffffff;
-  --ok:#1f7a3d; --bad:#b3261e; --half:#9a6200; --note-bg:#fff4e0; --note-line:#e8c27a; --code-bg:#f3f1ea;
-  --cut:#c9453b; --keep:#3f7a22; --ans-bg:#eef6ef; --ans-line:#9cc9a6; --cmp-bg:#eef2fb; --cmp-line:#a9bce6;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#14171c; --fg:#e6e8ee; --muted:#9aa3b2; --card:#1c2028; --line:#2c323d; --accent:#7aa2f7;
-    --tools:#f0a24f; --system:#7aa2f7; --session:#4fd1c0; --project:#8bd16a; --user:#c4a3f5; --reply:#9aa3b2; --on:#10131a;
-    --ok:#6fd08c; --bad:#ff8a80; --half:#f0b95a; --note-bg:#2a2418; --note-line:#6b5a2a; --code-bg:#12151a;
-    --cut:#ff8a80; --keep:#8bd16a; --ans-bg:#17251b; --ans-line:#3c6b47; --cmp-bg:#18202f; --cmp-line:#3a4d75;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#14171c; --fg:#e6e8ee; --muted:#9aa3b2; --card:#1c2028; --line:#2c323d; --accent:#7aa2f7;
-  --tools:#f0a24f; --system:#7aa2f7; --session:#4fd1c0; --project:#8bd16a; --user:#c4a3f5; --reply:#9aa3b2; --on:#10131a;
-  --ok:#6fd08c; --bad:#ff8a80; --half:#f0b95a; --note-bg:#2a2418; --note-line:#6b5a2a; --code-bg:#12151a;
-  --cut:#ff8a80; --keep:#8bd16a; --ans-bg:#17251b; --ans-line:#3c6b47; --cmp-bg:#18202f; --cmp-line:#3a4d75;
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
-main{max-width:880px;margin:0 auto;padding:20px 16px 80px}
-a{color:var(--accent)}
-h1{font-size:1.7rem;line-height:1.35;margin:.2em 0 .4em}
-h2{font-size:1.3rem;margin:0 0 .6em}
-h3{font-size:1.05rem;margin:1.3em 0 .4em}
-p{margin:.6em 0}
-.kicker{color:var(--muted);font-size:.9rem;margin:0}
-.lede{font-size:1.05rem}
-section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 18px 14px;margin:18px 0}
-code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em}
-code{background:var(--code-bg);padding:.08em .35em;border-radius:4px;word-break:break-word}
-pre{background:var(--code-bg);padding:10px 12px;border-radius:8px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:.6em 0}
-sup a{text-decoration:none;font-size:.75em;padding:0 1px}
-.note{background:var(--note-bg);border:1px solid var(--note-line);border-radius:8px;padding:8px 12px;margin:.8em 0;font-size:.95em}
-.answer{background:var(--ans-bg);border:1px solid var(--ans-line);border-left:6px solid var(--ok);border-radius:8px;padding:10px 14px;margin:1em 0}
-.answer .qh{font-size:.85rem;color:var(--ok);font-weight:700;margin:0}
-.answer .qq{font-weight:600;margin:.2em 0 .3em}
-.compare{background:var(--cmp-bg);border:1px solid var(--cmp-line);border-radius:8px;padding:10px 14px;margin:1em 0}
-.compare h3{margin-top:.2em}
-.qs ol{padding-left:1.4em;margin:.4em 0}
-.qs li{margin:.5em 0}
-.qs .jump{font-size:.85rem;margin-left:.4em;white-space:nowrap}
-.tag{display:inline-block;font-size:.78rem;border-radius:999px;padding:0 .6em;border:1px solid var(--line);color:var(--muted);margin-right:.3em;vertical-align:middle}
-.lvl-h{color:var(--ok);border-color:var(--ok)} .lvl-m{color:var(--half);border-color:var(--half)} .lvl-l{color:var(--bad);border-color:var(--bad)}
-table{border-collapse:collapse;width:100%;font-size:.93em}
-th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
-th{color:var(--muted);font-weight:600}
-td.num{text-align:right;white-space:nowrap}
-.tablewrap{overflow-x:auto}
-.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
-.ctrl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:.6em 0}
-.btn{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:3px 10px;cursor:pointer}
-.btn[aria-pressed="true"]{background:var(--accent);color:var(--on);border-color:var(--accent)}
-input[type=range]{width:min(100%,360px);accent-color:var(--accent)}
-.bar{display:flex;gap:2px;width:100%;height:62px;margin:.7em 0 .3em}
-.bar button{border:0;border-radius:4px;color:var(--on);font:inherit;font-size:.78rem;padding:0 3px;overflow:hidden;white-space:nowrap;cursor:pointer;min-width:5px;opacity:.92}
-.bar button[aria-pressed="true"]{outline:3px solid var(--fg);outline-offset:1px;opacity:1}
-.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.85rem;color:var(--muted)}
-.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.k-tools{background:var(--tools)}.k-system{background:var(--system)}.k-session{background:var(--session)}.k-project{background:var(--project)}.k-user{background:var(--user)}.k-reply{background:var(--reply)}
-.panel{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:10px;background:var(--bg)}
-.panel pre{max-height:210px}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin:.4em 0}
-.chip{border-radius:6px;padding:2px 8px;font-size:.82rem;color:var(--on)}
-.chip.dim{opacity:.38}.chip.new{outline:3px solid var(--fg)}
-.rowlabel{font-size:.85rem;color:var(--muted);margin-top:.8em}
-.big{font-size:1.1rem;font-weight:600}
-.meter{position:relative;height:30px;background:var(--code-bg);border-radius:6px;overflow:hidden;display:flex;margin:.5em 0}
-.meter div{height:100%}
-.meter .keep{background:var(--keep)}.meter .cut{background:var(--cut)}.meter .rootp{background:var(--system)}.meter .subp{background:var(--session)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.ladder{display:grid;gap:8px;margin:.6em 0}
-.ladder div{border-left:6px solid;border-radius:6px;padding:6px 12px;background:var(--bg)}
-.theme{position:fixed;top:10px;right:10px;z-index:5}
-ul,ol{padding-left:1.3em;margin:.4em 0}
-@media (max-width:620px){.grid2{grid-template-columns:1fr}.bar{height:54px}h1{font-size:1.45rem}}
+/* 本章专用：第 2 节「四道闸」 */
 .gates{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:.6em 0}
-.gates .g{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);display:flex;flex-direction:column;gap:2px;font-size:.86rem}
+.gates .g{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--card);display:flex;flex-direction:column;gap:2px;font-size:.86rem}
 .gates .g.hit{border:2px solid var(--cut)}
 .gates .g.off{opacity:.45}
-.btn:disabled{opacity:.4;cursor:not-allowed}
 @media (max-width:620px){.gates{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 
-<body>
-<button class="btn theme" id="themeBtn" aria-label="切换浅色/深色">◐</button>
-<main>
-<p class="kicker">第 3 章 · 命令输出几万行 · 2026-11-02 · 条件：Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> / 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code>；对照模型 <code>gpt-5.5</code>，思考级别 <code>low</code></p>
+<body class="chapter">
+<main class="page">
+<header class="chap-head">
+<p class="kicker">第 3 章</p>
 <h1>命令输出了 5 万行，模型只看到头尾约 1 万 token</h1>
+<p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code>；对照 <code>gpt-5.5</code>，思考级别 <code>low</code></p>
+</header>
 <p class="lede">让 agent 跑一条命令，输出 5 万行、约 29 万字节。整份放进请求要 7.2 万 token，是第 2 章那次完整请求的 5 倍多。Codex 只放进去约 1 万 token：开头一段、结尾一段，中间换成一行标记。这一章看它截在哪、模型知不知道、截掉的能不能找回、上限能不能调，以及同样的命令跑多了会怎样。</p>
 <p class="note">本章的例子是 <code>seq 1 50000</code>：打印 1 到 50000，每个数一行。token 仍是 Codex 的估算：UTF-8 字节数 ÷ 4，向上取整（见第 2 章）。实验用本机假服务器让 Codex 真的执行命令，再抓下一次请求，不联网。<sup><a href="#e16">16</a></sup></p>
 
 <section class="qs" id="qs">
-<h2>带着这 5 个问题往下读</h2>
+<h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
 <ol>
 <li id="q1">你让 agent 跑 <code>seq 1 50000</code>，输出 288,894 字节，Codex 估算 72,224 token。模型看到的是全部、开头、结尾，还是别的？大约多少 token？<a class="jump" href="#a1">答案 ↓</a></li>
 <li id="q2">被截掉的部分，模型知道自己没看到吗？它从哪看出来？<a class="jump" href="#a2">答案 ↓</a></li>
@@ -112,7 +38,7 @@ ul,ol{padding-left:1.3em;margin:.4em 0}
 </section>
 
 <section id="s1">
-<h2>1 5 万行，模型看到哪几行</h2>
+<h2><span class="sn">1</span>5 万行，模型看到哪几行</h2>
 <p>朴素的做法有三种，各有毛病。整份放进去：一条命令 7.2 万 token，比请求里其他内容加起来还多，输出再大就装不下。只留开头：测试和编译的失败摘要通常在最后。只留结尾：丢了开头那段「命令在做什么」和最早的报错。</p>
 <p>Codex 的做法是<b>留头留尾，中间挖掉</b>。默认上限 1 万 token，换成字节是 4 万：开头 2 万字节、结尾 2 万字节，中间换成一行 <code>…62224 tokens truncated…</code>（截掉了 62,224 token）。<sup><a href="#e3">3</a></sup></p>
 <p>实测 gpt-6.1-sol：进入请求的输出是 40,158 字节，约 10,040 token。保留的是第 1–4,221 行和第 46,668–50,000 行，中间 42,446 行丢掉，第 25,000 行就在里面。两个切口都落在行中间，所以标记前后各有半个数字。<sup><a href="#e1">1</a></sup> 换成 gpt-5.5，切点完全一样，大小 40,217 字节。<sup><a href="#e2">2</a></sup> 标记和说明不算在 1 万里，所以结果比 1 万略多。</p>
@@ -157,7 +83,7 @@ Total output lines: 50000
 </section>
 
 <section id="s2">
-<h2>2 截在哪：最多四道闸</h2>
+<h2><span class="sn">2</span>截在哪：最多四道闸</h2>
 <p>上面那 1 万 token 不是在一处定下的。输出从命令到请求，最多经过四处截断，哪几处起作用跟模型有关：gpt-5.5 直接调用命令工具 <code>exec_command</code>；gpt-6.1-sol 不直接调，它写一段 JavaScript 交给代码工具 <code>exec</code> 运行，JS 里再调 <code>exec_command</code>。第 2 章说 gpt-6.1-sol 有「3 组共 11 个工具」，<code>exec</code> 就在里面。</p>
 <div class="tablewrap"><table>
 <tr><th>闸</th><th>在哪</th><th>默认上限</th><th>谁能改、怎么改</th></tr>
@@ -212,7 +138,7 @@ Total output lines: 50000
 </section>
 
 <section id="s3">
-<h2>3 截掉的那段去哪了</h2>
+<h2><span class="sn">3</span>截掉的那段去哪了</h2>
 <p>直觉是：Codex 会把会话写进存档，截掉的应该还在存档里。查了 4 次 gpt-6.1-sol 实验的存档（<code>~/.codex/sessions/</code> 下的 <code>.jsonl</code> 文件），<b>原始输出哪里都没有</b>：5 万行的存档里搜不到第 25,000 行。<sup><a href="#e10">10</a></sup><sup><a href="#e11">11</a></sup></p>
 <div class="tablewrap"><table>
 <tr><th>实验（gpt-6.1-sol，<code>seq 1 50000</code>）</th><th>进入请求</th><th>存档里那条</th></tr>
@@ -250,7 +176,7 @@ Total output lines: 50000
 </section>
 
 <section id="s4">
-<h2>4 跑 10 次，前面的输出还在吗</h2>
+<h2><span class="sn">4</span>跑 10 次，前面的输出还在吗</h2>
 <p>在。输出写进历史以后，之后每次请求都带着它。第 2 章讲过：走 HTTP 时整份重发；走 WebSocket 时线上只发新增的部分，但模型看到的仍是全部。Codex 源码里没找到清理旧工具输出的机制【源码搜索，没穷尽】。<sup><a href="#e13">13</a></sup></p>
 <p>量一下有多大。这条输出放进请求是 47,910 字节，比正文的 40,158 字节多出约 7,700 字节，因为每个换行在请求的 JSON 里要写成 <code>\n</code> 两个字符。加上模型发起调用的那条，第二次请求从 54,808 字节涨到 102,921 字节，多了约 1.2 万 token。<sup><a href="#e12">12</a></sup></p>
 <div class="ctrl"><label for="rn">已经跑了 <b id="rnv">1</b> 次</label><input type="range" id="rn" min="0" max="10" step="1" value="1"></div>
@@ -266,7 +192,7 @@ Total output lines: 50000
 <p>不会。每次约 1.2 万 token 都留在历史里，之后每次请求都重发；跑完 10 次，之后每次请求都多带约 12 万 token（按单次实验推算）。只有压缩或新开会话能让它们离开。</p>
 </div>
 
-<div class="compare">
+<div class="source">
 <h3>看源码：上限取较小的那个</h3>
 <p><code>core/src/unified_exec/mod.rs</code> 第 74、221–223 行，<code>core/src/tools/context.rs</code> 第 469–472、482–489 行，节选，注释是我加的。<sup><a href="#e6">6</a></sup><sup><a href="#e7">7</a></sup></p>
 <pre>pub(crate) const DEFAULT_MAX_OUTPUT_TOKENS: usize = 10_000;
@@ -345,16 +271,6 @@ output: match self.max_output_tokens {
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const fmt = n => Number(n).toLocaleString('en-US');
 const press = (sel, el) => $$(sel).forEach(x => x.setAttribute('aria-pressed', x === el));
-
-/* 主题 */
-try{const t=localStorage.getItem('ctx4-theme'); if(t) document.documentElement.dataset.theme=t;}catch(e){}
-$('#themeBtn').onclick=()=>{
-  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-  const cur = document.documentElement.dataset.theme || (dark?'dark':'light');
-  const nx = cur==='dark'?'light':'dark';
-  document.documentElement.dataset.theme = nx;
-  try{localStorage.setItem('ctx4-theme',nx)}catch(e){}
-};
 
 /* 第 1 节：seq 1 N 留下哪几行（按源码规则：上限 1 万 token = 4 万字节，头尾各 2 万） */
 const HEAD = 20000, TAIL = 20000, BUD = 40000, MIB = 1048576, LIMIT = 10000;
