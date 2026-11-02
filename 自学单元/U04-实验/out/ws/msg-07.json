@@ -1,0 +1,31 @@
+{
+ "type": "response.create",
+ "model": "gpt-6.1-sol",
+ "stream": true,
+ "input": [],
+ "tool_choice": "auto",
+ "parallel_tool_calls": false,
+ "reasoning": {
+  "effort": "low",
+  "context": "all_turns"
+ },
+ "store": false,
+ "include": [
+  "reasoning.encrypted_content"
+ ],
+ "prompt_cache_key": "01a19b5f-5d19-7fb1-8a31-ea449953df94",
+ "text": {
+  "verbosity": "low"
+ },
+ "generate": false,
+ "client_metadata": {
+  "session_id": "01a19b5f-5d19-7fb1-8a31-ea449953df94",
+  "x-codex-installation-id": "94bd013a-93a8-42fc-b916-1923785b6377",
+  "ws_request_header_x_openai_internal_codex_responses_lite": "true",
+  "x-codex-window-id": "01a19b5f-5d19-7fb1-8a31-ea449953df94:0",
+  "x-codex-ws-stream-request-start-ms": "1793608081432",
+  "turn_id": "",
+  "x-codex-turn-metadata": "{\"installation_id\":\"94bd013a-93a8-42fc-b916-1923785b6377\",\"session_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94\",\"thread_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94\",\"agent_name\":\"/root\",\"turn_id\":\"\",\"window_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94:0\",\"window_number\":0,\"context_window_id\":\"01a19b5f-5d1a-7732-80d6-bab50076cc87\",\"request_kind\":\"prewarm\",\"history_initialization\":\"cold_resume\",\"thread_source\":\"user\",\"sandbox\":\"seccomp\",\"sandbox_mode\":\"read-only\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"analytics_enabled\":false,\"model\":\"gpt-6.1-sol\",\"reasoning_effort\":\"low\"}",
+  "thread_id": "01a19b5f-5d19-7fb1-8a31-ea449953df94"
+ }
+}

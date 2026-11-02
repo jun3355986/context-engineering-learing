@@ -1,0 +1,65 @@
+[
+ {
+  "n": 1,
+  "thread": "P",
+  "bytes": 38164,
+  "model": "gpt-5.5",
+  "prompt_cache_key": "01a19b85-f104-7dd0-bd30-662d59867281",
+  "thread_id": "01a19b85-f104-7dd0-bd30-662d59867281",
+  "subagent": null,
+  "parent_thread": null,
+  "top_tools": [
+   "exec_command",
+   "write_stdin",
+   "request_user_input",
+   "apply_patch",
+   "view_image",
+   "get_goal",
+   "create_goal",
+   "update_goal",
+   "tool_search"
+  ],
+  "top_tools_bytes": 9414,
+  "client_metadata_keys": [
+   "root_turn_id",
+   "session_id",
+   "thread_id",
+   "turn_id",
+   "x-codex-installation-id",
+   "x-codex-turn-metadata",
+   "x-codex-window-id"
+  ],
+  "items": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 21619,
+    "role": "developer",
+    "head": "You are Codex, a coding agent based on GPT-5. You and the user share one workspace, and your job is to collaborate with them until their goal is genuinely handl"
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 5065,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be us"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u06-x32g75hv/ws  <INSTRUCTIONS> # U06 实验用规则 本目录是合成的实验目录。  </INSTRUCTIONS>"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 182,
+    "role": "user",
+    "head": "【U06】请查一下服务日志有没有异常"
+   }
+  ],
+  "replied_with": "text",
+  "t": 608.99
+ }
+]

@@ -1,0 +1,20 @@
+[
+ {
+  "turn": 1,
+  "rc": 0,
+  "stderr_tail": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"/tmp\" (codex_home: AbsolutePathBuf(\"/tmp/u04-trstmtfi/home\"))\nReading additional input from stdin...\n",
+  "stdout_tail": "{\"type\":\"thread.started\",\"thread_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"agent_message\",\"text\":\"REPLY-resp_4：好的。\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":150000,\"cached_input_tokens\":12963,\"cache_write_input_tokens\":0,\"output_tokens\":30,\"reasoning_output_tokens\":0}}\n"
+ },
+ {
+  "turn": 2,
+  "rc": 0,
+  "stderr_tail": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"/tmp\" (codex_home: AbsolutePathBuf(\"/tmp/u04-trstmtfi/home\"))\n",
+  "stdout_tail": "{\"type\":\"thread.started\",\"thread_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"agent_message\",\"text\":\"REPLY-resp_6：好的。\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":200000,\"cached_input_tokens\":17284,\"cache_write_input_tokens\":0,\"output_tokens\":40,\"reasoning_output_tokens\":0}}\n"
+ },
+ {
+  "turn": 3,
+  "rc": 0,
+  "stderr_tail": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"/tmp\" (codex_home: AbsolutePathBuf(\"/tmp/u04-trstmtfi/home\"))\n",
+  "stdout_tail": "{\"type\":\"thread.started\",\"thread_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"agent_message\",\"text\":\"REPLY-resp_8：好的。\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":250000,\"cached_input_tokens\":21605,\"cache_write_input_tokens\":0,\"output_tokens\":50,\"reasoning_output_tokens\":0}}\n"
+ }
+]

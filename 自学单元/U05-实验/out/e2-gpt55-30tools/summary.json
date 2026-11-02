@@ -1,0 +1,116 @@
+[
+ {
+  "n": 1,
+  "phase": 1,
+  "bytes": 40042,
+  "top_tools": [
+   "exec_command",
+   "write_stdin",
+   "list_mcp_resources",
+   "list_mcp_resource_templates",
+   "read_mcp_resource",
+   "request_user_input",
+   "apply_patch",
+   "view_image",
+   "get_goal",
+   "create_goal",
+   "update_goal",
+   "tool_search"
+  ],
+  "top_tools_bytes": 11397,
+  "items": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 21619,
+    "role": "developer",
+    "head": "You are Codex, a coding agent based on GPT-5. You and the user share o"
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 5065,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-7ff4vmw5/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   }
+  ],
+  "replied_with": "sleep:3000"
+ },
+ {
+  "n": 2,
+  "phase": 1,
+  "bytes": 40310,
+  "top_tools": [
+   "exec_command",
+   "write_stdin",
+   "list_mcp_resources",
+   "list_mcp_resource_templates",
+   "read_mcp_resource",
+   "request_user_input",
+   "apply_patch",
+   "view_image",
+   "get_goal",
+   "create_goal",
+   "update_goal",
+   "tool_search"
+  ],
+  "top_tools_bytes": 11397,
+  "items": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 21619,
+    "role": "developer",
+    "head": "You are Codex, a coding agent based on GPT-5. You and the user share o"
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 5065,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-7ff4vmw5/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   },
+   {
+    "i": 4,
+    "type": "function_call",
+    "bytes": 139,
+    "call": "clock.sleep \"{\\\"duration_ms\\\": 3000}\""
+   },
+   {
+    "i": 5,
+    "type": "function_call_output",
+    "bytes": 145,
+    "output": "unsupported call: clocksleep"
+   }
+  ],
+  "replied_with": "text"
+ }
+]

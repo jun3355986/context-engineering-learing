@@ -1,0 +1,32 @@
+[
+ {
+  "turn": 1,
+  "rc": 0,
+  "stderr_tail": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"/tmp\" (codex_home: AbsolutePathBuf(\"/tmp/u03-f3wrkupo/home\"))\nReading additional input from stdin...\nOpenAI Codex v0.165.0\n--------\nworkdir: /tmp/u03-f3wrkupo/ws\nmodel: gpt-6.1-sol\nprovider: mock\napproval: never\nsandbox: read-only\nreasoning effort: low\nreasoning summaries: none\nsession id: 01a19b3c-7fa0-7e13-b686-ea42eba88aad\n--------\nuser\n【第1轮】我叫 Drake。规则：不要改数据库 schema。先跑一下 seq 看看。\nwarning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.\ncodex\nREPLY-T1：好的。\ntokens used\n2,000\n",
+  "stdout_tail": "REPLY-T1：好的。\n"
+ },
+ {
+  "turn": 2,
+  "rc": 0,
+  "stderr_tail": "A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A LONG-A \nwarning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.\ncodex\nREPLY-T2：好的。\ntokens used\n3,000\n",
+  "stdout_tail": "REPLY-T2：好的。\n"
+ },
+ {
+  "turn": 3,
+  "rc": 0,
+  "stderr_tail": "LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B LONG-B \nwarning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.\ncodex\nREPLY-T3：好的。\ntokens used\n123,000\n",
+  "stdout_tail": "REPLY-T3：好的。\n"
+ },
+ {
+  "turn": 4,
+  "rc": 0,
+  "stderr_tail": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"/tmp\" (codex_home: AbsolutePathBuf(\"/tmp/u03-f3wrkupo/home\"))\nOpenAI Codex v0.165.0\n--------\nworkdir: /tmp/u03-f3wrkupo/ws\nmodel: gpt-6.1-sol\nprovider: mock\napproval: never\nsandbox: read-only\nreasoning effort: low\nreasoning summaries: none\nsession id: 01a19b3c-7fa0-7e13-b686-ea42eba88aad\n--------\nuser\n【第4轮】继续。\nwarning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.\ncontext compacted\ncodex\nREPLY-T4：好的。\ntokens used\n127,000\n",
+  "stdout_tail": "REPLY-T4：好的。\n"
+ },
+ {
+  "turn": 5,
+  "rc": 0,
+  "stderr_tail": "WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir \"/tmp\" (codex_home: AbsolutePathBuf(\"/tmp/u03-f3wrkupo/home\"))\nOpenAI Codex v0.165.0\n--------\nworkdir: /tmp/u03-f3wrkupo/ws\nmodel: gpt-6.1-sol\nprovider: mock\napproval: never\nsandbox: read-only\nreasoning effort: low\nreasoning summaries: none\nsession id: 01a19b3c-7fa0-7e13-b686-ea42eba88aad\n--------\nuser\n【第5轮】还记得我叫什么吗？\nwarning: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.\ncodex\nREPLY-T5：好的。\ntokens used\n128,000\n",
+  "stdout_tail": "REPLY-T5：好的。\n"
+ }
+]

@@ -1,0 +1,132 @@
+[
+ {
+  "process": 1,
+  "cmd_tail": "--json --skip-git-repo-check -C /tmp/u04-trstmtfi/ws 【第1轮】先调两次工具看看。"
+ },
+ {
+  "ws_handshake": "/v1/responses",
+  "extensions": "permessage-deflate; client_max_window_bits"
+ },
+ {
+  "n": 1,
+  "transport": "ws",
+  "type": "response.create",
+  "generate": false,
+  "previous_response_id": null,
+  "sent_input_items": 0,
+  "sent_bytes": 1466,
+  "full_input_items": 0,
+  "full_input_bytes": 2,
+  "reply": []
+ },
+ {
+  "n": 2,
+  "transport": "ws",
+  "type": "response.create",
+  "generate": true,
+  "previous_response_id": "resp_1",
+  "sent_input_items": 7,
+  "sent_bytes": 56614,
+  "full_input_items": 7,
+  "full_input_bytes": 54884,
+  "reply": [
+   "custom_tool_call"
+  ]
+ },
+ {
+  "n": 3,
+  "transport": "ws",
+  "type": "response.create",
+  "generate": true,
+  "previous_response_id": "resp_2",
+  "sent_input_items": 1,
+  "sent_bytes": 1989,
+  "full_input_items": 9,
+  "full_input_bytes": 55270,
+  "reply": [
+   "custom_tool_call"
+  ]
+ },
+ {
+  "n": 4,
+  "transport": "ws",
+  "type": "response.create",
+  "generate": true,
+  "previous_response_id": "resp_3",
+  "sent_input_items": 1,
+  "sent_bytes": 1989,
+  "full_input_items": 11,
+  "full_input_bytes": 55656,
+  "reply": [
+   "message"
+  ]
+ },
+ {
+  "process": 2,
+  "cmd_tail": "--json --skip-git-repo-check -C /tmp/u04-trstmtfi/ws resume --last 【第2轮】继续。"
+ },
+ {
+  "ws_handshake": "/v1/responses",
+  "extensions": "permessage-deflate; client_max_window_bits"
+ },
+ {
+  "n": 5,
+  "transport": "ws",
+  "type": "response.create",
+  "generate": false,
+  "previous_response_id": null,
+  "sent_input_items": 0,
+  "sent_bytes": 1474,
+  "full_input_items": 0,
+  "full_input_bytes": 2,
+  "reply": []
+ },
+ {
+  "n": 6,
+  "transport": "ws",
+  "type": "response.create",
+  "generate": true,
+  "previous_response_id": "resp_5",
+  "sent_input_items": 13,
+  "sent_bytes": 57688,
+  "full_input_items": 13,
+  "full_input_bytes": 55950,
+  "reply": [
+   "message"
+  ]
+ },
+ {
+  "process": 3,
+  "cmd_tail": "--json --skip-git-repo-check -C /tmp/u04-trstmtfi/ws -c features.sleep_tool=false resume --last 【第3轮】关掉一个工具后再继续。"
+ },
+ {
+  "ws_handshake": "/v1/responses",
+  "extensions": "permessage-deflate; client_max_window_bits"
+ },
+ {
+  "n": 7,
+  "transport": "ws",
+  "type": "response.create",
+  "generate": false,
+  "previous_response_id": null,
+  "sent_input_items": 0,
+  "sent_bytes": 1474,
+  "full_input_items": 0,
+  "full_input_bytes": 2,
+  "reply": []
+ },
+ {
+  "n": 8,
+  "transport": "ws",
+  "type": "response.create",
+  "generate": true,
+  "previous_response_id": "resp_7",
+  "sent_input_items": 16,
+  "sent_bytes": 58282,
+  "full_input_items": 16,
+  "full_input_bytes": 56544,
+  "reply": [
+   "message"
+  ]
+ }
+]

@@ -1,0 +1,116 @@
+[
+ {
+  "n": 1,
+  "phase": 1,
+  "bytes": 63834,
+  "top_tools": [
+   "exec_command",
+   "write_stdin",
+   "list_mcp_resources",
+   "list_mcp_resource_templates",
+   "read_mcp_resource",
+   "request_user_input",
+   "view_image",
+   "multi_agent_v1[close_agent,resume_agent,send_input,spawn_agent,wait_agent]",
+   "mcp__bulk[fake_tool_00,fake_tool_01,fake_tool_02,fake_tool_03,fake_tool_04,fake_tool_05,fake_tool_06,fake_tool_07,fake_tool_08,fake_tool_09,fake_tool_10,fake_tool_11,fake_tool_12,fake_tool_13,fake_tool_14,fake_tool_15,fake_tool_16,fake_tool_17,fake_tool_18,fake_tool_19,fake_tool_20,fake_tool_21,fake_tool_22,fake_tool_23,fake_tool_24,fake_tool_25,fake_tool_26,fake_tool_27,fake_tool_28,fake_tool_29,fake_tool_30,fake_tool_31,fake_tool_32,fake_tool_33,fake_tool_34,fake_tool_35,fake_tool_36,fake_tool_37,fake_tool_38,fake_tool_39]",
+   "get_goal",
+   "create_goal",
+   "update_goal"
+  ],
+  "top_tools_bytes": 43239,
+  "items": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 17480,
+    "role": "developer",
+    "head": "You are a coding agent running in the Codex CLI, a terminal-based codi"
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 2493,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-m3hpp_js/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   }
+  ],
+  "replied_with": "sleep:3000"
+ },
+ {
+  "n": 2,
+  "phase": 1,
+  "bytes": 64102,
+  "top_tools": [
+   "exec_command",
+   "write_stdin",
+   "list_mcp_resources",
+   "list_mcp_resource_templates",
+   "read_mcp_resource",
+   "request_user_input",
+   "view_image",
+   "multi_agent_v1[close_agent,resume_agent,send_input,spawn_agent,wait_agent]",
+   "mcp__bulk[fake_tool_00,fake_tool_01,fake_tool_02,fake_tool_03,fake_tool_04,fake_tool_05,fake_tool_06,fake_tool_07,fake_tool_08,fake_tool_09,fake_tool_10,fake_tool_11,fake_tool_12,fake_tool_13,fake_tool_14,fake_tool_15,fake_tool_16,fake_tool_17,fake_tool_18,fake_tool_19,fake_tool_20,fake_tool_21,fake_tool_22,fake_tool_23,fake_tool_24,fake_tool_25,fake_tool_26,fake_tool_27,fake_tool_28,fake_tool_29,fake_tool_30,fake_tool_31,fake_tool_32,fake_tool_33,fake_tool_34,fake_tool_35,fake_tool_36,fake_tool_37,fake_tool_38,fake_tool_39]",
+   "get_goal",
+   "create_goal",
+   "update_goal"
+  ],
+  "top_tools_bytes": 43239,
+  "items": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 17480,
+    "role": "developer",
+    "head": "You are a coding agent running in the Codex CLI, a terminal-based codi"
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 2493,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-m3hpp_js/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   },
+   {
+    "i": 4,
+    "type": "function_call",
+    "bytes": 139,
+    "call": "clock.sleep \"{\\\"duration_ms\\\": 3000}\""
+   },
+   {
+    "i": 5,
+    "type": "function_call_output",
+    "bytes": 145,
+    "output": "unsupported call: clocksleep"
+   }
+  ],
+  "replied_with": "text"
+ }
+]

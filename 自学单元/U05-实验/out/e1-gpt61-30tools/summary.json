@@ -1,0 +1,138 @@
+[
+ {
+  "n": 1,
+  "phase": 1,
+  "bytes": 55917,
+  "top_tools": [],
+  "top_tools_bytes": 2,
+  "items": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "tools": [
+     "functions[exec,wait,request_user_input,request_user_input_async]",
+     "clock[sleep]",
+     "collaboration[followup_task,interrupt_agent,list_agents,send_message,spawn_agent,wait_agent]"
+    ]
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "role": "developer",
+    "head": "You are Codex, an agent based on GPT-6. You and the user share one wor"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "role": "developer",
+    "head": "<multi_agent_role>You are `/root`, the primary agent in a team of agen"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "role": "developer",
+    "head": "<multi_agent_mode>Any earlier instruction enabling proactive multi-age"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-htjv2ot8/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   }
+  ],
+  "replied_with": "sleep:3000"
+ },
+ {
+  "n": 2,
+  "phase": 1,
+  "bytes": 56200,
+  "top_tools": [],
+  "top_tools_bytes": 2,
+  "items": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "tools": [
+     "functions[exec,wait,request_user_input,request_user_input_async]",
+     "clock[sleep]",
+     "collaboration[followup_task,interrupt_agent,list_agents,send_message,spawn_agent,wait_agent]"
+    ]
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "role": "developer",
+    "head": "You are Codex, an agent based on GPT-6. You and the user share one wor"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "role": "developer",
+    "head": "<multi_agent_role>You are `/root`, the primary agent in a team of agen"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "role": "developer",
+    "head": "<multi_agent_mode>Any earlier instruction enabling proactive multi-age"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-htjv2ot8/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   },
+   {
+    "i": 7,
+    "type": "function_call",
+    "bytes": 139,
+    "call": "clock.sleep \"{\\\"duration_ms\\\": 3000}\""
+   },
+   {
+    "i": 8,
+    "type": "function_call_output",
+    "bytes": 160,
+    "output": "Wall time: 3.0023 seconds\nSleep completed."
+   }
+  ],
+  "replied_with": "text"
+ }
+]

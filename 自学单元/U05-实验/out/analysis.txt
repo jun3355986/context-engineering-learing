@@ -1,0 +1,57 @@
+== 一、请求里有没有 MCP 工具（取每次实验的最后一次请求）
+gpt-6.1-sol 无 MCP                  合计  54,848 字节 = 顶层 tools       0 + input  54,848（其中 additional_tools  25,347）
+gpt-6.1-sol 3 个服务器 30 个工具          合计  54,848 字节 = 顶层 tools       0 + input  54,848（其中 additional_tools  25,347）
+gpt-5.5 无 MCP                      合计  37,002 字节 = 顶层 tools   9,414 + input  27,588（其中 additional_tools       0）
+gpt-5.5 3 个服务器 30 个工具              合计  38,985 字节 = 顶层 tools  11,397 + input  27,588（其中 additional_tools       0）
+模型表里没有的名字 无 MCP                    合计  38,590 字节 = 顶层 tools  17,713 + input  20,877（其中 additional_tools       0）
+模型表里没有的名字 30 个工具                   合计  50,749 字节 = 顶层 tools  29,872 + input  20,877（其中 additional_tools       0）
+模型表里没有的名字 bulk 40 个                合计  64,116 字节 = 顶层 tools  43,239 + input  20,877（其中 additional_tools       0）
+gpt-6.1-sol 第一次请求：additional_tools 逐字相同 = True；其余 input 条目（去掉 id、临时目录名）相同 = True
+
+== gpt-5.5 的差别（顶层 tools 逐个比较）
+  list_mcp_resources: +651
+  list_mcp_resource_templates: +740
+  read_mcp_resource: +552
+  tool_search: +34
+  合计 +1977
+
+== 二、直连时一个工具占多少（模型表里没有的名字）
+  tracker 10 个: 命名空间 3,592 字节，平均 359 字节/个；另有 3 个资源工具 1,943 字节
+  tracker 只开 2 个（enabled_tools）: 命名空间 930 字节，平均 465 字节/个；另有 3 个资源工具 1,943 字节
+  三个服务器 30 个: 10,204 字节，平均 340 字节/个
+  凑数服务器 40 个: 23,575 字节，平均 589 字节/个
+  e10-unknown-three: 顶层 tools 比无 MCP 多 12,159 字节
+  e10-unknown-bulk40: 顶层 tools 比无 MCP 多 25,526 字节
+
+== 三、搜索（gpt-5.5，30 个工具）
+  {"query": "list open issues"}                              3,210 字节 8 个 ['monitor.list_incidents', 'monitor.create_incident', 'monitor.list_dashboards', 'monitor.list_alerts', 'tracker.list_issues', 'tracker.list_labels', 'database.list_tables', 'database.list_indexes']
+  {"query": "show me firing alerts"}                         2,027 字节 5 个 ['monitor.list_alerts', 'monitor.ack_alert', 'monitor.silence_alert', 'monitor.get_alert', 'database.explain_query']
+  {"query": "how many rows in the users table"}              2,977 字节 8 个 ['database.get_row_count', 'database.import_csv', 'database.list_tables', 'database.drop_index', 'database.list_indexes', 'database.describe_table', 'database.run_query', 'database.create_index']
+  {"query": "close the bug"}                                 1,728 字节 3 个 ['tracker.close_issue', 'multi_agent_v1.close_agent', 'multi_agent_v1.resume_agent']
+  {"query": "page the on-call engineer"}                       957 字节 2 个 ['monitor.ack_alert', 'monitor.create_incident']
+  {"query": "find tickets about login"}                        160 字节 0 个 []
+  {"query": "add an index"}                                  1,763 字节 4 个 ['database.drop_index', 'database.list_indexes', 'database.create_index', 'tracker.add_comment']
+  {"query": "what is the CPU usage"}                           160 字节 0 个 []
+  {"query": "列出未解决的问题单"}                                       160 字节 0 个 []
+  {"query": "list", "limit": 20}                             2,838 字节 7 个 ['monitor.list_dashboards', 'monitor.list_alerts', 'monitor.list_incidents', 'tracker.list_labels', 'tracker.list_issues', 'database.list_indexes', 'database.list_tables']
+  {"query": "issue", "limit": 3}                             1,335 字节 3 个 ['tracker.add_label', 'tracker.add_comment', 'tracker.assign_issue']
+  {"query": "list open issues", "limit": 1}                    641 字节 1 个 ['monitor.list_incidents']
+
+== 四、没搜过 / 写错名字 / 关掉的工具
+  e6-gpt55-call-without-search
+     function_call 149 mcp__tracker.list_issues "{\"state\":\"open\"}"
+     function_call_output 252 [{'type': 'input_text', 'text': 'Wall time: 0.0012 seconds\nOutput:'}, {'type': 'input_text', 'text': '[tracker.list_issues] OK (fake)'}]
+  e7-gpt55-call-wrong-name
+     function_call 150 mcp__tracker.list_tickets "{\"state\":\"open\"}"
+     function_call_output 159 unsupported call: mcp__trackerlist_tickets
+  e12-gpt61-disabled-tool-called
+     function_call 136 clock.sleep "{\"duration_ms\": 1}"
+     function_call_output 160 Wall time: 0.0050 seconds Sleep completed.
+     message 274 The following namespaces are no longer available. Do not call tools in
+     function_call 136 clock.sleep "{\"duration_ms\": 1}"
+     function_call_output 145 unsupported call: clocksleep
+
+== 五、gpt-6.1-sol 的 exec 里查工具（e9、e13）
+   输出条目 1196 字节
+   输出条目 629 字节
+    ['["apply_patch","clock__curr_time","create_goal","exec_command","get_goal","list_mcp_resource_templates","list_mcp_resources","read_mcp_resource","update_goal","view_image","write_stdin"]', '41', '18723']

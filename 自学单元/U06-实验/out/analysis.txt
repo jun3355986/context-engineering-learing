@@ -1,0 +1,72 @@
+== 一、同一件事：4 次各 3 万字节的日志，自己做 vs 派子代理
+
+[s3-inline] 请求 5 次，输入合计 573,510 字节 ≈ 143,378 token
+  P: 5 次请求 54,878 → 84,790 → 114,702 → 144,614 → 174,526  （合计 573,510）
+
+[s1-fork-default] 请求 8 次，输入合计 761,485 字节 ≈ 190,372 token
+  C1: 5 次请求 59,292 → 89,204 → 119,116 → 149,028 → 178,940  （合计 595,580）
+  P: 3 次请求 54,878 → 55,217 → 55,810  （合计 165,905）
+
+[s2-fork-none] 请求 8 次，输入合计 732,677 字节 ≈ 183,170 token
+  C1: 5 次请求 53,520 → 83,432 → 113,344 → 143,256 → 173,168  （合计 566,720）
+  P: 3 次请求 54,878 → 55,243 → 55,836  （合计 165,957）
+
+s1-fork-default 比自己做多 187,975 字节（32.8%）
+
+s2-fork-none 比自己做多 159,167 字节（27.8%）
+s1-fork-default: 父会话最后一次请求 55,810；自己做是 174,526；少 118,716 字节 ≈ 29,679 token
+   父会话从第 1 次到最后一次只多了 932 字节 ≈ 233 token
+s2-fork-none: 父会话最后一次请求 55,836；自己做是 174,526；少 118,690 字节 ≈ 29,673 token
+   父会话从第 1 次到最后一次只多了 958 字节 ≈ 240 token
+
+== 二、子代理第一次请求带了什么（相同前缀 = 和父的请求逐条一致的开头）
+[s1-fork-default] 子的第 1 次请求 59,292 字节，14 条；与父 spawn 后那次请求的相同前缀 8 条 55,070 字节
+   [0] additional_tools      25,347  
+   [1] message               22,148  You are Codex, an agent based on GPT-6. You and the user share one wor
+   [2] message                3,464  <skills_instructions> ## Skills A skill is a set of local instructions
+   [3] message                2,575  <multi_agent_role>You are `/root`, the primary agent in a team of agen
+   [4] message                  410  <multi_agent_mode>Any earlier instruction enabling proactive multi-age
+   [5] message                  752  # AGENTS.md instructions for /tmp/u06-7k6b9t39/ws  <INSTRUCTIONS> # U0
+   [6] message                  182  【U06】请查一下服务日志有没有异常
+   [7] function_call            192  collaboration.spawn_agent "{\"task_name\": \"scan\", \"message\": \"请查
+   [8] function_call_output     124  aborted
+   [9] message                  504  You are now a newly spawned child agent. The preceding conversation is
+   [10] message                2,628  <multi_agent_role>You are an agent in a team of agents collaborating t
+   [11] message                  239  The following tools are no longer available. Do not call them: - funct
+   [12] message                  410  <multi_agent_mode>Any earlier instruction enabling proactive multi-age
+   [13] agent_message            317  
+[s2-fork-none] 子的第 1 次请求 53,520 字节，7 条；与父 spawn 后那次请求的相同前缀 0 条 0 字节
+   [0] additional_tools      23,801  
+   [1] message               22,148  You are Codex, an agent based on GPT-6. You and the user share one wor
+   [2] message                3,464  <skills_instructions> ## Skills A skill is a set of local instructions
+   [3] message                2,628  <multi_agent_role>You are an agent in a team of agents collaborating t
+   [4] message                  410  <multi_agent_mode>Any earlier instruction enabling proactive multi-age
+   [5] message                  752  # AGENTS.md instructions for /tmp/u06-4oaprupv/ws  <INSTRUCTIONS> # U0
+   [6] agent_message            317  
+
+== 三、第一次请求（父会话）里，子代理相关的块有多大（gpt-6.1-sol，思考级别 low，无 MCP）
+默认                                 合计  54,878（+0）  协作工具 5,529  角色说明 2,575  开关说明  410
+[agents] enabled=false             合计  46,362（-8,516）  协作工具     0  角色说明     0  开关说明    0
+features.multi_agent=false         合计  54,878（+0）  协作工具 5,529  角色说明 2,575  开关说明  410
+features.multi_agent_v2=false      合计  54,878（+0）  协作工具 5,529  角色说明 2,575  开关说明  410
+root_agent_usage_hint_text=""      合计  52,303（-2,575）  协作工具 5,529  角色说明     0  开关说明  410
+multi_agent_mode_hint_text=""      合计  54,468（-410）  协作工具 5,529  角色说明 2,575  开关说明    0
+两个都置空                              合计  51,893（-2,985）  协作工具 5,529  角色说明     0  开关说明    0
+disable_native_tools=true          合计  49,347（-5,531）  协作工具     0  角色说明 2,575  开关说明  410
+思考级别 ultra                         合计  55,129（+251）  协作工具 5,529  角色说明 2,575  开关说明  661
+
+== 四、gpt-5.5（思考级别 low）
+默认                             合计  37,032  顶层 tools  9,414  input 4 条  无子代理说明
+features.multi_agent_v2=true   合计  44,553  顶层 tools 14,116  input 6 条  [3] 410B <multi_agent_mode>Any earlie
+[agents] enabled=false         合计  36,203  顶层 tools  8,585  input 4 条  无子代理说明
+
+== 五、gpt-5.5 派子代理（V1，fork_context 缺省 = false）
+  req1 P 4 条 38,989 字节  回复 search:spawn a sub-agent|8
+  req2 P 6 条 49,592 字节  回复 call:multi_agent_v1:spawn_agent:{"message":"请查服务日志，只回结论"}
+  req3 P 8 条 49,973 字节  回复 call:multi_agent_v1:wait_agent:{"targets":["@AGENT@"],"timeo
+  req4 C1 4 条 38,923 字节  回复 dump
+  req5 C1 6 条 68,835 字节  回复 dump
+  req6 C1 8 条 98,747 字节  回复 dump
+  req7 C1 10 条 128,659 字节  回复 dump
+  req8 C1 12 条 158,571 字节  回复 text:结论：日志无异常
+  req9 P 11 条 50,715 字节  回复 text:父的最终回复

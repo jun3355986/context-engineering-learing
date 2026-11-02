@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>子代理省了什么</title>
+<link rel="stylesheet" href="assets/book.css">
+<script src="assets/book.js"></script>
+<style>
+/* 本章专用：第四节「关」的配置片段 */
+.cfg{margin:.4em 0;white-space:pre-wrap}
+</style>
+</head>
+
+<body class="chapter">
+<main class="page">
+<header class="chap-head">
+<p class="kicker">第 7 章</p>
+<h1>子代理读完 12 万字节的日志，父会话只多了 932 字节；整个过程发出的输入却多了 33%</h1>
+<p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>、<code>gpt-5.5</code>，思考级别都是 <code>low</code>（注明的除外）· 对照 Claude Code 官方文档（2026-11-02 查阅）</p>
+</header>
+
+<p class="lede">实验里让 gpt-6.1-sol 派一个子代理读 4 份各约 3 万字节的日志：子代理自己的请求从 59,292 涨到 178,940 字节，父会话的请求只从 54,878 涨到 55,810 字节。但整个过程发出去的输入合计 761,485 字节，比父会话自己读（573,510 字节）多 33%。子代理省的是父会话的窗口，不是总量。</p>
+<p class="note"><b>子代理</b>：父会话（你正在对话的那个会话）派出去干活的另一个会话，有自己的历史和窗口，干完把结果交回来。本章实验在 <code>自学单元/U06-实验/</code>：本机假 Responses 服务器同时扮演父会话和子代理（按请求里的 <code>client_metadata.thread_id</code> 分线程），日志来自假 MCP 服务器 <code>u06_fake_mcp.py</code> 的 <code>dump_log</code>（一次返回 400 行、29,769 字节）。模型的回答是剧本写死的，所以本章回答「请求里装了什么、发了多少字节」，不回答「真实模型会不会在该派的时候派」。请求大小的口径同第 2 章：每条 <code>input</code> 条目 <code>json.dumps</code> 字节数相加，再加顶层 <code>tools</code> 字段；token 按「字节 ÷ 4」估算。</p>
+
+<section class="qs" id="qs">
+<h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
+<ol>
+<li id="q1">你用 gpt-6.1-sol 问 Codex 一句话，一次都没让它派子代理。请求里有没有跟子代理有关的内容？有的话多大？gpt-5.5 一样吗？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">子代理替父会话「省」了什么？同样读 4 份 3 万字节的日志，自己读和派子代理，父会话的窗口、整个过程发出的输入各是多少？<a class="jump" href="#a2">答案 ↓</a></li>
+<li id="q3">子代理开始干活时，带着父会话的哪些内容？gpt-6.1-sol 和 gpt-5.5 一样吗？带不带，对窗口和缓存各有什么影响？<a class="jump" href="#a3">答案 ↓</a></li>
+<li id="q4">子代理干完活，父会话收到什么？收到的内容有长度上限吗？<a class="jump" href="#a4">答案 ↓</a></li>
+<li id="q5">同时能开几个子代理，能一层套一层吗？想关掉子代理，或者只关掉请求里的那两条说明（第 2 章留下的问题），怎么写、省多少？<a class="jump" href="#a5">答案 ↓</a></li>
+</ol>
+</section>
+
+<section id="s1">
+<h2><span class="sn">一、</span>没人要求派子代理，请求里也先放了 8,514 字节</h2>
+<p><b>最朴素的做法是：用户没要求，就什么都不放。</b>Codex 的 gpt-6.1-sol 不是这样。第 2 章的请求里有两条「子代理说明」，加上工具定义里的一组协作工具，一共三块：<sup><a href="#e1">1</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>块</th><th>在请求哪里</th><th>字节</th><th>内容</th></tr>
+<tr><td>协作工具</td><td><code>input[0]</code> 工具定义里的 <code>collaboration</code> 命名空间</td><td class="num">5,529</td><td>6 个工具：<code>spawn_agent</code>（派）2,728、<code>followup_task</code>（给已有的子代理布置新任务）667、<code>wait_agent</code>（等）662、<code>send_message</code>（发消息）523、<code>interrupt_agent</code>（打断）437、<code>list_agents</code>（列出）381</td></tr>
+<tr><td>角色说明</td><td>一条 developer 消息，以 <code>&lt;multi_agent_role&gt;</code> 开头</td><td class="num">2,575</td><td>你是 <code>/root</code>，团队里的主代理；怎么用上面的工具；收到的消息长什么样；共享同一个目录；4 个并发名额；用 <code>fork_turns</code> 决定带多少上下文</td></tr>
+<tr><td>开关说明</td><td>一条 developer 消息，以 <code>&lt;multi_agent_mode&gt;</code> 开头</td><td class="num">410</td><td>「除非用户或 AGENTS.md、技能明确要求派子代理、委派或并行，否则不要派」</td></tr>
+</table></div>
+<p>三块合计 8,514 字节 ≈ 2,129 token，占一次请求（实验里 54,878 字节）的 15.5%。第 2 章表里这两条说明写的是正文长度（2,400 和 271 字节）；本章按整条 <code>json.dumps</code> 计，带上外层标签和 JSON 外壳，是 2,575 和 410，所以数字不同。缺省的开关说明是「不要主动派」，所以多数对话里这 8.5 KB 是躺在请求里不用的。思考级别设成 <code>ultra</code> 时，开关说明换成另一条（661 字节）：「只要能并行，就应该派」。<sup><a href="#e4">4</a></sup></p>
+
+<h3>gpt-5.5 没有这三块</h3>
+<p>gpt-5.5 不改配置时的请求（思考级别 low，37,032 字节）里没有协作工具，也没有两条说明。它的子代理工具属于第 6 章讲过的「延后工具」，模型要先调 <code>tool_search</code> 才拿得到：实验里搜 <code>spawn a sub-agent</code>，返回 10,424 字节（5 个工具，其中 <code>spawn_agent</code> 一个就 6,711 字节），追加进历史。请求里平时只多一个 <code>tool_search</code>，829 字节。<sup><a href="#e3">3</a></sup></p>
+
+<h3>谁决定走哪一套</h3>
+<p>两个模型的差别来自模型表（<code>models-manager/models.json</code>）里每个模型的 <code>multi_agent_version</code>：gpt-6.1-sol 是 <code>v2</code>，gpt-5.5 是空。V2 的协作工具直接放进请求，两条说明只在 V2 里出现；没写的话按配置里的 <code>features.multi_agent</code>（缺省开）走 V1，V1 的工具延后。角色说明的文字也在模型表里，只有 4 个 gpt-6 开头的模型写了（<code>gpt-6.1-sol</code>、<code>gpt-6-astra</code>、<code>gpt-6-sol</code>、<code>gpt-6-luna</code>）。实验里给 gpt-5.5 开 V2（<code>features.multi_agent_v2 = true</code>）：6 个协作工具直接进了顶层 <code>tools</code>，不再需要 <code>tool_search</code>，净增 4,702 字节（9,414 → 14,116）；开关说明（410 字节）出现了，角色说明没有。<sup><a href="#e2">2</a></sup></p>
+<div class="source">
+<h3>看源码：V2、V1 还是关掉，按什么顺序决定</h3>
+<p><code>core/src/config/mod.rs</code> 第 1637–1664 行，注释是我加的。<sup><a href="#e2">2</a></sup></p>
+<pre>pub(crate) fn multi_agent_version_override(&amp;self) -&gt; Option&lt;MultiAgentVersion&gt; {
+    if self.features.enabled(Feature::MultiAgentV2) {
+        Some(MultiAgentVersion::V2)        // ① features.multi_agent_v2 = true：强制 V2
+    } else if !self.agents_enabled {
+        Some(MultiAgentVersion::Disabled)  // ② [agents] enabled = false：整个关掉
+    } else {
+        None                               // ③ 都没写：交给下面
+    }
+}
+
+pub(crate) fn multi_agent_version_from_features(&amp;self) -&gt; MultiAgentVersion {
+    self.multi_agent_version_override().unwrap_or_else(|| {
+        if self.features.enabled(Feature::Collab) {   // features.multi_agent，缺省开
+            MultiAgentVersion::V1
+        } else {
+            MultiAgentVersion::Disabled
+        }
+    })
+}
+
+pub(crate) fn multi_agent_version_for_model(
+    &amp;self,
+    model_multi_agent_version: Option&lt;MultiAgentVersion&gt;,
+) -&gt; MultiAgentVersion {
+    self.multi_agent_version_override()
+        .or(model_multi_agent_version)             // ④ 模型表的 multi_agent_version
+        .unwrap_or_else(|| self.multi_agent_version_from_features())  // ⑤ 最后看 features
+}
+</pre>
+</div>
+
+<div class="answer" id="a1">
+<p class="qh">回答问题 1</p>
+<p class="qq">一次都没让它派子代理，请求里有没有跟子代理有关的内容？多大？gpt-5.5 一样吗？</p>
+<p>有。gpt-6.1-sol（思考级别 low）的请求里固定有三块：6 个协作工具 5,529 字节、角色说明 2,575 字节、开关说明 410 字节，合计 8,514 字节，占请求的 15.5%。gpt-5.5 不改配置时没有，它的子代理工具延后，要搜了才进历史（一次搜索 10,424 字节），平时只多一个 829 字节的 <code>tool_search</code>。差别来自模型表的 <code>multi_agent_version</code>。</p>
+</div>
+</section>
+
+<section id="s2">
+<h2><span class="sn">二、</span>同样读 4 份日志，父会话少了 11.9 万字节，总量多了 18.8 万字节</h2>
+<p><b>最朴素的做法是父会话自己读。</b>读 4 份各 29,769 字节的日志，每次工具调用和输出都进父会话的历史，之后每一次请求都要带着。实验里父会话的请求从 54,878 字节涨到 174,526 字节，5 次请求发出的输入合计 573,510 字节。<sup><a href="#e5">5</a></sup></p>
+<p><b>派子代理后，这些调用和输出留在子代理自己的历史里。</b>同一个剧本，父会话派一个子代理（用缺省的 <code>fork_turns</code>，第三节讲），自己调 <code>wait_agent</code> 等它，子代理读 4 份日志后回一句结论：<sup><a href="#e5">5</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>做法</th><th>父会话最后一次请求</th><th>父会话共几次请求</th><th>子代理共几次请求</th><th>整个过程输入合计</th></tr>
+<tr><td>父会话自己读</td><td class="num">174,526</td><td class="num">5</td><td class="num">—</td><td class="num">573,510</td></tr>
+<tr><td>派子代理，<code>fork_turns</code> 缺省（<code>all</code>）</td><td class="num">55,810</td><td class="num">3</td><td class="num">5</td><td class="num">761,485（+32.8%）</td></tr>
+<tr><td>派子代理，<code>fork_turns = "none"</code></td><td class="num">55,836</td><td class="num">3</td><td class="num">5</td><td class="num">732,677（+27.8%）</td></tr>
+</table></div>
+<p>父会话少了 118,716 字节 ≈ 29,679 token，它从第一次请求到最后一次只多了 932 字节：<code>spawn_agent</code> 的调用和结果、<code>wait_agent</code> 的调用和结果、子代理的一句结论。总量反而多，是因为子代理的每一次请求都要把固定的开头（工具定义、系统提示词等，实验里 5 万多字节）再发一遍，子代理自己的历史也在涨。</p>
+
+<h3>动手算：自己读还是派子代理</h3>
+<p>滑块的初始值就是上面的实验（读 4 次、每次输出 29,769 字节、结论 24 字节、之后父会话不再请求）。请求大小按实验的增量算：每次工具调用多 143 字节加输出；<code>spawn_agent</code> 加 <code>wait_agent</code> 加结论让父会话多 908 字节加结论本身。「折价」按第 5 章的规则（gpt-6.1-sol：缓存读 0.05 倍、新写入 1.25 倍，每次接上上一次的缓存）推算，假服务器没有真实缓存，未实验。<sup><a href="#e16">16</a></sup></p>
+<div class="ctrl"><label for="n1">子代理读 <b id="n1v"></b> 次</label><input type="range" id="n1" min="1" max="12" step="1" value="4"></div>
+<div class="ctrl"><label for="o1">每次输出 <b id="o1v"></b> 字节</label><input type="range" id="o1" min="1000" max="60000" step="100" value="29769"></div>
+<div class="ctrl"><label for="k1">干完活之后，父会话还要再发 <b id="k1v"></b> 次请求</label><input type="range" id="k1" min="0" max="30" step="1" value="0"></div>
+<div class="ctrl"><span>子代理的结论：</span>
+  <button class="btn" data-r="24" aria-pressed="true">24 字节（实验）</button>
+  <button class="btn" data-r="1000" aria-pressed="false">1 KB</button>
+  <button class="btn" data-r="10000" aria-pressed="false">10 KB</button>
+  <button class="btn" data-r="100000" aria-pressed="false">100 KB</button>
+</div>
+<div class="ctrl"><span><code>fork_turns</code>：</span>
+  <button class="btn" data-f="all" aria-pressed="true">all（缺省）</button>
+  <button class="btn" data-f="none" aria-pressed="false">none</button>
+</div>
+<div class="meter" id="m1a"></div>
+<div class="meter" id="m1b"></div>
+<div class="legend"><span><i style="background:var(--cut)"></i>父会话自己读</span><span><i style="background:var(--keep)"></i>派子代理</span></div>
+<div class="panel" id="m1t"></div>
+
+<div class="answer" id="a2">
+<p class="qh">回答问题 2</p>
+<p class="qq">子代理替父会话「省」了什么？自己读和派子代理，父会话的窗口、整个过程发出的输入各是多少？</p>
+<p>省的是父会话的窗口：4 份 3 万字节的日志，自己读时父会话涨到 174,526 字节，派子代理只到 55,810 字节，少 118,716 字节 ≈ 29,679 token，之后每一次请求都少带这些，压缩也不用处理它们。不省总量：子代理的每次请求都重发固定开头，整个过程的输入合计 761,485 字节（<code>fork_turns</code> 缺省）或 732,677 字节（<code>none</code>），比自己读多 33% 或 28%。</p>
+</div>
+</section>
+
+<section id="s3">
+<h2><span class="sn">三、</span>子代理开头带了什么：gpt-6.1-sol 缺省带走父会话的全部历史</h2>
+<p><b>最朴素的做法是让子代理从空白开始，只给任务。</b>这样子代理的请求最小，但它不知道父会话里说过什么。gpt-5.5 是这样做的；gpt-6.1-sol 相反，缺省把父会话的历史整份给它。</p>
+<p><b>gpt-6.1-sol：<code>spawn_agent</code> 的参数 <code>fork_turns</code> 缺省是 <code>all</code>。</b>工具说明写的是「Defaults to <code>all</code>」，源码里也是：没传或传空，就当作 <code>all</code>；传 <code>none</code> 才不带；传数字（如 <code>"3"</code>）也不会只带最近几轮，而是当作 <code>all</code>；传别的会报错。实验里传 <code>"3"</code> 的子代理第一次请求和不传一样（14 条，只有调用参数多了 23 字节）。<sup><a href="#e7">7</a></sup></p>
+<p><b>gpt-5.5：<code>spawn_agent</code> 的参数 <code>fork_context</code> 缺省是 false。</b>子代理的第一次请求只有 4 条：系统提示词、技能目录、AGENTS.md、一条任务消息，没有父会话的历史。<sup><a href="#e8">8</a></sup></p>
+
+<h3>动手看：子代理的第一次请求</h3>
+<p>三组都是实验里的第一次请求，每段宽度按字节数；鼠标放在段上看名字。「接得上父会话的缓存」是按第 5 章的规则推（请求开头逐字相同、且父会话发过这个开头），未实验。</p>
+<div class="ctrl">
+  <button class="btn" data-c="all" aria-pressed="true">gpt-6.1-sol，<code>fork_turns</code> 缺省</button>
+  <button class="btn" data-c="none" aria-pressed="false">gpt-6.1-sol，<code>"none"</code></button>
+  <button class="btn" data-c="v1" aria-pressed="false">gpt-5.5，缺省</button>
+</div>
+<div class="meter seg" id="m2"></div>
+<div class="legend"><span><i style="background:var(--keep)"></i>和父会话的请求开头逐字相同</span><span><i style="background:var(--cut)"></i>新增，或和父会话不同</span><span><i style="background:var(--half)"></i>内容和父会话相同，但前面已经不同</span></div>
+<div class="panel" id="m2t"></div>
+
+<p>fork 之后，子代理的历史里有几处改动，都能在实验的请求里看到：<sup><a href="#e6">6</a></sup></p>
+<ul>
+<li><b>父会话的那次 <code>spawn_agent</code> 调用留着，结果被换成 <code>aborted</code>。</b>子代理看到的是自己「被派出」的那次调用，没有真正的返回。</li>
+<li><b>追加 5 条：</b>一条「你是新派出的子代理，前面的对话是继承来的父会话上下文，前面的身份和任务属于祖先」（504 字节）；子代理自己的角色说明（2,628 字节）；一条「这些工具不可用」（239 字节，实验里是 <code>request_user_input_async</code>）；再一条开关说明（410 字节）；任务消息（317 字节）。所以子代理的请求里同时有父的 <code>/root</code> 角色说明和自己的角色说明，两条开关说明。</li>
+<li><b><code>none</code> 时子代理的工具集也不同：</b>工具定义 23,801 字节，比父会话少 1,546 字节（少了 <code>request_user_input_async</code>）。第一条就不同，后面内容再一样也接不上缓存。<code>all</code> 时保留父会话的工具定义，用追加说明表示不可用，开头因此不变。</li>
+</ul>
+<p>缓存上，这个差别很大。按第 5 章的规则，<code>all</code> 的第一次请求里 54,878 字节可以读缓存（父会话的第一次请求已经写过，两边的 <code>prompt_cache_key</code> 也相同，都是整个会话的 id），折合约 2,066 token 的全价；<code>none</code> 要整份写入，折合约 16,725 token。<sup><a href="#e9">9</a></sup><strong>省窗口的是 <code>none</code>，省钱的反而是缺省的 <code>all</code>。</strong>这是按规则推的，真实服务的命中情况没测【待核实】。</p>
+
+<h3>fork 之后换模型</h3>
+<p>角色说明里写着「全量 fork 不接受模型覆盖」，但这只是给模型看的话，代码没有拦。实验里 <code>fork_turns</code> 缺省、同时传 <code>model = "gpt-6-luna"</code>：子代理用 gpt-6-luna 发请求，请求里保留父会话的整个开头，再追加一条 18,535 字节的 <code>&lt;model_instructions&gt;</code>（换成 gpt-6-luna 的指令），整份请求 78,777 字节，比同模型 fork 的 59,292 字节多 19,485 字节。<sup><a href="#e13">13</a></sup></p>
+
+<div class="compare">
+<h3>对照：Claude Code 的子代理缺省从空白开始</h3>
+<p>官方文档（2026-11-02 查阅）：子代理缺省拿到「全新的、隔离的上下文窗口」，看不到你的对话历史，只有父会话写的那条委派消息；系统提示词用子代理自己的，加上工作目录等环境信息。CLAUDE.md 和 git 状态缺省会带，内置的 Explore、Plan 两种子代理不带。要继承对话得显式用 fork（文档里「fork the current conversation」一节）。Codex gpt-6.1-sol 的缺省正好相反。<sup><a href="#e15">15</a></sup></p>
+</div>
+
+<div class="answer" id="a3">
+<p class="qh">回答问题 3</p>
+<p class="qq">子代理开始干活时带着父会话的哪些内容？gpt-6.1-sol 和 gpt-5.5 一样吗？对窗口和缓存各有什么影响？</p>
+<p>不一样。gpt-6.1-sol 的 <code>fork_turns</code> 缺省 <code>all</code>：子代理带着父会话的全部历史（实验里第一次请求 59,292 字节，前 55,070 字节和父会话逐字相同），传 <code>"none"</code> 才从空白开始（53,520 字节）；传数字也当 <code>all</code>。gpt-5.5 的 <code>fork_context</code> 缺省 false，从空白开始（36,188 字节）。窗口上 <code>none</code> 小 5,772 字节（53,520 对 59,292）；缓存上 <code>all</code> 能接上父会话已写的开头，<code>none</code> 要整份重写。</p>
+</div>
+</section>
+
+<section id="s4">
+<h2><span class="sn">四、</span>回到父会话的是子代理的最终回答，整份进来，没有上限</h2>
+<p><b>子代理干完活，它的最终回答变成父会话历史里的一条消息。</b>gpt-6.1-sol 里这是一条 <code>agent_message</code>，作者 <code>/root/scan</code>、收件人 <code>/root</code>，正文以 <code>Message Type: FINAL_ANSWER</code> 开头，后面是子代理的原话。<code>wait_agent</code> 本身不带内容，只回 <code>{"message":"Wait completed.","timed_out":false}</code>（170 字节）：工具说明里写着「Does not return the content」。<sup><a href="#e10">10</a></sup></p>
+<p><b>最终回答没有长度上限。</b>实验里让子代理最后回一段 3,000 行的文字（231,068 字节），父会话的请求从 55,226 字节一下涨到 289,787 字节，整段原样进了历史。我没在源码里找到截断这条消息的代码【待核实，搜索不穷尽】。所以前一节算的「父会话多 932 字节」，只在子代理的回答很短时成立；第二节的交互里把「子代理的结论」拉到 100 KB，父会话的优势就没了。</p>
+<p><b>gpt-5.5 里同一段回答会进历史两次。</b>实验里父会话调 <code>wait_agent</code> 等子代理，结果里是 <code>{"status":{"…":{"completed":"结论：日志无异常"}}}</code>，紧接着又追加一条 user 消息 <code>&lt;subagent_notification&gt;…&lt;/subagent_notification&gt;</code>，里面是同一句结论。结论只有一句话时无所谓，几万字节时就是两份。<sup><a href="#e10">10</a></sup></p>
+<p>子代理读了什么、试过什么，父会话看不到：它们只在子代理自己的历史里。要追问「你为什么排除了方案 B」，父会话得用 <code>followup_task</code> 或 <code>send_message</code> 再问一次。</p>
+
+<div class="answer" id="a4">
+<p class="qh">回答问题 4</p>
+<p class="qq">子代理干完活，父会话收到什么？收到的内容有长度上限吗？</p>
+<p>收到子代理的最终回答原文，gpt-6.1-sol 里是一条 <code>FINAL_ANSWER</code> 的 <code>agent_message</code>，没有长度上限：实验里 231,068 字节整份进了父会话的历史。中间的工具调用和输出不进来。gpt-5.5 里 <code>wait_agent</code> 的结果和一条 <code>&lt;subagent_notification&gt;</code> 各带一份回答。</p>
+</div>
+</section>
+
+<section id="s5">
+<h2><span class="sn">五、</span>能开几个、套几层、怎么关</h2>
+<p><b>gpt-6.1-sol（V2）下，同时活着的代理总数缺省 4 个，包括父会话自己，所以最多 3 个子代理；层数没有限制。</b>数字写在两个地方：配置缺省常量，和角色说明里那句「There are 4 available concurrency slots」。实验里父会话连派 4 个，第 4 个得到 <code>collab spawn failed: agent thread limit reached</code>。让每个子代理再派一个，一层一层往下，直到名额用完才停（<code>/root/a/g/g</code> 那一层成功，再下一层报同样的错）。<code>[agents]</code> 下的 <code>max_threads = 1</code> 把名额改成 2（父会话加 1 个子代理），角色说明里的数字同步变成 2。<sup><a href="#e11">11</a></sup></p>
+<p><b>gpt-5.5（V1）下，缺省只能有一层。</b><code>[agents] max_depth</code> 缺省 1，V2 忽略它。实验里 gpt-5.5 的子代理请求顶层工具里没有 <code>tool_search</code>，也就找不到 <code>spawn_agent</code>；我没让它真的去派孙代理，只能说「没有入口」【中】。<sup><a href="#e11">11</a></sup></p>
+
+<h3>怎么关</h3>
+<p>下面每一项都是改完配置后抓一次 gpt-6.1-sol 的第一次请求（思考级别 low，不接 MCP，缺省 54,878 字节）。实验里用的是命令行 <code>-c 键=值</code>，同样的键可以写进 <code>~/.codex/config.toml</code>。<sup><a href="#e12">12</a></sup></p>
+<div class="ctrl" id="c3btns"></div>
+<div class="meter seg" id="m3"></div>
+<div class="legend"><span><i style="background:var(--tools)"></i>协作工具</span><span><i style="background:var(--session)"></i>角色说明</span><span><i style="background:var(--user)"></i>开关说明</span></div>
+<div class="panel" id="m3t"></div>
+
+<p>三个容易踩的地方：</p>
+<ul>
+<li><b><code>features.multi_agent = false</code> 和 <code>features.multi_agent_v2 = false</code> 对 gpt-6.1-sol 都没有效果。</b>前一个只在模型表没写版本时才生效，后一个只有设成 <code>true</code> 才算数（上面的源码）。要整个关，写 <code>[agents]</code> 下的 <code>enabled = false</code>，这时三块都消失，请求少 8,516 字节。</li>
+<li><b>只关两条说明：</b>在 <code>[features.multi_agent_v2]</code> 下把 <code>root_agent_usage_hint_text</code>（角色说明）和 <code>multi_agent_mode_hint_text</code>（开关说明）设成空字符串。工具还在，模型还能派，只是不再有说明；缺省的开关说明本来是在拦它。</li>
+<li><b><code>disable_native_tools = true</code> 去掉了工具，两条说明却还在。</b>请求里仍然告诉模型「用 <code>spawn_agent</code> 派子代理」，而这个工具不存在。这个开关的注释写的是给「宿主提供工具」的场景用的，日常用法里不要开。</li>
+</ul>
+
+<div class="compare">
+<h3>对照：Claude Code 的上限和开关</h3>
+<p>官方文档（2026-11-02 查阅）：子代理缺省可以再派子代理，最多在主会话之下 3 层，环境变量 <code>CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1</code> 关掉嵌套；同时运行的子代理缺省上限 20 个（<code>CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS</code> 可改，需 v2.1.217 起），超了报 <code>Concurrent subagent limit reached</code>；一个会话里累计派多少次没有上限。关闭：在 <code>permissions.deny</code> 里写 <code>Agent(Explore)</code> 这样的规则关某一种，写 <code>Agent</code> 关全部委派。内置的 Explore、Plan 是只读的（禁用 Write 和 Edit）。Codex 的内置角色见设计笔记。<sup><a href="#e15">15</a></sup></p>
+</div>
+
+<div class="answer" id="a5">
+<p class="qh">回答问题 5</p>
+<p class="qq">同时能开几个子代理，能一层套一层吗？想关掉子代理，或者只关掉请求里的两条说明，怎么写、省多少？</p>
+<p>gpt-6.1-sol：代理总数缺省 4 个（含父会话，即 3 个子代理），层数不限，满了报 <code>agent thread limit reached</code>；gpt-5.5：缺省一层。整个关掉写 <code>[agents]</code> 的 <code>enabled = false</code>，请求少 8,516 字节（15.5%）；只关两条说明，把 <code>root_agent_usage_hint_text</code> 和 <code>multi_agent_mode_hint_text</code> 设成空串，少 2,985 字节，工具仍在。</p>
+</div>
+</section>
+
+<section id="notes">
+<h2>设计笔记</h2>
+<ul>
+<li><b>隔离省的是窗口，不是钱，也不是 token 总量。</b>子代理的每次请求都重发固定开头，实验里总量多 28%–33%。按缓存规则折价后差别小得多：实验的默认值下，缺省 <code>all</code> 折合 63,480 token，自己读 59,527，多 6.6%；干完活之后父会话再发 3 次请求，<code>all</code> 就比自己读便宜（65,573 对 66,071），<code>none</code> 要再发 13 次才便宜。这是第二节交互的推算，未用真实服务验证。真正要省的是父会话的窗口：它决定什么时候压缩（第 4 章），压缩之后摘要里还剩什么。</li>
+<li><b>缺省全量继承，理由代码没写【推测】：</b>一是缓存，前面算过，<code>all</code> 的开头和父会话逐字相同，能读缓存；二是不丢父会话里的隐性约束（用户说过的「别动 API」）。源码里有个配置 <code>preserve_fork_prefix</code>（缺省 false），说明是「全量 fork 时保留父会话模型可见的历史，并追加子代理指令」，缺省 false 时，代码会在继承的历史里过滤、替换部分 developer 消息（<code>core/src/agent/control/spawn.rs:1124-1260</code>）；实验里父会话的角色说明和开关说明仍留在子代理的请求里，过滤规则我没逐条核对，打开这个开关的效果也没实验【待核实】。</li>
+<li><b>「别派」靠提示词，不靠权限。</b>缺省的开关说明只是一句话；子代理和父拥有同样的工具（<code>none</code> 时少 1 个），名额满了才拦。想真正限制，要关工具（<code>[agents] enabled = false</code>）。</li>
+<li><b>内置角色：</b>源码里有 <code>default</code>、<code>explorer</code>、<code>worker</code> 三个内置角色（<code>core/src/agent/role.rs:342-385</code>），<code>explorer</code> 的说明是「用来问具体的、范围明确的代码库问题」，但它的配置文件 <code>explorer.toml</code> 是 0 字节，没有限制工具，也没有换模型。本章抓到的 gpt-6.1-sol 和 gpt-5.5 的 <code>spawn_agent</code> 参数里都没有 <code>agent_type</code>，模型挑不了角色。所以内置的三个角色里没有只读的。自己定义角色（<code>[agents.名字]</code> 加 <code>config_file</code>，<code>config/src/config_toml.rs:784</code> 附近的注释有例子）可以限制，本章没做实验【待核实】。<sup><a href="#e14">14</a></sup></li>
+<li><b>没测的：</b>真实模型会不会该派的时候派、不该派的时候忍住（开关说明起多大作用）；真实服务上的缓存命中；子代理自己触发压缩时，结果怎样回到父会话；文件冲突（所有代理共用同一个目录，角色说明里写了「别人的改动你马上看得到」，隔离文件的办法我没找到【待核实】）。这些归第 11 章（评估）。</li>
+</ul>
+</section>
+
+<section id="summary">
+<h2>小结</h2>
+<ol>
+<li>gpt-6.1-sol 的请求里固定有 6 个协作工具（5,529 字节）、角色说明（2,575）、开关说明（410），共 8,514 字节、占 15.5%；gpt-5.5 默认没有，工具延后，搜一次 10,424 字节。</li>
+<li>读 4 份 3 万字节的日志，派子代理让父会话的最后一次请求从 174,526 降到 55,810 字节，但整个过程输入合计多 28%–33%；省的是父会话的窗口。</li>
+<li>gpt-6.1-sol 的 <code>fork_turns</code> 缺省 <code>all</code>，子代理带走父会话全部历史，开头和父会话逐字相同，能接缓存；<code>"none"</code> 才从空白开始，但要整份重写；gpt-5.5 缺省不带。</li>
+<li>回到父会话的是子代理最终回答的原文，没有上限，实验里 231,068 字节整份进来；gpt-5.5 还会在 <code>wait_agent</code> 结果和通知里各放一份。</li>
+<li>gpt-6.1-sol 总共 4 个代理（含父会话）、层数不限；整个关写 <code>[agents] enabled = false</code>，少 8,516 字节；两条说明设成空串，少 2,985 字节；<code>features.multi_agent = false</code> 对它没效果。</li>
+</ol>
+</section>
+
+<section id="evidence">
+<h2>证据表</h2>
+<p>Codex 版本：源码 <code>76ed3b4</code>，CLI <code>0.165.0</code>；源码路径相对 <code>codex-rs/</code>。本章实验在 <code>自学单元/U06-实验/</code>：<code>u06_subagent.py</code>（假服务器 + 剧本，说明在文件头）、<code>u06_fake_mcp.py</code>、<code>analyze.py</code>（输出在 <code>out/analysis.txt</code>）、<code>show_first.py</code>。每次实验一个 <code>out/</code> 子目录，里面有每次请求的原文 <code>req-N.json</code>。</p>
+<div class="tablewrap"><table>
+<tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
+<tr id="e1"><td>1</td><td>gpt-6.1-sol（low，不接 MCP）第一次请求 54,878 字节；其中协作工具（<code>collaboration</code> 命名空间）5,529 字节（<code>spawn_agent</code> 2,728、<code>wait_agent</code> 662、<code>followup_task</code> 667、<code>send_message</code> 523、<code>interrupt_agent</code> 437、<code>list_agents</code> 381，合计 5,398 加命名空间外壳），角色说明 2,575，开关说明 410；三块合计 8,514，占 15.5%</td><td>实验 <code>out/b0-default</code>，<code>analyze.py</code> 第三节；文字来自 <code>models-manager/models.json</code>（<code>multi_agent.role.root</code>）和 <code>core/src/context/multi_agent_mode_instructions.rs</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e2"><td>2</td><td>V2/V1/关闭的决定顺序：<code>features.multi_agent_v2 = true</code> → <code>[agents] enabled = false</code> → 模型表 <code>multi_agent_version</code> → <code>features.multi_agent</code>（缺省开，V1）；gpt-6.1-sol 模型表为 <code>v2</code>（第 194 行），gpt-5.5 为 null（第 1357 行）；两条说明只在 V2 出现；角色说明文字只有 gpt-6-astra、gpt-6.1-sol、gpt-6-sol、gpt-6-luna 四个模型写了；给 gpt-5.5 开 V2：顶层 <code>tools</code> 9,414 → 14,116（+4,702），出现开关说明 410 字节，无角色说明</td><td>源码 <code>core/src/config/mod.rs:1637-1664</code>、<code>core/src/session/multi_agents.rs:14-37,77-121</code>、<code>models-manager/models.json</code>；实验 <code>out/b9-gpt55</code>、<code>b10-gpt55-v2</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e3"><td>3</td><td>gpt-5.5 默认请求 37,032 字节，顶层 <code>tools</code> 9,414（含 <code>tool_search</code> 829，说明里列出来源「Multi-agent tools」）；<code>[agents] enabled = false</code> 后顶层 <code>tools</code> 8,585、没有 <code>tool_search</code>；搜 <code>spawn a sub-agent</code> 返回 5 个 <code>multi_agent_v1</code> 工具共 10,424 字节（<code>spawn_agent</code> 6,711、<code>send_input</code> 1,688、<code>wait_agent</code> 787、<code>close_agent</code> 591、<code>resume_agent</code> 357）；不用审批即可调用</td><td>实验 <code>out/b9-gpt55</code>、<code>b11-gpt55-agents-disabled</code>、<code>v1-gpt55-spawn</code>、<code>v1-gpt55-big</code>（<code>req-2.json</code>）</td><td><span class="tag lvl-h">高</span> 查询词是我写的</td></tr>
+<tr id="e4"><td>4</td><td>开关说明：缺省为「不要主动派」410 字节；思考级别 <code>ultra</code> 时换成「Proactive multi-agent delegation is active…」661 字节（+251）；配置 <code>multi_agent_mode_hint_text</code> 的值优先于两者</td><td>源码 <code>core/src/session/multi_agents.rs:77-121</code>（第 96 行判断 <code>Ultra</code>）；实验 <code>out/b8-ultra</code>；Codex 自带测试 <code>core/tests/suite/multi_agent_mode.rs</code>（没自己跑）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e5"><td>5</td><td>读 4 次、每次输出 29,769 字节（调用 143）：自己读，父会话请求 54,878 → 84,790 → 114,702 → 144,614 → 174,526，合计 573,510；<code>fork_turns</code> 缺省：父 54,878 / 55,217 / 55,810（合计 165,905），子 59,292 → 89,204 → 119,116 → 149,028 → 178,940（合计 595,580），总 761,485（+32.8%）；<code>"none"</code>：父 54,878 / 55,243 / 55,836，子 53,520 → … → 173,168（合计 566,720），总 732,677（+27.8%）；父会话少 118,716 字节，多 932 字节（<code>spawn_agent</code> 192+147、<code>wait_agent</code> 152+170、<code>agent_message</code> 271）</td><td>实验 <code>out/s3-inline</code>、<code>s1-fork-default</code>、<code>s2-fork-none</code>，<code>analyze.py</code> 第一节</td><td><span class="tag lvl-h">高</span> 假服务器，模型回答写死</td></tr>
+<tr id="e6"><td>6</td><td>fork 后子代理第一次请求 14 条：前 8 条（工具定义、系统提示词、技能、父的角色说明、父的开关说明、AGENTS.md、你的话、<code>spawn_agent</code> 调用）与父会话的请求逐字相同（55,070 字节），第 9 条是 <code>spawn_agent</code> 的结果，值为 <code>aborted</code>（124）而不是 <code>{"task_name":"/root/scan"}</code>（147）；之后追加 504 + 2,628 + 239 + 410 + 317 = 4,098 字节；<code>"none"</code> 时 7 条 53,520 字节，工具定义 23,801，少了 <code>request_user_input_async</code>，第一条就与父会话不同；两边请求体的 <code>prompt_cache_key</code> 相同，<code>client_metadata.thread_id</code> 不同</td><td>实验 <code>out/s1-fork-default/req-3.json</code>、<code>s2-fork-none/req-3.json</code>，<code>analyze.py</code> 第二节</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e7"><td>7</td><td><code>fork_turns</code> 缺省 <code>all</code>；<code>none</code> 不带；数字当 <code>all</code>（注释「Accept legacy turn counts without limiting the inherited history」）；其他值报错「fork_turns must be `none` or `all`」；传 <code>"3"</code> 的子代理第一次请求 14 条，59,315 字节（比缺省多 23 字节，是参数文字）</td><td>源码 <code>core/src/tools/handlers/multi_agents_v2/spawn.rs:214-241</code>、<code>core/src/tools/handlers/multi_agents_spec.rs:665-670</code>；实验 <code>out/s4-fork-3</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e8"><td>8</td><td>gpt-5.5（V1）<code>fork_context</code> 缺省 false，「false or omitted starts with only the initial prompt」；子代理第一次请求 4 条（21,619 + 5,065 + 752 + 任务消息 167）加顶层 <code>tools</code> 8,585，共 36,188 字节；子代理的顶层 <code>tools</code> 没有 <code>tool_search</code></td><td>源码 <code>core/src/tools/handlers/multi_agents_spec.rs:630-636</code>；实验 <code>out/v1-gpt55-spawn</code>（<code>req-4.json</code>）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e9"><td>9</td><td>缓存折价：<code>all</code> 的第一次请求读 54,878 字节（父会话第一次请求的结尾）、写 4,414 字节；<code>none</code> 写 53,520 字节。「接得上」按第 5 章的规则推（开头逐字相同且父会话发过），假服务器没有真实缓存</td><td>规则见第 5 章证据表；字节来自 #6</td><td><span class="tag lvl-l">推测</span> 没有真实服务的 usage</td></tr>
+<tr id="e10"><td>10</td><td>子代理的最终回答作为 <code>agent_message</code>（作者 <code>/root/scan</code>，收件人 <code>/root</code>，正文以 <code>Message Type: FINAL_ANSWER</code> 开头）进父会话历史；<code>wait_agent</code> 的结果是 <code>{"message":"Wait completed.","timed_out":false}</code>；回答 3,000 行 231,068 字节时，父会话请求 55,226 → 289,787；gpt-5.5：<code>wait_agent</code> 结果含 <code>"completed":"结论…"</code>，另追加 user 消息 <code>&lt;subagent_notification&gt;</code> 含同一句</td><td>实验 <code>out/s1-fork-default/req-8.json</code>、<code>r1-bigreply</code>、<code>v1-gpt55-big/req-9.json</code>；工具说明 <code>core/src/tools/handlers/multi_agents_spec.rs:303-308</code></td><td><span class="tag lvl-h">高</span> 一组实验 <span class="tag lvl-m">中</span> 没在源码里穷尽搜索截断逻辑</td></tr>
+<tr id="e11"><td>11</td><td>V2 代理总数缺省 4（含 root），子代理上限 = 总数 − 1；<code>[agents] max_threads = N</code> → 总数 N + 1；角色说明里写入当前数字；第 4 个子代理报 <code>collab spawn failed: agent thread limit reached</code>；子代理逐层再派，实验到 <code>/root/a/g/g</code> 成功、下一层报同样的错；<code>max_depth</code> 缺省 1，V2 忽略</td><td>源码 <code>core/src/config/mod.rs:256,265,1666-1677,2815-2826</code>、<code>core/src/agent/registry.rs:90-100</code>、<code>config/src/config_toml.rs:758-778</code>；实验 <code>out/l1-four-children</code>、<code>l3-grandchild</code>、<code>l4-max-threads-1</code></td><td><span class="tag lvl-h">高</span> V2；<span class="tag lvl-m">中</span> V1 层数只看了子代理请求里没有入口</td></tr>
+<tr id="e12"><td>12</td><td>关闭实验（gpt-6.1-sol，low，不接 MCP）：缺省 54,878；<code>agents.enabled=false</code> 46,362（−8,516，三块全无）；<code>features.multi_agent=false</code>、<code>features.multi_agent_v2=false</code> 54,878（无变化）；<code>root_agent_usage_hint_text=""</code> 52,303（−2,575）；<code>multi_agent_mode_hint_text=""</code> 54,468（−410）；两个都置空 51,893（−2,985）；<code>disable_native_tools=true</code> 49,347（−5,531，两条说明仍在）；思考级别 ultra 55,129（+251）</td><td>实验 <code>out/b0…b8</code>，<code>analyze.py</code> 第三节；源码 <code>features/src/feature_configs.rs:289-348</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e13"><td>13</td><td>fork 缺省同时传 <code>model = "gpt-6-luna"</code>：子代理用 gpt-6-luna 发请求，15 条里含 18,535 字节的 <code>&lt;model_instructions&gt;</code> 和 1,381 字节的 <code>&lt;collaboration_mode&gt;</code>，整份 78,777 字节（同模型 fork 是 59,292，多 19,485）；代码只在 V1 拒绝全量 fork 同时指定 <code>agent_type</code>，没有拒绝 <code>model</code></td><td>实验 <code>out/l2-model-override</code>；源码 <code>core/src/agent/child_config.rs:58-62,205-250</code></td><td><span class="tag lvl-h">高</span> 一组实验</td></tr>
+<tr id="e14"><td>14</td><td>内置角色 <code>default</code>、<code>explorer</code>、<code>worker</code>；<code>explorer.toml</code> 0 字节；抓到的 gpt-6.1-sol（V2）和 gpt-5.5（V1）的 <code>spawn_agent</code> 参数里没有 <code>agent_type</code></td><td>源码 <code>core/src/agent/role.rs:342-385</code>、<code>core/assets/agent/builtins/explorer.toml</code>；实验 <code>out/b0-default</code>、<code>v1-gpt55-big/req-2.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e15"><td>15</td><td>Claude Code 子代理：缺省全新隔离上下文，只有委派消息，不继承对话（fork 除外）；带 CLAUDE.md 和 git 状态，Explore、Plan 不带；只有最终报告回到主会话；嵌套最多 3 层（<code>CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH</code>）；并发上限 20（<code>CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS</code>，v2.1.217 起）；累计无上限；关闭用 <code>permissions.deny</code> 的 <code>Agent(名字)</code> 或 <code>Agent</code>；文档最新提到的版本号是 v2.1.304</td><td>官方文档 <code>code.claude.com/docs/en/sub-agents</code>，2026-11-02 抓取（页面约 11.6 万字符，我读了前 10 万；后 1.6 万字符是「重启后按名字给子代理发消息」一节，没读）</td><td><span class="tag lvl-m">中</span> 文档说法，没抓过 Claude Code 的请求</td></tr>
+<tr id="e16"><td>16</td><td>第二节交互的公式：每次工具调用多「143 + 输出」字节；父会话派子代理多 908 字节加结论字节数（<code>spawn_agent</code> 339 + <code>wait_agent</code> 322 + <code>agent_message</code> 外壳 247）；子代理第一次请求缺省 = 父会话第一次请求 + 4,414，<code>none</code> = − 1,358；干完活之后父会话的请求按当前窗口大小算（不计新提问）。默认值复现 #5 的全部数字</td><td>本页脚本；常数取自 #5、#6</td><td><span class="tag lvl-l">推测</span> 外推，只验证过读 4 次、每次 29,769 字节</td></tr>
+</table></div>
+</section>
+
+</main>
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const press = (sel, el) => $$(sel).forEach(x => x.setAttribute('aria-pressed', x === el));
+const READ = 0.05, WRITE = 1.25;   // gpt-6.1-sol：缓存读、30 分钟写入，相对普通输入价（第 5 章）
+
+/* 第二节：自己读 vs 派子代理（常数来自实验 s1/s2/s3，外推未验证） */
+const BASE = 54878, CALL = 143, SPAWNED = 908, FN_NONE = 26;    // SPAWNED：spawn+wait+agent_message 外壳；FN_NONE：调用参数里多写 fork_turns:"none" 的字节
+const CHILD0 = {all: BASE + 4414, none: BASE - 1358};
+let R1 = 24, F1 = 'all';
+const tok = b => Math.ceil(b / 4);
+function series(sizes, firstRead){            // 一条线程的折价：每次读上一次，新增部分按写入算
+  let c = 0, prev = firstRead;
+  sizes.forEach(s => { c += READ * prev + WRITE * (s - prev); prev = s; });
+  return c;
+}
+function renderS2(){
+  const n = +$('#n1').value, out = +$('#o1').value, k = +$('#k1').value, u = out + CALL;
+  $('#n1v').textContent = n; $('#o1v').textContent = fmt(out); $('#k1v').textContent = k;
+  const inl = [], kid = [];
+  for (let j = 0; j <= n; j++) { inl.push(BASE + j * u); kid.push(CHILD0[F1] + j * u); }
+  const fn = F1 === 'none' ? FN_NONE : 0, inlEnd = BASE + n * u, parEnd = BASE + SPAWNED + R1 + fn;
+  const inlAll = inl.concat(Array(k).fill(inlEnd));
+  const par = [BASE, BASE + 339 + fn, parEnd].concat(Array(k).fill(parEnd));
+  const sum = a => a.reduce((s, x) => s + x, 0);
+  const inlTot = sum(inlAll), spTot = sum(par) + sum(kid);
+  const inlCost = series(inlAll, 0), spCost = series(par, 0) + series(kid, F1 === 'all' ? BASE : 0);
+  const max = Math.max(inlTot, spTot);
+  $('#m1a').innerHTML = '<div class="cut" style="width:'+(100*inlTot/max)+'%"></div>';
+  $('#m1b').innerHTML = '<div class="keep" style="width:'+(100*spTot/max)+'%"></div>';
+  const pct = (a, b) => (100 * (a / b - 1)).toFixed(1);
+  let t = '<p><span class="tag lvl-h">默认值 = 实验 #5</span> <span class="tag lvl-l">其他值是外推</span></p>';
+  t += '<p>父会话干完活时的请求：自己读 <b>'+fmt(inlEnd)+'</b> 字节，派子代理 <b>'+fmt(parEnd)+'</b> 字节，少 <b>'+fmt(inlEnd-parEnd)+'</b> 字节 ≈ <b>'+fmt(tok(inlEnd-parEnd))+' token</b>'+(parEnd>inlEnd?'（派子代理反而更大）':'')+'。</p>';
+  t += '<p>整个过程输入合计：自己读 <b>'+fmt(inlTot)+'</b> 字节，派子代理 <b>'+fmt(spTot)+'</b> 字节（'+(spTot>=inlTot?'多 ':'少 ')+Math.abs(pct(spTot,inlTot))+'%）。</p>';
+  t += '<p>按缓存规则折价：自己读 <b>'+fmt(tok(inlCost))+'</b> token，派子代理 <b>'+fmt(tok(spCost))+'</b> token（'+(spCost>=inlCost?'多 ':'少 ')+Math.abs(pct(spCost,inlCost))+'%）。</p>';
+  if (F1 === 'none') t += '<p><code>none</code> 的子代理第一次请求整份写入缓存，接不上父会话（第三节）。</p>';
+  if (R1 >= 100000) t += '<p class="bad">结论本身有 100 KB，它整份进了父会话的历史（第四节），窗口上的优势大半被吃掉。</p>';
+  $('#m1t').innerHTML = t;
+}
+['#n1','#o1','#k1'].forEach(s => $(s).oninput = renderS2);
+$$('[data-r]').forEach(b => b.onclick = () => { R1 = +b.dataset.r; press('[data-r]', b); renderS2(); });
+$$('[data-f]').forEach(b => b.onclick = () => { F1 = b.dataset.f; press('[data-f]', b); renderS2(); });
+
+/* 第三节：子代理第一次请求的组成（实验 s1/s2 的 req-3，v1-gpt55-spawn 的 req-4）。cls：keep 与父开头逐字相同；cut 新增或不同；half 内容同但前面已不同 */
+const C2 = {
+  all: {title:'gpt-6.1-sol，fork_turns 缺省（all）', items:[
+    ['工具定义',25347,'keep'],['系统提示词',22148,'keep'],['技能目录',3464,'keep'],['父的角色说明（/root）',2575,'keep'],['父的开关说明',410,'keep'],
+    ['AGENTS.md + 环境信息',752,'keep'],['你的话',182,'keep'],['父的 spawn_agent 调用',192,'keep'],
+    ['spawn_agent 的结果：aborted',124,'cut'],['「你是新派出的子代理」',504,'cut'],['子代理的角色说明',2628,'cut'],['「这些工具不可用」',239,'cut'],['再一条开关说明',410,'cut'],['任务消息',317,'cut']],
+    read:54878, note:'前 8 条（55,070 字节）和父会话第二次请求逐字相同；缓存里有的是父会话第一次请求的结尾（54,878 字节），第 8 条的调用在它之后。'},
+  none: {title:'gpt-6.1-sol，fork_turns = "none"', items:[
+    ['工具定义（少 1,546 字节）',23801,'cut'],['系统提示词',22148,'half'],['技能目录',3464,'half'],['子代理的角色说明',2628,'cut'],['开关说明',410,'half'],
+    ['AGENTS.md + 环境信息',752,'half'],['任务消息',317,'cut']],
+    read:0, note:'第一条工具定义就和父会话不同（少了 request_user_input_async），后面内容再一样，开头也接不上。'},
+  v1: {title:'gpt-5.5，缺省（fork_context = false）', items:[
+    ['顶层 tools（8,585，少 tool_search）',8585,'cut'],['系统提示词',21619,'half'],['技能目录',5065,'half'],['AGENTS.md + 环境信息',752,'half'],['任务消息',167,'cut']],
+    read:0, note:'没有父会话的历史。顶层 tools 比父会话的少 829 字节（没有 tool_search），请求最前面就不同。'}
+};
+let C2k = 'all';
+function renderS3(){
+  const d = C2[C2k], total = d.items.reduce((s, x) => s + x[1], 0);
+  $('#m2').innerHTML = d.items.map(([name, b, cls]) =>
+    '<div title="'+name+' '+fmt(b)+' 字节" style="width:'+(100*b/total)+'%;min-width:3px;background:var(--'+cls+')"></div>').join('');
+  const w = total - d.read, cost = READ * tok(d.read) + WRITE * tok(w);
+  let t = '<p><span class="tag lvl-h">条目和字节：实验</span> <span class="tag">能接上多少：按第 5 章规则推，未实验</span></p>';
+  t += '<p><b>'+d.title+'</b>：第一次请求 <b>'+fmt(total)+'</b> 字节 ≈ <b>'+fmt(tok(total))+' token</b>，'+d.items.length+' 项。</p>';
+  t += '<p>'+d.note+'</p>';
+  t += '<p>第一次请求折合 <b>'+fmt(cost)+'</b> 个 token 的全价'+(d.read ? '（读 '+fmt(d.read)+' 字节，写 '+fmt(w)+' 字节）' : '（整份写入）')+'。</p>';
+  $('#m2t').innerHTML = t;
+}
+$$('[data-c]').forEach(b => b.onclick = () => { C2k = b.dataset.c; press('[data-c]', b); renderS3(); });
+
+/* 第五节：关的几种写法（实验 b0–b8，gpt-6.1-sol，low，不接 MCP） */
+const OFF = [
+  {n:'缺省', cfg:'（什么都不写）', tot:54878, t:5529, r:2575, m:410, say:'三块都在。'},
+  {n:'整个关：[agents] enabled = false', cfg:'[agents]\nenabled = false', tot:46362, t:0, r:0, m:0, say:'三块都消失，请求少 8,516 字节（15.5%）。模型没有子代理工具，也不会被告知。'},
+  {n:'features.multi_agent = false', cfg:'[features]\nmulti_agent = false', tot:54878, t:5529, r:2575, m:410, say:'没有效果：gpt-6.1-sol 的模型表写了 v2，这个键只在模型表没写版本时才看。'},
+  {n:'features.multi_agent_v2 = false', cfg:'[features]\nmulti_agent_v2 = false', tot:54878, t:5529, r:2575, m:410, say:'没有效果：只有设成 true 才强制 V2，false 不算数。'},
+  {n:'只关角色说明', cfg:'[features.multi_agent_v2]\nroot_agent_usage_hint_text = ""', tot:52303, t:5529, r:0, m:410, say:'少 2,575 字节。工具和开关说明还在。'},
+  {n:'只关开关说明', cfg:'[features.multi_agent_v2]\nmulti_agent_mode_hint_text = ""', tot:54468, t:5529, r:2575, m:0, say:'少 410 字节。没有那句「不要主动派」，模型更可能自己派。'},
+  {n:'两条说明都关', cfg:'[features.multi_agent_v2]\nroot_agent_usage_hint_text = ""\nmulti_agent_mode_hint_text = ""', tot:51893, t:5529, r:0, m:0, say:'少 2,985 字节。6 个工具还在（5,529 字节），模型随时能派。'},
+  {n:'disable_native_tools = true', cfg:'[features.multi_agent_v2]\ndisable_native_tools = true', tot:49347, t:0, r:2575, m:410, say:'去掉了 6 个工具（少 5,531 字节），但两条说明还在，请求里仍在讲怎么用不存在的 spawn_agent。'},
+  {n:'思考级别 ultra', cfg:'model_reasoning_effort = "ultra"', tot:55129, t:5529, r:2575, m:661, say:'开关说明换成「只要能并行就该派」（661 字节，+251）。'}
+];
+$('#c3btns').innerHTML = OFF.map((x, i) => '<button class="btn" data-o="'+i+'" aria-pressed="'+(i===0)+'">'+x.n+'</button>').join('');
+function renderS5(i){
+  const x = OFF[i], other = x.tot - x.t - x.r - x.m;
+  $('#m3').innerHTML = [[x.t,'var(--tools)','协作工具'],[x.r,'var(--session)','角色说明'],[x.m,'var(--user)','开关说明']].filter(a => a[0] > 0)
+    .map(a => '<div title="'+a[2]+' '+fmt(a[0])+' 字节" style="width:'+(100*a[0]/55129)+'%;background:'+a[1]+'"></div>').join('');
+  let t = '<p><span class="tag lvl-h">实验 b0–b8</span></p>';
+  t += '<pre class="cfg">'+x.cfg+'</pre>';
+  t += '<p>请求合计 <b>'+fmt(x.tot)+'</b> 字节（相对缺省 '+(x.tot-54878>=0?'+':'')+fmt(x.tot-54878)+'）；子代理相关三块共 <b>'+fmt(x.t+x.r+x.m)+'</b> 字节：协作工具 '+fmt(x.t)+'，角色说明 '+fmt(x.r)+'，开关说明 '+fmt(x.m)+'。</p>';
+  t += '<p>'+x.say+'</p>';
+  $('#m3t').innerHTML = t;
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-o]'); if (b) { press('[data-o]', b); renderS5(+b.dataset.o); } });
+
+renderS2(); renderS3(); renderS5(0);
+</script>
+</body>
+</html>

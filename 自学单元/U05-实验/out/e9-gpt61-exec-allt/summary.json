@@ -1,0 +1,221 @@
+[
+ {
+  "n": 1,
+  "phase": 1,
+  "bytes": 55917,
+  "top_tools": [],
+  "top_tools_bytes": 2,
+  "items": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "tools": [
+     "functions[exec,wait,request_user_input,request_user_input_async]",
+     "clock[sleep]",
+     "collaboration[followup_task,interrupt_agent,list_agents,send_message,spawn_agent,wait_agent]"
+    ]
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "role": "developer",
+    "head": "You are Codex, an agent based on GPT-6. You and the user share one wor"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "role": "developer",
+    "head": "<multi_agent_role>You are `/root`, the primary agent in a team of agen"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "role": "developer",
+    "head": "<multi_agent_mode>Any earlier instruction enabling proactive multi-age"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-30w3_azx/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   }
+  ],
+  "replied_with": "exec:text(JSON.stringify({n: ALL_TOOLS.length, mcp: ALL_TOOLS.filter(t => /tracker|database|monitor/.test(t.name)).map(t => t.name)}))"
+ },
+ {
+  "n": 2,
+  "phase": 1,
+  "bytes": 57314,
+  "top_tools": [],
+  "top_tools_bytes": 2,
+  "items": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "tools": [
+     "functions[exec,wait,request_user_input,request_user_input_async]",
+     "clock[sleep]",
+     "collaboration[followup_task,interrupt_agent,list_agents,send_message,spawn_agent,wait_agent]"
+    ]
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "role": "developer",
+    "head": "You are Codex, an agent based on GPT-6. You and the user share one wor"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "role": "developer",
+    "head": "<multi_agent_role>You are `/root`, the primary agent in a team of agen"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "role": "developer",
+    "head": "<multi_agent_mode>Any earlier instruction enabling proactive multi-age"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-30w3_azx/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   },
+   {
+    "i": 7,
+    "type": "custom_tool_call",
+    "bytes": 222,
+    "call": ".exec null"
+   },
+   {
+    "i": 8,
+    "type": "custom_tool_call_output",
+    "bytes": 1196
+   }
+  ],
+  "replied_with": "exec:const hits = ALL_TOOLS.filter(t => /issue/i.test(t.name + ' ' + t.description)); text(JSON.stringify(hits.map(t => t.name))); const r = await tools.mcp__tracker__list_issues({state: 'open'}); text(JSON.stringify(r));"
+ },
+ {
+  "n": 3,
+  "phase": 1,
+  "bytes": 58227,
+  "top_tools": [],
+  "top_tools_bytes": 2,
+  "items": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "tools": [
+     "functions[exec,wait,request_user_input,request_user_input_async]",
+     "clock[sleep]",
+     "collaboration[followup_task,interrupt_agent,list_agents,send_message,spawn_agent,wait_agent]"
+    ]
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "role": "developer",
+    "head": "You are Codex, an agent based on GPT-6. You and the user share one wor"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "role": "developer",
+    "head": "<multi_agent_role>You are `/root`, the primary agent in a team of agen"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "role": "developer",
+    "head": "<multi_agent_mode>Any earlier instruction enabling proactive multi-age"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-30w3_azx/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   },
+   {
+    "i": 7,
+    "type": "custom_tool_call",
+    "bytes": 222,
+    "call": ".exec null"
+   },
+   {
+    "i": 8,
+    "type": "custom_tool_call_output",
+    "bytes": 1196
+   },
+   {
+    "i": 9,
+    "type": "custom_tool_call",
+    "bytes": 309,
+    "call": ".exec null"
+   },
+   {
+    "i": 10,
+    "type": "custom_tool_call_output",
+    "bytes": 629
+   }
+  ],
+  "replied_with": "text"
+ }
+]

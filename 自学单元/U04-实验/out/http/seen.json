@@ -1,0 +1,84 @@
+[
+ {
+  "process": 1,
+  "cmd_tail": "--json --skip-git-repo-check -C /tmp/u04-pps61hi0/ws 【第1轮】先调两次工具看看。"
+ },
+ {
+  "n": 1,
+  "transport": "http",
+  "type": null,
+  "generate": true,
+  "previous_response_id": null,
+  "sent_input_items": 7,
+  "sent_bytes": 56430,
+  "full_input_items": 7,
+  "full_input_bytes": 54884,
+  "reply": [
+   "custom_tool_call"
+  ]
+ },
+ {
+  "n": 2,
+  "transport": "http",
+  "type": null,
+  "generate": true,
+  "previous_response_id": null,
+  "sent_input_items": 9,
+  "sent_bytes": 56816,
+  "full_input_items": 9,
+  "full_input_bytes": 55270,
+  "reply": [
+   "custom_tool_call"
+  ]
+ },
+ {
+  "n": 3,
+  "transport": "http",
+  "type": null,
+  "generate": true,
+  "previous_response_id": null,
+  "sent_input_items": 11,
+  "sent_bytes": 57202,
+  "full_input_items": 11,
+  "full_input_bytes": 55656,
+  "reply": [
+   "message"
+  ]
+ },
+ {
+  "process": 2,
+  "cmd_tail": "--json --skip-git-repo-check -C /tmp/u04-pps61hi0/ws resume --last 【第2轮】继续。"
+ },
+ {
+  "n": 4,
+  "transport": "http",
+  "type": null,
+  "generate": true,
+  "previous_response_id": null,
+  "sent_input_items": 13,
+  "sent_bytes": 57504,
+  "full_input_items": 13,
+  "full_input_bytes": 55950,
+  "reply": [
+   "message"
+  ]
+ },
+ {
+  "process": 3,
+  "cmd_tail": "--json --skip-git-repo-check -C /tmp/u04-pps61hi0/ws -c features.sleep_tool=false resume --last 【第3轮】关掉一个工具后再继续。"
+ },
+ {
+  "n": 5,
+  "transport": "http",
+  "type": null,
+  "generate": true,
+  "previous_response_id": null,
+  "sent_input_items": 16,
+  "sent_bytes": 58098,
+  "full_input_items": 16,
+  "full_input_bytes": 56544,
+  "reply": [
+   "message"
+  ]
+ }
+]

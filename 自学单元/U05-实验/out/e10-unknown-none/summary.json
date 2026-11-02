@@ -1,0 +1,108 @@
+[
+ {
+  "n": 1,
+  "phase": 1,
+  "bytes": 39550,
+  "top_tools": [
+   "exec_command",
+   "write_stdin",
+   "request_user_input",
+   "view_image",
+   "multi_agent_v1[close_agent,resume_agent,send_input,spawn_agent,wait_agent]",
+   "get_goal",
+   "create_goal",
+   "update_goal"
+  ],
+  "top_tools_bytes": 17713,
+  "items": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 17480,
+    "role": "developer",
+    "head": "You are a coding agent running in the Codex CLI, a terminal-based codi"
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 2493,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-txhj3ad2/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   }
+  ],
+  "replied_with": "sleep:3000"
+ },
+ {
+  "n": 2,
+  "phase": 1,
+  "bytes": 39818,
+  "top_tools": [
+   "exec_command",
+   "write_stdin",
+   "request_user_input",
+   "view_image",
+   "multi_agent_v1[close_agent,resume_agent,send_input,spawn_agent,wait_agent]",
+   "get_goal",
+   "create_goal",
+   "update_goal"
+  ],
+  "top_tools_bytes": 17713,
+  "items": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 17480,
+    "role": "developer",
+    "head": "You are a coding agent running in the Codex CLI, a terminal-based codi"
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 2493,
+    "role": "developer",
+    "head": "<skills_instructions> ## Skills A skill is a set of local instructions"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 752,
+    "role": "user",
+    "head": "# AGENTS.md instructions for /tmp/u05-txhj3ad2/ws  <INSTRUCTIONS> # U0"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 152,
+    "role": "user",
+    "head": "【U05】第 1 轮"
+   },
+   {
+    "i": 4,
+    "type": "function_call",
+    "bytes": 139,
+    "call": "clock.sleep \"{\\\"duration_ms\\\": 3000}\""
+   },
+   {
+    "i": 5,
+    "type": "function_call_output",
+    "bytes": 145,
+    "output": "unsupported call: clocksleep"
+   }
+  ],
+  "replied_with": "text"
+ }
+]

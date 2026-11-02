@@ -1,0 +1,48 @@
+{
+ "type": "response.create",
+ "model": "gpt-6.1-sol",
+ "stream": true,
+ "previous_response_id": "resp_3",
+ "input": [
+  {
+   "type": "custom_tool_call_output",
+   "id": "ctco_01a19b5f-5df0-77c0-9ffd-9aa2d184606e",
+   "call_id": "call_resp_3",
+   "output": [
+    {
+     "type": "input_text",
+     "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+     "type": "input_text",
+     "text": "tool-call-2"
+    }
+   ]
+  }
+ ],
+ "tool_choice": "auto",
+ "parallel_tool_calls": false,
+ "reasoning": {
+  "effort": "low",
+  "context": "all_turns"
+ },
+ "store": false,
+ "include": [
+  "reasoning.encrypted_content"
+ ],
+ "prompt_cache_key": "01a19b5f-5d19-7fb1-8a31-ea449953df94",
+ "text": {
+  "verbosity": "low"
+ },
+ "client_metadata": {
+  "x-codex-window-id": "01a19b5f-5d19-7fb1-8a31-ea449953df94:0",
+  "root_turn_id": "01a19b5f-5d2d-7920-82b2-23a1c2e43923",
+  "turn_id": "01a19b5f-5d2d-7920-82b2-23a1c2e43923",
+  "x-codex-turn-metadata": "{\"installation_id\":\"94bd013a-93a8-42fc-b916-1923785b6377\",\"session_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94\",\"thread_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94\",\"agent_name\":\"/root\",\"turn_id\":\"01a19b5f-5d2d-7920-82b2-23a1c2e43923\",\"window_id\":\"01a19b5f-5d19-7fb1-8a31-ea449953df94:0\",\"window_number\":0,\"context_window_id\":\"01a19b5f-5d1a-7732-80d6-bab50076cc87\",\"request_kind\":\"turn\",\"history_initialization\":\"new\",\"root_turn_id\":\"01a19b5f-5d2d-7920-82b2-23a1c2e43923\",\"thread_source\":\"user\",\"turn_trigger\":\"exec\",\"sandbox\":\"seccomp\",\"sandbox_mode\":\"read-only\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1793608080692,\"analytics_enabled\":false,\"model\":\"gpt-6.1-sol\",\"reasoning_effort\":\"low\"}",
+  "ws_request_header_x_openai_internal_codex_responses_lite": "true",
+  "session_id": "01a19b5f-5d19-7fb1-8a31-ea449953df94",
+  "x-codex-installation-id": "94bd013a-93a8-42fc-b916-1923785b6377",
+  "thread_id": "01a19b5f-5d19-7fb1-8a31-ea449953df94",
+  "x-codex-ws-stream-request-start-ms": "1793608080884"
+ }
+}

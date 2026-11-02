@@ -1,0 +1,3 @@
+["exec:text(JSON.stringify({n: ALL_TOOLS.length, mcp: ALL_TOOLS.filter(t => /tracker|database|monitor/.test(t.name)).map(t => t.name)}))",
+ "exec:const hits = ALL_TOOLS.filter(t => /issue/i.test(t.name + ' ' + t.description)); text(JSON.stringify(hits.map(t => t.name))); const r = await tools.mcp__tracker__list_issues({state: 'open'}); text(JSON.stringify(r));",
+ "text"]

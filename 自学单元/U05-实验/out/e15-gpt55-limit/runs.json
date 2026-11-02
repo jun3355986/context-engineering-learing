@@ -1,0 +1,7 @@
+[
+ {
+  "phase": 1,
+  "rc": 0,
+  "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"01a19b77-e73d-7742-8aac-7ad78e726c5c\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"agent_message\",\"text\":\"MOCK_REPLY\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":0,\"cached_input_tokens\":0,\"cache_write_input_tokens\":0,\"output_tokens\":0,\"reasoning_output_tokens\":0}}\n"
+ }
+]

@@ -1,0 +1,7 @@
+[
+ {
+  "phase": 1,
+  "rc": 0,
+  "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"01a19b72-e0f1-7cc3-afbb-8fa66bf03d1e\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.started\",\"item\":{\"id\":\"item_0\",\"type\":\"mcp_tool_call\",\"server\":\"tracker\",\"tool\":\"list_issues\",\"arguments\":{\"state\":\"open\"},\"result\":null,\"error\":null,\"status\":\"in_progress\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"mcp_tool_call\",\"server\":\"tracker\",\"tool\":\"list_issues\",\"arguments\":{\"state\":\"open\"},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"[tracker.list_issues] OK (fake)\"}],\"structured_content\":null},\"error\":null,\"status\":\"completed\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_1\",\"type\":\"agent_message\",\"text\":\"MOCK_REPLY\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":0,\"cached_input_tokens\":0,\"cache_write_input_tokens\":0,\"output_tokens\":0,\"reasoning_output_tokens\":0}}\n"
+ }
+]

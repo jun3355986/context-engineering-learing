@@ -1,0 +1,7 @@
+[
+ {
+  "phase": 1,
+  "rc": 0,
+  "stdout": "{\"type\":\"thread.started\",\"thread_id\":\"01a19b73-6537-76e1-9fd1-b947742b8484\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"error\",\"message\":\"Model metadata for `not-a-real-model` not found. Defaulting to fallback metadata; this can degrade performance and cause issues.\"}}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_1\",\"type\":\"agent_message\",\"text\":\"MOCK_REPLY\"}}\n{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":0,\"cached_input_tokens\":0,\"cache_write_input_tokens\":0,\"output_tokens\":0,\"reasoning_output_tokens\":0}}\n"
+ }
+]

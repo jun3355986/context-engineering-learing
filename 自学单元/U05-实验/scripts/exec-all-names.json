@@ -1,0 +1,2 @@
+["exec:text(JSON.stringify(ALL_TOOLS.filter(t => !/^mcp__(tracker|database|monitor)/.test(t.name)).map(t => t.name))); text(JSON.stringify(Object.keys(tools).length)); text(String(JSON.stringify(ALL_TOOLS).length));",
+ "text"]
