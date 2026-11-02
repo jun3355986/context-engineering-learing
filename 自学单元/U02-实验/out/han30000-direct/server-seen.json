@@ -1,0 +1,10 @@
+[
+ [
+  "POST",
+  "/v1/responses"
+ ],
+ [
+  "POST",
+  "/v1/responses"
+ ]
+]
