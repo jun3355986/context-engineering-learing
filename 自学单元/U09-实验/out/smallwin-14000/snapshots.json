@@ -1,0 +1,55 @@
+[
+ {
+  "step": "t1 之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T13-27-28-01a19c71-87a0-7963-ac46-942e8c43b449.jsonl",
+    "lines": 88,
+    "bytes": 441600,
+    "markers": [
+     "【第1轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 1,
+     "response_item": 23,
+     "world_state": 6,
+     "turn_context": 6,
+     "event_msg:thread_settings_applied": 6,
+     "event_msg:item_completed": 7,
+     "token_usage_record": 11,
+     "event_msg:token_count": 21,
+     "compacted": 5,
+     "event_msg:task_complete": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "t2 之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T13-27-28-01a19c71-87a0-7963-ac46-942e8c43b449.jsonl",
+    "lines": 106,
+    "bytes": 514647,
+    "markers": [
+     "【第1轮】",
+     "【第2轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 2,
+     "response_item": 26,
+     "world_state": 7,
+     "turn_context": 7,
+     "event_msg:thread_settings_applied": 7,
+     "event_msg:item_completed": 10,
+     "token_usage_record": 13,
+     "event_msg:token_count": 25,
+     "compacted": 6,
+     "event_msg:task_complete": 2
+    }
+   }
+  ]
+ }
+]

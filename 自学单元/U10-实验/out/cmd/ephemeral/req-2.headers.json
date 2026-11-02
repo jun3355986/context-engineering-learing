@@ -1,0 +1,15 @@
+{
+ "x-codex-beta-features": "remote_compaction_v2",
+ "x-codex-window-id": "01a19c87-bf8f-7ac1-b922-4ce7982fc93f:0",
+ "x-codex-turn-metadata": "{\"installation_id\":\"878715aa-5e10-45e2-8185-c6357f8a0583\",\"session_id\":\"01a19c87-bf8f-7ac1-b922-4ce7982fc93f\",\"thread_id\":\"01a19c87-bf8f-7ac1-b922-4ce7982fc93f\",\"agent_name\":\"/root\",\"turn_id\":\"01a19c87-bfbc-75d3-99fb-56b0e68abf29\",\"window_id\":\"01a19c87-bf8f-7ac1-b922-4ce7982fc93f:0\",\"window_number\":0,\"context_window_id\":\"01a19c87-bf92-7561-99d7-6b98f902f734\",\"request_kind\":\"turn\",\"history_initialization\":\"new\",\"root_turn_id\":\"01a19c87-bfbc-75d3-99fb-56b0e68abf29\",\"thread_source\":\"user\",\"turn_trigger\":\"exec\",\"sandbox\":\"seccomp\",\"sandbox_mode\":\"read-only\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"workspaces\":{\"/home/ubuntu/work/context-engineering-learing\":{\"associated_remote_urls\":{\"origin\":\"git@github.com:jun3355986/context-engineering-learing.git\"},\"latest_git_commit_hash\":\"22d7487a8457db1bd3f56ecea7ea12e2385270da\",\"has_changes\":true}},\"turn_started_at_unix_ms\":1793627504582,\"analytics_enabled\":false,\"model\":\"gpt-6.1-sol\",\"reasoning_effort\":\"low\"}",
+ "x-openai-internal-codex-responses-lite": "true",
+ "x-client-request-id": "01a19c87-bf8f-7ac1-b922-4ce7982fc93f",
+ "session-id": "01a19c87-bf8f-7ac1-b922-4ce7982fc93f",
+ "thread-id": "01a19c87-bf8f-7ac1-b922-4ce7982fc93f",
+ "accept": "text/event-stream",
+ "content-type": "application/json",
+ "originator": "codex_exec",
+ "user-agent": "codex_exec/0.165.0 (Ubuntu 26.4.0; x86_64) tmux-256color (codex_exec; 0.165.0)",
+ "host": "127.0.0.1:46475",
+ "content-length": "57177"
+}

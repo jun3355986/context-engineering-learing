@@ -1,0 +1,62 @@
+{
+ "memories_1.sqlite:stage1_outputs": [],
+ "memories_1.sqlite:jobs": [],
+ "memories_1.sqlite:consolidation_progress": [
+  {
+   "singleton": 1,
+   "max_thread_count": 0
+  }
+ ],
+ "memories_v2_1.sqlite:stage1_outputs": [
+  {
+   "thread_id": "01a19bff-565c-78e3-9683-1edadfdaf719",
+   "source_updated_at": 1793611364,
+   "raw_memory": "",
+   "rollout_summary": "用户 Drake 说项目测试用 pnpm，不要用 npm。（假服务器写死的摘要）",
+   "rollout_slug": "pnpm-rule",
+   "generated_at": 1793618567,
+   "usage_count": 1,
+   "last_usage": 1793618591,
+   "selected_for_phase2": 1,
+   "selected_for_phase2_source_updated_at": 1793611364
+  }
+ ],
+ "memories_v2_1.sqlite:jobs": [
+  {
+   "kind": "memory_consolidate_global",
+   "job_key": "global",
+   "status": "done",
+   "worker_id": "01a19bff-62dc-7530-b899-75b36e0a7170",
+   "ownership_token": "2ed5b834-6035-4347-a571-c3b00e4e2294",
+   "started_at": 1793618567,
+   "finished_at": 1793618569,
+   "lease_until": null,
+   "retry_at": null,
+   "retry_remaining": 3,
+   "last_error": null,
+   "input_watermark": 1793611364,
+   "last_success_watermark": 1793611364
+  },
+  {
+   "kind": "memory_stage1",
+   "job_key": "01a19bff-565c-78e3-9683-1edadfdaf719",
+   "status": "done",
+   "worker_id": "01a19bff-62dc-7530-b899-75b36e0a7170",
+   "ownership_token": "4da8cd85-2514-4a8b-8edd-c3550d50cf08",
+   "started_at": 1793618567,
+   "finished_at": 1793618567,
+   "lease_until": null,
+   "retry_at": null,
+   "retry_remaining": 3,
+   "last_error": null,
+   "input_watermark": 1793611364,
+   "last_success_watermark": 1793611364
+  }
+ ],
+ "memories_v2_1.sqlite:consolidation_progress": [
+  {
+   "singleton": 1,
+   "max_thread_count": 1
+  }
+ ]
+}

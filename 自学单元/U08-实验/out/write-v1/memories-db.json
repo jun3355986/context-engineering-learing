@@ -1,0 +1,54 @@
+{
+ "memories_1.sqlite:stage1_outputs": [
+  {
+   "thread_id": "01a19c04-023b-7433-8fcf-5e0b73f50ac2",
+   "source_updated_at": 1793611670,
+   "raw_memory": "- 用户偏好：测试用 pnpm，不要用 npm。（假服务器写死的原始记忆）",
+   "rollout_summary": "用户 Drake 说项目测试用 pnpm，不要用 npm。（假服务器写死的摘要）",
+   "rollout_slug": "pnpm-rule",
+   "generated_at": 1793618874,
+   "usage_count": 1,
+   "last_usage": 1793618897,
+   "selected_for_phase2": 0,
+   "selected_for_phase2_source_updated_at": null
+  }
+ ],
+ "memories_1.sqlite:jobs": [
+  {
+   "kind": "memory_consolidate_global",
+   "job_key": "global",
+   "status": "error",
+   "worker_id": "01a19c04-0efb-7d13-9019-5bb6d58317cd",
+   "ownership_token": "2c9c60a8-93e3-4912-b746-d36fdb44d597",
+   "started_at": 1793618874,
+   "finished_at": 1793618875,
+   "lease_until": null,
+   "retry_at": 1793622475,
+   "retry_remaining": 2,
+   "last_error": "failed_invalid_artifacts",
+   "input_watermark": 1793611670,
+   "last_success_watermark": 0
+  },
+  {
+   "kind": "memory_stage1",
+   "job_key": "01a19c04-023b-7433-8fcf-5e0b73f50ac2",
+   "status": "done",
+   "worker_id": "01a19c04-0efb-7d13-9019-5bb6d58317cd",
+   "ownership_token": "a67ce529-ff47-4390-b3cb-f9ae1455a38f",
+   "started_at": 1793618874,
+   "finished_at": 1793618874,
+   "lease_until": null,
+   "retry_at": null,
+   "retry_remaining": 3,
+   "last_error": null,
+   "input_watermark": 1793611670,
+   "last_success_watermark": 1793611670
+  }
+ ],
+ "memories_1.sqlite:consolidation_progress": [
+  {
+   "singleton": 1,
+   "max_thread_count": 0
+  }
+ ]
+}

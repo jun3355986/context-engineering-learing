@@ -1,0 +1,181 @@
+[
+ {
+  "label": "start",
+  "thread": "01a19c6d-951d-7af1-8f53-bf84b8eda8ab"
+ },
+ {
+  "label": "t1",
+  "thread": "01a19c6d-951d-7af1-8f53-bf84b8eda8ab",
+  "turn": "01a19c6d-954e-74c2-a41d-77b8e6e857ed",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "configWarning": 1,
+   "remoteControl/status/changed": 1,
+   "thread/started": 1,
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t2",
+  "thread": "01a19c6d-951d-7af1-8f53-bf84b8eda8ab",
+  "turn": "01a19c6d-95bb-7e63-adee-d3fdc563be53",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "big-message",
+  "chars": 400005,
+  "utf8_bytes": 1200013,
+  "est_tokens": 300004
+ },
+ {
+  "label": "t3-big",
+  "thread": "01a19c6d-951d-7af1-8f53-bf84b8eda8ab",
+  "turn": "01a19c6d-9652-7823-a890-9992a0641b27",
+  "status": "failed",
+  "error": {
+   "message": "{\"error\": {\"message\": \"Your input exceeds the context window of this model. Please adjust your input and try again.\", \"type\": \"invalid_request_error\", \"param\": \"input\", \"code\": \"context_length_exceeded\"}}",
+   "codexErrorInfo": "other",
+   "additionalDetails": null,
+   "misalignment": null
+  },
+  "seconds": 0.2,
+  "requests": {
+   "user:overflow": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 1,
+   "item/completed": 1,
+   "error": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t4",
+  "thread": "01a19c6d-951d-7af1-8f53-bf84b8eda8ab",
+  "turn": "01a19c6d-975b-7490-a071-f439c0e7412d",
+  "status": "failed",
+  "error": {
+   "message": "{\"error\": {\"message\": \"Your input exceeds the context window of this model. Please adjust your input and try again.\", \"type\": \"invalid_request_error\", \"param\": \"input\", \"code\": \"context_length_exceeded\"}}",
+   "codexErrorInfo": "other",
+   "additionalDetails": null,
+   "misalignment": null
+  },
+  "seconds": 6.2,
+  "requests": {
+   "compact:overflow": 6
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "error": 6,
+   "item/completed": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t5",
+  "thread": "01a19c6d-951d-7af1-8f53-bf84b8eda8ab",
+  "turn": "01a19c6d-af95-7793-8ada-4d65dc9c2f38",
+  "status": "failed",
+  "error": {
+   "message": "{\"error\": {\"message\": \"Your input exceeds the context window of this model. Please adjust your input and try again.\", \"type\": \"invalid_request_error\", \"param\": \"input\", \"code\": \"context_length_exceeded\"}}",
+   "codexErrorInfo": "other",
+   "additionalDetails": null,
+   "misalignment": null
+  },
+  "seconds": 6.1,
+  "requests": {
+   "compact:overflow": 6
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "error": 6,
+   "item/completed": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t6-resume",
+  "thread": "01a19c6d-951d-7af1-8f53-bf84b8eda8ab",
+  "turn": "01a19c6d-c882-7373-92a8-767529121291",
+  "status": "failed",
+  "error": {
+   "message": "{\"error\": {\"message\": \"Your input exceeds the context window of this model. Please adjust your input and try again.\", \"type\": \"invalid_request_error\", \"param\": \"input\", \"code\": \"context_length_exceeded\"}}",
+   "codexErrorInfo": "other",
+   "additionalDetails": null,
+   "misalignment": null
+  },
+  "seconds": 6.6,
+  "requests": {
+   "compact:overflow": 6
+  },
+  "notifications": {
+   "configWarning": 1,
+   "remoteControl/status/changed": 1,
+   "deprecationNotice": 1,
+   "thread/status/changed": 3,
+   "thread/tokenUsage/updated": 1,
+   "thread/goal/cleared": 1,
+   "turn/started": 1,
+   "item/started": 2,
+   "error": 6,
+   "item/completed": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "revert",
+  "beforeTurnId": "01a19c6d-9652-7823-a890-9992a0641b27"
+ },
+ {
+  "label": "t7-after-revert",
+  "thread": "01a19c6d-951d-7af1-8f53-bf84b8eda8ab",
+  "turn": "01a19c6d-e2d5-7873-be74-ded610881ce3",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 4,
+   "thread/reverted": 1,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ }
+]

@@ -1,0 +1,41 @@
+[
+ {
+  "n": 1,
+  "label": "s1",
+  "kind": "user",
+  "model": "gpt-6.1-sol",
+  "effort": "low",
+  "bytes": 58360,
+  "input_items": 7,
+  "has_instructions": false,
+  "instructions_bytes": 0,
+  "output_format": null,
+  "tools_top_level": 0
+ },
+ {
+  "n": 2,
+  "label": "s2",
+  "kind": "user",
+  "model": "gpt-6.1-sol",
+  "effort": "low",
+  "bytes": 58326,
+  "input_items": 7,
+  "has_instructions": false,
+  "instructions_bytes": 0,
+  "output_format": null,
+  "tools_top_level": 0
+ },
+ {
+  "n": 3,
+  "label": "s3",
+  "kind": "user",
+  "model": "gpt-6.1-sol",
+  "effort": "low",
+  "bytes": 58581,
+  "input_items": 9,
+  "has_instructions": false,
+  "instructions_bytes": 0,
+  "output_format": null,
+  "tools_top_level": 0
+ }
+]

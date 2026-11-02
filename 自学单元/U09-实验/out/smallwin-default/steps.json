@@ -1,0 +1,50 @@
+[
+ {
+  "label": "start",
+  "thread": "01a19c71-8c18-75d3-91ee-36afff971fc7"
+ },
+ {
+  "label": "t1-tools",
+  "thread": "01a19c71-8c18-75d3-91ee-36afff971fc7",
+  "turn": "01a19c71-8c36-7401-954e-46cdb2914d4b",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.2,
+  "requests": {
+   "user:ok": 1,
+   "after-tool:ok": 5
+  },
+  "notifications": {
+   "configWarning": 1,
+   "remoteControl/status/changed": 1,
+   "thread/started": 1,
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 6,
+   "account/rateLimits/updated": 6,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t2",
+  "thread": "01a19c71-8c18-75d3-91ee-36afff971fc7",
+  "turn": "01a19c71-8ce2-7873-a4f7-6dc61d7f8b86",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.0,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ }
+]

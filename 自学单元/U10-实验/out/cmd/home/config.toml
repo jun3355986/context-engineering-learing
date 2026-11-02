@@ -1,0 +1,16 @@
+model = "gpt-6.1-sol"
+model_reasoning_effort = "low"
+model_provider = "mock"
+approval_policy = "never"
+sandbox_mode = "read-only"
+web_search = "disabled"
+check_for_update_on_startup = false
+[analytics]
+enabled = false
+[model_providers.mock]
+name = "mock"
+base_url = "http://127.0.0.1:42855/v1"
+wire_api = "responses"
+requires_openai_auth = false
+[projects.'/home/ubuntu/work/context-engineering-learing/自学单元/U10-实验/out/cmd/ws']
+trust_level = "trusted"

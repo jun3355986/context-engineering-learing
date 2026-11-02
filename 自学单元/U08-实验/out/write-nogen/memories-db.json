@@ -1,0 +1,34 @@
+{
+ "memories_1.sqlite:stage1_outputs": [],
+ "memories_1.sqlite:jobs": [],
+ "memories_1.sqlite:consolidation_progress": [
+  {
+   "singleton": 1,
+   "max_thread_count": 0
+  }
+ ],
+ "memories_v2_1.sqlite:stage1_outputs": [],
+ "memories_v2_1.sqlite:jobs": [
+  {
+   "kind": "memory_consolidate_global",
+   "job_key": "global",
+   "status": "done",
+   "worker_id": "01a19c02-20a0-77c1-b569-ffd093070c85",
+   "ownership_token": "a6d84a64-bc0a-4103-8ce1-47ce6e99667f",
+   "started_at": 1793618747,
+   "finished_at": 1793618747,
+   "lease_until": null,
+   "retry_at": null,
+   "retry_remaining": 3,
+   "last_error": null,
+   "input_watermark": 0,
+   "last_success_watermark": 0
+  }
+ ],
+ "memories_v2_1.sqlite:consolidation_progress": [
+  {
+   "singleton": 1,
+   "max_thread_count": 0
+  }
+ ]
+}

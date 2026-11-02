@@ -1,0 +1,194 @@
+[
+ {
+  "step": "t2 之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T13-24-39-01a19c6e-f520-7462-af03-4a0424f8d19a.jsonl",
+    "lines": 27,
+    "bytes": 1534652,
+    "markers": [
+     "【第1轮】",
+     "【第2轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 2,
+     "response_item": 10,
+     "world_state": 1,
+     "turn_context": 2,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 4,
+     "token_usage_record": 2,
+     "event_msg:token_count": 2,
+     "event_msg:task_complete": 2
+    }
+   }
+  ]
+ },
+ {
+  "step": "大消息那一轮之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T13-24-39-01a19c6e-f520-7462-af03-4a0424f8d19a.jsonl",
+    "lines": 34,
+    "bytes": 2498917,
+    "markers": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 3,
+     "response_item": 11,
+     "world_state": 1,
+     "turn_context": 3,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 5,
+     "token_usage_record": 2,
+     "event_msg:token_count": 4,
+     "event_msg:task_complete": 3
+    }
+   }
+  ]
+ },
+ {
+  "step": "t4 之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T13-24-39-01a19c6e-f520-7462-af03-4a0424f8d19a.jsonl",
+    "lines": 41,
+    "bytes": 2503180,
+    "markers": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】",
+     "【第4轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 4,
+     "response_item": 12,
+     "world_state": 1,
+     "turn_context": 4,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 6,
+     "token_usage_record": 2,
+     "event_msg:token_count": 6,
+     "event_msg:task_complete": 4
+    }
+   }
+  ]
+ },
+ {
+  "step": "手动压缩之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T13-24-39-01a19c6e-f520-7462-af03-4a0424f8d19a.jsonl",
+    "lines": 67,
+    "bytes": 2675402,
+    "markers": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】",
+     "【第4轮】",
+     "【第5轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 6,
+     "response_item": 14,
+     "world_state": 2,
+     "turn_context": 6,
+     "event_msg:thread_settings_applied": 2,
+     "event_msg:item_completed": 8,
+     "token_usage_record": 3,
+     "event_msg:token_count": 18,
+     "event_msg:task_complete": 6,
+     "compacted": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "新进程恢复并说一句之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T13-24-39-01a19c6e-f520-7462-af03-4a0424f8d19a.jsonl",
+    "lines": 85,
+    "bytes": 2686073,
+    "markers": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】",
+     "【第4轮】",
+     "【第5轮】",
+     "【第6轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 8,
+     "response_item": 18,
+     "world_state": 2,
+     "turn_context": 8,
+     "event_msg:thread_settings_applied": 2,
+     "event_msg:item_completed": 12,
+     "token_usage_record": 5,
+     "event_msg:token_count": 20,
+     "event_msg:task_complete": 8,
+     "compacted": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "回退并说一句之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T13-24-39-01a19c6e-f520-7462-af03-4a0424f8d19a.jsonl",
+    "lines": 85,
+    "bytes": 2686073,
+    "markers": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】",
+     "【第4轮】",
+     "【第5轮】",
+     "【第6轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 8,
+     "response_item": 18,
+     "world_state": 2,
+     "turn_context": 8,
+     "event_msg:thread_settings_applied": 2,
+     "event_msg:item_completed": 12,
+     "token_usage_record": 5,
+     "event_msg:token_count": 20,
+     "event_msg:task_complete": 8,
+     "compacted": 1
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T13-24-42-01a19c6e-f520-7462-af03-4a0424f8d19a_01a19c6e-fdd9-7c82-8208-27edcff87828.jsonl",
+    "lines": 11,
+    "bytes": 28840,
+    "markers": [
+     "【第7轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:task_started": 1,
+     "turn_context": 1,
+     "response_item": 2,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   }
+  ]
+ }
+]

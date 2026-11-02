@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>怎么证明更好</title>
+<link rel="stylesheet" href="assets/book.css">
+<script src="assets/book.js"></script>
+<style>
+/* 本章专用：第四节的概率条 */
+.pbar{display:flex;align-items:center;gap:10px;margin:.35em 0}
+.pbar .lab{min-width:8.2em}
+.pbar .meter{flex:1;min-width:120px;height:22px;margin:0}
+.pbar b{min-width:4.2em;text-align:right}
+</style>
+</head>
+
+<body class="chapter">
+<main class="page">
+<header class="chap-head">
+<p class="kicker">第 11 章</p>
+<h1>前十章只证明了「改了配置，请求会怎么变」；要证明「更好」，还得有只差一个变量的对照、算全的成本和够多的任务</h1>
+<p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 本机假服务器实验 + 精确的统计计算，没有连过真实模型</p>
+</header>
+
+<p class="lede">同一个任务、同一份配置，我在本机连跑三次 Codex，三次发出的请求大小一模一样（56,962 和 57,242 字节）。换成真实模型，同样的两个配置各跑 30 个任务，假设有三成任务两次结果不一致，约 40% 的概率会看到成功率差 10 个百分点以上。前一种差别不用统计就能信，后一种必须先量清楚运气有多大。</p>
+<p class="note"><b>机制</b>：改一项配置，请求里的字节、条数、次数怎么变。<b>效果</b>：改完以后，真实模型把任务做成的概率变没变。<b>任务</b>：一个固定的仓库、一句固定的话，加一个能自动判断成败的验收脚本。本章的证据有三种：本机假服务器上的实验（和前面各章一样，不联网、不花额度）、对 Codex 会话存档的指标提取、一段精确的统计计算。没有连过真实模型，所以本章没有任何一个「更好」的实测结果；统计部分用到的不一致率是假设值，不是测出来的。脚本和输出在 <code>自学单元/U10-实验/</code>。<sup><a href="#e1">1</a></sup></p>
+
+<div class="tablewrap"><table>
+<tr><th>实验</th><th>做什么</th><th>脚本</th><th>输出 <code>out/</code></th></tr>
+<tr><td>A 复现性</td><td>同一个任务、同一份配置，换工作目录路径、换 <code>CODEX_HOME</code> 路径，各跑三次，逐条比较请求</td><td><code>u10_repro.py</code></td><td><code>repro</code>、<code>repro-randhome</code></td></tr>
+<tr><td>B 指标</td><td>只读会话存档，算请求数、输入、命中、压缩次数；用第 4、10 章的存档核对</td><td><code>u10_metrics.py</code></td><td><code>metrics.txt</code></td></tr>
+<tr><td>C 统计</td><td>精确计算「配对对照要多少个任务」和「两个一样的配置碰巧差多少」，再用随机模拟核对</td><td><code>u10_power.py</code></td><td><code>power</code></td></tr>
+<tr><td>D 命令选项</td><td><code>--json</code>、<code>--ephemeral</code>、<code>-o</code>、<code>-c</code> 各起什么作用</td><td><code>u10_cmd.py</code></td><td><code>cmd.txt</code></td></tr>
+</table></div>
+
+<section class="qs" id="qs">
+<h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
+<ol>
+<li id="q1">第 3 到 10 章的实验，Codex 连的都是本机假服务器，回复是我写死的剧本。这样测出的结论，和「这个做法让真实任务做得更好」差在哪？哪些章的结论能直接信，哪些还差一步？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">同一个任务、同一份配置，Codex 连跑几次，发给服务器的请求逐字相同吗？A、B 两个配置各放在一个独立目录里跑，会多出哪些不该有的差别？<a class="jump" href="#a2">答案 ↓</a></li>
+<li id="q3">某个配置让成本降了 18%，成功率从 72% 掉到 66%（数字是示意）。该不该上？Codex 的存档里哪些数能直接拿来算成本，压缩请求算不算？<a class="jump" href="#a3">答案 ↓</a></li>
+<li id="q4">手上有 50 个任务，A 配置的成功率比 B 高 10 个百分点，能说 A 更好吗？至少要多少个任务？<a class="jump" href="#a4">答案 ↓</a></li>
+<li id="q5">想自己用 Codex 做一次对照：要固定什么，跑什么命令，从哪取数？这台机器上哪些能做，哪些做不了？<a class="jump" href="#a5">答案 ↓</a></li>
+</ol>
+</section>
+
+<section id="s1">
+<h2><span class="sn">一、</span>「会怎样」和「更好」是两种证明</h2>
+<p>第 3 到 10 章证明的都是机制，没有一条证明了「更好」。那些实验里，回复是写死的剧本，每次请求就只由配置决定：同样的配置跑几遍，请求大小都一样（下一节的实验 A）。所以「A 比 B 多发多少字节」跑一次就能确定，不需要统计。「更好」不一样：换了配置，真实模型把任务做成的概率变没变？模型每次的回复都不同，一个任务跑一次的结果说明不了什么，要靠一批任务、两个配置都跑、再看差别是不是大过运气。</p>
+<p>下表把前十章的结论分成两列。左列已经有实验，可以直接信；右列每一项都要真实模型，本书都还没测。<sup><a href="#e2">2</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>章</th><th>已证明的机制（回复写死，结果确定）</th><th>还没证明的效果（要真实模型）</th></tr>
+<tr><td>3 命令输出</td><td>5 万行输出进请求约 1 万 token，留头尾</td><td>头尾各留一段，会不会恰好截掉关键的那几行</td></tr>
+<tr><td>4 压缩</td><td>压缩后只留 2 万 token 预算内的用户原话，摘要放最后</td><td>真实模型写的摘要，会不会漏掉早期的规则</td></tr>
+<tr><td>5 缓存</td><td>前面一字不差才命中，增量发送</td><td>真实的命中率和花费</td></tr>
+<tr><td>6 工具</td><td>接 30 个 MCP 工具，<code>gpt-6.1-sol</code> 的请求逐字不变；搜索返回什么</td><td>真实模型选工具的准确率；搜不到时会不会换个词再搜</td></tr>
+<tr><td>7 子代理</td><td>同样 4 份日志，派子代理后总输入多 28%–33%，父会话窗口少 118,716 字节</td><td>该派的时候会不会派；子代理的缓存命中</td></tr>
+<tr><td>8 回退分叉</td><td>回退另存新文件、不还原磁盘上的文件</td><td>改文件后回退；真实终端的按键</td></tr>
+<tr><td>9 记忆</td><td>后台什么时候提炼，摘要超过 2,500 token 怎么截</td><td>真实摘要的质量；会不会照办「忘掉」；后台两个模型花多少额度</td></tr>
+<tr><td>10 窗口满</td><td>主请求被拒不压缩；压缩请求被拒从最旧的一条删</td><td>真实 OpenAI 服务超窗时怎么报错（流里还是 HTTP 400）</td></tr>
+</table></div>
+<p>右列的共同难处是：结果是「成了没成」这种带运气的二选一。后面四节讲怎么把这种证明做对：先把对照做干净，再把成本算全，再算需要多少任务，最后落到 Codex 上怎么跑。</p>
+
+<div class="answer" id="a1">
+<p class="qh">回答问题 1</p>
+<p class="qq">实验里回复是写死的剧本，这样测出的结论和「更好」差在哪？哪些章的结论能直接信？</p>
+<p>差在回复。回复固定，只能证明机制：换配置后请求里的字节、条数、次数怎么变，一次运行就能确定。「更好」要看真实模型做成任务的概率，要一批任务、两边都跑。表左列（第 3 到 10 章的机制）能直接信；右列每一项都还没测。</p>
+</div>
+</section>
+
+<section id="s2">
+<h2><span class="sn">二、</span>对照里「只差一个变量」有多难</h2>
+<p>即使回复写死，两次运行的请求也不会逐字相同；但差别只出在三类字段上，每一处都找得到原因。</p>
+<p><b>实验 A</b>：同一句话「帮我看下这个报错」，三次 <code>codex exec</code>，每次全新的 <code>CODEX_HOME</code>（路径固定）。第 1、3 次的工作目录是同一个路径（删掉重建），第 2 次换一个路径。假服务器第一次回一个工具调用，所以每次运行有两个请求。比较时先把所有 UUID 换成占位符。<sup><a href="#e3">3</a></sup></p>
+<ul>
+<li><b>大小</b>：三次的两个请求都是 56,962 和 57,242 字节。</li>
+<li><b>每个新会话必变的</b>：每条 <code>input</code> 的 id、会话号、轮次号（都是 UUID），以及 <code>client_metadata</code> 里 <code>x-codex-turn-metadata</code> 的开始时间戳。安装号也变了，因为实验每次删掉重建 <code>CODEX_HOME</code>（安装号存在里面的 <code>installation_id</code> 文件里）。换掉 UUID 后，同一路径重跑的第一个请求，7 条 <code>input</code> 全部相同。</li>
+<li><b>工具输出里的耗时</b>：第二个请求的最后一条是工具输出，里面写着 <code>Wall time: 0.0052 seconds</code>，另一次是 <code>0.0028</code>。真实任务里，测试输出的耗时、时间戳会让这类差别多得多。</li>
+<li><b>你自己放进去的</b>：只换工作目录路径，第 5 条（从 0 数起，和第 5 章一致）不同，路径写在 AGENTS.md 块的标题、<code>&lt;cwd&gt;</code> 和 <code>&lt;workspace_roots&gt;</code> 里；只换 <code>CODEX_HOME</code> 路径，第 2 条（技能目录）不同，里面写着技能根目录的路径。<sup><a href="#e4">4</a></sup></li>
+</ul>
+
+<h3>动手看：两臂差在哪，前缀在哪断</h3>
+<p>数据来自实验 A 的第一个请求（<code>gpt-6.1-sol</code>，7 条 <code>input</code>，各条字节数是抓到的）。第 5 章的规则：缓存只认开头一字不差，所以第一处不同之后的部分，即使内容相同也接不上。</p>
+<div class="ctrl"><span>A、B 两个配置的区别：</span>
+  <button class="btn" data-sc="same" aria-pressed="true">只有配置，路径都相同</button>
+  <button class="btn" data-sc="ws" aria-pressed="false">工作目录路径不同</button>
+  <button class="btn" data-sc="home" aria-pressed="false"><code>CODEX_HOME</code> 路径不同</button>
+  <button class="btn" data-sc="both" aria-pressed="false">两个路径都不同</button>
+</div>
+<div class="chips" id="c1"></div>
+<div class="panel" id="p1"></div>
+
+<p>这对做对照的人有四个后果：</p>
+<ol>
+<li><b>两臂的路径要相同。</b>每个（任务，配置）在同一个工作目录和同一个 <code>CODEX_HOME</code> 路径下删掉重建，轮流跑，不并行。并行就得分开路径，前缀在第 5 条或第 2 条断开。</li>
+<li><b>路径里别带配置的名字。</b>路径是模型也看得见的文字（环境信息里的 <code>&lt;cwd&gt;</code>）。实验里我用 <code>armA</code>、<code>armB</code> 只是为了看差别。</li>
+<li><b>别跨零点。</b>环境信息里有 <code>&lt;current_date&gt;</code> 和 <code>&lt;timezone&gt;</code>；日期变了，Codex 会在末尾追加新的环境信息（第 5 章，读了源码，没实验）。一批对照最好在一天内跑完，或者两个配置交替跑。<sup><a href="#e5">5</a></sup></li>
+<li><b>两臂之间缓存可能互相预热。</b>两个配置前 47,495 字节（工具定义加系统提示词）相同，先跑的那个可能替后跑的那个写好了缓存；条目 id 每个会话都换新，OpenAI 文档没写 id 算不算进缓存前缀【待核实】。没有真实服务的用量，说不准预热多少；轮流交换先后顺序，能让它在两边平均掉【推测】。</li>
+</ol>
+
+<div class="answer" id="a2">
+<p class="qh">回答问题 2</p>
+<p class="qq">同一个任务、同一份配置连跑几次，请求逐字相同吗？两个配置各放一个独立目录，会多出哪些差别？</p>
+<p>不逐字相同，但请求大小每次都一样：差别只有 UUID、开始时间戳和工具输出里的耗时。独立目录会多出两类：工作目录路径（写进第 5 条，AGENTS.md 加环境信息）和 <code>CODEX_HOME</code> 路径（写进第 2 条，技能目录），前缀分别在这两条断开。两臂用相同路径、轮流跑，就没有这两类差别。</p>
+</div>
+</section>
+
+<section id="s3">
+<h2><span class="sn">三、</span>成本和成功率要放在一起算</h2>
+<p>只看总成本会奖励「少做事」；每成功任务的成本好一点，但仍然决定不了上不上。</p>
+<p><b>每成功任务成本</b>（CPS）= 总成本 ÷ 成功的任务数，失败运行花的钱也算在分子里。设 A 配置 100 个任务成功 72 个，每次运行成本记为 1.00；B 配置成本 0.82（−18%），成功 66 个。A 的 CPS 是 1 ÷ 0.72 = 1.39，B 是 0.82 ÷ 0.66 = 1.24，低了 10.5%：连失败的花费都算进去，B 还是显得更省。</p>
+<p>但 B 多失败了 6 个。每个失败要有人返工，折成 <i>w</i> 次运行的成本。每个任务的实际损失 = 一次运行的成本 + 失败率 × <i>w</i>。B 比 A 好，当且仅当 <i>w</i> &lt; 0.18 ÷ 0.06 = 3。所以决定上不上的是「一次失败对你值多少次运行」，不是 CPS。这个 <i>w</i> 要在跑实验之前定，定了才知道成功率最多能掉多少。<sup><a href="#e9">9</a></sup></p>
+
+<h3>动手算：成本降了，成功率掉了，该不该上</h3>
+<p>算术示意：数字是我设的，公式是上面两条，不是实测。成本以 A 的一次运行为 1。</p>
+<div class="ctrl"><label>A 成功率 <input type="range" id="sa" min="30" max="99" step="1" value="72"> <b id="sav"></b>%</label></div>
+<div class="ctrl"><label>B 成功率 <input type="range" id="sb" min="30" max="99" step="1" value="66"> <b id="sbv"></b>%</label></div>
+<div class="ctrl"><label>B 的运行成本 <input type="range" id="sr" min="40" max="160" step="1" value="82"> <b id="srv"></b>% 的 A</label></div>
+<div class="ctrl"><label>一次失败折合 <i>w</i> = <input type="range" id="sw" min="0" max="10" step="0.5" value="2"> <b id="swv"></b> 次运行的成本</label></div>
+<div class="panel" id="p2"></div>
+
+<h3>Codex 的存档里，成本从哪取</h3>
+<p>存档里每个响应有一条 <code>token_usage_record</code>：这次请求的用量（输入、其中命中的部分、缓存写入、输出、推理输出）、本轮累计、整个会话累计。源码在持久化策略里注明，这类记录是为了「分析流程，如压缩、API 轮次」，一定会写入。压缩请求也有一条：第 4 章实验里，第 5 个响应是压缩请求（3,000 token），写完压缩记录时会话累计是 126,000，等于前 4 次的 123,000 加这 3,000。<sup><a href="#e6">6</a></sup></p>
+<p>成本要拆开算。<code>/status</code> 和 <code>codex exec</code> 打印的 tokens used 是未命中输入加输出，不含缓存命中；窗口占用才含命中（第 5 章）。比两个配置的成本，要把未命中输入、命中、写入、输出分别乘各自的单价，再加上压缩请求。价目倍数见第 5 章，输出的单价看你的账单。<sup><a href="#e8">8</a></sup></p>
+<p>只数正常请求会漏掉压缩。用存档重算第 10 章的小窗口实验（<code>model_context_window = 14000</code>，假服务器，输入是 Codex 的字节 ÷ 4 估算）：第 1 轮 11 次请求、输入 152,090 token，对照组 6 次、83,616（+82%）；整个小窗口运行里 13 次请求有 6 次是压缩请求，它们的输入占总输入的 46.5%（83,631 ÷ 179,803）。<sup><a href="#e7">7</a></sup></p>
+
+<div class="answer" id="a3">
+<p class="qh">回答问题 3</p>
+<p class="qq">成本降 18%、成功率从 72% 掉到 66%，该不该上？存档里哪些数能算成本，压缩请求算不算？</p>
+<p>看一次失败值多少次运行（<i>w</i>）：这组数字下 <i>w</i> 小于 3 才划算，CPS 单看会同意上线。成本取存档里每个响应的 <code>token_usage_record</code>，拆成未命中输入、命中、写入、输出分别计价；压缩请求在里面，要算进去。</p>
+</div>
+</section>
+
+<section id="s4">
+<h2><span class="sn">四、</span>差多少才算真的差</h2>
+<p>两个完全一样的配置，各跑一批任务，成功率也会不同；任务少时，这种碰巧的差别很大。</p>
+<p>把每个任务在 A、B 下各跑一次，算一对。<b>不一致率 <i>d</i></b>：一对里一个成功一个失败的比例。两边都成功或都失败的对，对「谁更好」没有信息，所以需要多少个任务由 <i>d</i> 决定。任务难度都一样、每次运行独立时，<i>d</i> = 2<i>p</i>(1−<i>p</i>)（成功率 70% 时 0.42）；有的任务必成、有的必败时，<i>d</i> 小得多。真实 Codex 任务的 <i>d</i> 没测过【待核实】，要靠<b>A/A 实验</b>量：同一个配置，在同一批任务上各跑两遍，数一数「一次成功一次失败」的任务占几成。</p>
+<p><b>实验 C</b>：精确符号检验（只看不一致的对），双侧，显著性水平 0.05；用随机模拟核对了 7 格，精确值和模拟值相差都在 1 个百分点以内。<i>d</i> 取 0.30 时：<sup><a href="#e10">10</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>任务数 <i>n</i></th><th class="num">30</th><th class="num">50</th><th class="num">100</th><th class="num">200</th></tr>
+<tr><td>两个一样的配置碰巧差 ≥ 5 个百分点</td><td class="num">61.5%</td><td class="num">51.7%</td><td class="num">41.1%</td><td class="num">22.0%</td></tr>
+<tr><td>两个一样的配置碰巧差 ≥ 10 个百分点</td><td class="num">40.2%</td><td class="num">24.4%</td><td class="num">8.2%</td><td class="num">1.2%</td></tr>
+</table></div>
+<div class="tablewrap"><table>
+<tr><th>有 80% 把握测出，至少要多少对任务</th><th class="num">真实差 5 个百分点</th><th class="num">10 个百分点</th><th class="num">20 个百分点</th></tr>
+<tr><td><i>d</i> = 0.10</td><td class="num">337</td><td class="num">78</td><td class="num">—</td></tr>
+<tr><td><i>d</i> = 0.20</td><td class="num">658</td><td class="num">168</td><td class="num">39</td></tr>
+<tr><td><i>d</i> = 0.30</td><td class="num">975</td><td class="num">249</td><td class="num">61</td></tr>
+<tr><td><i>d</i> = 0.42</td><td class="num">1,354</td><td class="num">344</td><td class="num">88</td></tr>
+</table></div>
+<p class="note">「—」：真实差不可能大于 <i>d</i>。表里的 <i>d</i> 是假设值，不是 Codex 任务上测出来的。</p>
+
+<h3>动手看：任务多少，运气多大</h3>
+<p>数据来自实验 C 的精确计算，选项里的值都是预先算好的格子。</p>
+<div class="ctrl"><span>任务数 <i>n</i>：</span><span id="bn"></span></div>
+<div class="ctrl"><span>不一致率 <i>d</i>：</span><span id="bd"></span></div>
+<div class="ctrl"><span>假设 A 真的比 B 高：</span><span id="bl"></span></div>
+<div class="panel" id="p3"></div>
+
+<p>两个办法让需要的任务变少：</p>
+<ul>
+<li><b>先量 <i>d</i>。</b>要测 10 个百分点的差，<i>d</i> 从 0.42 降到 0.10，所需的对数从 344 降到 78。A/A 实验本身就要跑一批任务，但它不用算两个配置，只花一个配置的钱。</li>
+<li><b>选 A、B 有可能分出胜负的任务。</b>太容易（两边都成功）或太难的任务提供不了信息。要在跑之前按难度选，不能跑完再挑。</li>
+</ul>
+<p>只想看大差异，也是诚实的做法：20 个百分点在 <i>d</i> = 0.30 时要 61 对，100 个任务就够。把结论写窄，别用 50 个任务去证明 5 个百分点。</p>
+
+<div class="answer" id="a4">
+<p class="qh">回答问题 4</p>
+<p class="qq">50 个任务，A 比 B 高 10 个百分点，能说 A 更好吗？至少要多少个任务？</p>
+<p>不能。<i>d</i> = 0.30 时，两个一样的配置在 50 个任务上有 24.4% 的概率碰巧差到 10 个百分点；就算 A 真的高 10 个百分点，50 对任务也只有 18% 的概率测得出。要 80% 的把握，需要 78 到 344 对，取决于 <i>d</i>（0.10 到 0.42）。先做 A/A 实验量出 <i>d</i>。</p>
+</div>
+</section>
+
+<section id="s5">
+<h2><span class="sn">五、</span>自己做一次对照</h2>
+<p>Codex 把每个响应的用量写进了存档，请求侧的指标靠读存档就能算；成败和「有没有丢规则」要自己写验收脚本。</p>
+<p><b>实验 B</b>：<code>u10_metrics.py</code> 只读存档，不看假服务器的日志，换成真实服务也能用。下表前五行用第 4、10 章的存档核对过，数字和当时假服务器看到的一致。<sup><a href="#e7">7</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>指标</th><th>怎么算</th><th>核对</th></tr>
+<tr><td>请求数、输入、命中、输出</td><td>数 <code>token_usage_record</code>，把 <code>usage</code> 各字段相加</td><td>小窗口 11 次 / 152,090，对照组 6 次 / 83,616，对上第 10 章</td></tr>
+<tr><td>压缩次数</td><td>数 <code>compacted</code> 记录</td><td>小窗口第 1 轮 5 次、整个运行 6 次，对上</td></tr>
+<tr><td>压缩请求的输入</td><td><code>compacted</code> 前面最近的一条 <code>token_usage_record</code></td><td>83,631 token，对上；只验证了本地压缩</td></tr>
+<tr><td>单次请求输入的峰值</td><td>各条 <code>usage.input_tokens</code> 的最大值，除以 <code>token_count</code> 事件里的 <code>model_context_window</code></td><td>小窗口运行 13,973，是窗口 13,300 的 105%（假服务器自己的窗口是 14,000，没有拒绝）</td></tr>
+<tr><td>工具调用数</td><td>数 <code>response_item</code> 里的 <code>function_call</code>、<code>custom_tool_call</code></td><td>小窗口和对照组都是 5，对上</td></tr>
+<tr><td>成功与否</td><td>验收脚本的退出码</td><td>自己写</td></tr>
+<tr><td>耗时</td><td>外部计时</td><td>没做</td></tr>
+</table></div>
+
+<div class="source">
+<h3>看源码：每个响应一条记录</h3>
+<p><code>core/src/state/session.rs</code> 第 228–254 行，注释是我加的；压缩请求完成时走的是同一条路（<code>core/src/compact.rs</code> 第 891–899 行调用 <code>record_observed_response_completed</code>）。<sup><a href="#e6">6</a></sup></p>
+<pre>let mut turn_token_usage = self
+    .latest_token_usage_record
+    .as_ref()
+    .filter(|record| record.turn_id == turn_id)   // 同一轮才接着加
+    .map_or_else(TokenUsage::default, |record| {
+        record.turn_token_usage.clone()
+    });
+turn_token_usage.add_assign(usage);
+let mut thread_token_usage = self                 // 整个会话一直接着加
+    .latest_token_usage_record
+    .as_ref()
+    .map_or_else(TokenUsage::default, |record| {
+        record.thread_token_usage.clone()
+    });
+thread_token_usage.add_assign(usage);
+let record = TokenUsageRecord {
+    thread_id,
+    turn_id: turn_id.to_string(),
+    session_id,
+    root_turn_id,
+    response_id,                    // 每个响应一条
+    usage: usage.clone(),           // 这一次请求
+    turn_token_usage,               // 本轮累计
+    thread_token_usage,             // 会话累计
+};
+self.latest_token_usage_record = Some(record.clone());
+record</pre>
+</div>
+
+<h3>命令骨架</h3>
+<p>每个选项单独核过（实验 D）；这一整套没有连真实模型跑过。<sup><a href="#e12">12</a></sup></p>
+<pre># 每个（任务, 配置）跑一次。两个配置的路径相同，每次删掉重建，轮流跑
+rm -rf "$WS" "$HOME_DIR" &amp;&amp; mkdir -p "$WS" "$HOME_DIR"
+cp -r "$TASK/repo/." "$WS/"                   # 固定的仓库和提交
+cp "$ARM/config.toml" "$HOME_DIR/config.toml"
+CODEX_HOME="$HOME_DIR" codex exec --json -C "$WS" -o "$OUT/last.txt" \
+  -c model_auto_compact_token_limit=100000 \
+  "$(cat "$TASK/prompt.txt")" &lt; /dev/null &gt; "$OUT/events.jsonl"
+(cd "$WS" &amp;&amp; bash "$TASK/verify.sh"; echo $? &gt; "$OUT/verify.code")
+cp -r "$HOME_DIR/sessions" "$OUT/"
+python3 -I u10_metrics.py "$OUT/sessions"</pre>
+<ul>
+<li><code>--json</code> 只输出 4 类事件（<code>thread.started</code>、<code>turn.started</code>、<code>item.completed</code>、<code>turn.completed</code>），<code>turn.completed.usage</code> 是会话累计（第 5 章），没有逐请求的数，也没有压缩次数。指标要读存档，别只靠 <code>--json</code>。</li>
+<li><code>--ephemeral</code> 不写会话存档：实验里它的 <code>sessions/</code> 是空的，一条 <code>token_usage_record</code> 都没有。做对照别加它。</li>
+<li><code>-o 文件</code> 把最后一条回复写进文件；<code>-c 键=值</code> 覆盖配置，等同写进 <code>config.toml</code>（命令行帮助这么写，第 5 章也用 <code>-c features.sleep_tool=false</code> 关过工具）。</li>
+</ul>
+
+<h3>一次完整的设计：以压缩线为例</h3>
+<p>把前四节合起来，是下面这张表。右边「现在能做」一栏，是这台机器、不花额度能做的部分。<sup><a href="#e11">11</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>要定的</th><th>压缩线的例子</th></tr>
+<tr><td>假设</td><td><code>model_auto_compact_token_limit</code> 从缺省的 244,800 降到 100,000，每成功任务成本降 10% 以上，成功率和约束遵守率不降</td></tr>
+<tr><td>两个配置</td><td>A：缺省；B：<code>-c model_auto_compact_token_limit=100000</code>。其余全相同：模型 <code>gpt-6.1-sol</code>、思考级别 low、同一批任务、同一个仓库提交、同一句初始提示</td></tr>
+<tr><td>任务</td><td>要长到会走过 10 万 token，否则两个配置没有差别。一部分任务在第一句话里给一条硬约束（如「不要改 <code>config/prod.yml</code>」），验收脚本里用 <code>git diff --quiet -- config/prod.yml</code> 检查：摘要有没有丢规则，不用人读，自动判定【我设计的方案，没实验】</td></tr>
+<tr><td>主指标</td><td>CPS，含压缩请求</td></tr>
+<tr><td>护栏</td><td>成功率；约束遵守率。降多少算破，用第三节的 <i>w</i> 事先定</td></tr>
+<tr><td>诊断</td><td>压缩次数、压缩请求的输入占比、单次请求峰值</td></tr>
+<tr><td>任务数</td><td>先做 A/A 量 <i>d</i>，再查第四节的表</td></tr>
+<tr><td>现在能做</td><td>压缩几次、多发多少 token（机制，第 4、10 章已有）；指标提取脚本</td></tr>
+<tr><td>现在做不了</td><td>成功率、约束遵守率、真实的 <i>d</i>、真实的命中率和花费：要连真实模型和服务、花额度，本章没做</td></tr>
+</table></div>
+
+<div class="answer" id="a5">
+<p class="qh">回答问题 5</p>
+<p class="qq">自己用 Codex 做一次对照：要固定什么，跑什么命令，从哪取数？这台机器上哪些能做？</p>
+<p>固定仓库提交、初始提示、验收脚本、模型和思考级别，以及两个配置的工作目录和 <code>CODEX_HOME</code> 路径；每个（任务，配置）用 <code>codex exec -c …</code> 在干净目录里跑一次，不加 <code>--ephemeral</code>，轮流交换先后；用 <code>u10_metrics.py</code> 读存档算请求数、输入、压缩次数，再跑验收脚本取成败。请求侧的指标这台机器上不花额度就能做；成功率、约束遵守率和真实的不一致率要连真实模型。</p>
+</div>
+</section>
+
+<section id="notes">
+<h2>设计笔记</h2>
+<ul>
+<li><b>Codex 给原始记录，不给结论。</b>按目录名和关键字搜 <code>codex-rs/</code>，没找到评测目录或 A/B 入口（搜索，未穷尽）。<sup><a href="#e13">13</a></sup>【推测】成败取决于你的任务和你对「成功」的定义，工具替你定不了；存档里每个响应的记录足够事后归因，但回答不了「换一个阈值会怎样」，那要自己跑对照。pi、oh-my-pi 据说自带评测设施（有无文档的对照、压缩保留信息的测试），本机没有它们的源码，没核对【待核实】。</li>
+<li><b>先机制，后效果。</b>用写死回复的假服务器确认一项配置在请求侧做了什么，便宜、确定；确认它真的改变了请求，再决定值不值得花真实模型的额度去测效果。第 3 到 10 章就是这一步。</li>
+<li><b>不一致率是最关键的未知数。</b>第四节的所有任务数都随 <i>d</i> 变，而 <i>d</i> 在 Codex 的真实任务上没测过。A/A 实验是整套设计里最先要做的一步。</li>
+<li><b>这一章没覆盖的统计问题。</b>反复看结果再停会增加假阳性；调参用的任务和最后验证用的任务要分开；观察数据只能提假设。这是通用的统计常识，不是 Codex 的事实，本章没有验证。每个任务重复跑几次、取平均，会改变 <i>d</i>，第四节的模型没算这一层。</li>
+</ul>
+</section>
+
+<section id="summary">
+<h2>小结</h2>
+<ol>
+<li>前十章的实验证明的是机制（回复写死，请求怎么变，一次运行就确定）；「更好」是效果，要真实模型、一批任务，本书还没测。</li>
+<li>同一任务重跑，请求大小一样，差别只有 UUID、开始时间戳和工具输出里的耗时；独立目录会把工作目录路径写进第 5 条、<code>CODEX_HOME</code> 路径写进第 2 条，前缀在那里断开，所以两个配置要用相同路径、轮流跑。</li>
+<li>只看总成本奖励少做事，CPS 好一点；决定上不上要看一次失败值多少次运行。Codex 存档里每个响应一条用量记录，压缩请求也有，要算进成本。</li>
+<li>任务少时，两个一样的配置也会碰巧差很多（<i>d</i> = 0.30、50 个任务，24% 的概率差 10 个百分点）；测 10 个百分点要 78 到 344 对。先做 A/A 实验量不一致率。</li>
+<li>固定仓库、提示、验收脚本、模型和路径，用 <code>codex exec -c</code> 在干净目录里轮流跑，读存档算指标；不要加 <code>--ephemeral</code>。请求侧指标不花额度，成功率和约束遵守率要真实模型。</li>
+</ol>
+</section>
+
+<section id="evidence">
+<h2>证据表</h2>
+<p>版本和路径说明：Codex 源码 <code>76ed3b4</code>，路径相对 <code>codex-rs/</code>；CLI <code>0.165.0</code>；实验脚本和输出在 <code>自学单元/U10-实验/</code>。</p>
+<div class="tablewrap"><table>
+<tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
+<tr id="e1"><td>1</td><td>实验条件：本机假服务器（自定义通道 <code>mock</code>，HTTP），全新 <code>CODEX_HOME</code>，<code>codex exec</code>，模型 gpt-6.1-sol、思考级别 low，2026-11-02 运行；没有连过真实模型，本章没有任何成功率的实测</td><td>实验 <code>u10_repro.py</code>、<code>u10_cmd.py</code>、<code>u10_metrics.py</code>、<code>u10_power.py</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e2"><td>2</td><td>第一节表：左列是各章已有的实验结论，右列是各章证据表和未决事项里记着「没测、要真实模型」的项</td><td>第 3 到 10 章各自的证据表；第 7 章 <code>573,510 → 761,485</code>、−118,716 字节</td><td><span class="tag lvl-h">高</span> 引用各章</td></tr>
+<tr id="e3"><td>3</td><td>实验 A：三次运行（run1 工作目录 <code>armA/ws</code>，run2 <code>armB/ws</code>，run3 重建 <code>armA/ws</code>），<code>CODEX_HOME</code> 固定路径、每次删掉重建；每次 2 个请求，字节 56,962 / 57,242，三次相同。把 UUID 换成 <code>&lt;uuid&gt;</code> 后：run1 对 run3，请求 1 只剩 <code>x-codex-turn-metadata</code> 里的开始时间戳不同，请求 2 另有第 8 条（工具输出）的 <code>Wall time</code> 不同（0.0052 与 0.0028 秒）</td><td>实验 <code>out/repro/report.txt</code>、<code>run1-armA</code>、<code>run3-armA-again</code>（<code>req-1.raw</code>、<code>req-2.raw</code>）；安装号存放：源码 <code>core/src/installation_id.rs:15-19</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e4"><td>4</td><td>只换工作目录路径：请求 1 第 5 条（<code>message/user</code>，AGENTS.md 块加环境信息，1,464 字节）不同，前 5 条共 54,007 字节（占 7 条总计 55,629 字节的 97.1%）相同；只换 <code>CODEX_HOME</code> 路径（随机目录名）：第 2 条（技能目录，3,527 字节，含 <code>/…/skills/.system</code> 路径）不同，前 2 条共 47,495 字节（85.4%）相同；两个都换：第 2、5 条不同。各条字节数（取自固定 <code>CODEX_HOME</code> 路径的那次）：25,347 / 22,148 / 3,527 / 2,575 / 410 / 1,464 / 158；随机目录名那次技能目录是 3,464 字节，整个请求 56,899 字节（路径长度不同），其余各条相同</td><td>实验 <code>out/repro</code>（run1 对 run2）、<code>out/repro-randhome</code>（run1 对 run3、对 run2）；<code>report.txt</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e5"><td>5</td><td>环境信息（第 5 条的第二段）里有 <code>&lt;cwd&gt;</code>、<code>&lt;shell&gt;</code>、<code>&lt;current_date&gt;</code>、<code>&lt;timezone&gt;</code>、<code>&lt;workspace_roots&gt;</code>；日期变了追加新环境信息是第 5 章的结论（读了源码，没实验）。两个配置先后跑能否互相预热缓存、条目 id 是否参与缓存匹配：没有真实服务的用量，OpenAI 文档没写</td><td>实验 <code>out/repro/run1-armA/req-1.json</code> 的 <code>input[5]</code>；第 5 章证据表 #8、#12</td><td><span class="tag lvl-m">中</span> 内容实验确认，跨天和缓存影响没实验；预热【推测】，id 【待核实】</td></tr>
+<tr id="e6"><td>6</td><td>每个完成的响应写一条 <code>TokenUsageRecord</code>（<code>usage</code>、<code>turn_token_usage</code>、<code>thread_token_usage</code>），持久化策略对它一律保留，注释写「便于分析流程（如压缩、API 轮次）」；压缩请求完成时调用同一函数。实验：第 4 章存档里第 5 个响应是压缩请求（3,000 token），此时会话累计 126,000 = 1,000 + 1,000 + 1,000 + 120,000 + 3,000</td><td>源码 <code>core/src/state/session.rs:219-255</code>、<code>core/src/session/mod.rs:5008-5066</code>、<code>core/src/compact.rs:866-902</code>、<code>rollout/src/policy.rs:41-50</code>、<code>protocol/src/protocol.rs:2366-2410</code>；实验 <code>自学单元/U03-实验/out/default/rollout.jsonl</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e7"><td>7</td><td>实验 B：<code>u10_metrics.py</code> 读存档，结果与第 10 章一致：小窗口第 1 轮 11 次请求、输入 152,090、压缩 5 次、工具调用 5；对照组 6 次、83,616、压缩 0 次；小窗口整个运行 13 次请求、输入 179,803，压缩 6 次，压缩请求的输入 83,631（46.5%），单次峰值 13,973；第 4 章存档：7 次请求、压缩 1 次、峰值 120,000。输入是假服务器报的用量（Codex 的字节 ÷ 4 估算），不是真实分词。压缩请求的识别方法（取 <code>compacted</code> 前最近一条记录）只在本地压缩上验证，远端压缩没验证</td><td>实验 <code>out/metrics.txt</code>；输入 <code>U09-实验/out/smallwin-14000</code>、<code>smallwin-default</code>、<code>U03-实验/out/default</code>；第 10 章证据表 #17</td><td><span class="tag lvl-h">高</span> 本地压缩；远端 <span class="tag lvl-m">中</span></td></tr>
+<tr id="e8"><td>8</td><td><code>/status</code> 的 Token usage 和 <code>exec</code> 的 tokens used = 未命中输入 + 输出；窗口占用含命中；价目倍数（GPT-5.6 及之后：读 0.1×，<code>gpt-6.1-sol</code> 0.05×，写 30 分钟 1.25×、12 小时 2.5×）</td><td>第 5 章证据表 #2、#4（OpenAI 文档，2026-11-02 抓取；源码 <code>tui/src/token_usage.rs</code>、<code>exec/src/event_processor_with_human_output.rs</code>）</td><td><span class="tag lvl-h">高</span> 引用第 5 章</td></tr>
+<tr id="e9"><td>9</td><td>CPS = 总成本 ÷ 成功数；B 比 A 好的条件：<i>r</i> + (1−<i>s</i><sub>B</sub>)<i>w</i> &lt; 1 + (1−<i>s</i><sub>A</sub>)<i>w</i>；示例 <i>r</i> = 0.82、<i>s</i><sub>A</sub> = 0.72、<i>s</i><sub>B</sub> = 0.66 → CPS 1.389 与 1.242（−10.5%），<i>w</i>* = 0.18 ÷ 0.06 = 3。假设失败运行的成本与成功运行相同；数字是我设的，不是任何实验</td><td>算术（页面脚本）</td><td><span class="tag lvl-h">高</span> 算术；数字是示意</td></tr>
+<tr id="e10"><td>10</td><td>模型：n 对任务，一对内不一致的概率 <i>d</i>，A 多成功的比例 δ；检验：精确符号检验（对不一致的对做 Binomial(D, 0.5)），双侧 α = 0.05，功效 ≥ 80% 取最小 n。<i>d</i> = 0.30：δ = 5 / 10 / 20 个百分点需 975 / 249 / 61 对（正态近似公式给 940 / 234 / 57）。A/A（δ = 0）碰巧差 ≥ 10 个百分点：n = 30 为 40.2%，n = 50 为 24.4%。随机模拟 2 万次（种子 20261102）核对 7 格，差别均在 1 个百分点内，例如 A/A（<i>n</i> = 30、<i>d</i> = 0.30、≥10 个百分点）精确 40.2%、模拟 40.7%，功效（<i>n</i> = 100、<i>d</i> = 0.30、<i>δ</i> = 10 个百分点）精确 37.3%、模拟 37.1%。<i>d</i> 和任务独立是假设，真实 Codex 任务的 <i>d</i> 没测</td><td>实验 <code>u10_power.py</code>，输出 <code>out/power/power.txt</code>、<code>power.json</code></td><td><span class="tag lvl-h">高</span> 计算；适用于真实任务 <span class="tag lvl-l">待核实</span></td></tr>
+<tr id="e11"><td>11</td><td>第五节设计表是按前四节组装的方案：约束检查用 <code>git diff --quiet</code> 判定是我的设计，没有跑过；<code>model_auto_compact_token_limit</code> 缺省 = 窗口 × 90% = 244,800（第 4 章）</td><td>第 4 章证据表；设计表为本章方案</td><td><span class="tag lvl-l">推测</span> 方案；缺省值引第 4 章</td></tr>
+<tr id="e12"><td>12</td><td>实验 D：三次 <code>codex exec</code>。plain：<code>--json</code> 输出 4 个事件，<code>turn.completed</code> 带 <code>usage</code>（5 个字段，无逐请求数据）；<code>-o</code> 文件写入最后一条回复；存档 1 个文件、2 条 <code>token_usage_record</code>。<code>--ephemeral</code>：<code>--json</code> 和 <code>-o</code> 照常，存档 0 个。加 <code>-c model_auto_compact_token_limit=50000</code>：命令正常跑完；<code>-c</code> 是否改变行为不在这里验证（假服务器报用量 0，触发不了压缩）；<code>-c</code> 的含义来自命令行帮助，第 5 章用 <code>-c features.sleep_tool=false</code> 验证过关工具</td><td>实验 <code>out/cmd.txt</code>、<code>out/cmd/*/stdout.jsonl</code>；<code>codex exec --help</code>（0.165.0）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e13"><td>13</td><td>Codex 没有评测目录或 A/B 入口；pi、oh-my-pi 的评测设施只有「据说」，本机没有源码</td><td>搜索 <code>codex-rs/</code> 目录名（含 eval、bench、experiment）和关键字；其余 agent 无源码</td><td><span class="tag lvl-m">中</span> Codex 搜索未穷尽；其余【待核实】</td></tr>
+</table></div>
+</section>
+
+</main>
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const press = (sel, el) => $$(sel).forEach(x => x.setAttribute('aria-pressed', x === el));
+const chip = (txt, cls, extra) => '<span class="chip ' + cls + (extra ? ' ' + extra : '') + '">' + txt + '</span>';
+const pct = x => (x * 100 < 0.05 ? '&lt;0.1' : (x * 100).toFixed(x * 100 < 10 ? 1 : 0)) + '%';
+
+/* 第二节：两个配置的请求在哪一条开始不同。数据来自实验 A：out/repro、out/repro-randhome 的 req-1（7 条 input，字节数是抓到的；UUID 已换成占位符再比） */
+const REQ = [['工具定义', 25347, 'k-tools'], ['系统提示词', 22148, 'k-tools'], ['技能目录+权限', 3527, 'k-tools'],
+  ['子代理角色说明', 2575, 'k-tools'], ['子代理开关说明', 410, 'k-tools'], ['AGENTS.md+环境信息', 1464, 'k-project'], ['你的话', 158, 'k-user']];
+const SC = {same: [], ws: [5], home: [2], both: [2, 5]};
+function renderS1(key) {
+  const diff = SC[key], first = diff.length ? Math.min.apply(null, diff) : REQ.length;
+  let total = 0, shared = 0, html = '';
+  REQ.forEach((it, i) => {
+    total += it[1];
+    if (i < first) shared += it[1];
+    const differs = diff.indexOf(i) >= 0;
+    html += chip(i + ' ' + it[0] + ' ' + fmt(it[1]) + (differs ? '（不同）' : ''), it[2], differs ? 'new' : (i > first ? 'dim' : ''));
+  });
+  $('#c1').innerHTML = html;
+  let t;
+  if (!diff.length) {
+    t = '<p>7 条 <code>input</code> 全部相同，前缀整份 <b>' + fmt(total) + '</b> 字节都接得上。第二个请求只多出工具输出里的耗时不同。</p>';
+  } else {
+    t = '<p>第一处不同在第 <b>' + first + '</b> 条（' + REQ[first][0] + '）。它前面的 <b>' + fmt(shared) + '</b> 字节（占 7 条的 ' + (shared / total * 100).toFixed(1) +
+      '%）两个配置相同，能接上缓存；第 ' + first + ' 条起的 <b>' + fmt(total - shared) + '</b> 字节接不上。</p>';
+    if (diff.length > 1) t += '<p>第 ' + diff.join('、') + ' 条都不同；断点以第一处为准。</p>';
+    t += '<p>断点之后的几条，内容两个配置其实一样，只是前缀已经断了。</p>';
+  }
+  $('#p1').innerHTML = t;
+}
+$$('[data-sc]').forEach(b => b.onclick = () => { press('[data-sc]', b); renderS1(b.dataset.sc); });
+renderS1('same');
+
+/* 第三节：成本与成功率。算术示意，不是实验。成本以 A 的一次运行为 1 */
+function renderS2() {
+  const sa = +$('#sa').value / 100, sb = +$('#sb').value / 100, r = +$('#sr').value / 100, w = +$('#sw').value;
+  $('#sav').textContent = Math.round(sa * 100); $('#sbv').textContent = Math.round(sb * 100);
+  $('#srv').textContent = Math.round(r * 100); $('#swv').textContent = w;
+  const cpsA = 1 / sa, cpsB = r / sb;
+  const lossA = 1 + (1 - sa) * w, lossB = r + (1 - sb) * w;
+  const ch = (x, y) => (x / y - 1) * 100;
+  const sgn = v => (v > 0 ? '+' : '') + v.toFixed(1) + '%';
+  let t = '<p>总成本（每个任务）：A <b>1.00</b>，B <b>' + r.toFixed(2) + '</b>（' + sgn(ch(r, 1)) + '）</p>';
+  t += '<p>每成功任务成本 CPS：A <b>' + cpsA.toFixed(2) + '</b>，B <b>' + cpsB.toFixed(2) + '</b>（' + sgn(ch(cpsB, cpsA)) + '）</p>';
+  t += '<p>含返工的每任务损失（<i>w</i> = ' + w + '）：A <b>' + lossA.toFixed(2) + '</b>，B <b>' + lossB.toFixed(2) + '</b>（' + sgn(ch(lossB, lossA)) + '）：' +
+    (lossB < lossA - 1e-9 ? '<span class="ok">B 更划算</span>' : (lossB > lossA + 1e-9 ? '<span class="bad">B 不划算</span>' : '一样')) + '</p>';
+  let be;
+  if (Math.abs(sa - sb) < 1e-9) be = r < 1 ? 'B 成功率相同、成本更低，任何 <i>w</i> 下都划算。' : (r > 1 ? 'B 成功率相同、成本更高，任何 <i>w</i> 下都不划算。' : '两个配置一样。');
+  else if (sb < sa) be = r >= 1 ? 'B 成本不低、成功率还低，任何 <i>w</i> 下都不划算。' : '盈亏平衡 <i>w</i>* = (1 − ' + r.toFixed(2) + ') ÷ (' + sa.toFixed(2) + ' − ' + sb.toFixed(2) + ') = <b>' + ((1 - r) / (sa - sb)).toFixed(2) + '</b>：一次失败折合的运行次数小于它，B 才划算。';
+  else be = r <= 1 ? 'B 成功率更高、成本不高，任何 <i>w</i> 下都划算。' : '盈亏平衡 <i>w</i>* = (' + r.toFixed(2) + ' − 1) ÷ (' + sb.toFixed(2) + ' − ' + sa.toFixed(2) + ') = <b>' + ((r - 1) / (sb - sa)).toFixed(2) + '</b>：一次失败折合的运行次数大于它，B 才划算。';
+  t += '<p>' + be + '</p>';
+  $('#p2').innerHTML = t;
+}
+['#sa', '#sb', '#sr', '#sw'].forEach(s => $(s).addEventListener('input', renderS2));
+renderS2();
+
+/* 第四节：噪声与样本量。数据是 u10_power.py 的精确计算，见 out/power/power.json */
+const PW = {"ns":[20,30,50,100,200,400],"ds":[0.1,0.2,0.3,0.42],"deltas":[0.02,0.03,0.05,0.075,0.1,0.15,0.2],"gaps":[0.05,0.1,0.15],"need":{"0.1":[2043,920,337,144,78,null,null],"0.2":[4016,1800,658,294,168,72,39],"0.3":[5980,2677,975,438,249,112,61],"0.42":[8336,3725,1354,607,344,154,88]},"power":{"0.1":{"20":[0.0,0.0,0.0,0.0,0.01,null,null],"30":[0.0,0.0,0.01,0.03,0.07,null,null],"50":[0.02,0.03,0.06,0.17,0.38,null,null],"100":[0.05,0.09,0.24,0.59,0.94,null,null],"200":[0.1,0.2,0.54,0.93,1.0,null,null],"400":[0.2,0.42,0.87,1.0,1.0,null,null]},"0.2":{"20":[0.01,0.01,0.01,0.02,0.03,0.08,0.2],"30":[0.02,0.02,0.03,0.06,0.1,0.27,0.57],"50":[0.03,0.04,0.07,0.13,0.24,0.59,0.95],"100":[0.05,0.07,0.14,0.31,0.54,0.93,1.0],"200":[0.07,0.12,0.3,0.61,0.88,1.0,1.0],"400":[0.12,0.23,0.57,0.91,0.99,1.0,1.0]},"0.3":{"20":[0.01,0.02,0.02,0.03,0.05,0.1,0.2],"30":[0.02,0.03,0.04,0.06,0.09,0.21,0.4],"50":[0.03,0.04,0.06,0.11,0.18,0.41,0.7],"100":[0.04,0.06,0.11,0.21,0.37,0.75,0.96],"200":[0.06,0.1,0.21,0.45,0.7,0.97,1.0],"400":[0.1,0.17,0.41,0.76,0.95,1.0,1.0]},"0.42":{"20":[0.02,0.02,0.03,0.04,0.05,0.09,0.17],"30":[0.03,0.03,0.04,0.05,0.08,0.16,0.29],"50":[0.03,0.04,0.05,0.09,0.14,0.3,0.52],"100":[0.04,0.06,0.09,0.17,0.29,0.6,0.86],"200":[0.06,0.08,0.16,0.33,0.55,0.9,0.99],"400":[0.08,0.13,0.31,0.61,0.86,1.0,1.0]}},"gap":{"0.1":{"20":[0.699,0.265,0.074],"30":[0.368,0.141,0.011],"50":[0.255,0.044,0.001],"100":[0.152,0.003,0.0],"200":[0.034,0.0,0.0],"400":[0.002,0.0,0.0]},"0.2":{"20":[0.798,0.443,0.204],"30":[0.534,0.301,0.065],"50":[0.425,0.152,0.018],"100":[0.312,0.034,0.001],"200":[0.133,0.002,0.0],"400":[0.029,0.0,0.0]},"0.3":{"20":[0.837,0.537,0.303],"30":[0.615,0.402,0.132],"50":[0.517,0.244,0.052],"100":[0.411,0.082,0.008],"200":[0.22,0.012,0.0],"400":[0.075,0.0,0.0]},"0.42":{"20":[0.863,0.604,0.387],"30":[0.672,0.481,0.204],"50":[0.585,0.326,0.101],"100":[0.487,0.142,0.025],"200":[0.3,0.033,0.0],"400":[0.132,0.002,0.0]}}};
+let sn = 50, sd = 0.3, sl = 4;
+function btns(id, items, cur, attr) {
+  $(id).innerHTML = items.map((it, i) => '<button class="btn" data-' + attr + '="' + i + '" aria-pressed="' + (i === cur) + '">' + it + '</button>').join(' ');
+}
+function renderS3() {
+  const nk = String(PW.ns[sn]), dk = String(PW.ds[sd]);
+  btns('#bn', PW.ns.map(String), sn, 'n'); btns('#bd', PW.ds.map(d => d.toFixed(2)), sd, 'd');
+  btns('#bl', PW.deltas.map(x => (x * 100) + ' 个百分点'), sl, 'l');
+  $$('[data-n]').forEach(b => b.onclick = () => { sn = +b.dataset.n; renderS3(); });
+  $$('[data-d]').forEach(b => b.onclick = () => { sd = +b.dataset.d; renderS3(); });
+  $$('[data-l]').forEach(b => b.onclick = () => { sl = +b.dataset.l; renderS3(); });
+  const gaps = PW.gap[dk][nk], pw = PW.power[dk][nk][sl], need = PW.need[dk][sl];
+  let t = '<p><b>两个完全一样的配置</b>，各跑这 ' + PW.ns[sn] + ' 个任务（<i>d</i> = ' + PW.ds[sd].toFixed(2) + '），成功率碰巧相差：</p>';
+  PW.gaps.forEach((g, i) => {
+    t += '<div class="pbar"><span class="lab">≥ ' + Math.round(g * 100) + ' 个百分点</span><div class="meter"><div class="cut" style="width:' + (gaps[i] * 100) + '%"></div></div><b>' + pct(gaps[i]) + '</b></div>';
+  });
+  t += '<p><b>如果 A 真的比 B 高 ' + (PW.deltas[sl] * 100) + ' 个百分点</b>：</p>';
+  if (pw === null) {
+    t += '<p>真实差不可能大于不一致率 <i>d</i>（一致的对里没有差别），这一格没有意义。</p>';
+  } else {
+    t += '<div class="pbar"><span class="lab">这 ' + PW.ns[sn] + ' 个任务测得出的概率</span><div class="meter"><div class="keep" style="width:' + (pw * 100) + '%"></div></div><b>' + pct(pw) + '</b></div>';
+    t += '<p>要 80% 的把握，至少 <b>' + fmt(need) + '</b> 对任务。' + (PW.ns[sn] >= need ? '<span class="ok">你选的任务数够了。</span>' : '<span class="bad">你选的任务数不够。</span>') + '</p>';
+  }
+  $('#p3').innerHTML = t;
+}
+renderS3();
+</script>
+</body>
+</html>

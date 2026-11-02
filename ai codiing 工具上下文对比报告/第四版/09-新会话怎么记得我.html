@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>新会话与记忆</title>
+<link rel="stylesheet" href="assets/book.css">
+<script src="assets/book.js"></script>
+<style>
+/* 本章专用：三个交互里的读数 */
+.verdict{white-space:nowrap}
+.pick td{background:var(--ans-bg)}
+.skip td{color:var(--muted)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;font-size:.92rem;margin:.4em 0}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+</style>
+</head>
+
+<body class="chapter">
+<main class="page">
+<header class="chap-head">
+<p class="kicker">第 9 章</p>
+<h1>新会话想得起你，靠的是开头多塞的一份摘要：缺省关闭，由后台另外两个模型在之后的会话里写成，最多约 1 万字节</h1>
+<p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 对话模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 记忆自己用的模型 <code>gpt-5.6-luna</code>（<code>low</code>）和 <code>gpt-5.6-terra</code>（<code>medium</code>）· 对照 Claude Code 官方文档（2026-11-02 查阅）</p>
+</header>
+
+<p class="lede">实验里把 Codex 的 <code>memories</code> 打开后，新会话的第一次请求多出一段记忆说明：摘要只有 162 字节时多 2,344 字节，摘要超过约 1 万字节就从中间截掉，最多多约 1.2 万字节（<code>gpt-6.1-sol</code>，low，记忆 v2）。这份摘要不是这个会话自己写的，而是后台另外两个模型在你开始某个会话时，回头处理更早的旧会话写出来的。所以昨天说的话，最早要到再下一个新会话里才看得见。</p>
+<p class="note"><b>记忆</b>（memory）：本章专指 Codex 的 <code>memories</code> 功能——后台把旧会话提炼成一份文字摘要，新会话开头读进去。<b>会话文件</b>和<b>线程</b>见第 8 章。本章实验在 <code>自学单元/U08-实验/</code>：假 Responses 服务器当模型，用全新的临时 <code>CODEX_HOME</code>，不联网、不消耗额度。后台两个模型写出的摘要是假服务器写死的，所以本章只回答「请求里有什么、磁盘和数据库里写了什么」，不回答「摘要写得好不好」。token 数是 Codex 本地估算（UTF-8 字节数 ÷ 4），不是真实分词；没在真实终端里按过键盘。</p>
+<div class="tablewrap"><table>
+<tr><th>你想做的事</th><th>在哪里用</th></tr>
+<tr><td>打开记忆（缺省关）</td><td>命令行 <code>codex features enable memories</code>，会在 <code>~/.codex/config.toml</code> 里写 <code>[features]</code> 下的 <code>memories = true</code>；改完对之后新开的会话生效<sup><a href="#e1">1</a></sup></td></tr>
+<tr><td>分开控制「读」和「写」</td><td>TUI 输入框里打 <code>/memories</code>：<code>Use memories</code>（新会话要不要读）、<code>Generate memories</code>（要不要从会话里提炼）；或 <code>config.toml</code> 里 <code>[memories]</code> 下的 <code>use_memories</code>、<code>generate_memories</code><sup><a href="#e2">2</a></sup></td></tr>
+<tr><td>清空</td><td><code>/memories</code> 里的 <code>Reset all memories</code>，或命令行 <code>codex debug clear-memories</code><sup><a href="#e2">2</a></sup></td></tr>
+<tr><td>看它记了什么</td><td>纯 Markdown 文件：v2 在 <code>~/.codex/memories_v2/memory_summary.md</code>，v1 在 <code>~/.codex/memories/</code>（v1、v2 的区别见第二节）</td></tr>
+</table></div>
+
+<section class="qs" id="qs">
+<h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
+<ol>
+<li id="q1">新开一个会话，请求里的历史是空白的。你昨天说过「测试用 pnpm」，有哪几条路能让它今天还知道？各自是谁写的、什么时候读？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">Codex 的记忆缺省开着吗？它是谁、在什么时候写下来的？写的时候会不会占用你正在进行的这个会话？<a class="jump" href="#a2">答案 ↓</a></li>
+<li id="q3">打开记忆后，新会话的第一次请求里多了什么、占多大？摘要写得太长怎么办？你在会话中途改了这份摘要，已经开着的会话会知道吗？<a class="jump" href="#a3">答案 ↓</a></li>
+<li id="q4">一条记错的记忆怎么纠正？怎么关、怎么清空？什么样的记忆会被淘汰？<a class="jump" href="#a4">答案 ↓</a></li>
+<li id="q5">你在项目 A 里留下的记忆，会带进项目 B 的新会话吗？Claude Code 也这样吗？<a class="jump" href="#a5">答案 ↓</a></li>
+</ol>
+</section>
+
+<section id="s1">
+<h2><span class="sn">一、</span>三条路：你写的规则、原样接着的旧会话、后台写的摘要</h2>
+<p><b>新会话的请求从一份空白历史开始（第 2 章），昨天的事要进来，只有三条路。</b>三条路的区别是谁写、什么时候读。</p>
+<div class="tablewrap"><table>
+<tr><th>路</th><th>谁写</th><th>什么时候读</th><th>在哪里用</th><th>哪一章</th></tr>
+<tr><td>规则文件</td><td>你</td><td>每个新会话开头；项目里的 AGENTS.md 一个会话只读一次，恢复旧会话时才与存档比对</td><td>项目里的 <code>AGENTS.md</code>、全局的 <code>~/.codex/AGENTS.md</code></td><td>第 2、8 章</td></tr>
+<tr><td>恢复旧会话</td><td>没人写，原样接着旧历史</td><td>你主动恢复的那一刻</td><td>命令行 <code>codex resume</code>，或会话里打 <code>/resume</code></td><td>第 8 章</td></tr>
+<tr><td>记忆</td><td>后台模型</td><td>新会话开头，读一次</td><td>缺省关，<code>codex features enable memories</code></td><td>本章</td></tr>
+</table></div>
+<p>前两条由你决定放什么；记忆由后台模型决定，所以多出三个问题：什么时候写（第二节）、怎么进请求（第三节）、写错了怎么办（第四节）。</p>
+
+<div class="answer" id="a1">
+<p class="qh">回答问题 1</p>
+<p class="qq">新开一个会话，请求里的历史是空白的。你昨天说过「测试用 pnpm」，有哪几条路能让它今天还知道？各自是谁写的、什么时候读？</p>
+<p>三条路：① 写进 <code>AGENTS.md</code>，每个新会话开头读；② <code>codex resume</code> 原样接着昨天的历史；③ 打开记忆，后台模型把昨天的会话提炼成摘要，新会话开头读一次。只在会话里说过、又没恢复那个会话，就只能靠第三条，而且最早要到再下一个新会话才生效。</p>
+</div>
+</section>
+
+<section id="s2">
+<h2><span class="sn">二、</span>写入：在你发出一轮输入时启动，后台跑两步，不进你的会话历史</h2>
+<p><b>记忆不是在会话结束时写的，而是在你发出一轮输入时启动的后台任务。</b>启动条件有四个：<code>memories</code> 已打开；这是根会话，不是子代理（第 7 章）；不是临时会话（<code>codex exec --ephemeral</code>）；这一轮确实有输入。任务在后台异步跑，不等它，你这一轮的回答照常发出。<sup><a href="#e3">3</a></sup></p>
+
+<h3>先选哪些旧会话</h3>
+<p>任务要处理的是别的旧会话，不是当前这个。一个旧会话要同时满足下面四条才会被选中，再按最近活动从新到旧取，每次启动最多取 2 个。<sup><a href="#e4">4</a></sup></p>
+<ul>
+<li>来源是终端 TUI、VS Code 等交互式会话。<code>codex exec</code> 跑的会话来源是 <code>exec</code>，不会被选：实验里用 <code>codex exec</code> 连开两个会话，第二个开始时没有提炼请求；换成 <code>codex app-server</code>（第 8 章实验用过的服务进程）开的会话，来源是 <code>vscode</code>，就有。<sup><a href="#e5">5</a></sup></li>
+<li>该会话的记忆开关没关（线程的 <code>memory_mode</code> 是 <code>enabled</code>；用 <code>generate_memories = false</code> 时开的会话是 <code>disabled</code>，实验里确认了）。</li>
+<li>最近一次活动在 10 天以内（<code>max_rollout_age_days</code>，配置里可设 0–90）。</li>
+<li>已经空闲至少 6 小时（<code>min_rollout_idle_hours</code>，配置里最小 1、最大 48），避免处理还在进行的会话。</li>
+</ul>
+
+<h3>动手看：这次启动会提炼哪些旧会话</h3>
+<p>下面 7 个旧会话是我虚构的，三个滑块是上面的配置项。来源和记忆开关两条规则在实验里确认过，时间窗口和空闲门槛按源码规则画，未单独实验。<sup><a href="#e4">4</a></sup></p>
+<div class="ctrl"><label for="i1">空闲至少 <b id="i1v"></b> 小时（缺省 6）</label><input type="range" id="i1" min="1" max="48" step="1" value="6"></div>
+<div class="ctrl"><label for="i2">最近 <b id="i2v"></b> 天以内（缺省 10）</label><input type="range" id="i2" min="1" max="90" step="1" value="10"></div>
+<div class="ctrl"><label for="i3">每次启动最多取 <b id="i3v"></b> 个（缺省 2）</label><input type="range" id="i3" min="1" max="7" step="1" value="2"></div>
+<div class="tablewrap"><table id="t1"></table></div>
+<div class="panel" id="p1"></div>
+
+<h3>第一步「提炼」：把每个旧会话压成一段摘要文字</h3>
+<p><b>第一阶段对每个被选中的旧会话发一次模型请求，让它写一段摘要。</b>缺省模型是 <code>gpt-5.6-luna</code>，思考级别 low（配置项 <code>extract_model</code> 可换），最多同时处理 8 个。实验里这次请求共 7,367 字节：一条 3,355 字节的 developer 消息（给模型的指令，不是你说的话；内容是写摘要的要求）加一条 2,843 字节的 user 消息（旧会话渲染成的文字：环境信息、你说的话、模型的回答各一行），要求按 JSON 返回 <code>rollout_summary</code> 和 <code>rollout_slug</code>（文件名用的短名）。<sup><a href="#e6">6</a></sup></p>
+<p>旧会话太长时，只读会话文件末尾的 8 MiB，再按优先级装进模型窗口的 70%：你说的话最先，其次模型的最终回答，工具输出排最后（每条最多留 2,000 token）。写出的摘要会做密钥脱敏，v2 还截到 9,000 字节。<sup><a href="#e7">7</a></sup></p>
+
+<h3>第二步「合并」：写文件的智能体合成一份摘要</h3>
+<p><b>第二阶段起一个只能写记忆目录的智能体，让它读新旧摘要的差异，改写 <code>memory_summary.md</code>。</b>缺省模型是 <code>gpt-5.6-terra</code>，思考级别 medium。沙箱只允许写记忆目录、不开网络、不问批准，并关掉子代理、MCP 和记忆本身。只有记忆目录相对上次有变化、或产物不合格时才起它；成功一次后冷却 6 小时；失败 1 小时后重试。<sup><a href="#e8">8</a></sup></p>
+<p>这个智能体一开口就是一次不小的请求：v2 下实验里 50,466 字节，其中合并要求那一条只有 4,349 字节，其余是工具定义、系统提示词和环境信息，还没读任何文件。<sup><a href="#e8">8</a></sup>合并成功的标准写在代码里：v2 要求 <code>memory_summary.md</code> 第一行是 <code>v1</code>、不到 10,000 字节、有 <code>## User Profile</code>、<code>## User preferences</code>、<code>## General Tips</code>、<code>## What's in Memory</code> 四个标题；不合格就记为失败，1 小时后重试。<sup><a href="#e9">9</a></sup></p>
+
+<h3>两个版本：v1 和 v2</h3>
+<p>记忆管线有两个版本，配置项 <code>[memories]</code> 下的 <code>version</code> 取 <code>"v1"</code> 或 <code>"v2"</code>，各用一个目录。源码里缺省是 v1；实验里 <code>codex exec</code> 不设就是 v1，<code>codex app-server</code> 开的会话不设却是 v2，这台机器的 <code>~/.codex/</code> 下也只有 <code>memories_v2/</code>（TUI 走的是 app-server）。原因我没在源码里找到【待核实】。<sup><a href="#e10">10</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th></th><th>v1</th><th>v2</th></tr>
+<tr><td>目录</td><td><code>~/.codex/memories/</code></td><td><code>~/.codex/memories_v2/</code></td></tr>
+<tr><td>提炼的输出</td><td><code>raw_memory</code>、<code>rollout_summary</code>、<code>rollout_slug</code></td><td><code>rollout_summary</code>、<code>rollout_slug</code>（<code>raw_memory</code> 多一个字段会被拒绝）</td></tr>
+<tr><td>合并后留下的文件</td><td><code>memory_summary.md</code>、<code>MEMORY.md</code>、<code>raw_memories.md</code>、<code>rollout_summaries/</code>、<code>skills/</code></td><td><code>memory_summary.md</code>、<code>rollout_summaries/</code></td></tr>
+<tr><td>提炼请求（一句话的旧会话）</td><td class="num">34,772 字节</td><td class="num">7,367 字节</td></tr>
+<tr><td>合并智能体的请求（空记忆目录起步）</td><td class="num">99,266–99,415 字节（合并要求那一条 53,325 字节）</td><td class="num">50,466 字节（合并要求那一条 4,349 字节）</td></tr>
+</table></div>
+<p>本章后面以 v2 为主线（这台机器的 TUI 实际在用），v1 只在数字不同时单独写。</p>
+
+<h3>时间线：为什么要等到「再下一个」会话</h3>
+<p>摘要是在会话开头读的（第三节），写它的任务在会话开始之后才启动，所以新内容进不了当前会话。实验：开会话 A，说一句话；把 A 在数据库里的更新时间往前拨 2 小时（假装过了两小时）；再开会话 B。B 的第一次请求里只有预先放好的旧摘要；提炼 A 的请求和合并请求是 B 开始那一轮时后台发出的（提炼请求甚至比 B 自己的第一次请求先到服务器）。<sup><a href="#e11">11</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>会话</th><th>开头读到的摘要</th><th>开始一轮之后，后台做的事</th></tr>
+<tr><td>A（周一）</td><td>更早的摘要</td><td>提炼比 A 更早的旧会话</td></tr>
+<tr><td>B（周二，A 已空闲 6 小时以上）</td><td>更早的摘要，<b>没有 A</b></td><td>提炼 A，合并出新摘要</td></tr>
+<tr><td>C（B 之后新开）</td><td>含 A 的摘要</td><td>……</td></tr>
+</table></div>
+<p>这是最快的情形；合并有冷却和失败重试，可能更晚。</p>
+
+<div class="compare">
+<h3>对照：Claude Code 的做法</h3>
+<p>Claude Code 有两样东西：你写的 <code>CLAUDE.md</code>，和 Claude 自己写的 <b>auto memory</b>。后者在本地会话里缺省开，在 <code>/memory</code> 里切换（存成 <code>~/.claude/settings.json</code> 的 <code>autoMemoryEnabled</code>），或设环境变量 <code>CLAUDE_CODE_DISABLE_AUTO_MEMORY=1</code> 关掉。<sup><a href="#e21">21</a></sup></p>
+<p>差别在于：Claude Code 由<b>正在干活的同一个模型在会话里当场写</b>（界面提示「Saved 2 memories」），你说「记住：测试用 pnpm」就存，凡是能从代码里读出来的不存。Codex 是后台另外两个模型事后写，当场看不到。读也不同：Claude Code 每次会话开头载入 <code>MEMORY.md</code> 的前 200 行或前 25 KB（先到为准），它只是索引，主题文件用到时再读；Codex 把一份总摘要整段放进去。</p>
+</div>
+
+<div class="answer" id="a2">
+<p class="qh">回答问题 2</p>
+<p class="qq">Codex 的记忆缺省开着吗？它是谁、在什么时候写下来的？写的时候会不会占用你正在进行的这个会话？</p>
+<p>缺省关（源码 <code>default_enabled: false</code>；全新 <code>CODEX_HOME</code> 里 <code>codex features list</code> 显示 <code>memories</code> 为 false）。打开后，写入在你发出一轮输入时启动的后台任务里完成：<code>gpt-5.6-luna</code>（low）把符合条件的旧会话各压成一段摘要，<code>gpt-5.6-terra</code>（medium）的合并智能体再合成 <code>memory_summary.md</code>。这些是单独的模型请求，不写进你这个会话的历史、不占它的窗口，但用同一个模型通道和账号，花的是同一份额度【按源码推，没用真实服务测】。</p>
+</div>
+</section>
+
+<section id="s3">
+<h2><span class="sn">三、</span>读取：开头多一段 developer 消息，摘要超过 2,500 token 就从中间截掉</h2>
+<p><b>记忆进请求的办法很朴素：把 <code>memory_summary.md</code> 填进一段固定的说明，放在第三条输入的开头。</b>实验里同一句话「你好，帮我看看测试怎么跑」，关记忆和开记忆各发一次，差别如下。<sup><a href="#e12">12</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>情形（摘要内容）</th><th>记忆那一段</th><th>请求总大小</th><th>比不开记忆多</th></tr>
+<tr><td>不开（摘要文件在，但 <code>memories</code> 没打开）</td><td>没有</td><td class="num">56,440</td><td class="num">0</td></tr>
+<tr><td>v2，摘要 162 字节</td><td class="num">2,258</td><td class="num">58,784</td><td class="num">+2,344</td></tr>
+<tr><td>v2，摘要约 3 万字节（汉字）</td><td class="num">12,164（分 8,900 + 3,264 两块）</td><td class="num">68,822</td><td class="num">+12,382</td></tr>
+<tr><td>v1，摘要 162 字节</td><td class="num">6,879</td><td class="num">63,491</td><td class="num">+7,051</td></tr>
+<tr><td>v1，摘要约 3 万字节（英文）</td><td class="num">16,787</td><td class="num">73,554</td><td class="num">+17,114</td></tr>
+</table></div>
+<p>记忆那一段是第三条输入（技能目录和权限说明那条 developer 消息）里的第一段，在系统提示词之后、AGENTS.md 和你的话之前。固定部分是模板：v2 是 2,096 字节，v1 是 6,717 字节，其余是摘要。v1 的模板还教模型翻 <code>MEMORY.md</code>、<code>rollout_summaries/</code>，要求尽量不超过 4–6 步搜索；v2 只让模型把摘要当历史参考，需要原文时才读对应的 <code>rollout_summaries/</code> 文件。开 <code>dedicated_tools = true</code> 时，请求里还多一组 <code>memories</code> 工具（<code>list</code>、<code>read</code>、<code>search</code>、<code>add_ad_hoc_note</code>，+2,309 字节）。<sup><a href="#e15">15</a></sup></p>
+
+<h3>摘要太长：从中间截，头尾各留一半</h3>
+<p><b>摘要超过 2,500 token（Codex 按 4 字节 1 token 估算，约 1 万字节）就从中间截掉。</b>实验里放了一份 500 行的英文摘要（31,003 字节），请求里留下第 1–80 行和第 421–500 行，中间换成一句 <code>…5251 tokens truncated…</code>；30 KB 的汉字摘要也是留下约 1 万字节，约 3,300 个汉字。所以最重要的内容要放在摘要的开头或结尾。这个上限和合并那一步配套：合并要求让智能体把摘要写得「留有余量地低于 10,000 UTF-8 字节」，校验也要求不到 10,000 字节。<sup><a href="#e13">13</a></sup><sup><a href="#e9">9</a></sup></p>
+
+<h3>动手看：摘要写多长，请求里多多少</h3>
+<p>选版本和文字，拖动摘要字数。模板大小和截断上限来自上面的实验，其余按这两个数推算。<sup><a href="#e13">13</a></sup></p>
+<div class="ctrl"><span>版本：</span>
+  <button class="btn" data-v="v2" aria-pressed="true">v2</button><button class="btn" data-v="v1" aria-pressed="false">v1</button>
+  <span>摘要文字：</span>
+  <button class="btn" data-u="1" aria-pressed="false">英文（1 字节/字）</button><button class="btn" data-u="3" aria-pressed="true">汉字（3 字节/字）</button>
+</div>
+<div class="ctrl"><label for="len1">摘要 <b id="len1v"></b> 字</label><input type="range" id="len1" min="0" max="20000" step="50" value="1000"></div>
+<div class="meter" id="m2"></div>
+<div class="panel" id="p2"></div>
+
+<h3>摘要只在会话开头读一次</h3>
+<p><b>摘要读进来之后就存进了这个会话的历史，之后不会重读。</b>实验：用一个会话读到旧摘要，再把 <code>memory_summary.md</code> 改成另一段文字，用 <code>codex exec resume --last</code> 接着这个会话——请求里还是旧摘要，新文字没有出现。AGENTS.md 不同：恢复旧会话时它会与存档里的基线比对，变了就追加新全文（第 8 章）；记忆没有这一步。<sup><a href="#e14">14</a></sup></p>
+<p>另外三个实验结果：<code>use_memories = false</code> 时请求与不开记忆逐字一样；临时会话（<code>--ephemeral</code>）照样读记忆，只是不触发写入；换个目录开新会话，记忆段逐字相同（第五节）。<sup><a href="#e14">14</a></sup></p>
+<p>记忆段排在第三条输入，前面是工具定义和系统提示词（第 2 章）。按第 5 章的规则，摘要一变，从第三条起的缓存前缀就不再相同，前两条仍能接上【按规则推，没有用真实服务验证】。</p>
+
+<div class="source">
+<h3>看源码：摘要怎么变成那一段说明</h3>
+<p><code>ext/memories/src/prompts.rs</code> 第 35–66 行，节选，注释是我加的。<sup><a href="#e12">12</a></sup></p>
+<pre>let base_path = codex_home.join(version.directory_name());  // v1: memories，v2: memories_v2
+let memory_summary_path = base_path.join("memory_summary.md");
+let memory_summary = fs::read_to_string(&amp;memory_summary_path)
+    .await
+    .ok()?                      // 文件读不到：什么都不注入
+    .trim()
+    .to_string();
+let memory_summary = truncate_text(     // 超过 2,500 token（估算）就从中间截
+    &amp;memory_summary,
+    TruncationPolicy::Tokens(MEMORY_TOOL_DEVELOPER_INSTRUCTIONS_SUMMARY_TOKEN_LIMIT),
+);
+if memory_summary.is_empty() {
+    return None;
+}
+let template = match version {          // v1、v2 各一份说明模板
+    MemoryVersion::V1 =&gt; &amp;MEMORY_TOOL_DEVELOPER_INSTRUCTIONS_TEMPLATE,
+    MemoryVersion::V2 =&gt; &amp;MEMORY_V2_TEMPLATE,
+};
+template.render([("base_path", base_path.as_str()), ("memory_summary", memory_summary.as_str())]).ok()</pre>
+</div>
+
+<div class="answer" id="a3">
+<p class="qh">回答问题 3</p>
+<p class="qq">打开记忆后，新会话的第一次请求里多了什么、占多大？摘要写得太长怎么办？你在会话中途改了这份摘要，已经开着的会话会知道吗？</p>
+<p>多一段 developer 消息，在第三条输入的开头：模板 v2 是 2,096 字节、v1 是 6,717 字节，再加摘要。摘要超过 2,500 token（约 1 万字节，中文约 3,300 字）就留头尾各约一半、截掉中间。摘要在会话开头读一次、存进历史；你中途改文件，开着的会话和之后恢复的旧会话都不会重读。</p>
+</div>
+</section>
+
+<section id="s4">
+<h2><span class="sn">四、</span>纠错、关闭、淘汰：能改、能关、30 天没人引用就出局</h2>
+<p><b>记错了不能在摘要上直接划掉，要走笔记或改文件，等下一次合并才生效。</b>有三条路。</p>
+<ul>
+<li><b>对 Codex 说「记住……」「忘掉……」「改成……」。</b>读路径的说明写着：只有你明确要求时才更新记忆，办法是在记忆目录的 <code>extensions/ad_hoc/notes/</code> 下新建一个 <code>时间-短名.md</code> 笔记，不许直接改记忆文件。合并智能体把每条笔记当作权威，写进摘要时标 <code>[ad-hoc note]</code>，笔记只当信息、不当指令。实验里确认了：记忆目录下的 <code>extensions/ad_hoc/instructions.md</code>（733 字节，写着上面这些规则）会在首次启动时写出，开 <code>dedicated_tools</code> 后请求里多出 <code>add_ad_hoc_note</code> 工具；没试过真实模型写笔记。<sup><a href="#e18">18</a></sup></li>
+<li><b>直接改文件。</b>摘要是纯文本的 Markdown 文件。v2 的合并要求写着「应用用户的编辑和来源变化，不要把被修正或删除的结论恢复回来」。实验里手放一个 <code>memory_summary.md</code> 就让下一次启动起了合并智能体（见 <code>out/read</code> 里 <code>phase2</code> 的请求）；真实模型会不会照办，没测。<sup><a href="#e18">18</a></sup></li>
+<li><b>关、清。</b>读和写各有一个开关（见开头的表）：<code>use_memories = false</code> 时新会话请求里没有记忆段；<code>generate_memories = false</code> 时新开的会话在数据库里记为 <code>disabled</code>，以后不被提炼。另有 <code>disable_on_external_context</code>（缺省关）：打开后，用过 MCP 或网页搜索的会话标成「被污染」，不进记忆。清空会同时清数据库和记忆目录，不动已有会话。<sup><a href="#e19">19</a></sup></li>
+</ul>
+
+<h3>谁会被淘汰：引用次数优先，30 天没被引用就出局</h3>
+<p><b>合并时按引用次数从多到少取，超过 30 天没被引用的不再入选。</b>“被引用”指模型在最终回答末尾附一段 <code>&lt;oai-mem-citation&gt;</code>，列出用了哪个文件、哪几行、哪个旧会话。Codex 把它从显示的回答里剥掉，转成结构化的 <code>memoryCitation</code>，给对应旧会话记一次使用、更新最近使用时间。实验里让假服务器的回答带上这样一段：显示的文字只剩正文，数据库里该会话的 <code>usage_count</code> 从空变成 1，<code>last_usage</code> 有了时间戳。<sup><a href="#e16">16</a></sup></p>
+<p>入选规则（缺省 30 天，配置项 <code>max_unused_days</code>，可设 0–365）：最近一次被引用在 30 天内；从没被引用过的，看它自己的最近活动是否在 30 天内。入选的按使用次数降序、再按「最近引用或最近活动」降序排，取前 256 条（<code>max_raw_memories_for_consolidation</code>）。过期、又不是上次合并用过的记录，启动时会从数据库删掉（每次最多 200 条）。<sup><a href="#e17">17</a></sup></p>
+
+<h3>动手看：哪些记忆留下</h3>
+<p>下面 6 条记忆是我虚构的。把「取前几条」调小，看排序怎样决定谁先留下：被引用 2 次、最后一次在 25 天前的，排在从没被引用、只是 8 天前的前面。按源码里的排序和过滤规则画，未实验。<sup><a href="#e17">17</a></sup></p>
+<div class="ctrl"><label for="r1">超过 <b id="r1v"></b> 天没被引用就过期（缺省 30）</label><input type="range" id="r1" min="1" max="90" step="1" value="30"></div>
+<div class="ctrl"><label for="r2">合并最多取 <b id="r2v"></b> 条（缺省 256，这里只有 6 条可取）</label><input type="range" id="r2" min="1" max="6" step="1" value="6"></div>
+<div class="tablewrap"><table id="t3"></table></div>
+<div class="panel" id="p3"></div>
+
+<div class="answer" id="a4">
+<p class="qh">回答问题 4</p>
+<p class="qq">一条记错的记忆怎么纠正？怎么关、怎么清空？什么样的记忆会被淘汰？</p>
+<p>纠正：对 Codex 说「记住/忘掉……」，它会在记忆目录的 <code>extensions/ad_hoc/notes/</code> 下写一份笔记，下一次合并时当作权威；也可以直接改 <code>memory_summary.md</code>。都要等下一次合并才进摘要。关：<code>use_memories = false</code> 不读，<code>generate_memories = false</code> 不写；清空：<code>/memories</code> 里的 <code>Reset all memories</code> 或 <code>codex debug clear-memories</code>。淘汰：超过 30 天没被引用的不再进合并，被引用越多越先留下。</p>
+</div>
+</section>
+
+<section id="s5">
+<h2><span class="sn">五、</span>范围：一个用户一份，不按项目分</h2>
+<p><b>Codex 的记忆目录在 <code>CODEX_HOME</code> 下，一个用户一份，不按项目隔离。</b>实验里在另一个工作目录开新会话，记忆段与第一个目录里的逐字相同（请求总大小相差 182 字节，是因为那个目录没有 AGENTS.md）。<sup><a href="#e20">20</a></sup></p>
+<p>项目的区分靠摘要里的文字：每条提炼记录的文件头有当时的工作目录（<code>cwd</code>），v2 的合并要求让智能体把近期工作按 <code>### 项目范围</code>、<code>#### 日期</code> 分组。分得对不对取决于写摘要的模型，代码没做隔离。所以项目 A 里的「测试用 pnpm」可能出现在项目 B 的摘要里；B 若不用 pnpm，要靠 AGENTS.md 里一句明确的规则压住它。Claude Code 见第二节的对照框：按 git 仓库分目录，不同仓库互不相见。<sup><a href="#e21">21</a></sup></p>
+
+<div class="answer" id="a5">
+<p class="qh">回答问题 5</p>
+<p class="qq">你在项目 A 里留下的记忆，会带进项目 B 的新会话吗？Claude Code 也这样吗？</p>
+<p>会。Codex 的记忆一个用户一份，不分项目，实验里换目录开会话注入的内容逐字相同；项目的区分只靠摘要里的文字，由写摘要的模型自己判断。Claude Code 不这样：auto memory 放在 <code>~/.claude/projects/&lt;项目&gt;/memory/</code>，按 git 仓库分，只在本机。</p>
+</div>
+</section>
+
+<section id="notes">
+<h2>设计笔记</h2>
+<ul>
+<li><b>后台、事后写，而不是边聊边写。</b>好处：写记忆的请求不进你的会话历史，不占窗口；代价：你看不到它写了什么，没有「这条对不对」的确认点，新内容至少晚一个会话才生效。代码没写理由【推测】。</li>
+<li><b>摘要开头读一次、之后不再更新。</b>放在前缀靠前、之后不变的位置，对缓存有利；代价是会话中途学到的东西进不了当前会话【推测】。</li>
+<li><b>用引用次数决定谁留下。</b>Codex 用模型附的引用给旧会话计数，没人引用的 30 天后出局，等于假设「被引用过」就是有用。一条记错的结论若被一再引用，会越排越前；我没找到对「引用了但错了」的处理【推测】。</li>
+<li><b>不按项目隔离。</b>通用偏好（回答语言、提交风格）能跨项目复用是好处；项目事实（框架、命令）会串是代价。Codex 把区分交给写摘要的模型。</li>
+
+<li><b>其他 agent。</b>本机没有它们的源码，没核对；第三版页面对 Grok Build、oh-my-pi、pi、opencode 的说法见证据表【待核实】。<sup><a href="#e22">22</a></sup></li>
+</ul>
+</section>
+
+<section id="summary">
+<h2>小结</h2>
+<ol>
+<li>三条路：你写的 AGENTS.md、原样接着旧历史的 <code>codex resume</code>、后台模型写的记忆摘要；只在会话里说过的话，只能靠记忆，而且最早到再下一个会话才生效。</li>
+<li>缺省关；打开后，在你发出一轮输入时起后台任务：<code>gpt-5.6-luna</code>（low）提炼旧会话，<code>gpt-5.6-terra</code>（medium）合并成摘要；不进你的会话历史。</li>
+<li>新会话第一次请求多一段 developer 消息，v2 模板 2,096 字节、v1 6,717 字节加摘要；摘要超过 2,500 token 从中间截；开头读一次，中途改了不会重读。</li>
+<li>纠正走笔记（<code>extensions/ad_hoc/notes/</code>）或直接改文件，下一次合并才生效；<code>use_memories</code>、<code>generate_memories</code> 分别管读和写；30 天没被引用的出局，引用多的先留。</li>
+<li>Codex 一个用户一份、不分项目，项目区分靠摘要里的文字；Claude Code 按 git 仓库分目录。</li>
+</ol>
+</section>
+
+<section id="evidence">
+<h2>证据表</h2>
+<p>源码路径相对 <code>codex-rs/</code>，提交 <code>76ed3b4</code>；实验路径相对 <code>自学单元/U08-实验/</code>（脚本 <code>u08_memory.py</code>，汇总 <code>analyze.py</code>，输出 <code>out/analysis.txt</code>）。实验里的「过了几小时」都是改 SQLite 里的时间模拟的，没有真等。</p>
+<div class="tablewrap"><table>
+<tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
+<tr id="e1"><td>1</td><td><code>memories</code> 功能缺省关；全新 <code>CODEX_HOME</code> 里 <code>codex features list</code> 显示 false；<code>codex features enable memories</code> 写入 <code>[features]</code></td><td>源码 <code>features/src/lib.rs:1282-1286</code>；实验：全新目录里跑 <code>codex features list</code> 和 <code>codex features enable memories</code>；<code>out/read</code> 的 r0（摘要在、没打开 → 请求里无记忆段）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e2"><td>2</td><td><code>/memories</code> 有 Use memories、Generate memories、Reset all memories 三项，改动写进 config.toml；<code>use_memories</code>、<code>generate_memories</code> 是 <code>[memories]</code> 下的配置；<code>codex debug clear-memories</code> 清数据库和目录</td><td>源码 <code>tui/src/bottom_pane/memories_settings_view.rs:84-96</code>、<code>config/src/types.rs:359-374</code>、<code>cli/src/main.rs:1811, 2161-2186</code>、<code>app-server/src/request_processors/thread_processor.rs:1918-1935</code>；实验：全新目录里跑了 <code>codex debug clear-memories</code></td><td><span class="tag lvl-m">中</span>（<code>/memories</code> 只读了源码，没按过键盘）</td></tr>
+<tr id="e3"><td>3</td><td>启动条件：<code>memories</code> 打开、非临时、非子代理；在 app-server 收到有输入的一轮并真正开始时触发；后台异步，先第一阶段后第二阶段</td><td>源码 <code>memories/write/src/start.rs:24-37, 55-96</code>、<code>app-server/src/request_processors/turn_processor.rs:704-716</code>、<code>memories/README.md</code>；实验：<code>out/write</code> 里第二个会话开始后出现提炼请求</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e4"><td>4</td><td>选旧会话：来源在 cli / vscode / atlas / chatgpt 里，<code>memory_mode = 'enabled'</code>，不是当前线程，更新时间在 N 天内且已空闲 M 小时，按更新时间从新到旧，每次最多取 2 个；缺省 10 天、6 小时、2 个，配置里空闲 1–48 小时、天数 0–90、个数 1–128</td><td>源码 <code>state/src/runtime/memories.rs:224-296</code>、<code>rollout/src/lib.rs:88-95</code>、<code>config/src/types.rs:55-60, 420-434</code></td><td><span class="tag lvl-h">高</span>（时间窗口和空闲门槛只读源码，实验里通过改库时间间接用到空闲门槛）</td></tr>
+<tr id="e5"><td>5</td><td><code>codex exec</code> 开的会话来源是 <code>exec</code>，不会被选；app-server 开的是 <code>vscode</code>，会被选</td><td>实验 <code>out/exec-source</code>（线程来源 <code>exec</code>，第二个会话开始没有提炼请求）对 <code>out/write</code>（来源 <code>vscode</code>，有提炼请求）；源码 <code>rollout/src/lib.rs:88-95</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e6"><td>6</td><td>第一阶段缺省模型 <code>gpt-5.6-luna</code>、思考级别 low，最多并发 8；实验里的请求 7,367 字节，2 条输入（developer 3,355 + user 2,843），<code>text.format</code> 是 json_schema</td><td>源码 <code>model-provider/src/provider.rs:97</code>、<code>memories/write/src/lib.rs:80-102</code>、<code>memories/write/src/phase1.rs:162-170</code>；实验 <code>out/write/req-02-s2-phase1.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e7"><td>7</td><td>提炼输入：读会话文件末尾 8 MiB；v2 按人类消息 → 最终回答 → 别的代理 → 中间说明 → 环境 → 工具的顺序装进模型窗口的 70%（查不到按 15 万 token），工具输出每条 ≤ 2,000 token、每行 ≤ 10,000 字节；摘要脱敏，v2 截 9,000 字节</td><td>源码 <code>memories/write/src/rollout_input.rs:28-29, 91-92, 213-290</code>、<code>prompts.rs:121-129</code>、<code>phase1_output.rs:50-53</code>、<code>lib.rs:92-101</code></td><td><span class="tag lvl-m">中</span>（只读源码，实验的旧会话只有一句话，没触发截断）</td></tr>
+<tr id="e8"><td>8</td><td>第二阶段：缺省 <code>gpt-5.6-terra</code>、medium；沙箱只写记忆目录、无网络、从不请求批准，关掉协作、MCP、记忆；工作区有变化或产物不合格才起智能体；成功后冷却 6 小时；失败 1 小时后重试；v2 请求 50,466 字节（合并要求那一条 4,349），v1 请求 99,266–99,415 字节（合并要求那一条 53,325）</td><td>源码 <code>memories/write/src/phase2.rs:131-133, 294-352</code>、<code>state/src/runtime/memories.rs:24, 1170-1175</code>、<code>memories/write/src/lib.rs:104-110</code>；实验 <code>out/write/req-04-s2-phase2.json</code>、<code>out/write-v1/req-05-s2-phase2.json</code>。冷却：第一次跑实验没拨时间，第二个会话里第二阶段被跳过，于是加了「把任务完成时间往前拨 7 小时」一步（输出没留）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e9"><td>9</td><td>v2 摘要的合格标准：第一行 <code>v1</code>、小于 10,000 字节、四个标题齐全；不合格任务记 <code>failed_invalid_artifacts</code>，3600 秒后重试，剩 2 次；合并要求让智能体写到「留有余量地低于 10,000 UTF-8 字节」</td><td>源码 <code>memories/write/src/workspace.rs:117-129</code>、<code>templates/memories/consolidation_v2.md</code>；实验 <code>out/write-v1/memories-db.json</code>（jobs 表，v1 的同一类失败）、<code>out/write/memories-db.json</code></td><td><span class="tag lvl-m">中</span>（失败记录来自 v1 的实验，v2 的校验函数只读了源码）</td></tr>
+<tr id="e10"><td>10</td><td>v1、v2 两套目录和产物；源码缺省 v1；<code>codex exec</code> 不设 <code>version</code> 用 v1，<code>codex app-server</code> 不设用 v2，本机 <code>~/.codex/</code> 只有 <code>memories_v2/</code>；为什么两条路缺省不同没查到</td><td>源码 <code>protocol/src/memory_version.rs:9-23</code>、<code>config/src/types.rs:379</code>；实验 <code>out/read</code>（exec，v1）、<code>out/write</code> 与 <code>out/write-v1</code>（app-server，缺省 v2 / 显式 v1）；本机目录列表</td><td><span class="tag lvl-l">待核实</span>（原因未查）</td></tr>
+<tr id="e11"><td>11</td><td>新写的摘要进不了正在开始的会话：B 的第一次请求只有预置的旧摘要；提炼 A 和合并的请求是 B 开始那一轮时后台发出的</td><td>实验 <code>out/write</code>：<code>req-03-s2-user.json</code>（B 的第一次请求，只含预置摘要 231 字节）；<code>req-02-s2-phase1.json</code>（提炼请求，编号比 B 的第一次请求还靠前）；<code>req-04-s2-phase2.json</code>（合并请求，最后到）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e12"><td>12</td><td>记忆段位置与大小：第三条输入的第一段；v1 模板 6,717 字节、v2 2,096 字节；表里六行的请求大小</td><td>实验 <code>out/read/read-results.json</code> 与 <code>out/analysis.txt</code>（r0、r1、r2、r5、r6、r7）；源码 <code>ext/memories/src/prompts.rs:35-66</code>、<code>ext/memories/src/extension.rs:51-95</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e13"><td>13</td><td>摘要超过 2,500 token 从中间截（头尾各约 5,000 字节，标记 <code>…N tokens truncated…</code>）；英文 31,003 字节留下 1–80 行和 421–500 行；汉字摘要留下 10,068 字节；v2 把记忆段按 ≤ 8,900 字节切块</td><td>源码 <code>ext/memories/src/lib.rs:16</code>、<code>extension.rs:77-90</code>；实验 <code>out/read</code> 的 r2、r3、r6（<code>req-05-r2-on-ascii-big-user.json</code>）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e14"><td>14</td><td>摘要只在会话开头读，resume 时不重读；<code>use_memories = false</code> 请求与不开逐字相同；临时会话照样读但不写；换目录注入相同</td><td>实验 <code>out/read</code> 的 r9（resume 的请求含旧摘要、不含新文字）、r4、r10、r8</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e15"><td>15</td><td>v1 模板教模型翻 <code>MEMORY.md</code> 等并限制 4–6 步搜索；v2 模板只让它按需读 <code>rollout_summaries/</code>；两者都要求回答末尾附 <code>&lt;oai-mem-citation&gt;</code>、只在用户明确要求时更新记忆</td><td>源码 <code>ext/memories/templates/memories/read_path.md</code>、<code>read_path_v2.md</code></td><td><span class="tag lvl-h">高</span>（模型是否照做没测）</td></tr>
+<tr id="e16"><td>16</td><td>回答末尾的引用块被剥掉，转成 <code>memoryCitation</code>；旧会话记录的 <code>usage_count</code> 加 1，<code>last_usage</code> 有时间戳</td><td>实验 <code>out/write</code> 第三句（agentMessage 的 <code>text</code> 无引用块，<code>memoryCitation</code> 有；<code>memories-db.json</code> 里 <code>usage_count: 1</code>）；<code>out/write-v1</code> 同；源码 <code>core/src/stream_events_utils.rs:136-150, 186-198</code>、<code>memories/read/src/citations.rs</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e17"><td>17</td><td>入选规则与排序：最近引用在 N 天内（没引用过看自己的活动时间）；按引用次数降序、最近引用或活动时间降序；缺省 N = 30，取前 256；过期且上次合并没用过的启动时删除（每次最多 200 条）</td><td>源码 <code>state/src/runtime/memories.rs:395-485</code>、<code>config/src/types.rs:59-60</code>、<code>memories/write/src/lib.rs:87</code></td><td><span class="tag lvl-m">中</span>（读了源码里的 SQL，没做实验）</td></tr>
+<tr id="e18"><td>18</td><td>用户要求时在 <code>extensions/ad_hoc/notes/</code> 写笔记；合并时笔记当权威、标 <code>[ad-hoc note]</code>；v2 要求「应用用户编辑」；手放摘要文件会触发合并智能体；<code>dedicated_tools</code> 多 <code>add_ad_hoc_note</code> 等工具（+2,309 字节）</td><td>源码 <code>read_path.md</code>、<code>read_path_v2.md</code>、<code>consolidation_v2.md</code>、<code>ext/memories/src/tools/ad_hoc_note.rs</code>；实验 <code>out/write/memories_v2-dir/extensions/ad_hoc/instructions.md</code>（733 字节）、<code>out/read</code> r7、r1 的 phase2 请求</td><td><span class="tag lvl-m">中</span>（真实模型是否照办没测）</td></tr>
+<tr id="e19"><td>19</td><td><code>generate_memories = false</code> → 线程 <code>memory_mode = disabled</code>、没有提炼请求；<code>disable_on_external_context</code> 缺省关，打开后用过 MCP / 网页搜索的线程标 polluted；清空同时清数据库和目录，不动已有会话</td><td>实验 <code>out/write-nogen</code>；源码 <code>config/src/types.rs:329, 362</code>、<code>core/src/stream_events_utils.rs:168-183</code>、<code>tui/src/bottom_pane/memories_settings_view.rs:96-97</code></td><td><span class="tag lvl-m">中</span>（polluted 只读源码）</td></tr>
+<tr id="e20"><td>20</td><td>记忆目录在 <code>CODEX_HOME</code> 下、一个用户一份；提炼记录文件头有 <code>cwd</code>；v2 合并要求按项目范围分组</td><td>实验 <code>out/read</code> r8（换目录，记忆段逐字相同）、<code>out/write/memories_v2-dir/rollout_summaries/</code>；源码 <code>memories/write/templates/memories/consolidation_v2.md</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e21"><td>21</td><td>Claude Code：auto memory 缺省开（本地会话）；<code>autoMemoryEnabled</code>、<code>CLAUDE_CODE_DISABLE_AUTO_MEMORY=1</code>；存 <code>~/.claude/projects/&lt;project&gt;/memory/</code>，按 git 仓库、worktree 共用、只在本机；<code>MEMORY.md</code> 前 200 行或 25 KB 开局载入，主题文件按需读；四类；说「记住」就存；子代理不带；<code>/memory</code> 浏览</td><td>官方文档 <code>code.claude.com/docs/en/memory</code>，2026-11-02 抓取（页面里最新版本号 v2.1.309）</td><td><span class="tag lvl-m">中</span>（只读文档）</td></tr>
+<tr id="e22"><td>22</td><td>Grok Build、oh-my-pi、pi、opencode 的记忆做法</td><td>第三版 <code>main-12</code> 页面的说法，本机无这些 agent 的源码</td><td><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+</section>
+
+</main>
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const press = (sel, el) => $$(sel).forEach(x => x.setAttribute('aria-pressed', x === el));
+
+/* 第二节：这次启动会提炼哪些旧会话。按源码规则画；来源和记忆开关两条在实验里确认过 */
+const OLD = [
+  {n: 'A', d: '终端里的会话', src: 'cli', h: 3, mode: 'enabled'},
+  {n: 'B', d: '终端里的会话', src: 'cli', h: 26, mode: 'enabled'},
+  {n: 'C', d: '终端里的会话（开的时候 <code>generate_memories = false</code>）', src: 'cli', h: 48, mode: 'disabled'},
+  {n: 'D', d: '<code>codex exec</code> 跑的脚本', src: 'exec', h: 20, mode: 'enabled'},
+  {n: 'E', d: 'VS Code 里的会话', src: 'vscode', h: 144, mode: 'enabled'},
+  {n: 'F', d: '终端里的会话', src: 'cli', h: 96, mode: 'enabled'},
+  {n: 'G', d: '终端里的会话', src: 'cli', h: 288, mode: 'enabled'}
+].sort((a, b) => a.h - b.h);
+const ago = h => h < 48 ? h + ' 小时前' : (h / 24) + ' 天前';
+function renderS2() {
+  const idle = +$('#i1').value, days = +$('#i2').value, cap = +$('#i3').value;
+  $('#i1v').textContent = idle; $('#i2v').textContent = days; $('#i3v').textContent = cap;
+  let picked = 0, rows = '<tr><th>旧会话</th><th>来源</th><th>最近活动</th><th>结果</th></tr>';
+  OLD.forEach(o => {
+    let why = '';
+    if (!['cli', 'vscode'].includes(o.src)) why = '来源是 ' + o.src + '，不在交互式来源里';
+    else if (o.mode !== 'enabled') why = '这个会话的记忆开关是关的';
+    else if (o.h > days * 24) why = '超出 ' + days + ' 天的窗口';
+    else if (o.h < idle) why = '才空闲 ' + o.h + ' 小时，不到 ' + idle;
+    let cls = 'skip', verdict;
+    if (why) verdict = '<span class="bad">✗</span> ' + why;
+    else if (picked < cap) { picked++; cls = 'pick'; verdict = '<span class="ok">✓ 本次提炼</span>'; }
+    else verdict = '符合，但本次已取满 ' + cap + ' 个，等下次启动';
+    rows += '<tr class="' + cls + '"><td>' + o.n + '：' + o.d + '</td><td>' + o.src + '</td><td>' + ago(o.h) + '</td><td class="verdict">' + verdict + '</td></tr>';
+  });
+  $('#t1').innerHTML = rows;
+  $('#p1').innerHTML = '<p><span class="tag lvl-m">按源码规则画</span> 本次启动发出 <b>' + picked + '</b> 个提炼请求（<code>gpt-5.6-luna</code>），之后再起 1 个合并智能体。</p>';
+}
+['#i1', '#i2', '#i3'].forEach(s => $(s).oninput = renderS2);
+renderS2();
+
+/* 第三节：摘要写多长，请求里多多少。模板大小来自 out/read 的 r1/r5（记忆段 6,879 / 2,258 减摘要 162），上限 2,500 token ≈ 10,000 字节 */
+let V3 = 'v2', U3 = 3;
+const TPL = {v1: 6717, v2: 2096}, CAP = 10000;
+function renderS3() {
+  const chars = +$('#len1').value, bytes = chars * U3;
+  $('#len1v').textContent = fmt(chars);
+  const kept = Math.min(bytes, CAP), cut = Math.max(0, bytes - CAP), tpl = TPL[V3], block = tpl + kept;
+  const keepPct = bytes ? (kept / bytes * 100) : 100;
+  $('#m2').innerHTML = '<div class="keep" style="width:' + keepPct + '%"></div>' + (cut ? '<div class="cut" style="width:' + (100 - keepPct) + '%"></div>' : '');
+  let t = '<dl class="kv"><dt>摘要原文</dt><dd>' + fmt(bytes) + ' 字节 ≈ ' + fmt(Math.ceil(bytes / 4)) + ' token</dd>' +
+    '<dt>留下</dt><dd>' + fmt(kept) + ' 字节' + (cut ? '（头约 ' + fmt(CAP / 2) + ' + 尾约 ' + fmt(CAP / 2) + '）' : '（全部）') + (U3 === 3 ? '，约 ' + fmt(kept / 3) + ' 个汉字' : '') + '</dd>' +
+    '<dt>截掉</dt><dd>' + (cut ? fmt(cut) + ' 字节（约 ' + fmt(Math.ceil(bytes / 4) - 2500) + ' token），位置换成一句 <code>…N tokens truncated…</code>' : '没有截') + '</dd>' +
+    '<dt>记忆那一段</dt><dd><b>' + fmt(block) + '</b> 字节 ≈ ' + fmt(Math.ceil(block / 4)) + ' token（模板 ' + fmt(tpl) + ' + 摘要 ' + fmt(kept) + '）' + (V3 === 'v2' && block > 8900 ? '，v2 切成 ' + Math.ceil(block / 8900) + ' 块（每块 ≤ 8,900 字节）' : '') + '</dd></dl>';
+  t += '<p><span class="tag lvl-m">模板大小和上限来自实验，其余按公式算</span> 实测点：v1 / v2 摘要 162 字节、v1 英文约 3 万字节、v2 汉字约 3 万字节（见上表）。</p>';
+  $('#p2').innerHTML = t;
+}
+$$('[data-v]').forEach(b => b.onclick = () => { V3 = b.dataset.v; press('[data-v]', b); renderS3(); });
+$$('[data-u]').forEach(b => b.onclick = () => { U3 = +b.dataset.u; press('[data-u]', b); renderS3(); });
+$('#len1').oninput = renderS3;
+renderS3();
+
+/* 第四节：哪些记忆留下。按源码 SQL 的过滤和排序画，未实验 */
+const MEM = [
+  {n: 'M1', d: '改 CI 脚本', src: 3, uses: 4, last: 1},
+  {n: 'M2', d: '查慢查询', src: 8, uses: 0, last: null},
+  {n: 'M3', d: '迁移到 pnpm', src: 20, uses: 2, last: 25},
+  {n: 'M4', d: '旧版本升级', src: 40, uses: 1, last: 35},
+  {n: 'M5', d: '写周报', src: 15, uses: 0, last: null},
+  {n: 'M6', d: '修一个测试', src: 5, uses: 1, last: 2}
+];
+function renderS4() {
+  const maxd = +$('#r1').value, cap = +$('#r2').value;
+  $('#r1v').textContent = maxd; $('#r2v').textContent = cap;
+  const key = m => m.last === null ? m.src : m.last;
+  const ok = MEM.filter(m => key(m) <= maxd).sort((a, b) => b.uses - a.uses || key(a) - key(b));
+  const chosen = ok.slice(0, cap).map(m => m.n);
+  const order = ok.map(m => m.n);
+  let rows = '<tr><th>记忆</th><th>来自</th><th>被引用</th><th>最近引用</th><th>结果</th></tr>';
+  MEM.forEach(m => {
+    let v;
+    if (key(m) > maxd) v = '<span class="bad">✗</span> 过期，不进合并';
+    else if (chosen.includes(m.n)) v = '<span class="ok">✓ 第 ' + (order.indexOf(m.n) + 1) + ' 位入选</span>';
+    else v = '排第 ' + (order.indexOf(m.n) + 1) + '，被「最多取 ' + cap + ' 条」挤掉';
+    rows += '<tr class="' + (chosen.includes(m.n) ? 'pick' : 'skip') + '"><td>' + m.n + '：' + m.d + '</td><td>' + m.src + ' 天前的会话</td><td>' + m.uses + ' 次</td><td>' + (m.last === null ? '从没' : m.last + ' 天前') + '</td><td class="verdict">' + v + '</td></tr>';
+  });
+  $('#t3').innerHTML = rows;
+  $('#p3').innerHTML = '<p><span class="tag lvl-m">按源码规则画，未实验</span> 入选 <b>' + chosen.length + '</b> 条。排序先看被引用次数，再看最近引用（没引用过就看来自哪天）。</p>';
+}
+['#r1', '#r2'].forEach(s => $(s).oninput = renderS4);
+renderS4();
+</script>
+</body>
+</html>

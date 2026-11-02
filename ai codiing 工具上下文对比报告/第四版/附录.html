@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>对照表和索引</title>
+<link rel="stylesheet" href="assets/book.css">
+<script src="assets/book.js"></script>
+<style>
+/* 本页专用：总表和参数表的列宽、Codex 行的底色 */
+.mx td.nm,td.nm{white-space:nowrap;font-weight:600}
+.mx td.ev,td.ev{white-space:nowrap;font-size:.82rem}
+.mx td.ev .sub{display:block;font-size:.76rem;color:var(--muted);white-space:normal}
+.mx tr.me td{background:var(--note-bg)}
+.page h3{scroll-margin-top:16px}
+</style>
+</head>
+<body class="chapter">
+<main class="page">
+
+<header class="chap-head">
+<p class="kicker">附录</p>
+<h1>附录：8 个 agent 的做法和参数、术语、Codex 源码行号</h1>
+<p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · Claude Code 官方文档 2026-11-02 抓取 · 其余六个 agent：第三版 2026-10-18 的源码记录，未核对</p>
+</header>
+
+<p class="lede">这是查表用的附录，不用从头读。四张表：16 类上下文做法 × 8 个 agent、各家参数、术语、Codex 源码行号。每个结论都标了依据：本版核对过的，还是旧记录里的、本版没核对。</p>
+<p class="note">本版有源码的只有 Codex，有官方文档的只有 Claude Code。其余六个 agent（pi、oh-my-pi、opencode v1 和 v2、Grok Build、DeepSeek Harness）的内容全部来自第三版，标【待核实】。</p>
+
+<section id="s1">
+<h2><span class="sn">一、</span>怎么读这份附录</h2>
+<p>每个格子都带一个依据标签，先看标签再看内容。</p>
+<div class="tablewrap"><table>
+<tr><th>标签</th><th>意思</th></tr>
+<tr><td><span class="tag lvl-h">高</span></td><td>本版读了源码，并且做过实验（假服务器抓请求或读存档）。</td></tr>
+<tr><td><span class="tag lvl-m">中</span></td><td>读了源码或官方文档，没做实验；缺什么写在格子里。Claude Code 一列的「中」都是官方文档，没抓过请求。</td></tr>
+<tr><td><span class="tag lvl-l">待核实</span></td><td>第三版 2026-10-18 的记录，本版没核对。Claude Code 的这类格子来自非官方源码 v2.1.88。</td></tr>
+</table></div>
+<p>第三版里关于 Codex 的几处说法，在本版核对时被实验推翻（子代理缺省带不带父的历史、有没有回退入口、记忆的实现）。别的 agent 的格子是同一种读法记下的，当线索用，别当结论。</p>
+<h3>八个 agent 的版本和本版怎么查的</h3>
+<div class="tablewrap"><table>
+<tr><th>agent</th><th>版本</th><th>本版的依据</th></tr>
+<tr><td class="nm">Codex</td><td>源码 <code>76ed3b4</code>（main）；CLI <code>0.165.0</code></td><td>读源码，加本机假服务器实验（第 2–12 章）</td></tr>
+<tr><td class="nm">Claude Code</td><td>官方文档 <code>code.claude.com/docs</code>，2026-11-02 抓取；第三版读的是非官方源码 v2.1.88（<code>988438a</code>）</td><td>读官方文档，没抓过请求</td></tr>
+<tr><td class="nm">pi</td><td><code>b45e0eb</code>（main）</td><td>第三版读源码；本版没有这份源码，没核对</td></tr>
+<tr><td class="nm">oh-my-pi</td><td><code>f979f46</code>（main），pi 的 fork</td><td>同上</td></tr>
+<tr><td class="nm">opencode v1</td><td>tag <code>v1.19.0</code>（<code>733b2c6</code>）</td><td>同上</td></tr>
+<tr><td class="nm">opencode v2</td><td>tag <code>v2.0.29</code>（beta，<code>042d083</code>）</td><td>同上</td></tr>
+<tr><td class="nm">Grok Build</td><td><code>2bdd1d6</code>；SOURCE_REV <code>559751f</code>，无 tag</td><td>同上</td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td><code>5719020</code>（master）</td><td>同上；其中一部分是第三版从同仓文档推出来的</td></tr>
+</table></div>
+<p class="note">版本是第三版记下的快照（核实日期 2026-10-18）；Codex 的 <code>76ed3b4</code> 本版也在用。pi、oh-my-pi、opencode、Grok Build、DeepSeek Harness 只在这份附录出场，正文各章没写它们。</p>
+</section>
+<section id="s2">
+<h2><span class="sn">二、</span>对照总表：16 类做法 × 8 个 agent</h2>
+<p>先 Codex（底色加深），再 Claude Code，后面六个按 pi、oh-my-pi、opencode v1、opencode v2、Grok Build、DeepSeek Harness 排。类按本版章节的顺序排；表里的阈值是各自快照里的值，换了版本可能变。</p>
+<h3>请求组装</h3>
+<p class="meta">请求里装了什么、按什么顺序放 · 本版：<a href="02-一次请求里装了什么.html">第 2 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>gpt-6.1-sol（思考级别 low）：没有 <code>instructions</code> 字段、没有顶层 <code>tools</code>；<code>input</code> 7 条：工具定义 → 系统提示词 → 技能目录和权限 → 子代理说明 → 子代理开关 → AGENTS.md 和环境信息 → 你的话。gpt-5.5（low）：9 个工具放在顶层 <code>tools</code>，<code>input</code> 4 条。没有 system 角色。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>系统提示静态 7 段+边界+动态段</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">来源：非官方源码 v2.1.88</span></td></tr>
+<tr><td class="nm">pi</td><td>树投影成请求；system 按具名 section 拼</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>叶到根重建：摘要+保留段+后续</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>四类 system 块折成一条 system 串</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>至多两段 system：agent.system+基线</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>模板渲染提示词；首条用户消息塞规则清单</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>system 作为会话事件；section 按 order 拼</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+</table></div>
+<h3>规则文件</h3>
+<p class="meta">项目里写给 agent 的长期指令怎么找、怎么合并、有没有上限 · 本版：<a href="02-一次请求里装了什么.html">第 2 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td><code>AGENTS.md</code>：项目根（缺省以 <code>.git</code> 为标记）到当前目录每级取一份，<code>AGENTS.override.md</code> 优先；全局 <code>~/.codex/AGENTS.md</code> 排最前；项目文件合计 32,768 字节，尾部静默截断；文件里的 <code>@</code> 不展开。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>当前目录及以上每一级的 <code>CLAUDE.md</code> 启动时加载（单个超过 4 MiB 整份跳过）；子目录的在读写那个目录里的文件时才加载，单个文件上限 40,000 字符（20 万 token 窗口）；<code>CLAUDE.md</code> 里写 <code>@路径</code> 导入别的文件，最多 4 跳。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">pi</td><td>5 个候选名取首个；全局+祖先链</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>6 类 provider+depth 排序+包含去重</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>AGENTS/CLAUDE/CONTEXT 首个命中类型生效</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>只有 AGENTS.md；全局+祖先链+热更新</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>6 个候选全加载+三套 rules 目录</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>AGENTS/CLAUDE 链，64 KiB 预算</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>会话中途的变化</h3>
+<p class="meta">会话进行中，设置、环境、规则变了，请求里怎么跟上 · 本版：<a href="02-一次请求里装了什么.html">第 2 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>会话设置（权限、协作模式、子代理、AGENTS.md、环境信息）按状态比较：没变不加，变了在末尾追加，不改前面。全局 AGENTS.md 每次请求前重读，项目 AGENTS.md 一个会话读一次（这两条只读了源码和自带测试）；<code>resume</code> 接旧线程时和存档基线比，不同就追加（实验）。</td><td class="ev"><span class="tag lvl-m">中</span> <a href="02-一次请求里装了什么.html">第 2 章</a>、<a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>37 个附件源；三类 delta 只注入增量</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">来源：非官方源码 v2.1.88</span></td></tr>
+<tr><td class="nm">pi</td><td>section 级 patch 消息，只发变化 section</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>日期/cwd 提醒插首个用户轮；TTSR 去重</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>计划模式提醒追加到最后一条 user 消息</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>指令 diff 冻结进事件；后台 shell 用通知</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>逐轮 reminder 序列；日期滚动不改 user_info</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>pre-step 瀑布注入；时间插件缺省 10 分钟</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+</table></div>
+<h3>单次工具输出</h3>
+<p class="meta">一条命令输出特别长时，进请求之前怎么截 · 本版：<a href="03-命令输出几万行.html">第 3 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>最多四道闸，取最紧的：进程缓冲 1 MiB（头尾各 512 KiB）→ <code>exec_command</code> 缺省 10,000 token → <code>exec</code> 缺省 10,000 token（只有 gpt-6.1-sol）→ 写入历史按 12,000 token（基数 10,000 × 1.2）。截法是头尾各留一半；被截掉的原文哪里都不存。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>成功的命令约 30,000 字符内直接给；超过就存成文件，给路径加前 2,000 字符预览。失败的命令约 10,000 字符，超过给头尾摘录。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">pi</td><td>2000 行/50KB 先到者；bash 落临时文件</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>3000 行/50KiB；artifact 上限 16MiB</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>2000 行/50KiB 落盘，保留 7 天</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>同上但只保头；压缩期再限 1250 字符</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>通用 40KB、bash 20k 字符；全文落日志</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>spill 头尾各半+落盘路径；失败保留原文</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+</table></div>
+<h3>旧工具输出的清理</h3>
+<p class="meta">不调模型，直接把旧的工具输出换成占位符或删掉 · 本版：<a href="03-命令输出几万行.html">第 3 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>没找到清理旧工具输出的机制（搜索源码，未穷尽）；一条约 1.2 万 token 的输出，之后每次请求都重发。</td><td class="ev"><span class="tag lvl-m">中</span> <a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>文档提到会「清理旧工具结果」并算作预期的缓存重建，没写触发条件和规则。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td class="nm">pi</td><td>无自动裁剪；只有 context_edit 手动省略</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>保护 40k、省 20k 才动；两档陈旧省略</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>prune 缺省关；保护 40k，可擦&gt;20k 才落地</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>无 prune；仅压缩前文本化丢最旧 exchange</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>&gt;50% 窗口触发；软裁剪 1500+1500，10 轮硬清</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>pruner 8192/4096/1024，仅压缩触发后跑</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>压缩</h3>
+<p class="meta">窗口快满时，把旧历史写成摘要 · 本版：<a href="04-压缩之后还记得什么.html">第 4 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>压缩线 = min(<code>model_auto_compact_token_limit</code>, 窗口 × 90%)。OpenAI 官方通道走远端压缩（服务器回加密摘要，保留 64,000 token；只读了源码），其他通道走本地压缩（保留你亲手发的消息，预算 20,000 token，加一段摘要）。<code>/compact</code> 不带参数。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>压缩后从磁盘重读根目录 <code>CLAUDE.md</code>、不带 <code>paths:</code> 的规则、自动记忆、计划；最近的文件最多重读 5 个（超过 5,000 token 只给路径）；用过的技能每个最多 5,000、合计 25,000 token。<code>/compact focus on …</code> 可指定摘要重点。原生 100 万窗口约在 96.7 万 token 压。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">pi</td><td>保留 20k；不切 toolResult，超长拆两摘要</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>五方法链，remote 优先，逐级回退</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>保留 clamp(25%,2k,15k)；切点落 user</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>keep 缺省 15k；切点必须落 user 消息</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>full-replace；摘要 9 段并继承上次摘要</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>保留 16% 窗口；选区对齐工具配对</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>token 计量</h3>
+<p class="meta">怎么知道用了多少、离窗口还有多远 · 本版：<a href="04-压缩之后还记得什么.html">第 4 章</a>、<a href="10-窗口满了会怎样.html">第 10 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>用量 = 上次服务器报的 <code>total_tokens</code> + 之后新增条目的估算（UTF-8 字节 ÷ 4 向上取整，是本地估算，不是真实分词）。有效窗口 = 窗口 × 95%（gpt-6.1-sol：272,000 → 258,400）。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="04-压缩之后还记得什么.html">第 4 章</a>、<a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>末次 usage+chars/4；/context 分类计数</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">来源：非官方源码 v2.1.88</span></td></tr>
+<tr><td class="nm">pi</td><td>末次 usage+尾随估算；70%/90% 变色</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>阈值缺省 window−max(15%, 16384)</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>实测 usage 触发；无 /context 视图</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「待核实」</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>锚点+之后逐条估算；预留 max(10%,16k)</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>/context 四段；阈值常量 85、目录 80</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>重放日志计价；阈值 min(80%W, W−O−B)</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>缓存</h3>
+<p class="meta">请求开头不变的部分怎么让服务器复用 · 本版：<a href="05-缓存省的是什么.html">第 5 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>OpenAI 文档（2026-11-02）：GPT-5.6 及之后缺省缓存。Codex 的 <code>prompt_cache_key</code> = 会话 id，不传 <code>prompt_cache_options</code>；WebSocket 下同进程只发新增条目；换模型、关工具时追加说明而不改前缀。真实命中率没测。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>三层缓存（系统提示词和工具定义 → 项目上下文 → 对话）；缺省存 5 分钟，订阅额度内主对话 1 小时；缓存标记最多 4 个；文档列出会断缓存的操作；<code>/usage</code> 有一行 Prompt cache (main)。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td class="nm">pi</td><td>section patch 保前缀；摘要请求不写缓存</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>易变内容移出前缀；裁剪也有缓存守卫</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>前 2 system+后 2 消息打点；无压缩调度</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>自动断点上限 4；压缩后 epoch 推基线</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>3 处显式断点+1 槽留网关；日期固定</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>系统提示可 in-history 追加以保前缀</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+</table></div>
+<h3>工具按需加载</h3>
+<p class="meta">工具定义不全放进请求，用到再找 · 本版：<a href="06-工具多了会怎样.html">第 6 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>MCP 工具按模型表 <code>supports_search_tool</code> 登记：true 延后，false 直连。延后时 gpt-5.5 用顶层 <code>tool_search</code> 找，gpt-6.1-sol 在 <code>exec</code> 脚本里过滤 <code>ALL_TOOLS</code>。接 30 个 MCP 工具，gpt-6.1-sol 的请求逐字不变。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>工具搜索缺省开：开局只载入工具名和服务器 instructions，用到再找。<code>ENABLE_TOOL_SEARCH</code> 取 <code>true</code> / <code>auto</code> / <code>auto:N</code> / <code>false</code>；instructions 和直连工具的描述各截 4,096 字符，搜索加载的描述 16,384 字符。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+<tr><td class="nm">pi</td><td>技能只给名+描述+路径，正文用 read 取</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>技能/规则走 URL 按需读；MCP 目录化</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>技能三段式；MCP 缺省全量下发</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>Code Mode：MCP 不进工具定义，靠 execute</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>MCP 不进 tools；search_tool 检索后调用</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>技能目录 user 消息；MCP 直接注册不延迟</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+</table></div>
+<h3>子代理</h3>
+<p class="meta">把一部分活派给另一个会话，窗口里留什么 · 本版：<a href="07-子代理省了什么.html">第 7 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>gpt-6.1-sol（V2）请求里固定多 8,514 字节子代理相关内容；<code>fork_turns</code> 缺省 <code>all</code>，子代理带走父的全部历史；最终回答整份回到父会话，无上限；总数缺省 4（含 root），层数不限。gpt-5.5（V1）缺省不带历史。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>缺省空白上下文（fork 除外），Explore 和 Plan 不带 <code>CLAUDE.md</code>；嵌套 3 层，并发 20，累计无上限；在 <code>permissions.deny</code> 里写 <code>Agent(名字)</code> 或 <code>Agent</code> 可关闭。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+<tr><td class="nm">pi</td><td>无此能力：README 明示跳过子代理</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>task 独立子会话；schema 校验返回，深度 2</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>task 子会话；深度缺省 1，XML 信封装自由文本</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>subagent 工具；支持后台，深度缺省 1</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>task 三型；深度 1；缺省后台；可选 worktree</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>异步返回 childId，完成通知回传父会话</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+</table></div>
+<h3>回退、分叉、恢复</h3>
+<p class="meta">会话记录怎么存，怎么撤销和接着聊 · 本版：<a href="08-回退分叉恢复.html">第 8 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>每个会话一个 <code>.jsonl</code> 存档，只追加。回退（TUI 里 Esc 两下）= 另存新文件并换指针，旧文件不动，不还原你的文件；分叉（<code>/fork</code>）= 新线程引用旧前缀；恢复时 AGENTS.md 与存档基线比对。压缩可被回退撤销。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td><code>/rewind</code> 或 Esc 两下，四种动作（代码和对话 / 只对话 / 只代码 / 摘要）；只追踪编辑工具改的文件，shell 单独改的不追踪；最近 100 个检查点，约 30 天清理。<code>/branch</code>、<code>--fork-session</code> 分叉；<code>--continue</code> / <code>--resume</code> 恢复，压缩过的从最后一次压缩接上。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">pi</td><td>JSONL 树；/tree 换叶，fork 复制新文件</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>树+/clear 边界；checkpoint 用报告换探索段</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>事件溯源；filterCompacted 重排历史</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>seq 边界读历史；检查点是一条消息</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>日志只追加；RewindMarker 逻辑截断</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>日志+surface replace；无 rewind</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>跨会话记忆</h3>
+<p class="meta">新开一个会话，怎么还记得以前的事 · 本版：<a href="09-新会话怎么记得我.html">第 9 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td><code>memories</code> 缺省关。打开后后台先用 gpt-5.6-luna（low）提炼旧会话，再用 gpt-5.6-terra（medium）合并成一份摘要，放进新会话的第三条输入；摘要超过 2,500 token 从中间截；一个 <code>CODEX_HOME</code> 一份，不按项目分。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>自动记忆（auto memory）本地缺省开，模型在会话里当场写到 <code>~/.claude/projects/&lt;project&gt;/memory/</code>；<code>MEMORY.md</code> 前 200 行或 25 KB 开局载入，主题文件按需读；子代理不带（fork 除外）。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td class="nm">pi</td><td>无此能力：无独立记忆子系统</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>5 后端缺省 off；注入上限 5000 token</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>无此能力</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>无此能力</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>缺省关；/flush 写入、/dream 整理、压缩后重检索</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>无此能力：跨会话只能靠 AGENTS.md</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>窗口满了之后</h3>
+<p class="meta">请求超窗、压缩也失败时怎么办 · 本版：<a href="10-窗口满了会怎样.html">第 10 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>主请求被拒（流里 <code>response.failed</code> + <code>context_length_exceeded</code>）：只报错，不压缩、不重发。本地压缩请求被拒：从最旧的一条删起再发。HTTP 400 不认。小窗口下每步都压，没有次数上限（搜索，未穷尽）。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>交互里提示 <code>Context limit reached · /compact or /clear to continue</code>；自动压缩先摘要最旧几轮，一整轮都摘要不了时留最新 prompt 原文、其余全摘要；压完又立刻被填满数次，报 <code>Autocompact is thrashing</code> 并停止重试（文档没写次数）。</td><td class="ev"><span class="tag lvl-m">中</span> 官方文档 <a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">pi</td><td>溢出只允许一次 compact-and-retry</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>先升级模型再压缩；进度守卫 80%</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>压缩失败无二次兜底，直接 stop</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>压缩按 70/50/35 三级收缩后失败</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>先 preflight 压缩；失败按 5 类抑制</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>先 pruner 再压缩；增量前进才重试</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>评估和可观测</h3>
+<p class="meta">怎么量出一种做法好不好 · 本版：<a href="11-怎么证明更好.html">第 11 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td><code>codex-rs/</code> 里没有名字带 eval / bench 的包（只看了目录名），没找到评测框架。存档里每个响应一条 <code>token_usage_record</code>（压缩请求也有），可算请求数、输入、命中、压缩次数；<code>codex exec --json</code> 只有会话累计；<code>--ephemeral</code> 不写存档。</td><td class="ev"><span class="tag lvl-h">高</span> <a href="11-怎么证明更好.html">第 11 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>无评测；/context、/cost、缓存失效归因</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">来源：非官方源码 v2.1.88</span></td></tr>
+<tr><td class="nm">pi</td><td>自带 evals 做 docs-lift 对照；无上下文指标</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>snapcompact 用 SQuAD 评测</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>无评测；per-step tokens/cost 记账</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>无评测；Step.Ended 与压缩事件记账</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>无评测；压缩遥测可算回收率与耗时</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>无评测；三个投影键供外部 A/B</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+</table></div>
+<h3>扩展点</h3>
+<p class="meta">钩子、插件能改上下文管理的哪一步 · 本版：<a href="04-压缩之后还记得什么.html">第 4 章</a></p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>钩子 <code>PreCompact</code> / <code>PostCompact</code> 只能叫停；压缩后排一次 <code>SessionStart</code>，输出作为额外上下文；<code>compact_prompt</code> 可换本地压缩的提示词，远端压缩不适用。都只读了源码，没实验。</td><td class="ev"><span class="tag lvl-m">中</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>多事件 hooks；PreCompact 可改写压缩指令</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">来源：非官方源码 v2.1.88</span></td></tr>
+<tr><td class="nm">pi</td><td>session_before_compact 可整段替换产物</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>methodOrder 可排序；压缩钩子改提示词</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>插件可改消息；压缩钩子只改提示词</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>压缩钩子可直接给摘要，跳过模型</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>15 个 hook；压缩前后钩子只能观察</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>Cordis 全插件；继承引擎接口换后端</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>多模态</h3>
+<p class="meta">图片怎么进上下文、怎么省 · 本版没有单独写</p>
+<div class="tablewrap"><table class="mx">
+<tr><th>agent</th><th>做法</th><th>依据</th></tr>
+<tr class="me"><td class="nm">Codex</td><td>本版只核对到：本地压缩截短原话时去掉图片（读了源码）。</td><td class="ev"><span class="tag lvl-m">中</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">Claude Code</td><td>2000px/5MB；压缩前剥图；无历史转图</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">来源：非官方源码 v2.1.88</span></td></tr>
+<tr><td class="nm">pi</td><td>只按 4800 字符估算；无图片驱逐</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">oh-my-pi</td><td>snapcompact 渲成 PNG；按预算裁图</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v1</td><td>图片直通；仅 overflow 重放时换成文本</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">opencode v2</td><td>25MiB 触发→15MiB，从最旧图片删起</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">Grok Build</td><td>请求体−3MiB 触发驱逐，回收到一半</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">DeepSeek Harness</td><td>路由拒图时永久 offload 最早 N 张</td><td class="ev"><span class="tag lvl-l">待核实</span><span class="sub">第三版就标了「推断」</span></td></tr>
+</table></div>
+</section>
+<section id="s3">
+<h2><span class="sn">三、</span>参数</h2>
+<p>「缺省」是没配置时的值，不是推荐值。Codex 一列写清每项写在哪个文件里；Claude Code 是官方文档里的值；其余六个 agent 的参数整张表都是第三版的记录，本版没核对。</p>
+
+<h3>Codex：能配置的</h3>
+<p class="meta">条目名和缺省值 2026-11-02 在源码 <code>76ed3b4</code> 里逐个搜过（<code>config/src/config_toml.rs</code>、<code>config/src/types.rs</code>、<code>core/src/config/mod.rs</code>、<code>config/src/mcp_types.rs</code>、<code>model-provider-info/src/lib.rs</code>）。<code>config.toml</code> 指 <code>~/.codex/config.toml</code>，也可以在命令行用 <code>-c 名=值</code> 临时覆盖（第 11 章只验证了命令跑得完）。</p>
+<div class="tablewrap"><table>
+<tr><th>配置项</th><th>写在哪</th><th>缺省</th><th>作用</th><th>依据</th></tr>
+<tr><td><code>project_doc_max_bytes</code></td><td><code>config.toml</code> 顶层</td><td>32,768 字节</td><td>项目 AGENTS.md 合计上限，从尾部截，只写日志</td><td class="ev"><span class="tag lvl-h">高</span> <a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td><code>tool_output_token_limit</code></td><td><code>config.toml</code> 顶层</td><td>不设时取模型表的基数 10,000 token；写入历史时 × 1.2</td><td>写入历史前每条工具输出的上限</td><td class="ev"><span class="tag lvl-h">高</span> <a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td><code>model_context_window</code></td><td><code>config.toml</code> 顶层</td><td>取模型表（gpt-6.1-sol 源码自带表 272,000）</td><td>改窗口大小；实验里设 14,000 看小窗口反复压缩</td><td class="ev"><span class="tag lvl-h">高</span> <a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td><code>model_auto_compact_token_limit</code></td><td><code>config.toml</code> 顶层</td><td>取模型表；压缩线 = min(它, 窗口 × 90%)</td><td>自动压缩的触发线</td><td class="ev"><span class="tag lvl-h">高</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td><code>model_post_turn_compact_threshold_percent</code></td><td><code>config.toml</code> 顶层</td><td>0（不压）；取值 0–100，超过 100 启动报错</td><td>一轮最终回答之后，用量 ≥ 有效窗口 × 这个百分比就压</td><td class="ev"><span class="tag lvl-h">高</span> <a href="12-给场景设计策略.html">第 12 章</a></td></tr>
+<tr><td><code>compact_prompt</code> / <code>experimental_compact_prompt_file</code></td><td><code>config.toml</code> 顶层</td><td>内置的 9 行提示词</td><td>换本地压缩的提示词；远端压缩不用</td><td class="ev"><span class="tag lvl-m">中</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td><code>effective_context_window_percent</code></td><td>模型表的字段，不在 <code>config.toml</code> 里</td><td>95</td><td>有效窗口 = 窗口 × 这个百分比</td><td class="ev"><span class="tag lvl-h">高</span> <a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td><code>stream_max_retries</code></td><td>通道配置 <code>[model_providers.&lt;名字&gt;]</code></td><td>5</td><td>流式请求出错后重试次数；被拒的压缩请求也按它重试</td><td class="ev"><span class="tag lvl-h">高</span> <a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td><code>supports_websockets</code></td><td>通道配置 <code>[model_providers.&lt;名字&gt;]</code></td><td>自定义通道只走 HTTP</td><td>设为 <code>true</code> 才走 WebSocket</td><td class="ev"><span class="tag lvl-h">高</span> <a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td><code>[agents] enabled</code></td><td><code>config.toml</code></td><td>true</td><td>设为 <code>false</code>：三块子代理内容全无，gpt-6.1-sol 的请求少 8,516 字节</td><td class="ev"><span class="tag lvl-h">高</span> <a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+<tr><td><code>[agents] max_threads</code></td><td><code>config.toml</code></td><td>V2：总数 4（含 root；设 N 则总数 N+1）；V1：6（只读源码，没实验）</td><td>同时存在的子代理数</td><td class="ev"><span class="tag lvl-h">高</span> <a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+<tr><td><code>[features.multi_agent_v2]</code> 下 <code>root_agent_usage_hint_text</code> / <code>multi_agent_mode_hint_text</code></td><td><code>config.toml</code></td><td>使用内置文字（2,575 / 410 字节）</td><td>设为 <code>""</code> 去掉对应那条说明</td><td class="ev"><span class="tag lvl-h">高</span> <a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+<tr><td><code>[features] memories</code></td><td><code>config.toml</code></td><td>false</td><td>打开跨会话记忆</td><td class="ev"><span class="tag lvl-h">高</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td><code>[memories] use_memories</code> / <code>generate_memories</code></td><td><code>config.toml</code></td><td>都是 true（前提是 <code>memories</code> 已打开）</td><td>是否读记忆 / 是否让新会话被提炼</td><td class="ev"><span class="tag lvl-h">高</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td><code>[memories] max_rollout_age_days</code> / <code>min_rollout_idle_hours</code> / <code>max_rollouts_per_startup</code></td><td><code>config.toml</code></td><td>10（0–90）/ 6（1–48）/ 2（1–128）</td><td>只提炼更新时间在 10 天内、已空闲 6 小时以上的旧会话，每次最多取 2 个</td><td class="ev"><span class="tag lvl-h">高</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td><code>[memories] max_unused_days</code></td><td><code>config.toml</code></td><td>30（0–365）</td><td>合并时只选最近引用（没引用过则看自己的活动时间）在 30 天内的；过期且上次没用过的，启动时删除</td><td class="ev"><span class="tag lvl-h">高</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td><code>[memories] extract_model</code> / <code>consolidation_model</code></td><td><code>config.toml</code></td><td>不设：提炼 gpt-5.6-luna（low），合并 gpt-5.6-terra（medium）</td><td>换提炼、合并用的模型</td><td class="ev"><span class="tag lvl-h">高</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td><code>[memories] min_rate_limit_remaining_percent</code></td><td><code>config.toml</code></td><td>25（0–100）</td><td>额度窗口剩余低于它，后台记忆任务不启动（只读源码，没实验）</td><td class="ev"><span class="tag lvl-m">中</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td><code>enabled_tools</code> / <code>disabled_tools</code></td><td>MCP 服务器配置 <code>[mcp_servers.&lt;名字&gt;]</code></td><td>不设：该服务器全部工具</td><td>只注册这些 / 在其后排除；实验里 10 个工具 → 2 个，定义 3,592 → 930 字节</td><td class="ev"><span class="tag lvl-h">高</span> <a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+<tr><td><code>tool_input_schema_max_bytes</code></td><td>MCP 服务器配置</td><td>5,000 字节（只读了注释）</td><td>单个工具的输入 schema 超过它就压缩</td><td class="ev"><span class="tag lvl-m">中</span> <a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+<tr><td><code>default_tools_approval_mode</code></td><td>MCP 服务器配置</td><td>不设则按批准策略</td><td>实验里设为 <code>"approve"</code>，才能直接调没搜过的工具</td><td class="ev"><span class="tag lvl-h">高</span> <a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+</table></div>
+
+<h3>Codex：写死的数</h3>
+<p class="meta">改不了配置，只能换版本。</p>
+<div class="tablewrap"><table>
+<tr><th>数</th><th>是什么</th><th>依据</th></tr>
+<tr><td class="nm">1 MiB</td><td>进程输出缓冲，头尾各 512 KiB</td><td class="ev"><span class="tag lvl-h">高</span> <a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">10,000 token</td><td><code>exec_command</code> 和 <code>exec</code> 的缺省输出上限（模型可以传更大的，写入历史时仍被截回）</td><td class="ev"><span class="tag lvl-h">高</span> <a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">20,000 token</td><td>本地压缩保留你亲手发的消息的预算，从新到旧</td><td class="ev"><span class="tag lvl-h">高</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">64,000 token</td><td>远端压缩保留的预算（别的代理消息单条 ≤ 10,000）；只读源码</td><td class="ev"><span class="tag lvl-m">中</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">12,000 token</td><td>界面「X% left」公式里当作固定开头的数；只读源码，没在终端看过</td><td class="ev"><span class="tag lvl-m">中</span> <a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">1,048,576 字符</td><td>单条用户输入上限（TUI 输入框和 app-server 检查，<code>codex exec</code> 没查）</td><td class="ev"><span class="tag lvl-h">高</span> <a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">2,500 token</td><td>记忆摘要读路径的上限（字节 ÷ 4），超出从中间截</td><td class="ev"><span class="tag lvl-h">高</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td class="nm">6 小时 / 1 小时</td><td>记忆合并成功后的冷却 / 失败后重试间隔</td><td class="ev"><span class="tag lvl-h">高</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td class="nm">8</td><td><code>tool_search</code> 一次返回的工具数缺省值（gpt-5.5，模型可传 <code>limit</code>）</td><td class="ev"><span class="tag lvl-h">高</span> <a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+</table></div>
+
+<h3>Claude Code：官方文档里的值</h3>
+<p class="meta">官方文档 <code>code.claude.com/docs</code>，2026-11-02 抓取，页面里最新版本号 v2.1.309。都没做实验。</p>
+<div class="tablewrap"><table>
+<tr><th>参数</th><th>值</th><th>补充</th><th>依据</th></tr>
+<tr><td><code>CLAUDE.md</code> 里的 <code>@路径</code> 导入</td><td>最多 4 跳</td><td>导入别的文件</td><td class="ev"><span class="tag lvl-m">中</span> <a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td>启动时加载的单个 <code>CLAUDE.md</code></td><td>超过 4 MiB 整份跳过</td><td>范围是当前目录及以上每一级</td><td class="ev"><span class="tag lvl-m">中</span> <a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td>子目录 <code>CLAUDE.md</code></td><td>单个文件 40,000 字符（20 万 token 窗口）</td><td>超出只给开头并提示用 Read 工具读剩下的</td><td class="ev"><span class="tag lvl-m">中</span> <a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td>成功命令的输出</td><td>约 30,000 字符内直接给；超过存文件 + 路径 + 前 2,000 字符预览</td><td>失败的命令约 10,000 字符，超过给头尾摘录</td><td class="ev"><span class="tag lvl-m">中</span> <a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td>压缩后重读文件</td><td>最多 5 个最近的；超过 5,000 token 只给路径</td><td>技能正文每个最多 5,000、合计 25,000 token</td><td class="ev"><span class="tag lvl-m">中</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td>自动压缩的触发</td><td>原生 100 万窗口约 96.7 万 token；其他多数情况到窗口上限</td><td>输入框里 <code>/autocompact 500k</code> 可提前</td><td class="ev"><span class="tag lvl-m">中</span> <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td>缓存存活</td><td>5 分钟；订阅额度内主对话 1 小时</td><td>设置 <code>promptCacheTtl</code> 可选；缓存标记最多 4 个</td><td class="ev"><span class="tag lvl-m">中</span> <a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td>工具搜索</td><td>缺省开；<code>ENABLE_TOOL_SEARCH</code> = <code>auto</code> 时工具定义低于窗口 10% 直连</td><td>instructions 和直连工具描述各 4,096 字符，搜索加载的 16,384 字符</td><td class="ev"><span class="tag lvl-m">中</span> <a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+<tr><td>子代理</td><td>嵌套 3 层，并发 20，累计无上限</td><td><code>permissions.deny</code> 里写 <code>Agent(名字)</code> 关闭</td><td class="ev"><span class="tag lvl-m">中</span> <a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+<tr><td><code>/rewind</code> 检查点</td><td>最近 100 个，约 30 天清理</td><td>只追踪编辑工具改的文件</td><td class="ev"><span class="tag lvl-m">中</span> <a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td>自动记忆 <code>MEMORY.md</code></td><td>开局载入前 200 行或 25 KB</td><td><code>autoMemoryEnabled</code>、<code>CLAUDE_CODE_DISABLE_AUTO_MEMORY=1</code> 可关</td><td class="ev"><span class="tag lvl-m">中</span> <a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td>请求体</td><td>32 MB 上限，与窗口无关</td><td>报 <code>Request too large</code></td><td class="ev"><span class="tag lvl-m">中</span> <a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+</table></div>
+<h3>Claude Code：非官方源码和官方文档对不上的四处</h3>
+<p class="meta">第三版读的是非官方源码 v2.1.88，下面是它和官方文档不一致的地方。本版正文只用官方文档的值。</p>
+<div class="tablewrap"><table>
+<tr><th>项目</th><th>非官方源码 v2.1.88</th><th>官方文档</th><th>本版怎么处理</th></tr>
+<tr><td><code>CLAUDE.md</code> 导入跳数</td><td>5 跳</td><td>4 跳</td><td>本版 2026-11-02 重新抓文档核对：4 跳</td></tr>
+<tr><td>技能列表里单条描述的长度</td><td>250 字符</td><td>1,536 字符处截断</td><td>没重新抓</td></tr>
+<tr><td>通用工具结果落盘阈值</td><td>50,000 字符（Bash 30,000、Grep 20,000）</td><td>通用 10,000 字符；Bash 30,000</td><td>Bash 的 30,000 本版重新核对一致；通用那项没重新抓</td></tr>
+<tr><td>图片体积限制</td><td>2000×2000、base64 5 MB</td><td>缩放后超过 500 KB 转 JPEG</td><td>没重新抓</td></tr>
+</table></div>
+
+<h3>其余六个 agent</h3>
+<p class="note"><span class="tag lvl-l">待核实</span> 下面六张表整张都来自第三版（2026-10-18 读源码），出处是第三版给的文件和行号；本版没有这些源码，没核对。Grok Build 没有语义化版本号，表里的缺省只对那个快照成立。</p>
+<h3>pi</h3>
+<p class="meta">提交 b45e0eb（main）· 8 个参数 · 源码与官方文档</p>
+<div class="tablewrap"><table>
+<tr><th>参数</th><th>缺省</th><th>作用</th><th>第三版给的出处</th></tr>
+<tr><td><code>reserveTokens</code></td><td>16384</td><td>触发线 = 窗口 − 预留；输出预留与它共用一笔，不单独扣。</td><td><code>compaction.ts:126-130</code></td></tr>
+<tr><td><code>keepRecentTokens</code></td><td>20000</td><td>压缩时保留的最近原文预算；从新到旧累加到它为止。</td><td><code>compaction.ts:126-130</code></td></tr>
+<tr><td>摘要输出上限</td><td>min(0.8 × reserve, model.maxTokens)</td><td>摘要本身的最大长度；单回合拆分时轮前缀上限为 0.5 × reserve。</td><td><code>compaction.ts:712-715</code></td></tr>
+<tr><td><code>DEFAULT_MAX_LINES</code>/<code>DEFAULT_MAX_BYTES</code></td><td>2000 行 / 50 KiB</td><td>工具输出的两条独立上限，先到者胜；bash 超限把全文写临时文件。</td><td><code>truncate.ts:1-13</code></td></tr>
+<tr><td>技能名 / 描述上限</td><td>64 / 1024 字符</td><td>超长不截断，产生校验告警；提示词里每个技能只给 name、description、location。</td><td><code>skills.ts:10-14</code></td></tr>
+<tr><td><code>cacheWarming</code></td><td>"streaming"</td><td>缓存预热模式；TTL 的 90% 处刷新，预计节省 ≥ $0.05 才执行。</td><td><code>cache-warmer.ts:14-31</code></td></tr>
+<tr><td>分支摘要<code>maxTokens</code></td><td>min(4096, model.maxTokens)</td><td><code>/tree</code>切换叶子时，给离开分支写的摘要上限。</td><td><code>branch-summarization.ts:293-382</code></td></tr>
+<tr><td>溢出恢复次数</td><td>1</td><td>只允许一次 compact-and-retry；第二次直接报 recovery failed。</td><td><code>agent-session.ts:3049-3076</code></td></tr>
+</table></div><p class="note">pi 没有自动裁剪阈值，也没有<code>/context</code>命令；百分比只在 footer 上以 70% / 90% 变色提示。</p>
+<h3>oh-my-pi</h3>
+<p class="meta">提交 f979f46（main）· 8 个参数 · 与 pi 同源但缺省值不同</p>
+<div class="tablewrap"><table>
+<tr><th>参数</th><th>缺省</th><th>作用</th><th>第三版给的出处</th></tr>
+<tr><td><code>DEFAULT_RESERVE_TOKENS</code></td><td>16384</td><td>有效预留的基准值；摘要输出上限同样取 16384。</td><td><code>compaction.ts:199-211</code></td></tr>
+<tr><td>有效预留</td><td>max(15% × 窗口, 16384)</td><td>200K 窗口下触发点约为 170000，比 pi 的「固定 16384」更早。</td><td><code>compaction.ts:320-322</code></td></tr>
+<tr><td><code>keepRecentTokens</code></td><td>20000</td><td>保留段预算，按 provider 上报 token / 本地估算的比值缩放。</td><td><code>compaction.ts:1437-1464</code></td></tr>
+<tr><td><code>methodOrder</code></td><td>remote → snapcompact → handoff → shake → soft</td><td>压缩方法链；不可用或失败就逐级回退，<code>soft</code>才是让 LLM 写摘要的那一级。</td><td><code>compaction-methods.ts:44-50</code></td></tr>
+<tr><td><code>protectTokens</code>/<code>minimumSavings</code></td><td>40000 / 20000</td><td>裁剪保护最近 40k 工具输出；总节省不到 20k 就不动手。</td><td><code>pruning.ts:77-83</code></td></tr>
+<tr><td>工具输出上限</td><td>3000 行 / 50 KiB / 单行 512 字节</td><td>先到者胜；完整输出落 artifact，artifact 上限 16 MiB、头 3 MiB。</td><td><code>streaming-output.ts:10-30</code></td></tr>
+<tr><td><code>task.maxRecursionDepth</code>/<code>maxConcurrency</code></td><td>2 / 32</td><td>子代理递归深度与并发上限；<code>task.isolation.enabled</code>缺省 false。</td><td><code>task/settings.ts:242-258</code></td></tr>
+<tr><td><code>memory.backend</code></td><td>"off"</td><td>记忆后端缺省关闭；开启后注入上限 5000 token。</td><td><code>memory-backend/settings.ts:14-22</code></td></tr>
+</table></div><p class="note">omp 是 pi 的 fork：骨架相同，但阈值从固定预留改成窗口比例下限，压缩从单函数改成五方法链。不要把两边的缺省值互相外推。</p>
+<h3>opencode v1</h3>
+<p class="meta">tag v1.19.0（提交 733b2c6）· 8 个参数 · 最后一条 v1 出货线</p>
+<div class="tablewrap"><table>
+<tr><th>参数</th><th>缺省</th><th>作用</th><th>第三版给的出处</th></tr>
+<tr><td><code>MAX_LINES</code>/<code>MAX_BYTES</code></td><td>2000 / 51200</td><td>工具输出的行数与字节上限，先到者截断；支持 head 与 tail 两个方向。</td><td><code>tool/truncate.ts:12-17</code></td></tr>
+<tr><td>截断文件保留期</td><td>7 天</td><td>落盘目录每小时清理一次，只删<code>tool_</code>前缀文件。</td><td><code>tool/truncate.ts:85-141</code></td></tr>
+<tr><td>压缩预留（<code>reserved</code>）</td><td>min(20000, maxOutputTokens)</td><td>可用窗口 = 输入上限 − 预留；常量<code>COMPACTION_BUFFER = 20000</code>是它的上限来源。</td><td><code>session/overflow.ts:8-34</code></td></tr>
+<tr><td><code>preserve_recent_tokens</code></td><td>clamp(25% × usable, 2000, 15000)</td><td>压缩保留尾部预算；未设时按可用窗口浮动，不是固定值。</td><td><code>session/compaction.ts:115-120</code></td></tr>
+<tr><td><code>compaction.prune</code></td><td>false</td><td>旧工具结果擦除；开启后保护 40000，可擦量 &gt; 20000 才落地，<code>skill</code>永不擦。</td><td><code>session/compaction.ts:28-33</code></td></tr>
+<tr><td><code>subagent_depth</code></td><td>1</td><td>子代理不能再开子代理；超过直接报错。</td><td><code>v1/config/config.ts:84-86</code></td></tr>
+<tr><td>缓存标记位置</td><td>前 2 条 system + 后 2 条非 system</td><td><code>applyCaching</code>按 provider 映射成不同的 cache control 字段。</td><td><code>provider/transform.ts:357-404</code></td></tr>
+<tr><td><code>RETRY_MAX_RETRIES</code></td><td>5</td><td>非超窗的错误才重试；<code>ContextOverflowError</code>不重试，转成压缩信号。</td><td><code>session/retry.ts:26-31</code></td></tr>
+</table></div><p class="note">v1 是「实测驱动」：没有 provider 回报 usage 之前不会自动压缩，估算只用于挑选保留尾部。</p>
+<h3>opencode v2</h3>
+<p class="meta">tag v2.0.29（beta，提交 042d083）· 8 个参数 · 字段与缺省值可能在下个版本变化</p>
+<div class="tablewrap"><table>
+<tr><th>参数</th><th>缺省</th><th>作用</th><th>第三版给的出处</th></tr>
+<tr><td><code>MAX_LINES</code>/<code>MAX_BYTES</code></td><td>2000 / 51200</td><td>通用工具输出上限，只保头；全文写入<code>tool-output/</code>，保留 7 天。</td><td><code>tool-output.ts:13-18</code></td></tr>
+<tr><td>压缩期二次限长</td><td>1250 字符</td><td>构造压缩请求时再切一次工具结果，按 Unicode 码点，不切断代理对。</td><td><code>compaction.ts:100</code></td></tr>
+<tr><td><code>compaction.keep.tokens</code></td><td>15000</td><td>压缩保留预算，v2 改成固定值；v1 是<code>clamp(25%, 2000, 15000)</code>。</td><td><code>compaction.ts:195-203</code></td></tr>
+<tr><td><code>compaction.buffer</code></td><td>max(10% × 窗口, 16000)</td><td>预留量；旧名<code>reserved</code>自动迁移，语义不变。</td><td><code>compaction.ts:900-923</code></td></tr>
+<tr><td><code>SHRINK_STEPS</code></td><td>0.7 / 0.5 / 0.35</td><td>压缩请求被 provider 拒绝后，按首次估算的比例逐级收缩，再拒就失败。</td><td><code>compaction.ts:403-455</code></td></tr>
+<tr><td>图片预算</td><td>25 MiB 触发 → 15 MiB</td><td>从最旧的图片删起，替换成「图已移除」的文本并在需要时重新读取。</td><td><code>model-request.ts:28-34</code></td></tr>
+<tr><td><code>experimental.subagent_depth</code></td><td>1</td><td>子代理深度；v1 的顶层<code>subagent_depth</code>已迁移到这里。</td><td><code>schema/config/experimental.ts:11</code></td></tr>
+<tr><td><code>BREAKPOINT_CAP</code></td><td>4</td><td>自动断点上限：最后一个工具定义、首末两段 system、尾部 1 条消息。</td><td><code>ai/src/cache-policy.ts:17-47</code></td></tr>
+</table></div><p class="note">v2 的<code>prune</code>与<code>tail_turns</code>已标 unsupported：配置里出现只会产生诊断，不会生效。</p>
+<h3>Grok Build</h3>
+<p class="meta">提交 2bdd1d6；SOURCE_REV = 559751f，无 tag · 8 个参数</p>
+<div class="tablewrap"><table>
+<tr><th>参数</th><th>缺省</th><th>作用</th><th>第三版给的出处</th></tr>
+<tr><td>自动压缩阈值</td><td>85（常量）/ 80（<code>grok-4.6</code>目录）</td><td>按 6 级解析：env → 用户模型 → 用户会话 → 远端模型 → 远端全局 → 常量；目录值优先。</td><td><code>config.rs:12</code></td></tr>
+<tr><td><code>BYTES_PER_TOKEN</code>/<code>IMAGE_TOKEN_ESTIMATE</code></td><td>4 / 765 token/张</td><td>字节估算与图片计价；<code>/context</code>的四段口径都建立在这两个常量上。</td><td><code>xai-token-estimation/src/lib.rs:1-80</code></td></tr>
+<tr><td>工具结果上限</td><td>通用 40000 字节；bash 20000 字符；<code>read_file</code>1000 行</td><td>三类上限并存；bash 全文流式写入<code>terminal/&lt;tool_call_id&gt;.log</code>。</td><td><code>xai-grok-tools/src/lib.rs:9-13</code></td></tr>
+<tr><td>裁剪参数</td><td>true / 最近 3 轮 / 4000 字符 / 1500+1500 / 10 轮硬清</td><td>请求副本上的裁剪；窗口用量超过 50% 才启用，最近 3 轮永不裁剪。</td><td><code>xai-chat-state/src/types.rs:68-94</code></td></tr>
+<tr><td>摘要尝试</td><td>3 次 / 间隔 3 s / 超时 120 s</td><td>摘要最多三次；清理后短于 500 字符视为退化并重试。</td><td><code>config.rs:8-41</code></td></tr>
+<tr><td>压缩墙钟预算</td><td>300 s</td><td>一次压缩从开始到放弃的总时长上限。</td><td><code>compaction.rs:1-34</code></td></tr>
+<tr><td>子代理深度 / 后台</td><td>1 / true</td><td>只有顶层会话能派子代理；缺省后台跑，完成后通知父会话。</td><td><code>task/mod.rs:44-50</code></td></tr>
+<tr><td><code>[memory] enabled</code></td><td>false</td><td>记忆缺省关闭；<code>/flush</code>单次写入上限 8000 字符，压缩前自动 flush。</td><td><code>docs/user-guide/13-memory.md:18-40</code></td></tr>
+</table></div><p class="note">Grok Build 没有语义化版本号，表中「缺省值」只对<code>2bdd1d6</code>这个快照成立，不代表线上最新版。</p>
+<h3>DeepSeek Harness</h3>
+<p class="meta">提交 5719020（master）· 8 个参数 · 部分缺省值来自同仓包 README</p>
+<div class="tablewrap"><table>
+<tr><th>参数</th><th>缺省</th><th>作用</th><th>第三版给的出处</th></tr>
+<tr><td>规则预算<code>maxBytes</code>/<code>maxSourceBytes</code></td><td>65536 / 1048576</td><td>整条规则基线消息的字节上限，与单个源文件 1 MiB 上限；超预算先省更宽的文件。</td><td><code>cordis.patch.yml:303-306</code></td></tr>
+<tr><td>技能描述上限</td><td>500 字符</td><td>技能目录里每条描述的最大长度，最小可设 3。</td><td><code>tool-skill/README.md:40-52</code></td></tr>
+<tr><td>压缩阈值</td><td>floor(min(0.8W, W − O − 65536))</td><td>窗口比例与「输出预留 + headroom」两条约束取小；<code>O</code>为请求输出预留。</td><td><code>config.ts:153-204</code></td></tr>
+<tr><td><code>retainRatio</code></td><td>0.16</td><td>保留尾部 =<code>floor((W − O) × 16%)</code>；与<code>retainTokens</code>互斥。</td><td><code>config.ts:20-23</code></td></tr>
+<tr><td><code>maxInlineTokens</code></td><td>12500</td><td>spill 的内联预算（文本 + 图片 + 描述 + 通知）；超出按头尾各半保留并落盘。</td><td><code>cordis.patch.yml:414-417</code></td></tr>
+<tr><td>pruner 三档</td><td>8192 / 4096 / 1024</td><td>超过 8192 码点触发，保留头 4096、尾 1024，中间替换成固定标记；仅在压缩触发后跑。</td><td><code>config.ts:8-13</code></td></tr>
+<tr><td>子代理<code>maxDepth</code></td><td>1（<code>0</code>禁止委派）</td><td>委派深度；到顶后工具仍可见，但每次启动都返回错误。</td><td><code>tool-subagent/README.md:47-53</code></td></tr>
+<tr><td><code>refreshIntervalMs</code></td><td>600000（10 分钟）</td><td>时间上下文插件两次注入的最小间隔；设 0 表示每步都注入。</td><td><code>time-context/README.md:36-47</code></td></tr>
+</table></div><p class="note">dsh 的<code>compaction-basic</code>是缺省后端，不是唯一后端；换后端时这些缺省值不保证成立。</p>
+</section>
+<section id="s4">
+<h2><span class="sn">四、</span>术语</h2>
+<p>只收本版正文用到的词，按章节顺序排，一个词只在「首次讲解」那一章讲透。第 1 章（token、窗口）还没写，那几条先指到用到它的章。</p>
+<h3>容量与计量</h3>
+<div class="tablewrap"><table>
+<tr><th>术语</th><th>英文或代码名</th><th>一句话</th><th>首次讲解</th></tr>
+<tr><td class="nm">token</td><td>token</td><td>模型读写和计价的单位，不等于字或词。Codex 本地估算用「UTF-8 字节数 ÷ 4 向上取整」，不是真实分词。</td><td>第 1 章（待写）；第 2 章起用估算</td></tr>
+<tr><td class="nm">上下文窗口</td><td>context window</td><td>一次请求里输入和输出共享的最大 token 数。gpt-6.1-sol：源码自带表是 272,000。</td><td>第 1 章（待写）；数字见 <a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">有效窗口</td><td>effective context window</td><td>Codex 实际当作上限的数：窗口 × 95%，gpt-6.1-sol 是 258,400。</td><td><a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">压缩线</td><td>auto-compact limit</td><td>用量到这条线就触发压缩：min(<code>model_auto_compact_token_limit</code>, 窗口 × 90%)，gpt-6.1-sol 缺省 244,800。</td><td><a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">用量</td><td>usage</td><td>服务器每次响应里报的输入、缓存命中、输出 token 数。Codex 判断要不要压，用「上次报的总数 + 之后新增条目的估算」。</td><td><a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+</table></div>
+<h3>一次请求里有什么</h3>
+<div class="tablewrap"><table>
+<tr><th>术语</th><th>英文或代码名</th><th>一句话</th><th>首次讲解</th></tr>
+<tr><td class="nm">输入条目</td><td>input item</td><td>Responses 接口里 <code>input</code> 数组的一项：一条消息、一次工具调用、一个工具输出……本书按每条的 <code>json.dumps</code> 字节数算大小。</td><td><a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">developer / user</td><td>role</td><td>请求里的两种消息角色：developer 是应用（这里是 Codex）写给模型的指令，user 是来自用户这边的内容。Codex 的请求没有 system 角色。</td><td><a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">工具定义</td><td>tool definition</td><td>告诉模型有哪些工具、参数怎么填的说明，也占 token。gpt-6.1-sol 放在 <code>input</code> 第一条，gpt-5.5 放在顶层 <code>tools</code>。</td><td><a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">系统提示词</td><td>base instructions</td><td>定义 agent 身份和行为的长指令。gpt-6.1-sol 里是 <code>input</code> 的第二条。</td><td><a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">规则文件</td><td>AGENTS.md / CLAUDE.md</td><td>写在项目里、每个会话都要遵守的指令文件：Codex 读 <code>AGENTS.md</code>，Claude Code 读 <code>CLAUDE.md</code>。</td><td><a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">技能目录</td><td>skills list</td><td>请求里列出可用技能的一段目录，放在会话配置那一条里，和权限、协作模式在一起。</td><td><a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">会话设置的追加</td><td>context update</td><td>每次请求前，Codex 把权限、协作模式、环境信息等和上次比较，没变不加，变了在末尾追加一条，不改前面。</td><td><a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+<tr><td class="nm">假服务器</td><td>mock server</td><td>本机起的假 Responses 服务器，按剧本回复，用来抓 Codex 发出的请求；不联网、不花额度。所以本书的实验证明「请求里有什么」，不证明「模型答得好不好」。</td><td><a href="02-一次请求里装了什么.html">第 2 章</a></td></tr>
+</table></div>
+<h3>工具和输出</h3>
+<div class="tablewrap"><table>
+<tr><th>术语</th><th>英文或代码名</th><th>一句话</th><th>首次讲解</th></tr>
+<tr><td class="nm">截断</td><td>truncation</td><td>超过上限时切掉一部分。Codex 的截法是头尾各留一半，中间换成一行说明。</td><td><a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">四道闸</td><td>—</td><td>命令输出到进请求之间最多四处截断：进程缓冲 1 MiB → <code>exec_command</code> → <code>exec</code> → 写入历史；结果取最紧的那道。</td><td><a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">代码工具</td><td><code>exec</code>（code mode）</td><td>gpt-6.1-sol 不直接调命令工具，而是写一段 JavaScript 交给 <code>exec</code> 运行，JS 里再调 <code>exec_command</code> 和别的工具。</td><td><a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">存档</td><td>rollout</td><td><code>~/.codex/sessions/</code> 下每个会话一个 <code>.jsonl</code> 文件，只追加。存的是第四道之前的工具输出文本。</td><td><a href="03-命令输出几万行.html">第 3 章</a></td></tr>
+<tr><td class="nm">MCP</td><td>Model Context Protocol</td><td>把外部工具接进 agent 的协议。接上的工具，定义进不进请求，由下面的「延后 / 直连」决定。</td><td><a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+<tr><td class="nm">延后 / 直连</td><td>Deferred / Direct</td><td>MCP 工具的两种登记方式：延后 = 定义不进请求，用到再搜；直连 = 定义直接放进请求。由模型表的 <code>supports_search_tool</code> 决定，true 延后。</td><td><a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+<tr><td class="nm">工具搜索</td><td><code>tool_search</code></td><td>gpt-5.5 用来找延后工具的顶层工具（BM25 搜索）。gpt-6.1-sol 没有它，改在 <code>exec</code> 脚本里过滤 <code>ALL_TOOLS</code>。</td><td><a href="06-工具多了会怎样.html">第 6 章</a></td></tr>
+</table></div>
+<h3>压缩</h3>
+<div class="tablewrap"><table>
+<tr><th>术语</th><th>英文或代码名</th><th>一句话</th><th>首次讲解</th></tr>
+<tr><td class="nm">压缩</td><td>compaction</td><td>让模型把一段历史写成摘要，再用摘要加保留的原话替换原历史。</td><td><a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">本地压缩 / 远端压缩</td><td>local / remote compaction</td><td>本地：Codex 自己发一次请求让模型写摘要（自定义通道）。远端：服务器返回加密摘要，保留 64,000 token（OpenAI 官方通道和 Azure）。</td><td><a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">原话预算</td><td>—</td><td>本地压缩时保留你亲手发的消息，预算 20,000 token，从新到旧，装不下的截短后停。</td><td><a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">摘要</td><td>summary</td><td>模型写的一段文字，带固定前缀，作为用户消息放在新历史末尾。写摘要必然丢信息。</td><td><a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+<tr><td class="nm">轮末压缩</td><td>post-turn compaction</td><td>一轮的最终回答之后，用量 ≥ 有效窗口 × <code>model_post_turn_compact_threshold_percent</code> 就压；缺省 0 = 不压。</td><td><a href="12-给场景设计策略.html">第 12 章</a></td></tr>
+<tr><td class="nm">/compact</td><td>—</td><td>输入框里手动压缩的斜杠命令。Codex 的不带参数；Claude Code 的可以写 <code>/compact focus on …</code> 指定重点。</td><td><a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+</table></div>
+<h3>缓存</h3>
+<div class="tablewrap"><table>
+<tr><th>术语</th><th>英文或代码名</th><th>一句话</th><th>首次讲解</th></tr>
+<tr><td class="nm">前缀</td><td>prefix</td><td>从请求第一个 token 起必须逐字相同的部分；一处不同，后面的都接不上缓存。</td><td><a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td class="nm">前缀缓存</td><td>prompt cache</td><td>服务器复用相同前缀已经算过的结果，命中的部分按更低的价算。省钱和等待，不省窗口。</td><td><a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td class="nm">缓存键</td><td><code>prompt_cache_key</code></td><td>Codex 每次请求带的标识，值是会话 id（子代理沿用父的）。</td><td><a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td class="nm">缓存存活时间</td><td>TTL</td><td>缓存保留多久。OpenAI 文档（GPT-5.6 及之后）缺省 30 分钟，Claude Code 缺省 5 分钟、订阅额度内主对话 1 小时。</td><td><a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td class="nm">WebSocket 增量发送</td><td><code>previous_response_id</code></td><td>官方通道下，同一进程里后面的请求只发新增条目，不重发整份。</td><td><a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+<tr><td class="nm">增量工具</td><td><code>incremental_tools</code></td><td>换模型、关工具时追加一条说明，不改写前面的内容，保住缓存前缀。</td><td><a href="05-缓存省的是什么.html">第 5 章</a></td></tr>
+</table></div>
+<h3>子代理</h3>
+<div class="tablewrap"><table>
+<tr><th>术语</th><th>英文或代码名</th><th>一句话</th><th>首次讲解</th></tr>
+<tr><td class="nm">子代理</td><td>subagent</td><td>主会话派出去干活的另一个会话；它的最终回答整份回到主会话。</td><td><a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+<tr><td class="nm">V1 / V2</td><td>multi_agent v1 / v2</td><td>Codex 的两套子代理实现。gpt-6.1-sol 用 V2：请求里多两条说明，子代理缺省带走父的全部历史；gpt-5.5 用 V1。</td><td><a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+<tr><td class="nm">fork_turns</td><td><code>fork_turns</code></td><td>派子代理时带多少父会话的历史：缺省 <code>all</code> 全带，<code>"none"</code> 空白开始。</td><td><a href="07-子代理省了什么.html">第 7 章</a></td></tr>
+</table></div>
+<h3>会话和记忆</h3>
+<div class="tablewrap"><table>
+<tr><th>术语</th><th>英文或代码名</th><th>一句话</th><th>首次讲解</th></tr>
+<tr><td class="nm">线程</td><td>thread</td><td>一个会话的编号，就是存档文件名里那串 UUID。</td><td><a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">回退</td><td>revert / rewind</td><td>Codex：撤销最近几轮，另存一个新文件并换指针，不还原你的文件。Claude Code：<code>/rewind</code> 可选连代码一起还原。</td><td><a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">分叉</td><td>fork</td><td>从某一轮复制出新线程，原会话不动。</td><td><a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">恢复</td><td>resume</td><td>重新打开旧会话接着聊。被回退的轮次不回来；AGENTS.md 与基线比对。</td><td><a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">基线</td><td>baseline</td><td>存档里记着的「上次给模型看过的环境状态」（含 AGENTS.md 全文），恢复时拿它和现在比。</td><td><a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">检查点</td><td>checkpoint</td><td>Claude Code 在每次编辑前存的文件快照，<code>/rewind</code> 靠它还原。</td><td><a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">跨会话记忆</td><td>memories</td><td>Codex 的 <code>memories</code> 功能（缺省关）：后台先提炼旧会话、再合并成一份摘要，新会话开头多塞这份摘要。</td><td><a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td class="nm">提炼 / 合并</td><td>phase 1 / phase 2</td><td>第一阶段：模型把单个旧会话写成一小段；第二阶段：另一个模型把许多小段合并成全局摘要。</td><td><a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td class="nm">引用</td><td><code>oai-mem-citation</code></td><td>回答末尾带的标记。Codex 据此给被用到的旧会话记次数，次数决定淘汰。</td><td><a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+</table></div>
+<h3>窗口满了和评估</h3>
+<div class="tablewrap"><table>
+<tr><th>术语</th><th>英文或代码名</th><th>一句话</th><th>首次讲解</th></tr>
+<tr><td class="nm">超窗</td><td><code>context_length_exceeded</code></td><td>请求超出窗口被服务器拒绝。Codex 只认流里 <code>response.failed</code> 带这个 code 的，HTTP 400 不认。</td><td><a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">标记已满</td><td><code>set_total_tokens_full</code></td><td>主请求被拒后，Codex 把「上次用量」记成 max(有效窗口 − 会话累计用量, 0)；累计已超窗时等于没标。</td><td><a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">反复压缩</td><td>thrashing</td><td>固定部分占满窗口时每一步都压缩。Codex 没有次数上限；Claude Code 报 <code>Autocompact is thrashing</code> 后停止重试。</td><td><a href="10-窗口满了会怎样.html">第 10 章</a></td></tr>
+<tr><td class="nm">配对对照</td><td>paired A/B</td><td>同一批任务、同一个起点，各跑两个配置，看每个任务上的差，不比两组均值。</td><td><a href="11-怎么证明更好.html">第 11 章</a></td></tr>
+<tr><td class="nm">不一致率</td><td>discordant rate, d</td><td>两个配置在同一任务上「一个成功一个失败」的占比。它决定要多少任务才分得出两个配置。</td><td><a href="11-怎么证明更好.html">第 11 章</a></td></tr>
+<tr><td class="nm">符号检验</td><td>sign test</td><td>只数「A 成功 B 失败」和「B 成功 A 失败」各多少，看是不是明显偏向一边。</td><td><a href="11-怎么证明更好.html">第 11 章</a></td></tr>
+<tr><td class="nm">A/A</td><td>A/A test</td><td>两个完全一样的配置各跑一遍，量一量噪声有多大。</td><td><a href="11-怎么证明更好.html">第 11 章</a></td></tr>
+<tr><td class="nm">每成功任务成本</td><td>CPS</td><td>总成本 ÷ 成功任务数；失败任务的成本也算进分子。</td><td><a href="11-怎么证明更好.html">第 11 章</a></td></tr>
+<tr><td class="nm">复现性</td><td>reproducibility</td><td>同一任务重跑，请求里哪些字段会变：UUID、开始时间戳、工具输出里的耗时；工作目录路径和 <code>CODEX_HOME</code> 路径写进请求，换了前缀就在那里断。</td><td><a href="11-怎么证明更好.html">第 11 章</a></td></tr>
+</table></div>
+<h3>其他 agent 的专有名词</h3>
+<p class="meta">上面的格子里出现过这些词。它们都来自第三版的记录，本版没核对。</p>
+<div class="tablewrap"><table>
+<tr><th>词</th><th>英文名</th><th>一句话</th><th>依据</th></tr>
+<tr><td class="nm">微压缩</td><td>microcompact</td><td>Claude Code 里只清理旧工具结果、不做摘要的轻量路径；第三版读到的 v2.1.88 源码里缺省关。</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">历史转图</td><td>snapcompact</td><td>oh-my-pi 压缩方法链（remote → snapcompact → handoff → shake → soft，逐级回退）里的一种：把被丢弃的历史渲染成 PNG 交给视觉模型读。</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">机械省略</td><td>shake</td><td>oh-my-pi 压缩方法链里的一种：不调模型，把大块工具结果换成占位符和可恢复的指针。</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">整段替换</td><td>full-replace</td><td>Grok Build 的压缩形态：用一条摘要加保留的尾部，整体替换旧历史。</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">可见面</td><td>surface</td><td>DeepSeek Harness 的术语：日志里进入模型请求的那一层有序视图。</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+<tr><td class="nm">代码模式</td><td>Code Mode</td><td>opencode v2：MCP 工具不进工具定义，靠 <code>execute</code> 间接调用。和 Codex 的 <code>exec</code> 是不是同一类做法，本版没核对。</td><td class="ev"><span class="tag lvl-l">待核实</span></td></tr>
+</table></div>
+<h3>容易混的几组</h3>
+<div class="tablewrap"><table>
+<tr><th>词</th><th>区别</th><th>首次讲解</th></tr>
+<tr><td class="nm">窗口 / 有效窗口 / 压缩线</td><td>窗口是模型的总容量（gpt-6.1-sol 源码自带表 272,000）；有效窗口是 Codex 留出 5% 后的上限（258,400，界面「X% left」按它算）；压缩线更早（244,800）。用量到压缩线就压。压缩线和有效窗口之间只剩 13,600 token，约等于一条最大的工具输出。</td><td class="ev"><a href="04-压缩之后还记得什么.html">第 4 章</a>、<a href="10-窗口满了会怎样.html">第 10 章</a>、<a href="12-给场景设计策略.html">第 12 章</a></td></tr>
+<tr><td class="nm">回退 / 分叉 / 恢复</td><td>回退：同一个线程，撤销最近几轮。分叉：新线程，原线程不动。恢复：打开旧线程接着聊，被回退的轮次不回来。三者都不还原你磁盘上的文件（Claude Code 的 <code>/rewind</code> 可选还原编辑工具改过的文件）。</td><td class="ev"><a href="08-回退分叉恢复.html">第 8 章</a></td></tr>
+<tr><td class="nm">存档 / 记忆</td><td>存档：每个会话一个文件，完整、只追加，恢复会话靠它。记忆：后台从旧会话提炼出的一份摘要，新会话开头多塞，缺省关，最多约 1 万字节。</td><td class="ev"><a href="08-回退分叉恢复.html">第 8 章</a>、<a href="09-新会话怎么记得我.html">第 9 章</a></td></tr>
+<tr><td class="nm">截断 / 压缩</td><td>截断改的是一条工具输出，不调模型，原文哪里都不存。压缩改的是整段历史，要调一次模型写摘要。Codex 没有「只清理旧工具输出」这一级（搜索源码，未穷尽）。</td><td class="ev"><a href="03-命令输出几万行.html">第 3 章</a>、<a href="04-压缩之后还记得什么.html">第 4 章</a></td></tr>
+</table></div>
+</section>
+<section id="s5">
+<h2><span class="sn">五、</span>Codex 源码索引</h2>
+<p>想自己看源码，从这里下手。路径相对 <code>codex-rs/</code>，提交 <code>76ed3b4</code>；每条对应一章里的某个结论，按章排。共 65 条。</p>
+<div class="tablewrap"><table>
+<tr><th>章</th><th>看什么</th><th>文件:行</th></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>input 的顺序与角色（5 条 developer + 2 条 user，没有 system）</td><td><code>core/src/session/mod.rs:4665-4699</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>工具放在顶层 tools 还是 input 第一条</td><td><code>core/src/client.rs:980-995</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>AGENTS.md 逐级查找（override 优先）</td><td><code>core/src/agents_md.rs:192-298</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>项目根标记（缺省 .git）</td><td><code>config/src/project_root_markers.rs:5</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>项目文件合计 32 KiB 的缺省值</td><td><code>config/src/config_toml.rs:75</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>超出 32 KiB 从尾部截，只写日志</td><td><code>core/src/agents_md.rs:155-168</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>AGENTS.md 内容原样放入，不展开 @</td><td><code>core/src/agents_md.rs:150-170</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>每次请求前比较会话设置，变了才追加</td><td><code>core/src/session/turn.rs:293-319</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>全局 AGENTS.md 每次重读、项目的缓存</td><td><code>core/src/agents_md_manager.rs:68-146</code></td></tr>
+<tr><td class="nm"><a href="02-一次请求里装了什么.html">第 2 章</a></td><td>官方通道缺省 WebSocket，自定义通道只走 HTTP</td><td><code>model-provider-info/src/lib.rs:199</code></td></tr>
+<tr><td class="nm"><a href="03-命令输出几万行.html">第 3 章</a></td><td>中间截断：一半给头、一半给尾</td><td><code>utils/output-truncation/src/lib.rs:23-35</code></td></tr>
+<tr><td class="nm"><a href="03-命令输出几万行.html">第 3 章</a></td><td>进程输出缓冲 1 MiB，头尾各半</td><td><code>core/src/unified_exec/head_tail_buffer.rs:11-19</code></td></tr>
+<tr><td class="nm"><a href="03-命令输出几万行.html">第 3 章</a></td><td>exec_command 缺省 1 万 token</td><td><code>core/src/unified_exec/mod.rs:74</code></td></tr>
+<tr><td class="nm"><a href="03-命令输出几万行.html">第 3 章</a></td><td>JS 里调 exec_command：没传上限就整份交给 JS</td><td><code>core/src/tools/context.rs:469-472</code></td></tr>
+<tr><td class="nm"><a href="03-命令输出几万行.html">第 3 章</a></td><td>exec 结果按自己的上限截</td><td><code>core/src/tools/code_mode/mod.rs:263-300</code></td></tr>
+<tr><td class="nm"><a href="03-命令输出几万行.html">第 3 章</a></td><td>写入历史按「基数 × 1.2」截</td><td><code>core/src/context_manager/history.rs:555-577</code></td></tr>
+<tr><td class="nm"><a href="03-命令输出几万行.html">第 3 章</a></td><td>会话存档目录 sessions/</td><td><code>rollout/src/lib.rs:86</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>压缩线 = min(配置值, 窗口 × 90%)</td><td><code>protocol/src/openai_models.rs:529-540</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>当前用量 = 上次 total_tokens + 新增估算</td><td><code>core/src/context_manager/history.rs:939-956</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>一轮开始前压缩</td><td><code>core/src/session/turn.rs:189-200</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>一轮中间压缩</td><td><code>core/src/session/turn.rs:654-686</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>本地压缩：提示词和请求</td><td><code>core/src/compact.rs:126-136</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>本地压缩：新历史怎么拼</td><td><code>core/src/compact.rs:85-116</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>本地压缩：原话预算 2 万 token</td><td><code>core/src/compact.rs:64</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>官方通道走远端压缩，其他走本地</td><td><code>model-provider/src/capabilities.rs:30-52</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>远端压缩：保留 6.4 万 token</td><td><code>core/src/compact_remote_v2.rs:87-91</code></td></tr>
+<tr><td class="nm"><a href="04-压缩之后还记得什么.html">第 4 章</a></td><td>压缩前后的钩子</td><td><code>core/src/hook_runtime.rs:128-178</code></td></tr>
+<tr><td class="nm"><a href="05-缓存省的是什么.html">第 5 章</a></td><td>不传缓存存活时间参数</td><td><code>core/src/client.rs:1078-1094</code></td></tr>
+<tr><td class="nm"><a href="05-缓存省的是什么.html">第 5 章</a></td><td>prompt_cache_key 取值</td><td><code>core/src/client.rs:646-669</code></td></tr>
+<tr><td class="nm"><a href="05-缓存省的是什么.html">第 5 章</a></td><td>WebSocket 只发新增条目</td><td><code>core/src/client.rs:389-455</code></td></tr>
+<tr><td class="nm"><a href="05-缓存省的是什么.html">第 5 章</a></td><td>用量解析（cached_tokens 等）</td><td><code>codex-api/src/sse/responses.rs:119-151</code></td></tr>
+<tr><td class="nm"><a href="05-缓存省的是什么.html">第 5 章</a></td><td>incremental_tools：变化追加而不改前缀</td><td><code>core/src/session/turn.rs:1666-1695</code></td></tr>
+<tr><td class="nm"><a href="06-工具多了会怎样.html">第 6 章</a></td><td>MCP 工具延后还是直连</td><td><code>core/src/mcp_tool_exposure.rs:84-88</code></td></tr>
+<tr><td class="nm"><a href="06-工具多了会怎样.html">第 6 章</a></td><td>模型表里的 supports_search_tool 缺省</td><td><code>models-manager/src/model_info.rs:136</code></td></tr>
+<tr><td class="nm"><a href="06-工具多了会怎样.html">第 6 章</a></td><td>tool_mode（code_mode_only）</td><td><code>core/src/tools/mod.rs:63-72</code></td></tr>
+<tr><td class="nm"><a href="06-工具多了会怎样.html">第 6 章</a></td><td>搜索：BM25，检索文字由哪些字段拼成</td><td><code>core/src/tools/handlers/mcp.rs:555-602</code></td></tr>
+<tr><td class="nm"><a href="06-工具多了会怎样.html">第 6 章</a></td><td>关掉工具后追加的说明</td><td><code>prompts/src/model_messages/incremental_tools.rs:38-40</code></td></tr>
+<tr><td class="nm"><a href="06-工具多了会怎样.html">第 6 章</a></td><td>enabled_tools / disabled_tools / tool_input_schema_max_bytes</td><td><code>config/src/mcp_types.rs:252-256</code></td></tr>
+<tr><td class="nm"><a href="07-子代理省了什么.html">第 7 章</a></td><td>V1 / V2 / 关闭的决定顺序</td><td><code>core/src/config/mod.rs:1637-1664</code></td></tr>
+<tr><td class="nm"><a href="07-子代理省了什么.html">第 7 章</a></td><td>代理总数：V2 缺省 4，V1 缺省 6</td><td><code>core/src/config/mod.rs:255-256</code></td></tr>
+<tr><td class="nm"><a href="07-子代理省了什么.html">第 7 章</a></td><td>fork_turns 缺省 all</td><td><code>core/src/tools/handlers/multi_agents_v2/spawn.rs:214-241</code></td></tr>
+<tr><td class="nm"><a href="07-子代理省了什么.html">第 7 章</a></td><td>开关说明（缺省「别主动派」，ultra 换文案）</td><td><code>core/src/session/multi_agents.rs:77-121</code></td></tr>
+<tr><td class="nm"><a href="07-子代理省了什么.html">第 7 章</a></td><td>内置角色 default / explorer / worker</td><td><code>core/src/agent/role.rs:342-385</code></td></tr>
+<tr><td class="nm"><a href="08-回退分叉恢复.html">第 8 章</a></td><td>回退：另存新文件、换指针</td><td><code>thread-store/src/local/revert_thread.rs:15-18</code></td></tr>
+<tr><td class="nm"><a href="08-回退分叉恢复.html">第 8 章</a></td><td>Esc 两下回退的界面逻辑</td><td><code>tui/src/app_backtrack.rs:1-12</code></td></tr>
+<tr><td class="nm"><a href="08-回退分叉恢复.html">第 8 章</a></td><td>重建历史：从最新一条带 replacement_history 的压缩记录起</td><td><code>core/src/session/rollout_reconstruction.rs:60-91</code></td></tr>
+<tr><td class="nm"><a href="08-回退分叉恢复.html">第 8 章</a></td><td>恢复时 AGENTS.md 与存档基线比对</td><td><code>core/src/context/world_state/agents_md.rs:12-13</code></td></tr>
+<tr><td class="nm"><a href="09-新会话怎么记得我.html">第 9 章</a></td><td>memories 功能缺省关</td><td><code>features/src/lib.rs:1282-1286</code></td></tr>
+<tr><td class="nm"><a href="09-新会话怎么记得我.html">第 9 章</a></td><td>后台提炼在每轮开始时启动</td><td><code>app-server/src/request_processors/turn_processor.rs:704-716</code></td></tr>
+<tr><td class="nm"><a href="09-新会话怎么记得我.html">第 9 章</a></td><td>选哪些旧会话（来源、年龄、空闲时间）</td><td><code>state/src/runtime/memories.rs:224-296</code></td></tr>
+<tr><td class="nm"><a href="09-新会话怎么记得我.html">第 9 章</a></td><td>v2 摘要合格标准</td><td><code>memories/write/src/workspace.rs:117-129</code></td></tr>
+<tr><td class="nm"><a href="09-新会话怎么记得我.html">第 9 章</a></td><td>记忆版本缺省 v1</td><td><code>config/src/types.rs:379</code></td></tr>
+<tr><td class="nm"><a href="09-新会话怎么记得我.html">第 9 章</a></td><td>读路径：摘要塞进第三条输入</td><td><code>ext/memories/src/extension.rs:51-95</code></td></tr>
+<tr><td class="nm"><a href="09-新会话怎么记得我.html">第 9 章</a></td><td>回答末尾的引用块被剥掉并计数</td><td><code>core/src/stream_events_utils.rs:136-150</code></td></tr>
+<tr><td class="nm"><a href="09-新会话怎么记得我.html">第 9 章</a></td><td>合并时选哪些、淘汰哪些</td><td><code>state/src/runtime/memories.rs:395-485</code></td></tr>
+<tr><td class="nm"><a href="10-窗口满了会怎样.html">第 10 章</a></td><td>有效窗口 = 窗口 × 95%</td><td><code>protocol/src/openai_models.rs:393-395</code></td></tr>
+<tr><td class="nm"><a href="10-窗口满了会怎样.html">第 10 章</a></td><td>主请求被拒：标记已满、报错、不压缩</td><td><code>core/src/session/turn.rs:1790-1797</code></td></tr>
+<tr><td class="nm"><a href="10-窗口满了会怎样.html">第 10 章</a></td><td>「标记已满」用的公式</td><td><code>protocol/src/protocol.rs:2441-2454</code></td></tr>
+<tr><td class="nm"><a href="10-窗口满了会怎样.html">第 10 章</a></td><td>本地压缩被拒：删最前面一条再试</td><td><code>core/src/compact.rs:359-371</code></td></tr>
+<tr><td class="nm"><a href="10-窗口满了会怎样.html">第 10 章</a></td><td>只认流里的 response.failed</td><td><code>codex-api/src/sse/responses_error.rs:48</code></td></tr>
+<tr><td class="nm"><a href="10-窗口满了会怎样.html">第 10 章</a></td><td>单条用户输入上限 1,048,576 字符</td><td><code>protocol/src/user_input.rs:10</code></td></tr>
+<tr><td class="nm"><a href="11-怎么证明更好.html">第 11 章</a></td><td>存档里每个响应一条用量记录</td><td><code>rollout/src/policy.rs:41-50</code></td></tr>
+<tr><td class="nm"><a href="11-怎么证明更好.html">第 11 章</a></td><td>安装号文件 installation_id</td><td><code>core/src/installation_id.rs:17-19</code></td></tr>
+<tr><td class="nm"><a href="12-给场景设计策略.html">第 12 章</a></td><td>轮末压缩 model_post_turn_compact_threshold_percent</td><td><code>core/src/session/context_window.rs:111-117</code></td></tr>
+<tr><td class="nm"><a href="12-给场景设计策略.html">第 12 章</a></td><td>/compact 不带参数</td><td><code>tui/src/slash_command.rs:170-190</code></td></tr>
+</table></div>
+</section>
+<section id="evidence">
+<h2>证据说明</h2>
+<ul>
+<li><b>总表里 Codex 和 Claude Code 两列</b>：每个结论的出处和等级在对应章的证据表里，格子「依据」一栏的章号可以点进去。总表只是把各章的结论按类摆在一起，没有新实验。</li>
+<li><b>总表里其余六个 agent</b>：整格取自第三版总表（2026-10-18），程序解析搬运，没改写；第三版标「推断」的格子保留了这个标注。本机没有这些源码，全部是待核实。</li>
+<li><b>Codex 参数表</b>：配置项名、缺省值在源码里逐个搜到。其中有两项各章没写、是编这份附录时新读到的，只读了源码没做实验：V1 子代理的 <code>max_threads</code> 缺省 6（<code>core/src/config/mod.rs:255</code>、<code>1677</code>）；<code>min_rate_limit_remaining_percent</code> 缺省 25（<code>config/src/types.rs:58</code>）。</li>
+<li><b>源码索引</b>：2026-11-02 用脚本逐条核对了：文件存在、行号没有超出文件长度，起始行看过、和「看什么」对得上。没有逐行读每一段。第 2 章证据表里个别行号写的是文件名缩写（如 <code>agents_md.rs</code>），这里换成了完整路径。</li>
+<li><b>术语表</b>：定义取自各章正文和证据表；没有新的事实。「token」「上下文窗口」两条的首次讲解指向第 1 章，第 1 章还没写。</li>
+</ul>
+</section>
+
+</main>
+</body>
+</html>

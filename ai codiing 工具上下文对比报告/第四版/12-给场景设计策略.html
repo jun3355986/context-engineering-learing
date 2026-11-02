@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>给场景设计策略</title>
+<link rel="stylesheet" href="assets/book.css">
+<script src="assets/book.js"></script>
+<style>
+/* 本章专用：第二节的逐请求柱图、第一节和第四节的小件 */
+.tl{position:relative;height:150px;display:flex;align-items:flex-end;gap:1px;border-bottom:1px solid var(--line);margin:.8em 0 .2em;padding-top:2px}
+.tl i{flex:1;background:var(--system);min-width:2px;border-radius:2px 2px 0 0}
+.tl i.cp{background:var(--cut)}
+.tl i.nt{margin-left:5px}
+.tl .ln{position:absolute;left:0;right:0;border-top:1px dashed var(--muted);font-size:.72rem;line-height:1;color:var(--muted);pointer-events:none}
+.tl .ln span{position:absolute;right:0;top:-1.2em;background:var(--bg);padding:0 3px}
+.pk{display:flex;align-items:center;gap:10px;margin:.3em 0}
+.pk .lab{min-width:5.6em;font-size:.86rem}
+.pk .meter{flex:1;min-width:120px;height:20px;margin:0}
+.pk b{min-width:5.2em;text-align:right}
+.msgs{display:flex;flex-wrap:wrap;gap:5px;margin:.5em 0}
+.msgs .chip{min-width:3.4em;text-align:center}
+</style>
+</head>
+
+<body class="chapter">
+<main class="page">
+<header class="chap-head">
+<p class="kicker">第 12 章</p>
+<h1>设计上下文策略，先算压力从哪来：同一个 12 包的迁移回放，缺省设置把窗口顶到 25 万 token，换一组设置只到 2.9 万；硬规则写进 AGENTS.md 才压不掉</h1>
+<p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 本机假服务器回放 + 按第 5 章价目规则折算，没有连过真实模型</p>
+</header>
+
+<p class="lede">同一段「把 12 个包的日期库从 moment 迁到 date-fns」，缺省设置下窗口在第 10 个包中途涨到 250,532 token，是有效窗口 258,400 的 97%；每个包新开一个会话、收紧工具输出、关掉子代理说明之后，峰值只有 28,914。两次回放里「模型」做的事一模一样（回复是写死的剧本），差别全在请求里装了什么，所以本章只比请求侧的数，不比谁做得更好。</p>
+<p class="note">前十一章每章回答一个机制，这一章把它们放进一个具体任务里一起用。<b>场景</b>：12 个包，每个包一轮：读 2 个文件（每次工具输出 24,000 字节）→ 跑测试，失败（80,000 字节）→ 再跑，通过（8,000 字节）→ 回一句话。这些数是我设的，不是任何真实项目的测量。<b>回放</b>：本机假服务器（自定义通道，HTTP），用 <code>codex app-server</code> 驱动；工具输出是代码模式 <code>exec</code> 里的 JS 自己生成的文本，不执行命令、不联网、不花额度；服务器按字节 ÷ 4 估算 token，并当用量报回去，所以 Codex 的压缩判断是真的在跑（做法同第 10 章）。<b>成本</b>：按第 5 章的价目规则折算（<code>gpt-6.1-sol</code>：缓存读 0.05×，写入 1.25×），不是真实账单。脚本和输出在 <code>自学单元/U11-实验/</code>。<sup><a href="#e1">1</a></sup></p>
+
+<div class="tablewrap"><table>
+<tr><th>组</th><th>设置</th><th>对应章</th></tr>
+<tr><td>A</td><td>缺省</td><td>—</td></tr>
+<tr><td>B</td><td><code>model_auto_compact_token_limit = 100000</code>（压缩线提前）</td><td>第 4 章</td></tr>
+<tr><td>C</td><td><code>tool_output_token_limit = 4000</code>（每条工具输出进历史前的上限）</td><td>第 3 章</td></tr>
+<tr><td>F</td><td><code>model_post_turn_compact_threshold_percent = 40</code>（一轮结束后用量过有效窗口的 40% 就压）</td><td>第 4 章</td></tr>
+<tr><td>D</td><td>每个包新开一个线程（<code>thread/start</code>），其余缺省</td><td>第 8 章</td></tr>
+<tr><td>G</td><td>C + F + <code>[agents] enabled = false</code>，一个线程做到底</td><td>第 7 章</td></tr>
+<tr><td>E</td><td>D + C + <code>[agents] enabled = false</code></td><td>第 7 章</td></tr>
+<tr><td>P1、P2</td><td>缺省；第 5 个包的话里贴一段 CI 日志。P1：「不要改 public API」只写在第 1 句话里；P2：写在 AGENTS.md 里</td><td>第 4 章</td></tr>
+</table></div>
+
+<section class="qs" id="qs">
+<h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
+<ol>
+<li id="q1">要在 Codex 里交给 agent 一个长任务，动手前要先量哪几个数？假设一个包新增约 2.5 万 token，不做任何设置，会在第几个包撞上压缩线？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">压缩线可以放在缺省的 244,800 token、提前到 100,000，也可以设成「一轮结束后用量过 40% 就压」。同一个任务里，三种放法差在哪？<a class="jump" href="#a2">答案 ↓</a></li>
+<li id="q3">Codex 里能让历史变短的办法有哪几个，各自撤得回吗？「每个包新开一个会话」比一直做省多少，代价是什么？<a class="jump" href="#a3">答案 ↓</a></li>
+<li id="q4">「不要改 public API」写在第 1 句话里、写在 AGENTS.md 里，压缩之后还在吗？中途在聊天里贴一份 10 万字节的 CI 日志呢？<a class="jump" href="#a4">答案 ↓</a></li>
+<li id="q5">把这些设置配好以后，怎么知道它真的比缺省好？这一章的回放能证明到哪一步？<a class="jump" href="#a5">答案 ↓</a></li>
+</ol>
+</section>
+
+<section id="s1">
+<h2><span class="sn">一、</span>先量，再谈参数</h2>
+<p>策略的第一步是量压力从哪来，不是挑参数。要量的数有五个，四个能直接从前面的章节读到，一个要跑一个包才知道。</p>
+<div class="tablewrap"><table>
+<tr><th>要量的数</th><th>Codex 里的值</th><th>出处</th></tr>
+<tr><td>窗口</td><td>272,000；有效窗口 258,400（窗口 × 95%）</td><td>第 10 章；回放里 app-server 推送的 <code>modelContextWindow</code> 也是 258,400</td></tr>
+<tr><td>压缩线</td><td>244,800（窗口 × 90%）</td><td>第 4 章</td></tr>
+<tr><td>固定部分（你一句话没说时请求的大小）</td><td>13,962 token；<code>[agents] enabled = false</code> 后 11,833</td><td>回放首个请求；差的 2,129 token 就是第 7 章的 8,516 字节</td></tr>
+<tr><td>一条工具输出进历史最多多大</td><td>缺省约 1 万 token；<code>tool_output_token_limit = 4000</code> 后 4,979</td><td>第 3 章；回放 A、C</td></tr>
+<tr><td>一个包新增多少</td><td>24,813；加了上限 4000 之后 17,078</td><td>回放第 1 个包<sup><a href="#e3">3</a></sup></td></tr>
+</table></div>
+<p>五个数一到手，算术就够了：第 <i>k</i> 个包结束时的占用 ≈ 13,962 + 24,813 × <i>k</i>，碰到压缩线 244,800 在 <i>k</i> ≈ 9.3，也就是第 10 个包中间。回放 A 正是这样：第 9 个包结束时 237,924；第 10 个包读完第一个文件是 244,202，还没到线；读完第二个文件，Codex 把上次报的用量加上新增条目的估算，过了 244,800，发出压缩请求。这个请求是 250,532 token，离有效窗口只剩 7,868。<sup><a href="#e2">2</a></sup></p>
+<p>量你自己的任务：跑一个包，用第 11 章的 <code>u10_metrics.py</code> 读存档，每一轮一行「峰值」，相邻两轮的差就是「一个包新增多少」。我用它读了这 7 组回放，请求数和峰值都和假服务器的日志对得上。<sup><a href="#e14">14</a></sup></p>
+<pre>python3 -I u10_metrics.py ~/.codex/sessions/2026/11/02/   # 末尾几行：轮 xxxxxx: 请求 5，输入 …，峰值 38,775</pre>
+
+<h3>动手算：第几个包撞线</h3>
+<p>算法是上面的算术：每一步把工具输出（先被上限截一下）加进占用，加完过线就压缩，压缩后回到约 17,400。预设 A、B、C 的结果和回放里的压缩位置一致（A：第 10 包；B：第 4、7、11 包；C：不压）；占用的数和回放差不到 1%。<sup><a href="#e15">15</a></sup></p>
+<div class="ctrl"><span>压缩线：</span>
+  <button class="btn" data-line="244800" aria-pressed="true">244,800（缺省）</button>
+  <button class="btn" data-line="100000" aria-pressed="false">100,000</button>
+</div>
+<div class="ctrl"><span>每条工具输出的上限：</span>
+  <button class="btn" data-cap="0" aria-pressed="true">缺省（约 1 万）</button>
+  <button class="btn" data-cap="4979" aria-pressed="false">4000（进历史 4,979）</button>
+</div>
+<div class="ctrl"><label>读一个文件的输出 <input type="range" id="rd" min="1000" max="12000" step="100" value="6199"> <b id="rdv"></b> token</label></div>
+<div class="ctrl"><label>失败的测试输出 <input type="range" id="fl" min="1000" max="12000" step="100" value="10273"> <b id="flv"></b> token</label></div>
+<div class="ctrl"><label>固定部分 <input type="range" id="fx" min="8000" max="16000" step="100" value="13962"> <b id="fxv"></b> token</label></div>
+<div class="tl" id="tl1"></div>
+<div class="panel" id="p1"></div>
+
+<div class="answer" id="a1">
+<p class="qh">回答问题 1</p>
+<p class="qq">动手前先量哪几个数？一个包新增约 2.5 万 token，不做设置，第几个包撞压缩线？</p>
+<p>量五个数：窗口（有效 258,400）、压缩线（244,800）、固定部分（回放 13,962 token）、一条工具输出进历史最多多大（缺省约 1 万）、一个包新增多少（回放 24,813）。固定部分 + 24,813 × 包数碰到 244,800，在第 10 个包中间；回放 A 就是在第 10 个包读完第二个文件时发出了 250,532 token 的压缩请求。</p>
+</div>
+</section>
+
+<section id="s2">
+<h2><span class="sn">二、</span>压缩线放哪：缺省、提前，还是等一轮结束</h2>
+<p>三种放法在同一个任务里，压缩次数、峰值和折算成本差得很远；提前压比缺省省，落在「一个包做完」比落在「做到一半」更整齐。</p>
+<div class="tablewrap"><table>
+<tr><th>组</th><th>压缩几次，落在哪</th><th class="num">窗口峰值</th><th class="num">发出的输入合计</th><th class="num">折算成本（无停顿）</th><th class="num">折算成本（每包之间停过 30 分钟）</th></tr>
+<tr><td>A 缺省</td><td>1 次：第 10 包读完第二个文件后</td><td class="num">250,532</td><td class="num">7,069,697</td><td class="num">721k – 750k</td><td class="num">2.35M</td></tr>
+<tr><td>B 线 100,000</td><td>3 次：第 4 包读完第二个文件后、第 7 包第一次跑测试后、第 11 包读完第一个文件后</td><td class="num">102,464</td><td class="num">3,515,212</td><td class="num">557k – 614k</td><td class="num">1.36M</td></tr>
+<tr><td>F 轮末 40%</td><td>3 次：第 4、8、12 包做完之后</td><td class="num">117,237</td><td class="num">4,360,367</td><td class="num">593k – 636k</td><td class="num">1.35M</td></tr>
+</table></div>
+<p class="note">折算成本的单位是「全价输入 token」，规则同第 5 章：同一线程里，每次请求读上一次请求的全部（0.05×），新增部分写入（1.25×）；压缩之后的第一次请求、新线程的第一次请求，能接上的只有前两条（工具定义 + 系统提示词，11,874 token），范围下限按「接得上」算，上限按「接不上」算（条目 id 换新会不会断前缀，第 11 章留的【待核实】）。最后一列假设每包之间人停了 30 分钟以上，缓存过期，每一轮的第一次请求整份按写入价算。<sup><a href="#e6">6</a></sup></p>
+<ul>
+<li><b>缺省只压一次，但压得最晚。</b>这一次的压缩请求（250,532）是整段回放里最大的一个请求，窗口余量只有 7,868；第 10 章讲过，压缩请求自己超窗时 Codex 要从最旧的一条删起。</li>
+<li><b>提前压，请求更短，折算成本反而更低。</b>每次请求都要把整段历史读一遍，历史越长读得越多。B 的压缩请求加起来有 304,356 token，比 A 的那一个还多，折算成本却是 557k–614k 对 721k–750k。这是价目规则的算术，不是实测账单。<sup><a href="#e4">4</a></sup></li>
+<li><b>轮末压缩落在「一个包做完」。</b><code>model_post_turn_compact_threshold_percent</code> 的 40 是有效窗口的 40%，即 103,360：一轮的最终回答出来之后，用量过了就压。回放里它压在第 4、8、12 包做完之后，B 的压缩落在包做到一半的地方。哪一种让真实模型写出的摘要更好，回放答不了；【推测】包做完时摘要要覆盖的是一件完整的事，做到一半时是半件事。F 在第 12 个包做完之后也压了一次（117,237 token 的请求），回放里后面没有活了，这一次是白付的。<sup><a href="#e5">5</a></sup></li>
+</ul>
+
+<div class="source">
+<h3>看源码：一轮结束后压不压</h3>
+<p><code>core/src/session/context_window.rs</code> 第 111–117 行，注释是我加的。<code>full_context_window_limit</code> 是窗口 × 95%（258,400）；调用处在 <code>core/src/session/turn.rs</code> 第 780 行起，还要求没有排队的新输入。<sup><a href="#e5">5</a></sup></p>
+<pre>let post_turn_percent = config.model_post_turn_compact_threshold_percent;  // 缺省 0 = 不压
+let turn_end_compaction_threshold_reached = post_turn_percent > 0
+    && (token_limit_reached                       // 已经过了压缩线，当然要压
+        || full_context_window_limit.is_some_and(|limit| {
+            i128::from(active_context_tokens) * 100
+                >= i128::from(limit) * i128::from(post_turn_percent)   // 用量 ≥ 有效窗口 × 百分比
+        }));</pre>
+</div>
+
+<h3>动手看：每个请求的大小</h3>
+<p>数据是 7 组回放里每个请求的估算 token（柱高），红色是压缩请求，虚线是压缩线和有效窗口；D、E 每个会话之间留一道缝。</p>
+<div class="ctrl" id="armbtns"></div>
+<div class="tl" id="tl2"></div>
+<div class="panel" id="p2"></div>
+
+<div class="answer" id="a2">
+<p class="qh">回答问题 2</p>
+<p class="qq">压缩线放在 244,800、提前到 100,000，或设成一轮结束后过 40% 就压，差在哪？</p>
+<p>缺省压 1 次，峰值 250,532；提前到 100,000 压 3 次，峰值 102,464，压在包做到一半的地方；一轮结束后过 40% 压 3 次，峰值 117,237，压在包做完之后。后两种的折算成本都比缺省低（593k–636k、557k–614k 对 721k–750k）。哪种摘要更好要真实模型才知道。</p>
+</div>
+</section>
+
+<section id="s3">
+<h2><span class="sn">三、</span>减量的顺序，和「每个包一个会话」</h2>
+<p>Codex 里能让历史变短的办法有四级，按「撤得回吗」排；压力来自哪一段，就先动哪一级。</p>
+<ol>
+<li><b>让命令别把全文打出来。</b>测试脚本只打失败用例，全文写进文件，要看再读。这是你自己的脚本，不在 Codex 里；它是唯一撤得回的一级，因为 Codex 里被截掉的输出哪里都没有（第 3 章）。【我设计的方案，没实验】</li>
+<li><b>收紧工具输出的上限。</b><code>tool_output_token_limit = 4000</code> 让每条工具输出进历史前只留头尾，撤不回。它对所有工具输出生效，读文件也一样：回放 C 里 24,000 字节的读取被截成 4,979 token，真实任务里模型要改成分段读。<sup><a href="#e7">7</a></sup></li>
+<li><b>压缩。</b>一次模型调用；存档里旧记录还在，Esc 两下回退到压缩那一轮之前可以撤销（第 8 章）。官方通道的摘要是加密的，看不到也改不了；自定义通道可以用 <code>compact_prompt</code> 换提示词（第 4 章）。Codex 里没找到「只清旧工具输出、不摘要」的这一级（第 3 章，搜索未穷尽）。<sup><a href="#e13">13</a></sup></li>
+<li><b>新会话。</b>一个任务一次 <code>codex exec</code>，或在 TUI 里开新的；旧会话还在，可以 <code>resume</code>（第 8 章）。新会话什么都不记得，交接要靠文件。</li>
+</ol>
+<p>再加一件和上面不同类的事：这个任务不派子代理，就把 <code>[agents] enabled = false</code> 写上，每次请求少 2,129 token（8,516 字节，第 7 章）。下面是在同一个回放上，把几级组合起来的结果。</p>
+<div class="tablewrap"><table>
+<tr><th>组</th><th>设置</th><th class="num">窗口峰值</th><th class="num">压缩</th><th class="num">发出的输入合计</th><th class="num">折算成本（无停顿）</th><th class="num">折算成本（每包之间停过 30 分钟）</th></tr>
+<tr><td>A</td><td>缺省，一个会话</td><td class="num">250,532</td><td class="num">1</td><td class="num">7,069,697</td><td class="num">721k – 750k</td><td class="num">2.35M</td></tr>
+<tr><td>C</td><td>输出上限 4000，一个会话</td><td class="num">219,780</td><td class="num">0</td><td class="num">7,063,200</td><td class="num">603k – 617k</td><td class="num">2.16M</td></tr>
+<tr><td>G</td><td>C + 轮末 40% + 关子代理说明，一个会话</td><td class="num">118,406</td><td class="num">2</td><td class="num">4,186,318</td><td class="num">461k – 489k</td><td class="num">1.27M</td></tr>
+<tr><td>D</td><td>每包一个会话，其余缺省</td><td class="num">38,778</td><td class="num">0</td><td class="num">1,630,796</td><td class="num">469k – 640k</td><td class="num">640k</td></tr>
+<tr><td>E</td><td>D + 输出上限 4000 + 关子代理说明</td><td class="num">28,914</td><td class="num">0</td><td class="num">1,273,484</td><td class="num">310k – 480k</td><td class="num">480k</td></tr>
+</table></div>
+<p>E 对 A：峰值是 A 的 11.5%，发出的输入合计是 18%；无停顿时折算成本低 36%–57%，每包之间停过 30 分钟时低 80%（480k 对 2.35M）。停顿影响这么大，是因为一个会话里的历史越长，缓存一过期，重写的就越多；每包一个会话，每次最多重写 2.9–3.9 万（D、E 的峰值）。这个差别在你停下来看 diff 的真实工作里比回放里更常见。<sup><a href="#e8">8</a></sup></p>
+<p>代价有三项，回放都没有算：</p>
+<ul>
+<li><b>交接要靠文件。</b>新会话第一件事是读 <code>NOTES.md</code>，每个包做完要写一笔；文件写得差，下一个包就重复探索。回放里「模型」不读文件，这部分请求没有算进去。</li>
+<li><b>每个新会话重付固定部分。</b>12 个会话各发一次 11,833–13,962 token。能不能接上上个会话的缓存，取决于条目 id 算不算进前缀，所以 D 的折算成本是 469k 到 640k 一个范围。</li>
+<li><b>包之间有关联时不适合。</b>前一个包里发现的东西，摘要都未必记得，更别说一个新会话。包与包耦合紧，就用 G：一个会话，上限加轮末压缩加关子代理说明，峰值 118,406。</li>
+</ul>
+
+<div class="answer" id="a3">
+<p class="qh">回答问题 3</p>
+<p class="qq">Codex 里能让历史变短的办法有哪几个，各自撤得回吗？每包一个会话省多少，代价是什么？</p>
+<p>四级：让命令把全文写文件（撤得回）、收紧 <code>tool_output_token_limit</code>（撤不回）、压缩（存档还在，回退可撤销，官方通道摘要看不到）、新会话（旧会话可 <code>resume</code>，交接靠文件）。回放里每包一个会话再加输出上限和关子代理说明（E），峰值 28,914、输入合计 127 万，对缺省的 250,532 和 707 万；代价是交接文件要写好、每个会话重付固定部分、包之间有关联时不适用。</p>
+</div>
+</section>
+
+<section id="s4">
+<h2><span class="sn">四、</span>规则放哪，才压不掉</h2>
+<p>硬规则写进 AGENTS.md，压缩多少次都在；写在第 1 句话里，只在你后面说的话加起来不到约 8 万字节时才在。</p>
+<p>压缩之后留下什么，第 4 章讲过：你亲手发的消息，从新到旧在 2 万 token 的预算里装，装不下的截短，然后停；AGENTS.md 那一块在压缩时重新生成，插在最后一条保留的话之前。回放里 P1、P2 在第 9 个包中间压缩，压缩后的请求是 12 条：</p>
+<ul>
+<li>第 5 个包的话（含 100,000 字节的 CI 日志）被截成 81,279 字节，第 6、7、8 个包的话各 153 字节，原样在。</li>
+<li>第 1 到 4 个包的话没有了，第 1 句话（任务描述）也在里面。</li>
+<li>AGENTS.md 那一块（P2：1,537 字节，含规则；P1：1,507 字节，不含规则）在，位置在第 8 个包的话之后、第 9 个包的话之前。</li>
+</ul>
+<p>结果：P2 的请求里规则还在，P1 的规则没了。边界：把贴的日志缩到 76,000 字节，P1 压缩后第 1 句话和规则都还在；84,000 字节就没了；60,000 字节在。这和 2 万 token 的预算（约 80,000 字节）对得上。<sup><a href="#e9">9</a></sup><sup><a href="#e10">10</a></sup></p>
+<p>所以什么放哪里，按「压缩之后还在不在」来分：</p>
+<div class="tablewrap"><table>
+<tr><th>内容</th><th>放哪</th><th>理由</th></tr>
+<tr><td>硬规则（不要改 public API）</td><td>项目的 AGENTS.md</td><td>压缩后重新生成；新会话也读（第 2 章）。会话中途改它，同一个进程不会重读，<code>resume</code> 才会追加差异（第 8 章），所以开工前写好<sup><a href="#e12">12</a></sup></td></tr>
+<tr><td>映射表、任务说明（几千字节以上）</td><td>仓库里的文件，如 <code>docs/migration.md</code>；AGENTS.md 里写一行「映射表见这个文件」</td><td>放聊天里占你的 2 万预算</td></tr>
+<tr><td>已完成的进度、否掉的方案</td><td><code>NOTES.md</code> 或 git 提交</td><td>摘要是模型写的，看不全；新会话只能靠文件</td></tr>
+<tr><td>长日志、报错</td><td>存成文件，让 agent 去读，不贴</td><td>一条贴上去的日志能把 2 万预算占满，把更早的话挤出去</td></tr>
+<tr><td>跨项目的偏好</td><td>记忆（第 9 章）</td><td>缺省关，写进去要等后面的会话，不按项目分；不放硬规则</td></tr>
+</table></div>
+<p>还有一点：Codex 的 <code>/compact</code> 不带参数，源码里它不在「能带内联参数」的命令里，没法临时补一句「保留这几条」。想影响摘要，官方通道只能靠 AGENTS.md 和你说过的话；自定义通道还能换 <code>compact_prompt</code>。<sup><a href="#e11">11</a></sup></p>
+
+<h3>动手算：日志贴多大会挤掉规则</h3>
+<p>算法是第 4 章的规则：压缩发生在第 9 个包中间，用户原话（不含正在做的这一句）从新到旧装进 2 万 token（字节 ÷ 4），装不下的截短后停。第 5 个包的话里贴了日志。回放里 60,000 和 76,000 字节还在，84,000 和 100,000 字节没了。</p>
+<div class="ctrl"><label>第 5 个包的话里贴的日志 <input type="range" id="pb" min="0" max="150000" step="2000" value="100000"> <b id="pbv"></b> 字节</label></div>
+<div class="ctrl"><span>「不要改 public API」写在：</span>
+  <button class="btn" data-rl="first" aria-pressed="true">第 1 句话里</button>
+  <button class="btn" data-rl="agents" aria-pressed="false">AGENTS.md 里</button>
+  <button class="btn" data-rl="both" aria-pressed="false">两处都写</button>
+</div>
+<div class="msgs" id="msgs"></div>
+<div class="panel" id="p3"></div>
+
+<div class="answer" id="a4">
+<p class="qh">回答问题 4</p>
+<p class="qq">「不要改 public API」写在第 1 句话里、写在 AGENTS.md 里，压缩之后还在吗？贴 10 万字节的日志呢？</p>
+<p>写在 AGENTS.md 里：在，回放 P2 压缩后的请求里还有。写在第 1 句话里：你后面说的话（含贴的日志）加起来超过约 80,000 字节（2 万 token）就没了；贴 100,000 字节时压缩后第 1 到 4 个包的话全被挤出去，P1 的请求里找不到规则。</p>
+</div>
+</section>
+
+<section id="s5">
+<h2><span class="sn">五、</span>写成一张策略表，再说怎么验收</h2>
+<p>前四节的结论可以收成一张表；表里的设置在回放里都跑过，「比缺省好」还没证明。</p>
+<div class="tablewrap"><table>
+<tr><th>要定的</th><th>这个迁移任务的答案</th></tr>
+<tr><td>压力从哪来</td><td>工具输出：一个包新增 24,813，其中失败的测试输出 10,273 占 41%</td></tr>
+<tr><td>预算</td><td>有效窗口 258,400，固定部分 11,833（关子代理说明后），压缩线 244,800；每包 17,078（加了上限之后）</td></tr>
+<tr><td>减量顺序</td><td>测试脚本只打失败用例并写全文到文件 → <code>tool_output_token_limit = 4000</code> → 压缩（包与包之间）→ 每包一个会话</td></tr>
+<tr><td>隔离与交接</td><td>包与包互不依赖：每包一个会话，包做完把结论追加到 <code>NOTES.md</code>。包耦合紧：一个会话，加 <code>model_post_turn_compact_threshold_percent = 40</code></td></tr>
+<tr><td>规则放哪</td><td>AGENTS.md：「不要改 public API 的导出签名」；映射表放 <code>docs/migration.md</code>；不贴日志</td></tr>
+<tr><td>验收</td><td>主指标：每成功包的成本（含压缩请求）；护栏：每包测试通过、public API 无 diff；先用 A/A 量不一致率，见下</td></tr>
+</table></div>
+<pre># ~/.codex/config.toml
+tool_output_token_limit = 4000                  # 每条工具输出进历史前只留头尾，4,979 token
+model_post_turn_compact_threshold_percent = 40  # 只在「一个会话做到底」时才需要
+[agents]
+enabled = false                                  # 本任务不派子代理，每次请求少 8,516 字节
+
+# AGENTS.md（项目根）
+不要改 public API 的导出签名。
+迁移映射见 docs/migration.md。每做完一个包，把结论和否掉的方案追加到 NOTES.md。</pre>
+<p>怎么知道它比缺省好：用第 11 章的做法。A 是缺省，B 是上面的设置，其余全相同（模型、思考级别、仓库提交、同一句初始提示、相同的路径和 <code>CODEX_HOME</code> 路径），轮流跑，不加 <code>--ephemeral</code>；用 <code>u10_metrics.py</code> 读存档算每成功包的成本，验收脚本取成败。成功率的护栏要事先定：这个任务里一次失败折合几次运行（第 11 章的 <i>w</i>）。任务数先用 A/A 量出不一致率再查表。<sup><a href="#e16">16</a></sup></p>
+<p>这一章的回放证明到哪：<b>请求侧</b>。E 对 A，峰值 28,914 对 250,532，压缩 0 次对 1 次，发出的输入 127 万对 707 万，规则在每一次请求里都在。<b>没有证明</b>：模型会不会因为输出被截而多读几遍、交接文件够不够用、摘要漏不漏东西、成功率变没变、真实的缓存命中。这些要连真实模型。</p>
+
+<div class="answer" id="a5">
+<p class="qh">回答问题 5</p>
+<p class="qq">配好以后，怎么知道它真的比缺省好？回放能证明到哪一步？</p>
+<p>按第 11 章：缺省和新设置只有一个变量不同，路径相同、轮流跑，读存档算每成功任务的成本（含压缩请求），验收脚本取成败，先 A/A 量不一致率再定任务数。这一章的回放只证明请求侧：峰值 250,532 → 28,914、压缩 1 → 0、输入合计 707 万 → 127 万、规则始终在。成功率、摘要质量、真实命中率都没测。</p>
+</div>
+</section>
+
+<section id="notes">
+<h2>设计笔记</h2>
+<ul>
+<li><b>策略是一串有顺序的决定，不是一组参数。</b>先量压力来源，再看你的 agent 里有哪几个旋钮。Codex 里没找到「清旧工具输出」这一级，但有轮末压缩的开关；别的 agent 的旋钮不同，同一张表要重填。</li>
+<li><b>压缩线和有效窗口之间只留了 13,600 token。</b>258,400 − 244,800 刚好够再放进一条最大的工具输出（缺省约 1.2 万）。如果把 <code>tool_output_token_limit</code> 调得很大（再让模型在 <code>exec</code> 里传大的 <code>max_output_tokens</code>），一步就能越过这个余量，压缩请求自己先超窗（第 10 章）。【推测】线和输出上限应该一起调；这个组合没有实验。</li>
+<li><b>每包一个会话把「跨包的发现」交给了文件。</b>文件成了新的单点：写错一条，后面每个包都会照着错。【推测】交接文件要像 AGENTS.md 一样进代码评审。</li>
+<li><b>轮末压缩比线压缩整齐，但会多压一次。</b>最后一个包做完也触发；用 <code>codex exec</code> 一次一个任务时，这一次白付。【推测】需要接着干的会话才值得开。</li>
+<li><b>回放里模型不会「因为输出被截而多读几遍」。</b>所以 C、G、E 的数偏乐观。真实任务里输出上限越紧，额外的分段读越多，这一项要用第 11 章的方法测。</li>
+</ul>
+</section>
+
+<section id="summary">
+<h2>小结</h2>
+<ol>
+<li>先量五个数：有效窗口 258,400、压缩线 244,800、固定部分（回放 13,962 token）、一条工具输出进历史最多多大、一个包新增多少（回放 24,813）；缺省在第 10 个包中间撞线。</li>
+<li>压缩线缺省压 1 次、峰值 250,532；提前到 100,000 压 3 次、峰值 102,464；一轮结束后过 40% 压 3 次、峰值 117,237，压在包做完之后。提前压的折算成本更低。</li>
+<li>减量四级：命令把全文写文件（撤得回）、<code>tool_output_token_limit</code>（撤不回）、压缩（存档在，回退可撤销）、新会话（<code>resume</code>，交接靠文件）。每包一个会话加上限加关子代理说明，峰值 28,914、输入 127 万，对缺省的 707 万；代价是交接文件和重付固定部分。</li>
+<li>硬规则写 AGENTS.md，压缩后还在；只写在第 1 句话里，后面说的话超过约 8 万字节就没了。长日志存文件，不贴。</li>
+<li>验收按第 11 章：只有一个变量不同、轮流跑、读存档算每成功任务成本、先 A/A。回放只证明请求侧，没有证明「更好」。</li>
+</ol>
+</section>
+
+<section id="evidence">
+<h2>证据表</h2>
+<p>版本和路径说明：Codex 源码 <code>76ed3b4</code>，路径相对 <code>codex-rs/</code>；CLI <code>0.165.0</code>；实验脚本和输出在 <code>自学单元/U11-实验/</code>（<code>u11_scenario.py</code> 回放，<code>analyze.py</code> 汇总，<code>export_timeline.py</code> 导出本页柱图数据）。</p>
+<div class="tablewrap"><table>
+<tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
+<tr id="e1"><td>1</td><td>实验条件：本机假服务器（自定义通道 <code>mock</code>，HTTP），<code>codex app-server</code>，<code>gpt-6.1-sol</code>、思考级别 low，2026-11-02；12 个包，每包 4 次工具调用（<code>exec</code> 里 JS 生成文本，不执行命令）；服务器把「input 各条 <code>json.dumps</code> 字节 ÷ 4」当用量报回；假摘要约 13 KB（长度是我设的）；回复是剧本，没有连过真实模型。首次试跑工作目录在 <code>/tmp</code> 下，首个请求 13,764 token，正式回放在 <code>U11-实验/out/</code> 下，13,962（路径写进请求，第 11 章）</td><td>实验 <code>u11_scenario.py</code>、<code>out/{A,B,C,F,D,G,E,P1,P2}</code>、<code>out/analysis.txt</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e2"><td>2</td><td>窗口 258,400 由 app-server 推送；压缩线 244,800 见第 4 章。A：第 9 包结束 237,924；第 10 包请求依次 238,002（用户话）、244,202（读完第 1 个文件）、250,532（压缩请求，含第 2 个文件的输出）；压缩后第一个请求 17,608。固定部分 13,962，<code>[agents] enabled = false</code> 后 11,833，差 2,129 token = 8,516 字节（第 7 章）</td><td>实验 <code>out/A/requests.json</code>、<code>steps.json</code>（<code>modelContextWindow</code>）；第 4 章证据表 #6、第 7 章</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e3"><td>3</td><td>每步增量：A 的第 1 个包 6,199 + 6,200 + 10,273 + 2,141 = 24,813（失败测试 80,000 字节原本约 2 万 token，被 <code>exec</code> 外层上限截到约 1 万）；C 的 4,979 × 3 + 2,141 = 17,078</td><td>实验 <code>out/A</code>、<code>out/C</code> 的 <code>requests.json</code> pkg-01；第 3 章</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e4"><td>4</td><td>A / B / C / F / D / G / E 的请求数 61 / 63 / 60 / 63 / 60 / 62 / 60；输入合计 7,069,697 / 3,515,212 / 7,063,200 / 4,360,367 / 1,630,796 / 4,186,318 / 1,273,484；峰值 250,532 / 102,464 / 219,780 / 117,237 / 38,778 / 118,406 / 28,914；压缩请求合计（B）304,356；压缩位置见第二节表；12 轮全部 completed</td><td>实验 <code>out/analysis.txt</code>、<code>analysis.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e5"><td>5</td><td><code>model_post_turn_compact_threshold_percent</code>：缺省 0 = 不压；> 0 时，一轮最终回答之后没有排队输入、且用量 ≥ 有效窗口 × 百分比（或已过压缩线）就压；40% 即 103,360。回放 F：第 4 包做完 113,454 → 压缩，第 8、12 包同理；第 12 包之后的压缩请求 117,237</td><td>源码 <code>core/src/session/context_window.rs:111-117</code>、<code>core/src/session/turn.rs:780-815</code>、<code>core/src/config/mod.rs:4418-4420</code>；实验 <code>out/F</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e6"><td>6</td><td>折算成本 = 同线程内每次请求「读上一次的全部 × 0.05 + 新增 × 1.25」；线程第一次请求、压缩之后的第一次请求，能接上的只有前两条（11,874 token）或 0；「停顿」版本中每轮第一次请求整份 × 1.25。数字是价目规则算出来的，不是账单；假设每次请求之间没超过 30 分钟（无停顿版）</td><td>实验 <code>analyze.py</code>（<code>cost()</code>）；价目见第 5 章证据表 #2、#4</td><td><span class="tag lvl-h">高</span> 算术；真实费用 <span class="tag lvl-l">待核实</span></td></tr>
+<tr id="e7"><td>7</td><td>C：<code>tool_output_token_limit = 4000</code> 后，读文件、失败测试、都被截到 4,979 token（4,000 × 1.2 + 包装），通过的测试 2,141 不变；缺省时失败测试截到约 1 万，读文件 6,199 不截</td><td>实验 <code>out/C/requests.json</code> pkg-01；第 3 章证据表</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e8"><td>8</td><td>D、E 各 12 个线程（<code>client_metadata.thread_id</code> 不同），每个线程 5 次请求，peak 38,778 / 28,914；折算成本范围 469k–640k / 310k–480k（接得上 / 接不上两种假设）；停顿版 640k / 480k；E 对 A：峰值 11.5%（28,914 ÷ 250,532），输入 18%（1,273,484 ÷ 7,069,697），无停顿折算 −36%（S=0）至 −57%（S=11,874），停顿版 −80%（480,029 ÷ 2,345,990）。交接文件的读取没有算进去</td><td>实验 <code>out/D</code>、<code>out/E</code>、<code>out/analysis.json</code></td><td><span class="tag lvl-h">高</span> 回放；代价项 <span class="tag lvl-m">中</span> 没实验</td></tr>
+<tr id="e9"><td>9</td><td>P1/P2 在第 9 包中间压缩（压缩请求 245,161 / 245,153）；压缩后第一个请求 12 条：工具定义、系统提示词、第 5 包的话（截到 81,279 字节）、第 6–8 包的话、技能目录 + 子代理说明 + AGENTS.md（P1 1,507 / P2 1,537 字节）、第 9 包的话、摘要；第 1–4 包的话不在。P1 请求里找不到 <code>RULE-NO-PUBLIC-API</code>，P2 在 AGENTS.md 那一条里。A（无贴日志）压缩后 17 条，第 1–9 句话都在</td><td>实验 <code>out/P1</code>、<code>out/P2</code>、<code>out/A</code>（<code>requests.json</code> 压缩后第一个请求的 <code>head</code>）；第 4 章证据表</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e10"><td>10</td><td>边界：P1 配置，贴 60,000 / 76,000 / 84,000 字节：压缩后第 1 句话和规则 在 / 在 / 不在；100,000 字节：不在。页面第四节算法与此一致（阈值约 78–80 KB）</td><td>实验 <code>out/P1-paste60000</code>、<code>P1-paste76000</code>、<code>P1-paste84000</code>、<code>P1</code></td><td><span class="tag lvl-h">高</span> 4 个点</td></tr>
+<tr id="e11"><td>11</td><td><code>/compact</code> 不在「支持内联参数」的斜杠命令里，没有「保留什么」这类参数；官方通道摘要加密、<code>compact_prompt</code> 只对本地压缩有效（第 4 章）</td><td>源码 <code>tui/src/slash_command.rs:170-190</code>；第 4 章证据表 #14、#19</td><td><span class="tag lvl-m">中</span> 读了源码，没在终端按过</td></tr>
+<tr id="e12"><td>12</td><td>AGENTS.md 一个会话读一次；<code>resume</code> 时与存档基线比对，不同就追加（第 8 章）；记忆缺省关、后台之后的会话才写、不按项目分（第 9 章）</td><td>第 2、8、9 章证据表</td><td><span class="tag lvl-h">高</span> 引用各章</td></tr>
+<tr id="e13"><td>13</td><td>Codex 里没找到清理旧工具输出的机制（第 3 章）；官方通道摘要不可读（第 4 章）；回退可撤销压缩（第 8 章）</td><td>第 3、4、8 章证据表</td><td><span class="tag lvl-m">中</span> 搜索未穷尽</td></tr>
+<tr id="e14"><td>14</td><td>用 <code>u10_metrics.py</code> 读 7 组存档：A 12 轮，第 10 轮 6 次请求、压缩 1、峰值 250,532；B 压缩 3、峰值 102,464；C 无压缩、峰值 219,780；F 压缩 3、峰值 117,237；G 压缩 2、峰值 118,406；D/E 各 12 个会话文件，每个 5 次请求、峰值 38,778 / 28,914。与服务器日志一致</td><td>实验 <code>out/metrics.txt</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e15"><td>15</td><td>第一节计算器的算法（逐步加输出、过线压缩、压缩后回到 17,400）：A 第 10 包、B 第 4、7、11 包、C 不压，与回放一致；占用数与回放相差不到 1%（A 第 1 包 38,774 对 38,775；C 第 12 包 218,898 对 219,780）。F 的轮末压缩和第四节的预算规则不在这一个计算器里</td><td>页面脚本；对照 <code>out/{A,B,C}/requests.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e16"><td>16</td><td>策略表和验收方案是我按前十一章组装的设计：测试脚本只打失败用例、交接文件格式、<code>git diff</code> 检查 public API、<code>model_post_turn_compact_threshold_percent</code> 与 <code>tool_output_token_limit</code> 同时调的效果，都没有跑过；全部效果项（成功率、摘要质量、真实缓存命中）要连真实模型</td><td>本章设计；第 11 章方法</td><td><span class="tag lvl-l">推测</span></td></tr>
+</table></div>
+</section>
+
+</main>
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const press = (sel, el) => $$(sel).forEach(x => x.setAttribute('aria-pressed', x === el));
+
+/* 第一节：第几个包撞线。算法：逐步加工具输出（先被上限截），加完过线就压缩，压缩后回到约 17,400。预设 A/B/C 与回放一致（按源码规则画 + 回放核对） */
+let LINE = 244800, CAP = 0;
+const PASS = 2141, BASE = 17400, WIN = 258400;
+function sim() {
+  const rd = +$('#rd').value, fl = +$('#fl').value, fx = +$('#fx').value;
+  $('#rdv').textContent = fmt(rd); $('#flv').textContent = fmt(fl); $('#fxv').textContent = fmt(fx);
+  const cut = x => CAP ? Math.min(x, CAP) : x;
+  const steps = [cut(rd), cut(rd), cut(fl), PASS];
+  let use = fx; const ends = [], comps = [], bars = [];
+  for (let k = 1; k <= 12; k++) {
+    for (const x of steps) {
+      if (use + x >= LINE) { comps.push(k); bars.push([use + x, true]); use = BASE; }
+      else { use += x; bars.push([use, false]); }
+    }
+    ends.push(use);
+  }
+  return {steps, ends, comps, bars, per: steps.reduce((a, b) => a + b, 0)};
+}
+function renderS1() {
+  const r = sim(), top = 270000;
+  let h = '';
+  r.bars.forEach(b => { h += '<i class="' + (b[1] ? 'cp' : '') + '" style="height:' + (100 * Math.min(b[0], top) / top) + '%" title="' + fmt(b[0]) + '"></i>'; });
+  h += '<div class="ln" style="top:' + (100 - 100 * LINE / top) + '%"><span>压缩线 ' + fmt(LINE) + '</span></div>';
+  h += '<div class="ln" style="top:' + (100 - 100 * WIN / top) + '%"><span>有效窗口 ' + fmt(WIN) + '</span></div>';
+  $('#tl1').innerHTML = h;
+  let t = '<p>一个包新增 <b>' + fmt(r.per) + '</b> token（读 ' + fmt(r.steps[0]) + ' × 2 + 失败 ' + fmt(r.steps[2]) + ' + 通过 ' + fmt(PASS) + '）。</p>';
+  if (!r.comps.length) t += '<p class="ok">12 个包做完都没到压缩线，第 12 包结束时占用 <b>' + fmt(r.ends[11]) + '</b>（线的 ' + (100 * r.ends[11] / LINE).toFixed(0) + '%）。</p>';
+  else t += '<p>压缩发生在第 <b>' + r.comps.join('、') + '</b> 包中间（共 ' + r.comps.length + ' 次）；第 12 包结束时占用 <b>' + fmt(r.ends[11]) + '</b>。</p>';
+  t += '<p>估算公式：碰线的包 ≈ (' + fmt(LINE) + ' − ' + fmt(+$('#fx').value) + ') ÷ ' + fmt(r.per) + ' = ' + ((LINE - +$('#fx').value) / r.per).toFixed(1) + '。</p>';
+  t += '<p>每根柱是一步的占用，红色是压缩请求。</p>';
+  $('#p1').innerHTML = t;
+}
+$$('[data-line]').forEach(b => b.onclick = () => { LINE = +b.dataset.line; press('[data-line]', b); renderS1(); });
+$$('[data-cap]').forEach(b => b.onclick = () => { CAP = +b.dataset.cap; press('[data-cap]', b); renderS1(); });
+['#rd', '#fl', '#fx'].forEach(s => $(s).addEventListener('input', renderS1));
+renderS1();
+
+/* 第二节：7 组回放的逐请求 token（实验 U11，export_timeline.py 导出） */
+const TL = {"A":{"t":[13962,20161,26361,36634,38775,38853,45052,51252,61525,63666,63744,69944,76144,86418,88560,88638,94838,101038,111312,113454,113532,119732,125932,136206,138348,138426,144626,150826,161100,163242,163320,169520,175720,185994,188136,188214,194414,200614,210888,213030,213108,219308,225508,235782,237924,238002,244202,250532,17608,27882,30024,30101,36301,42502,52776,54918,54995,61195,67396,77670,79812],"c":[47],"n":[]},"B":{"t":[13962,20161,26361,36634,38775,38853,45052,51252,61525,63666,63744,69944,76144,86418,88560,88638,94838,101168,17378,27652,29794,29872,36072,42272,52546,54688,54766,60966,67166,77440,79582,79660,85860,92060,102464,17493,19635,19712,25912,32113,42387,44529,44606,50806,57007,67281,69423,69500,75700,81901,92175,94317,94394,100724,17646,23846,34120,36262,36340,42540,48740,59014,61156],"c":[17,34,53],"n":[]},"C":{"t":[13962,18941,23920,28899,31040,31117,36096,41076,46054,48195,48273,53253,58233,63212,65354,65431,70411,75391,80370,82512,82590,87570,92550,97529,99671,99748,104728,109708,114687,116829,116907,121887,126867,131846,133988,134065,139045,144025,149004,151146,151224,156204,161184,166163,168305,168382,173362,178342,183321,185463,185541,190521,195501,200480,202622,202699,207679,212659,217638,219780],"c":[],"n":[]},"F":{"t":[13962,20161,26361,36634,38775,38853,45052,51252,61525,63666,63744,69944,76144,86418,88560,88638,94838,101038,111312,113454,113623,17416,23617,29817,40091,42233,42310,48511,54711,64985,67127,67204,73405,79605,89879,92021,92098,98299,104499,114773,116915,117084,17569,23770,29970,40244,42386,42463,48664,54864,65138,67280,67357,73558,79758,90032,92174,92251,98452,104652,114926,117068,117237],"c":[20,41,62],"n":[]},"D":{"t":[13962,20161,26361,36634,38775,13962,20161,26361,36634,38775,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778,13962,20162,26362,36637,38778],"c":[],"n":[5,10,15,20,25,30,35,40,45,50,55]},"G":{"t":[11833,16812,21791,26770,28911,28988,33967,38947,43925,46066,46144,51124,56104,61083,63225,63302,68282,73262,78241,80383,80461,85441,90421,95400,97542,97619,102599,107579,112558,114700,114869,15364,20344,25324,30303,32445,32522,37502,42482,47462,49603,49681,54661,59641,64620,66762,66839,71819,76799,81779,83920,83998,88978,93958,98937,101079,101156,106136,111116,116096,118237,118406],"c":[30,61],"n":[]},"E":{"t":[11833,16812,21791,26770,28911,11833,16812,21791,26770,28911,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914,11833,16813,21793,26772,28914],"c":[],"n":[5,10,15,20,25,30,35,40,45,50,55]}};
+const AN = {"A":{"cost_s0":749898,"cost_s11874":721400,"cost_gap":2345990},"B":{"cost_s0":614375,"cost_s11874":557380,"cost_gap":1357452},"C":{"cost_s0":616896,"cost_s11874":602647,"cost_gap":2159046},"F":{"cost_s0":635551,"cost_s11874":592805,"cost_gap":1348618},"D":{"cost_s0":639936,"cost_s11874":468950,"cost_gap":639936},"G":{"cost_s0":489246,"cost_s11874":460798,"cost_gap":1269169},"E":{"cost_s0":480029,"cost_s11874":309633,"cost_gap":480029}};
+const ARM = {
+  A: ['A 缺省', '不改任何设置，一个会话', '第 10 包读完第二个文件后压 1 次'],
+  B: ['B 线 100,000', '<code>model_auto_compact_token_limit = 100000</code>', '第 4、7、11 包中间压 3 次'],
+  C: ['C 上限 4000', '<code>tool_output_token_limit = 4000</code>', '没压'],
+  F: ['F 轮末 40%', '<code>model_post_turn_compact_threshold_percent = 40</code>', '第 4、8、12 包做完后压 3 次'],
+  D: ['D 每包新会话', '每个包新开一个线程', '没压，12 个会话'],
+  G: ['G 单会话组合', 'C + F + <code>[agents] enabled = false</code>', '第 6、12 包做完后压 2 次'],
+  E: ['E 分会话组合', 'D + C + <code>[agents] enabled = false</code>', '没压，12 个会话']
+};
+let CUR = 'A';
+function renderS2() {
+  const d = TL[CUR], top = 270000, a = AN[CUR];
+  $('#armbtns').innerHTML = Object.keys(ARM).map(k => '<button class="btn" data-arm="' + k + '" aria-pressed="' + (k === CUR) + '">' + ARM[k][0] + '</button>').join(' ');
+  $$('[data-arm]').forEach(b => b.onclick = () => { CUR = b.dataset.arm; renderS2(); });
+  let h = '';
+  d.t.forEach((v, i) => {
+    const cls = (d.c.indexOf(i) >= 0 ? 'cp ' : '') + (d.n.indexOf(i) >= 0 ? 'nt' : '');
+    h += '<i class="' + cls + '" style="height:' + (100 * v / top) + '%" title="第 ' + (i + 1) + ' 次请求 ' + fmt(v) + '"></i>';
+  });
+  h += '<div class="ln" style="top:' + (100 - 100 * 244800 / top) + '%"><span>压缩线 244,800</span></div>';
+  h += '<div class="ln" style="top:' + (100 - 100 * 258400 / top) + '%"><span>有效窗口 258,400</span></div>';
+  $('#tl2').innerHTML = h;
+  const sum = d.t.reduce((x, y) => x + y, 0), peak = Math.max.apply(null, d.t);
+  const cin = d.c.reduce((x, i) => x + d.t[i], 0);
+  const base = AN.A;
+  let t = '<p>' + ARM[CUR][1] + '。' + ARM[CUR][2] + '。</p>';
+  const row = (lab, v, ref, unit) => '<div class="pk"><span class="lab">' + lab + '</span><div class="meter"><div class="' + (v > ref * 0.5 ? 'cut' : 'keep') + '" style="width:' + Math.max(1, 100 * v / ref) + '%"></div></div><b>' + unit(v) + '</b></div>';
+  t += row('窗口峰值', peak, 258400, v => fmt(v));
+  t += row('发出的输入合计', sum, 7100000, v => (v / 1e6).toFixed(2) + 'M');
+  t += row('折算成本（无停顿，接得上）', a.cost_s11874, 2400000, v => (v / 1000).toFixed(0) + 'k');
+  t += row('折算成本（无停顿，接不上）', a.cost_s0, 2400000, v => (v / 1000).toFixed(0) + 'k');
+  t += row('折算成本（每包间停过 30 分钟）', a.cost_gap, 2400000, v => (v / 1e6).toFixed(2) + 'M');
+  t += '<p>请求 ' + d.t.length + ' 次，其中压缩请求 ' + d.c.length + ' 次' + (d.c.length ? '（合计 ' + fmt(cin) + ' token）' : '') + '。条形的满格：峰值对有效窗口，其余对缺省组 A 的量级。</p>';
+  $('#p2').innerHTML = t;
+}
+renderS2();
+
+/* 第四节：压缩时留下哪些用户原话。规则：从新到旧装进 20,000 token（字节 ÷ 4），装不下的截短后停（第 4 章；回放 P1/P2 与 60k/76k/84k 边界核对）。压缩发生在第 9 包中间，正在做的第 9 句话不占这份预算 */
+let RL = 'first';
+function renderS4() {
+  const pb = +$('#pb').value; $('#pbv').textContent = fmt(pb);
+  const sizes = [294]; for (let i = 2; i <= 8; i++) sizes.push(153);
+  if (pb > 0) sizes[4] += pb + 62;            // 第 5 句话：加上日志（和提示语）
+  let rem = 20000, stop = false; const kept = [];
+  for (let i = sizes.length - 1; i >= 0; i--) {
+    const tk = Math.ceil(sizes[i] / 4);
+    if (stop || rem <= 0) { kept[i] = 0; continue; }
+    if (tk <= rem) { kept[i] = 1; rem -= tk; }
+    else { kept[i] = 0.5; rem = 0; stop = true; }
+  }
+  $('#msgs').innerHTML = sizes.map((s, i) => {
+    const k = kept[i], col = k === 1 ? 'var(--keep)' : (k === 0.5 ? 'var(--half)' : 'var(--cut)');
+    return '<span class="chip" style="background:' + col + '" title="' + fmt(s) + ' 字节">第 ' + (i + 1) + ' 句' + (k === 0.5 ? '（截短）' : (k === 0 ? '（没了）' : '')) + '</span>';
+  }).join('') + '<span class="chip" style="background:var(--system)">AGENTS.md 块（重新生成）</span><span class="chip" style="background:var(--session)">第 9 句（正在做）</span>';
+  const first = kept[0] === 1, inAgents = RL !== 'first';
+  const rule = (RL !== 'agents' && first) || inAgents;
+  let t = '<p>用户原话共 ' + fmt(sizes.reduce((a, b) => a + b, 0)) + ' 字节 ≈ ' + fmt(Math.ceil(sizes.reduce((a, b) => a + b, 0) / 4)) + ' token（预算 20,000）。第 1 句话（任务描述）：' + (first ? '<span class="ok">在</span>' : '<span class="bad">没了</span>') + '。</p>';
+  t += '<p>「不要改 public API」' + (rule ? '<span class="ok">还在请求里</span>' : '<span class="bad">不在请求里</span>') +
+    (RL === 'first' ? '（只写在第 1 句话里）' : (RL === 'agents' ? '（AGENTS.md 重新生成，不受预算影响）' : '（两处都写，AGENTS.md 那一份总在）')) + '。</p>';
+  if (pb === 100000 && RL !== 'both') t += '<p>= 回放 ' + (RL === 'agents' ? 'P2' : 'P1') + '：压缩后第 5 句话被截成 81,279 字节，第 1–4 句没了。</p>';
+  $('#p3').innerHTML = t;
+}
+$$('[data-rl]').forEach(b => b.onclick = () => { RL = b.dataset.rl; press('[data-rl]', b); renderS4(); });
+$('#pb').addEventListener('input', renderS4);
+renderS4();
+</script>
+</body>
+</html>

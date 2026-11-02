@@ -1,0 +1,1524 @@
+[
+ {
+  "n": 1,
+  "label": "t1",
+  "kind": "user",
+  "items": 7,
+  "est_tokens": 103723,
+  "bytes": 415907,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   }
+  ],
+  "tail": [
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   }
+  ],
+  "outcome": "ok"
+ },
+ {
+  "n": 2,
+  "label": "t2",
+  "kind": "user",
+  "items": 9,
+  "est_tokens": 193794,
+  "bytes": 776174,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   }
+  ],
+  "tail": [
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   }
+  ],
+  "outcome": "ok"
+ },
+ {
+  "n": 3,
+  "label": "t3-big",
+  "kind": "user",
+  "items": 11,
+  "est_tokens": 313862,
+  "bytes": 1256428,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   }
+  ],
+  "tail": [
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 4,
+  "label": "t4",
+  "kind": "user",
+  "items": 12,
+  "est_tokens": 313901,
+  "bytes": 1256575,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   }
+  ],
+  "tail": [
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 5,
+  "label": "t5",
+  "kind": "user",
+  "items": 13,
+  "est_tokens": 313942,
+  "bytes": 1256728,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   }
+  ],
+  "tail": [
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 12,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 6,
+  "label": "manual-compact",
+  "kind": "compact",
+  "items": 14,
+  "est_tokens": 314072,
+  "bytes": 1257349,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   }
+  ],
+  "tail": [
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 12,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 13,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 7,
+  "label": "manual-compact",
+  "kind": "compact",
+  "items": 13,
+  "est_tokens": 307735,
+  "bytes": 1232376,
+  "head": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   }
+  ],
+  "tail": [
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 12,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 8,
+  "label": "manual-compact",
+  "kind": "compact",
+  "items": 13,
+  "est_tokens": 307735,
+  "bytes": 1232376,
+  "head": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   }
+  ],
+  "tail": [
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 12,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 9,
+  "label": "manual-compact",
+  "kind": "compact",
+  "items": 12,
+  "est_tokens": 306869,
+  "bytes": 1228929,
+  "head": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "tail": [
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 10,
+  "label": "manual-compact",
+  "kind": "compact",
+  "items": 11,
+  "est_tokens": 306225,
+  "bytes": 1226363,
+  "head": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "tail": [
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 11,
+  "label": "manual-compact",
+  "kind": "compact",
+  "items": 10,
+  "est_tokens": 306123,
+  "bytes": 1225962,
+  "head": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "tail": [
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 12,
+  "label": "manual-compact",
+  "kind": "compact",
+  "items": 9,
+  "est_tokens": 305935,
+  "bytes": 1225223,
+  "head": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "tail": [
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "outcome": "overflow"
+ },
+ {
+  "n": 13,
+  "label": "manual-compact",
+  "kind": "compact",
+  "items": 8,
+  "est_tokens": 215886,
+  "bytes": 865037,
+  "head": [
+   {
+    "i": 0,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 480147,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "tail": [
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 519,
+    "text": "You are performing a CONTEXT CHECKPOINT "
+   }
+  ],
+  "outcome": "ok"
+ },
+ {
+  "n": 14,
+  "label": "t5b-after-manual-compact",
+  "kind": "user",
+  "items": 11,
+  "est_tokens": 33996,
+  "bytes": 136956,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 80180,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 610,
+    "text": "Another language model started to solve "
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 180,
+    "text": "【第5轮后】手动压缩之后说一句。"
+   }
+  ],
+  "tail": [
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 610,
+    "text": "Another language model started to solve "
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 180,
+    "text": "【第5轮后】手动压缩之后说一句。"
+   }
+  ],
+  "outcome": "ok"
+ },
+ {
+  "n": 15,
+  "label": "t6-resume",
+  "kind": "user",
+  "items": 13,
+  "est_tokens": 34078,
+  "bytes": 137271,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 80180,
+    "text": "【第3轮】日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容日志行内容"
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 156,
+    "text": "【第4轮】继续。"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 162,
+    "text": "【第5轮】再说一句。"
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 610,
+    "text": "Another language model started to solve "
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 180,
+    "text": "【第5轮后】手动压缩之后说一句。"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 148,
+    "text": "REPLY-t5b-after-manual-compact：好的。"
+   }
+  ],
+  "tail": [
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 180,
+    "text": "【第5轮后】手动压缩之后说一句。"
+   },
+   {
+    "i": 11,
+    "type": "message",
+    "bytes": 148,
+    "text": "REPLY-t5b-after-manual-compact：好的。"
+   },
+   {
+    "i": 12,
+    "type": "message",
+    "bytes": 177,
+    "text": "【第6轮】新进程恢复后说一句。"
+   }
+  ],
+  "outcome": "ok"
+ },
+ {
+  "n": 16,
+  "label": "t7-after-revert",
+  "kind": "user",
+  "items": 11,
+  "est_tokens": 193873,
+  "bytes": 776478,
+  "head": [
+   {
+    "i": 0,
+    "type": "additional_tools",
+    "bytes": 25347,
+    "text": ""
+   },
+   {
+    "i": 1,
+    "type": "message",
+    "bytes": 22148,
+    "text": "You are Codex, an agent based on GPT-6. "
+   },
+   {
+    "i": 2,
+    "type": "message",
+    "bytes": 3464,
+    "text": "<skills_instructions>\n## Skills\nA skill "
+   },
+   {
+    "i": 3,
+    "type": "message",
+    "bytes": 2575,
+    "text": "<multi_agent_role>You are `/root`, the p"
+   },
+   {
+    "i": 4,
+    "type": "message",
+    "bytes": 410,
+    "text": "<multi_agent_mode>Any earlier instructio"
+   },
+   {
+    "i": 5,
+    "type": "message",
+    "bytes": 752,
+    "text": "# AGENTS.md instructions for /tmp/u09-xk"
+   },
+   {
+    "i": 6,
+    "type": "message",
+    "bytes": 360195,
+    "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。EARLY-FIL"
+   },
+   {
+    "i": 7,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t1：好的。"
+   },
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 189,
+    "text": "【第7轮】回退到大消息之前，再说一句。"
+   }
+  ],
+  "tail": [
+   {
+    "i": 8,
+    "type": "message",
+    "bytes": 360160,
+    "text": "【第2轮】代号是 BLUE。EARLY-FILLER EARLY-FILLER "
+   },
+   {
+    "i": 9,
+    "type": "message",
+    "bytes": 125,
+    "text": "REPLY-t2：好的。"
+   },
+   {
+    "i": 10,
+    "type": "message",
+    "bytes": 189,
+    "text": "【第7轮】回退到大消息之前，再说一句。"
+   }
+  ],
+  "outcome": "ok"
+ }
+]

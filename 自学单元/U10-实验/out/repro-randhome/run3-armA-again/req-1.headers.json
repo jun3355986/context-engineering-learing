@@ -1,0 +1,15 @@
+{
+ "x-codex-beta-features": "remote_compaction_v2",
+ "x-codex-window-id": "01a19c82-3e78-7111-8042-877aff51dd67:0",
+ "x-codex-turn-metadata": "{\"installation_id\":\"437be335-bf52-4fcd-801f-3e983d28b728\",\"session_id\":\"01a19c82-3e78-7111-8042-877aff51dd67\",\"thread_id\":\"01a19c82-3e78-7111-8042-877aff51dd67\",\"agent_name\":\"/root\",\"turn_id\":\"01a19c82-3ea0-7513-98b5-b925c03e022e\",\"window_id\":\"01a19c82-3e78-7111-8042-877aff51dd67:0\",\"window_number\":0,\"context_window_id\":\"01a19c82-3e79-73d0-be83-c6111886e875\",\"request_kind\":\"turn\",\"history_initialization\":\"new\",\"root_turn_id\":\"01a19c82-3ea0-7513-98b5-b925c03e022e\",\"thread_source\":\"user\",\"turn_trigger\":\"exec\",\"sandbox\":\"seccomp\",\"sandbox_mode\":\"read-only\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"workspaces\":{\"/home/ubuntu/work/context-engineering-learing\":{\"associated_remote_urls\":{\"origin\":\"git@github.com:jun3355986/context-engineering-learing.git\"},\"latest_git_commit_hash\":\"22d7487a8457db1bd3f56ecea7ea12e2385270da\",\"has_changes\":true}},\"turn_started_at_unix_ms\":1793627143843,\"analytics_enabled\":false,\"model\":\"gpt-6.1-sol\",\"reasoning_effort\":\"low\"}",
+ "x-openai-internal-codex-responses-lite": "true",
+ "x-client-request-id": "01a19c82-3e78-7111-8042-877aff51dd67",
+ "session-id": "01a19c82-3e78-7111-8042-877aff51dd67",
+ "thread-id": "01a19c82-3e78-7111-8042-877aff51dd67",
+ "accept": "text/event-stream",
+ "content-type": "application/json",
+ "originator": "codex_exec",
+ "user-agent": "codex_exec/0.165.0 (Ubuntu 26.4.0; x86_64) tmux-256color (codex_exec; 0.165.0)",
+ "host": "127.0.0.1:37361",
+ "content-length": "56899"
+}

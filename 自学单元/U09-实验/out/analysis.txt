@@ -1,0 +1,150 @@
+==================== bigmsg-sse
+   {'label': 'start'}
+  t1                           completed    0.1s  {'user:ok': 1}  
+  t2                           completed    0.1s  {'user:ok': 1}  
+   {'label': 'big-message', 'chars': 400005, 'utf8_bytes': 1200013, 'est_tokens': 300004}
+  t3-big                       failed       0.2s  {'user:overflow': 1}  contextWindowExceeded
+  t4                           completed    0.6s  {'compact:overflow': 11, 'compact:ok': 1, 'user:ok': 1}  
+  t5                           completed    0.1s  {'user:ok': 1}  
+  t6-resume                    completed    0.1s  {'user:ok': 1}  
+   {'label': 'revert', 'beforeTurnId': '01a19c6c-3802-7d61-8fc6-02898b54e92d'}
+  t7-after-revert              completed    0.1s  {'user:ok': 1}  
+  -- 请求
+    1 t1                         user       条数=  7 估算token=  53722 ok
+    2 t2                         user       条数=  9 估算token=  93792 ok
+    3 t3-big                     user       条数= 11 估算token= 393860 overflow
+    4 t4                         compact    条数= 12 估算token= 393990 overflow
+    5 t4                         compact    条数= 11 估算token= 387653 overflow  相比上一次少了: ['工具定义']
+    6 t4                         compact    条数= 11 估算token= 387653 overflow  相比上一次少了: （一模一样）
+    7 t4                         compact    条数= 10 估算token= 386787 overflow  相比上一次少了: ['技能目录+权限']
+    8 t4                         compact    条数=  9 估算token= 386143 overflow  相比上一次少了: ['子代理角色说明']
+    9 t4                         compact    条数=  8 估算token= 386041 overflow  相比上一次少了: ['子代理开关说明']
+   10 t4                         compact    条数=  7 估算token= 385853 overflow  相比上一次少了: ['AGENTS.md']
+   11 t4                         compact    条数=  6 估算token= 345805 overflow  相比上一次少了: ['用户:【第1轮】(160190B)']
+   12 t4                         compact    条数=  5 估算token= 345774 overflow  相比上一次少了: ['回复:t1']
+   13 t4                         compact    条数=  4 估算token= 305735 overflow  相比上一次少了: ['用户:【第2轮】(160155B)']
+   14 t4                         compact    条数=  3 估算token= 305704 overflow  相比上一次少了: ['回复:t2']
+   15 t4                         compact    条数=  2 估算token=   5667 ok  相比上一次少了: ['用户:【第3轮】(1200147B)']
+   16 t4                         user       条数=  9 估算token=  33924 ok
+   17 t5                         user       条数= 11 估算token=  33996 ok
+   18 t6-resume                  user       条数= 13 估算token=  34072 ok
+   19 t7-after-revert            user       条数= 11 估算token=  93870 ok
+  请求合计 19 次，估算 token 合计 4760041
+==================== bigmsg-http400
+   {'label': 'start'}
+  t1                           completed    0.1s  {'user:ok': 1}  
+  t2                           completed    0.1s  {'user:ok': 1}  
+   {'label': 'big-message', 'chars': 400005, 'utf8_bytes': 1200013, 'est_tokens': 300004}
+  t3-big                       failed       0.2s  {'user:overflow': 1}  other
+  t4                           failed       6.2s  {'compact:overflow': 6}  other
+  t5                           failed       6.1s  {'compact:overflow': 6}  other
+  t6-resume                    failed       6.6s  {'compact:overflow': 6}  other
+   {'label': 'revert', 'beforeTurnId': '01a19c6d-9652-7823-a890-9992a0641b27'}
+  t7-after-revert              completed    0.1s  {'user:ok': 1}  
+  -- 请求
+    1 t1                         user       条数=  7 估算token=  53722 ok
+    2 t2                         user       条数=  9 估算token=  93792 ok
+    3 t3-big                     user       条数= 11 估算token= 393860 overflow
+    4 t4                         compact    条数= 12 估算token= 393990 overflow
+    5 t4                         compact    条数= 12 估算token= 393990 overflow  相比上一次少了: （一模一样）
+    6 t4                         compact    条数= 12 估算token= 393990 overflow  相比上一次少了: （一模一样）
+    7 t4                         compact    条数= 12 估算token= 393990 overflow  相比上一次少了: （一模一样）
+    8 t4                         compact    条数= 12 估算token= 393990 overflow  相比上一次少了: （一模一样）
+    9 t4                         compact    条数= 12 估算token= 393990 overflow  相比上一次少了: （一模一样）
+   10 t5                         compact    条数= 13 估算token= 394029 overflow
+   11 t5                         compact    条数= 13 估算token= 394029 overflow  相比上一次少了: （一模一样）
+   12 t5                         compact    条数= 13 估算token= 394029 overflow  相比上一次少了: （一模一样）
+   13 t5                         compact    条数= 13 估算token= 394029 overflow  相比上一次少了: （一模一样）
+   14 t5                         compact    条数= 13 估算token= 394029 overflow  相比上一次少了: （一模一样）
+   15 t5                         compact    条数= 13 估算token= 394029 overflow  相比上一次少了: （一模一样）
+   16 t6-resume                  compact    条数= 14 估算token= 394069 overflow
+   17 t6-resume                  compact    条数= 14 估算token= 394069 overflow  相比上一次少了: （一模一样）
+   18 t6-resume                  compact    条数= 14 估算token= 394069 overflow  相比上一次少了: （一模一样）
+   19 t6-resume                  compact    条数= 14 估算token= 394069 overflow  相比上一次少了: （一模一样）
+   20 t6-resume                  compact    条数= 14 估算token= 394069 overflow  相比上一次少了: （一模一样）
+   21 t6-resume                  compact    条数= 14 估算token= 394069 overflow  相比上一次少了: （一模一样）
+   22 t7-after-revert            user       条数= 11 估算token=  93870 ok
+  请求合计 22 次，估算 token 合计 7727772
+==================== sumover-sse
+   {'label': 'start'}
+  t1                           completed    0.2s  {'user:ok': 1}  
+  t2                           completed    0.2s  {'user:ok': 1}  
+   {'label': 'big-message', 'chars': 160005, 'utf8_bytes': 480013, 'est_tokens': 120004}
+  t3-big                       failed       0.2s  {'user:overflow': 1}  contextWindowExceeded
+  t4                           failed       0.2s  {'user:overflow': 1}  contextWindowExceeded
+  t5                           failed       0.2s  {'user:overflow': 1}  contextWindowExceeded
+  t6-resume                    failed       0.2s  {'user:overflow': 1}  contextWindowExceeded
+   {'label': 'revert', 'beforeTurnId': '01a19c6d-e805-7802-9a1a-0b422a09e901'}
+  t7-after-revert              completed    0.1s  {'user:ok': 1}  
+  -- 请求
+    1 t1                         user       条数=  7 估算token= 103723 ok
+    2 t2                         user       条数=  9 估算token= 193794 ok
+    3 t3-big                     user       条数= 11 估算token= 313862 overflow
+    4 t4                         user       条数= 12 估算token= 313901 overflow
+    5 t5                         user       条数= 13 估算token= 313942 overflow
+    6 t6-resume                  user       条数= 14 估算token= 313986 overflow
+    7 t7-after-revert            user       条数= 11 估算token= 193873 ok
+  请求合计 7 次，估算 token 合计 1747081
+==================== sumover-sse-manual
+   {'label': 'start'}
+  t1                           completed    0.1s  {'user:ok': 1}  
+  t2                           completed    0.1s  {'user:ok': 1}  
+   {'label': 'big-message', 'chars': 160005, 'utf8_bytes': 480013, 'est_tokens': 120004}
+  t3-big                       failed       0.1s  {'user:overflow': 1}  contextWindowExceeded
+  t4                           failed       0.1s  {'user:overflow': 1}  contextWindowExceeded
+  t5                           failed       0.1s  {'user:overflow': 1}  contextWindowExceeded
+  manual-compact               completed       s  {'compact:overflow': 7, 'compact:ok': 1}  
+  t5b-after-manual-compact     completed    0.1s  {'user:ok': 1}  
+  t6-resume                    completed    0.1s  {'user:ok': 1}  
+   {'label': 'revert', 'beforeTurnId': '01a19c6e-f622-71f3-99c5-042c271fe7bd'}
+  t7-after-revert              completed    0.1s  {'user:ok': 1}  
+  -- 请求
+    1 t1                         user       条数=  7 估算token= 103723 ok
+    2 t2                         user       条数=  9 估算token= 193794 ok
+    3 t3-big                     user       条数= 11 估算token= 313862 overflow
+    4 t4                         user       条数= 12 估算token= 313901 overflow
+    5 t5                         user       条数= 13 估算token= 313942 overflow
+    6 manual-compact             compact    条数= 14 估算token= 314072 overflow
+    7 manual-compact             compact    条数= 13 估算token= 307735 overflow  相比上一次少了: ['工具定义']
+    8 manual-compact             compact    条数= 13 估算token= 307735 overflow  相比上一次少了: （一模一样）
+    9 manual-compact             compact    条数= 12 估算token= 306869 overflow  相比上一次少了: ['技能目录+权限']
+   10 manual-compact             compact    条数= 11 估算token= 306225 overflow  相比上一次少了: ['子代理角色说明']
+   11 manual-compact             compact    条数= 10 估算token= 306123 overflow  相比上一次少了: ['子代理开关说明']
+   12 manual-compact             compact    条数=  9 估算token= 305935 overflow  相比上一次少了: ['AGENTS.md']
+   13 manual-compact             compact    条数=  8 估算token= 215886 ok  相比上一次少了: ['用户:【第1轮】(360195B)']
+   14 t5b-after-manual-compact   user       条数= 11 估算token=  33996 ok
+   15 t6-resume                  user       条数= 13 估算token=  34078 ok
+   16 t7-after-revert            user       条数= 11 估算token= 193873 ok
+  请求合计 16 次，估算 token 合计 3871749
+==================== smallwin-14000
+   {'label': 'start'}
+  t1-tools                     completed    0.3s  {'user:ok': 6, 'compact:ok': 5}  
+  t2                           completed    0.1s  {'compact:ok': 1, 'user:ok': 1}  
+  -- 请求
+    1 t1-tools                   user       条数=  7 估算token=  13602 ok
+    2 t1-tools                   compact    条数= 10 估算token=  13821 ok
+    3 t1-tools                   user       条数=  8 估算token=  13755 ok
+    4 t1-tools                   compact    条数= 11 估算token=  13973 ok  相比上一次少了: ['custom_tool_call:text("ok 1")']
+    5 t1-tools                   user       条数=  8 估算token=  13755 ok
+    6 t1-tools                   compact    条数= 11 估算token=  13973 ok  相比上一次少了: ['custom_tool_call:text("ok 2")']
+    7 t1-tools                   user       条数=  8 估算token=  13755 ok
+    8 t1-tools                   compact    条数= 11 估算token=  13973 ok  相比上一次少了: ['custom_tool_call:text("ok 3")']
+    9 t1-tools                   user       条数=  8 估算token=  13755 ok
+   10 t1-tools                   compact    条数= 11 估算token=  13973 ok  相比上一次少了: ['custom_tool_call:text("ok 4")']
+   11 t1-tools                   user       条数=  8 估算token=  13755 ok
+   12 t2                         compact    条数= 10 估算token=  13918 ok
+   13 t2                         user       条数=  9 估算token=  13795 ok
+  请求合计 13 次，估算 token 合计 179803
+==================== smallwin-default
+   {'label': 'start'}
+  t1-tools                     completed    0.2s  {'user:ok': 1, 'after-tool:ok': 5}  
+  t2                           completed    0.0s  {'user:ok': 1}  
+  -- 请求
+    1 t1-tools                   user       条数=  7 估算token=  13714 ok
+    2 t1-tools                   after-tool 条数=  9 估算token=  13803 ok
+    3 t1-tools                   after-tool 条数= 11 估算token=  13892 ok
+    4 t1-tools                   after-tool 条数= 13 估算token=  13980 ok
+    5 t1-tools                   after-tool 条数= 15 估算token=  14069 ok
+    6 t1-tools                   after-tool 条数= 17 估算token=  14158 ok
+    7 t2                         user       条数= 19 估算token=  14231 ok
+  请求合计 7 次，估算 token 合计 97847

@@ -1,0 +1,75 @@
+[
+ {
+  "label": "s1",
+  "thread": "01a19c02-1400-74e2-a94a-b94accebc6ee",
+  "text": "【S1】我叫 Drake。项目规则：测试用 pnpm，不要用 npm。"
+ },
+ {
+  "label": "s1-memories-tree",
+  "tree": {
+   "memories": [],
+   "memories_v2": [
+    {
+     "path": "extensions/ad_hoc/instructions.md",
+     "bytes": 733
+    },
+    {
+     "path": "memory_summary.md",
+     "bytes": 231
+    }
+   ]
+  }
+ },
+ {
+  "label": "threads-after-shift",
+  "rows": [
+   [
+    "01a19c02-1400-74e2-a94a-b94accebc6ee",
+    "vscode",
+    "disabled",
+    "/tmp/u08w-9r_52xog/ws-a",
+    "1793611544426"
+   ]
+  ],
+  "shifted": [
+   "updated_at_ms = updated_at_ms - 7200000",
+   "recency_at_ms = recency_at_ms - 7200000"
+  ]
+ },
+ {
+  "label": "age-phase2-job",
+  "db": "memories_1.sqlite",
+  "rows": 0
+ },
+ {
+  "label": "age-phase2-job",
+  "db": "memories_v2_1.sqlite",
+  "rows": 1
+ },
+ {
+  "label": "s2",
+  "thread": "01a19c02-20a0-77c1-b569-ffd093070c85",
+  "text": "【S2】新会话，换到项目 B。"
+ },
+ {
+  "label": "s3",
+  "thread": "01a19c02-20a0-77c1-b569-ffd093070c85",
+  "text": "【S3】测试怎么跑？"
+ },
+ {
+  "label": "after-s2-memories-tree",
+  "tree": {
+   "memories": [],
+   "memories_v2": [
+    {
+     "path": "extensions/ad_hoc/instructions.md",
+     "bytes": 733
+    },
+    {
+     "path": "memory_summary.md",
+     "bytes": 231
+    }
+   ]
+  }
+ }
+]

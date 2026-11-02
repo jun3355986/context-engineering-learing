@@ -1,0 +1,162 @@
+{
+ "arm": "F",
+ "config": "model = \"gpt-6.1-sol\"\nmodel_reasoning_effort = \"low\"\nmodel_provider = \"mock\"\napproval_policy = \"never\"\nsandbox_mode = \"read-only\"\nweb_search = \"disabled\"\ncheck_for_update_on_startup = false\nmodel_post_turn_compact_threshold_percent = 40\n[analytics]\nenabled = false\n[model_providers.mock]\nname = \"mock\"\nbase_url = \"http://127.0.0.1:35639/v1\"\nwire_api = \"responses\"\nrequires_openai_auth = false\n[projects.'/home/ubuntu/work/context-engineering-learing/自学单元/U11-实验/out/.work-mcr207uz/ws']\ntrust_level = \"trusted\"\n",
+ "steps": [
+  {
+   "label": "pkg-01",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.7,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-02",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.6,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-03",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.7,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-04",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.9,
+   "requests": {
+    "user": 1,
+    "after-tool": 4,
+    "compact": 1
+   }
+  },
+  {
+   "label": "pkg-05",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.6,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-06",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.6,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-07",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.6,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-08",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.7,
+   "requests": {
+    "user": 1,
+    "after-tool": 4,
+    "compact": 1
+   }
+  },
+  {
+   "label": "pkg-09",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.6,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-10",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.6,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-11",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.7,
+   "requests": {
+    "user": 1,
+    "after-tool": 4
+   }
+  },
+  {
+   "label": "pkg-12",
+   "thread": "01a19cba-0ba2-7e92-a2bb-e6a575be506a",
+   "status": "completed",
+   "error": null,
+   "seconds": 0.7,
+   "requests": {
+    "user": 1,
+    "after-tool": 4,
+    "compact": 1
+   }
+  }
+ ],
+ "last_usage": {
+  "01a19cba-0ba2-7e92-a2bb-e6a575be506a": {
+   "total": {
+    "totalTokens": 4360997,
+    "inputTokens": 4360367,
+    "cachedInputTokens": 0,
+    "cacheWriteInputTokens": 0,
+    "outputTokens": 630,
+    "reasoningOutputTokens": 0
+   },
+   "last": {
+    "totalTokens": 16853,
+    "inputTokens": 0,
+    "cachedInputTokens": 0,
+    "cacheWriteInputTokens": 0,
+    "outputTokens": 0,
+    "reasoningOutputTokens": 0
+   },
+   "modelContextWindow": 258400
+  }
+ }
+}

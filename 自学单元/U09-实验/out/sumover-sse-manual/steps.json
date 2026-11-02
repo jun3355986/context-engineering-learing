@@ -1,0 +1,210 @@
+[
+ {
+  "label": "start",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a"
+ },
+ {
+  "label": "t1",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a",
+  "turn": "01a19c6e-f54a-7f90-934e-88ff513da157",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "configWarning": 1,
+   "remoteControl/status/changed": 1,
+   "thread/started": 1,
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t2",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a",
+  "turn": "01a19c6e-f5b7-7191-aa7a-4f7e8ab84c23",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "big-message",
+  "chars": 160005,
+  "utf8_bytes": 480013,
+  "est_tokens": 120004
+ },
+ {
+  "label": "t3-big",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a",
+  "turn": "01a19c6e-f622-71f3-99c5-042c271fe7bd",
+  "status": "failed",
+  "error": {
+   "message": "Codex ran out of room in the model's context window. Start a new thread or clear earlier history before retrying.",
+   "codexErrorInfo": "contextWindowExceeded",
+   "additionalDetails": null,
+   "misalignment": null
+  },
+  "seconds": 0.1,
+  "requests": {
+   "user:overflow": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 1,
+   "item/completed": 1,
+   "thread/tokenUsage/updated": 2,
+   "account/rateLimits/updated": 2,
+   "error": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t4",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a",
+  "turn": "01a19c6e-f6a7-7c51-895e-6c118967b023",
+  "status": "failed",
+  "error": {
+   "message": "Codex ran out of room in the model's context window. Start a new thread or clear earlier history before retrying.",
+   "codexErrorInfo": "contextWindowExceeded",
+   "additionalDetails": null,
+   "misalignment": null
+  },
+  "seconds": 0.1,
+  "requests": {
+   "user:overflow": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 1,
+   "item/completed": 1,
+   "thread/tokenUsage/updated": 2,
+   "account/rateLimits/updated": 2,
+   "error": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t5",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a",
+  "turn": "01a19c6e-f708-7641-b83a-0868dc9a7113",
+  "status": "failed",
+  "error": {
+   "message": "Codex ran out of room in the model's context window. Start a new thread or clear earlier history before retrying.",
+   "codexErrorInfo": "contextWindowExceeded",
+   "additionalDetails": null,
+   "misalignment": null
+  },
+  "seconds": 0.1,
+  "requests": {
+   "user:overflow": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 1,
+   "item/completed": 1,
+   "thread/tokenUsage/updated": 2,
+   "account/rateLimits/updated": 2,
+   "error": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "manual-compact",
+  "status": "completed",
+  "requests": {
+   "compact:overflow": 7,
+   "compact:ok": 1
+  }
+ },
+ {
+  "label": "t5b-after-manual-compact",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a",
+  "turn": "01a19c6e-fc5f-77f0-8b71-26ee2a31d2c0",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t6-resume",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a",
+  "turn": "01a19c6e-fd6f-7573-b936-a00a81aed1ce",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "configWarning": 1,
+   "remoteControl/status/changed": 1,
+   "deprecationNotice": 1,
+   "thread/status/changed": 3,
+   "thread/tokenUsage/updated": 2,
+   "thread/goal/cleared": 1,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "revert",
+  "beforeTurnId": "01a19c6e-f622-71f3-99c5-042c271fe7bd"
+ },
+ {
+  "label": "t7-after-revert",
+  "thread": "01a19c6e-f520-7462-af03-4a0424f8d19a",
+  "turn": "01a19c6e-fe18-7da1-8fa6-67d3327b6bc8",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 4,
+   "thread/reverted": 1,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ }
+]

@@ -1,0 +1,44 @@
+== 读路径（codex exec，gpt-6.1-sol，low）
+r0-default                       请求  56,440 字节 (比默认 +0)  记忆块所在条目 无  摘要槽 []
+r1-on-small                      请求  63,491 字节 (比默认 +7,051)  记忆块所在条目 (2, [6879, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 162}]
+r2-on-ascii-big                  请求  73,554 字节 (比默认 +17,114)  记忆块所在条目 (2, [16787, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 10070}]
+r3-on-han-big                    请求  73,493 字节 (比默认 +17,053)  记忆块所在条目 (2, [16785, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 10068}]
+r4-use-memories-false            请求  56,440 字节 (比默认 +0)  记忆块所在条目 无  摘要槽 []
+r5-v2-small                      请求  58,784 字节 (比默认 +2,344)  记忆块所在条目 (2, [2258, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 162}]
+r6-v2-han-big                    请求  68,822 字节 (比默认 +12,382)  记忆块所在条目 (2, [8900, 3264, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 10068}]
+r7-dedicated-tools               请求  65,800 字节 (比默认 +9,360)  记忆块所在条目 (2, [6879, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 162}]
+r8-other-cwd                     请求  63,309 字节 (比默认 +6,869)  记忆块所在条目 (2, [6879, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 162}]
+r9-resume-after-edit             请求  63,491 字节 (比默认 +7,051)  记忆块所在条目 (2, [6879, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 162}]
+r9-resume-after-edit-resume      请求  63,771 字节 (比默认 +7,331)  记忆块所在条目 (2, [6879, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 162}]
+r10-ephemeral                    请求  63,491 字节 (比默认 +7,051)  记忆块所在条目 (2, [6879, 1965, 341, 920])  摘要槽 [{'i': 2, 'summary_bytes_in_block': 162}]
+
+== 写路径
+-- write
+  #1 s1   user    gpt-6.1-sol    low     58,360 字节 7 条 
+  #2 s2   phase1  gpt-5.6-luna   low      7,367 字节 2 条 json_schema
+  #3 s2   user    gpt-6.1-sol    low     58,326 字节 7 条 
+  #4 s2   phase2  gpt-5.6-terra  medium  50,466 字节 5 条 
+  #5 s3   user    gpt-6.1-sol    low     58,581 字节 9 条 
+   s1-memories-tree {"memories": [], "memories_v2": [{"path": "extensions/ad_hoc/instructions.md", "bytes": 733}, {"path": "memory_summary.md", "bytes": 231}]}
+   after-s2-memories-tree {"memories": [], "memories_v2": [{"path": "extensions/ad_hoc/instructions.md", "bytes": 733}, {"path": "memory_summary.md", "bytes": 231}, {"path": "rollout_summaries/2026-11-02T11-22-44-ap8R-pnpm_rule.md", "bytes": 334}]}
+    memories_v2_1.sqlite:stage1_outputs {'usage_count': 1, 'last_usage': 1793618591, 'selected_for_phase2': 1}
+-- write-v1
+  #1 s1   phase2  gpt-5.6-terra  medium  99,266 字节 5 条 
+  #2 s1   user    gpt-6.1-sol    low     55,903 字节 7 条 
+  #3 s2   phase1  gpt-5.6-luna   low     34,772 字节 2 条 json_schema
+  #4 s2   user    gpt-6.1-sol    low     55,869 字节 7 条 
+  #5 s2   phase2  gpt-5.6-terra  medium  99,415 字节 5 条 
+  #6 s3   user    gpt-6.1-sol    low     56,124 字节 9 条 
+   s1-memories-tree {"memories": [{"path": "extensions/ad_hoc/instructions.md", "bytes": 733}, {"path": "phase2_workspace_diff.md", "bytes": 335}, {"path": "raw_memories.md", "bytes": 37}], "memories_v2": []}
+   after-s2-memories-tree {"memories": [{"path": "extensions/ad_hoc/instructions.md", "bytes": 733}, {"path": "phase2_workspace_diff.md", "bytes": 1426}, {"path": "raw_memories.md", "bytes": 478}, {"path": "rollout_summaries/2026-11-02T11-27-50-ERx0-pnpm_rule.md", "bytes": 334}], "memories_v2": []}
+    memories_1.sqlite:stage1_outputs {'usage_count': 1, 'last_usage': 1793618897, 'selected_for_phase2': 0}
+-- write-nogen
+  #1 s1   user    gpt-6.1-sol    low     58,360 字节 7 条 
+  #2 s2   user    gpt-6.1-sol    low     58,326 字节 7 条 
+  #3 s3   user    gpt-6.1-sol    low     58,581 字节 9 条 
+   s1-memories-tree {"memories": [], "memories_v2": [{"path": "extensions/ad_hoc/instructions.md", "bytes": 733}, {"path": "memory_summary.md", "bytes": 231}]}
+   after-s2-memories-tree {"memories": [], "memories_v2": [{"path": "extensions/ad_hoc/instructions.md", "bytes": 733}, {"path": "memory_summary.md", "bytes": 231}]}
+-- exec-source
+  #1 x1   user    gpt-6.1-sol    low     55,778 字节 7 条 
+  #2 x1   phase2  gpt-5.6-terra  medium  50,314 字节 5 条 
+  #3 x2   user    gpt-6.1-sol    low     55,743 字节 7 条 

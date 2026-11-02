@@ -1,0 +1,172 @@
+[
+ {
+  "label": "start",
+  "thread": "01a19c6c-3721-70f3-94a5-e11e1a90d333"
+ },
+ {
+  "label": "t1",
+  "thread": "01a19c6c-3721-70f3-94a5-e11e1a90d333",
+  "turn": "01a19c6c-3746-7d43-aea2-7f2dbf35604c",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "configWarning": 1,
+   "remoteControl/status/changed": 1,
+   "thread/started": 1,
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t2",
+  "thread": "01a19c6c-3721-70f3-94a5-e11e1a90d333",
+  "turn": "01a19c6c-37a5-74e0-90e8-ad3cc2967d71",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "big-message",
+  "chars": 400005,
+  "utf8_bytes": 1200013,
+  "est_tokens": 300004
+ },
+ {
+  "label": "t3-big",
+  "thread": "01a19c6c-3721-70f3-94a5-e11e1a90d333",
+  "turn": "01a19c6c-3802-7d61-8fc6-02898b54e92d",
+  "status": "failed",
+  "error": {
+   "message": "Codex ran out of room in the model's context window. Start a new thread or clear earlier history before retrying.",
+   "codexErrorInfo": "contextWindowExceeded",
+   "additionalDetails": null,
+   "misalignment": null
+  },
+  "seconds": 0.2,
+  "requests": {
+   "user:overflow": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 1,
+   "item/completed": 1,
+   "thread/tokenUsage/updated": 2,
+   "account/rateLimits/updated": 2,
+   "error": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t4",
+  "thread": "01a19c6c-3721-70f3-94a5-e11e1a90d333",
+  "turn": "01a19c6c-38af-7770-992a-1997d41b352f",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.6,
+  "requests": {
+   "compact:overflow": 11,
+   "compact:ok": 1,
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 3,
+   "thread/tokenUsage/updated": 15,
+   "account/rateLimits/updated": 15,
+   "item/completed": 3,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t5",
+  "thread": "01a19c6c-3721-70f3-94a5-e11e1a90d333",
+  "turn": "01a19c6c-3b55-7331-a40b-a01d2baaf7a8",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t6-resume",
+  "thread": "01a19c6c-3721-70f3-94a5-e11e1a90d333",
+  "turn": "01a19c6c-3cc4-7e32-8737-4102966f13dc",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "configWarning": 1,
+   "remoteControl/status/changed": 1,
+   "deprecationNotice": 1,
+   "thread/status/changed": 3,
+   "thread/tokenUsage/updated": 2,
+   "thread/goal/cleared": 1,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "revert",
+  "beforeTurnId": "01a19c6c-3802-7d61-8fc6-02898b54e92d"
+ },
+ {
+  "label": "t7-after-revert",
+  "thread": "01a19c6c-3721-70f3-94a5-e11e1a90d333",
+  "turn": "01a19c6c-3d69-7dd0-a663-dd794615a696",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 4,
+   "thread/reverted": 1,
+   "turn/started": 1,
+   "item/started": 2,
+   "item/completed": 2,
+   "thread/tokenUsage/updated": 1,
+   "account/rateLimits/updated": 1,
+   "thread/readState/changed": 1
+  }
+ }
+]

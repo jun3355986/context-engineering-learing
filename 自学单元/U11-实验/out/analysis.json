@@ -1,0 +1,110 @@
+{
+ "A": {
+  "requests": 61,
+  "input_total": 7069697,
+  "compact_n": 1,
+  "compact_input": 250532,
+  "threads": 1,
+  "peak": 250532,
+  "first": 13962,
+  "cost_s0": 749898,
+  "cost_s11874": 721400,
+  "cost_gap": 2345990
+ },
+ "B": {
+  "requests": 63,
+  "input_total": 3515212,
+  "compact_n": 3,
+  "compact_input": 304356,
+  "threads": 1,
+  "peak": 102464,
+  "first": 13962,
+  "cost_s0": 614375,
+  "cost_s11874": 557380,
+  "cost_gap": 1357452
+ },
+ "C": {
+  "requests": 60,
+  "input_total": 7063200,
+  "compact_n": 0,
+  "compact_input": 0,
+  "threads": 1,
+  "peak": 219780,
+  "first": 13962,
+  "cost_s0": 616896,
+  "cost_s11874": 602647,
+  "cost_gap": 2159046
+ },
+ "F": {
+  "requests": 63,
+  "input_total": 4360367,
+  "compact_n": 3,
+  "compact_input": 347944,
+  "threads": 1,
+  "peak": 117237,
+  "first": 13962,
+  "cost_s0": 635551,
+  "cost_s11874": 592805,
+  "cost_gap": 1348618
+ },
+ "D": {
+  "requests": 60,
+  "input_total": 1630796,
+  "compact_n": 0,
+  "compact_input": 0,
+  "threads": 12,
+  "peak": 38778,
+  "first": 13962,
+  "cost_s0": 639936,
+  "cost_s11874": 468950,
+  "cost_gap": 639936
+ },
+ "G": {
+  "requests": 62,
+  "input_total": 4186318,
+  "compact_n": 2,
+  "compact_input": 233275,
+  "threads": 1,
+  "peak": 118406,
+  "first": 11833,
+  "cost_s0": 489246,
+  "cost_s11874": 460798,
+  "cost_gap": 1269169
+ },
+ "E": {
+  "requests": 60,
+  "input_total": 1273484,
+  "compact_n": 0,
+  "compact_input": 0,
+  "threads": 12,
+  "peak": 28914,
+  "first": 11833,
+  "cost_s0": 480029,
+  "cost_s11874": 309633,
+  "cost_gap": 480029
+ },
+ "P1": {
+  "requests": 61,
+  "input_total": 7179608,
+  "compact_n": 1,
+  "compact_input": 245161,
+  "threads": 1,
+  "peak": 245161,
+  "first": 13970,
+  "cost_s0": 810317,
+  "cost_s11874": 781820,
+  "cost_gap": 2434678
+ },
+ "P2": {
+  "requests": 61,
+  "input_total": 7179417,
+  "compact_n": 1,
+  "compact_input": 245153,
+  "threads": 1,
+  "peak": 245153,
+  "first": 13962,
+  "cost_s0": 810308,
+  "cost_s11874": 781810,
+  "cost_gap": 2434620
+ }
+}

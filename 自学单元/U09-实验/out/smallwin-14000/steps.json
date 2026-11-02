@@ -1,0 +1,51 @@
+[
+ {
+  "label": "start",
+  "thread": "01a19c71-87a0-7963-ac46-942e8c43b449"
+ },
+ {
+  "label": "t1-tools",
+  "thread": "01a19c71-87a0-7963-ac46-942e8c43b449",
+  "turn": "01a19c71-87bd-7463-89d6-5a003768be4c",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.3,
+  "requests": {
+   "user:ok": 6,
+   "compact:ok": 5
+  },
+  "notifications": {
+   "configWarning": 1,
+   "remoteControl/status/changed": 1,
+   "thread/started": 1,
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 7,
+   "item/completed": 7,
+   "thread/tokenUsage/updated": 21,
+   "account/rateLimits/updated": 21,
+   "thread/readState/changed": 1
+  }
+ },
+ {
+  "label": "t2",
+  "thread": "01a19c71-87a0-7963-ac46-942e8c43b449",
+  "turn": "01a19c71-88ee-71a2-83cd-8aec8446e24a",
+  "status": "completed",
+  "error": null,
+  "seconds": 0.1,
+  "requests": {
+   "compact:ok": 1,
+   "user:ok": 1
+  },
+  "notifications": {
+   "thread/status/changed": 2,
+   "turn/started": 1,
+   "item/started": 3,
+   "thread/tokenUsage/updated": 4,
+   "account/rateLimits/updated": 4,
+   "item/completed": 3,
+   "thread/readState/changed": 1
+  }
+ }
+]

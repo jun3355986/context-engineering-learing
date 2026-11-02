@@ -1,0 +1,82 @@
+[
+ {
+  "label": "s1",
+  "thread": "01a19c04-023b-7433-8fcf-5e0b73f50ac2",
+  "text": "【S1】我叫 Drake。项目规则：测试用 pnpm，不要用 npm。"
+ },
+ {
+  "label": "s1-memories-tree",
+  "tree": {
+   "memories": [
+    {
+     "path": "extensions/ad_hoc/instructions.md",
+     "bytes": 733
+    },
+    {
+     "path": "phase2_workspace_diff.md",
+     "bytes": 335
+    },
+    {
+     "path": "raw_memories.md",
+     "bytes": 37
+    }
+   ],
+   "memories_v2": []
+  }
+ },
+ {
+  "label": "threads-after-shift",
+  "rows": [
+   [
+    "01a19c04-023b-7433-8fcf-5e0b73f50ac2",
+    "vscode",
+    "enabled",
+    "/tmp/u08w-ew2_nxt6/ws-a",
+    "1793611670992"
+   ]
+  ],
+  "shifted": [
+   "updated_at_ms = updated_at_ms - 7200000",
+   "recency_at_ms = recency_at_ms - 7200000"
+  ]
+ },
+ {
+  "label": "age-phase2-job",
+  "db": "memories_1.sqlite",
+  "rows": 1
+ },
+ {
+  "label": "s2",
+  "thread": "01a19c04-0efb-7d13-9019-5bb6d58317cd",
+  "text": "【S2】新会话，换到项目 B。"
+ },
+ {
+  "label": "s3",
+  "thread": "01a19c04-0efb-7d13-9019-5bb6d58317cd",
+  "text": "【S3】测试怎么跑？"
+ },
+ {
+  "label": "after-s2-memories-tree",
+  "tree": {
+   "memories": [
+    {
+     "path": "extensions/ad_hoc/instructions.md",
+     "bytes": 733
+    },
+    {
+     "path": "phase2_workspace_diff.md",
+     "bytes": 1426
+    },
+    {
+     "path": "raw_memories.md",
+     "bytes": 478
+    },
+    {
+     "path": "rollout_summaries/2026-11-02T11-27-50-ERx0-pnpm_rule.md",
+     "bytes": 334
+    }
+   ],
+   "memories_v2": []
+  }
+ }
+]

@@ -1,0 +1,860 @@
+{
+ "r0-default": {
+  "requests": 1,
+  "first": {
+   "request_bytes": 56440,
+   "input_items": 7,
+   "memory_items": [],
+   "summary_slots": [],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 3465,
+     "head": "<skills_instructions>\\n## Skills\\nA skill is a set of local in"
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-bu43gogq/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r1-on-small": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 63491,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 10105
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 162
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 10516,
+     "head": "## Memory\\n\\nYou have access to a memory folder with guidance "
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-bw_z3mv4/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r2-on-ascii-big": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 73554,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 20013
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 10070
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 20579,
+     "head": "## Memory\\n\\nYou have access to a memory folder with guidance "
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-rzl8zvw5/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r3-on-han-big": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 73493,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 20011
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 10068
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 20518,
+     "head": "## Memory\\n\\nYou have access to a memory folder with guidance "
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-tn5wqpy4/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r4-use-memories-false": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 56440,
+   "input_items": 7,
+   "memory_items": [],
+   "summary_slots": [],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 3465,
+     "head": "<skills_instructions>\\n## Skills\\nA skill is a set of local in"
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-27v_bj1x/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r5-v2-small": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 58784,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 5484
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 162
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 5809,
+     "head": "## Memory\\n\\nUse the injected MEMORY_SUMMARY as historical con"
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-trg_j95i/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r6-v2-han-big": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 68822,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 15390
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 10068
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 15847,
+     "head": "## Memory\\n\\nUse the injected MEMORY_SUMMARY as historical con"
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-xjncia2b/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r7-dedicated-tools": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 65800,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 10105
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 162
+    }
+   ],
+   "mentions_add_ad_hoc_note": true,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 27656,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 10516,
+     "head": "## Memory\\n\\nYou have access to a memory folder with guidance "
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-3civ736k/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r8-other-cwd": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 63309,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 10105
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 162
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 10516,
+     "head": "## Memory\\n\\nYou have access to a memory folder with guidance "
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 573,
+     "head": "<environment_context>\\n  <cwd>/tmp/u08r-2bxdew0f/ws2</cwd>\\n  "
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r9-resume-after-edit": {
+  "requests": 2,
+  "first": {
+   "request_bytes": 63491,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 10105
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 162
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 10516,
+     "head": "## Memory\\n\\nYou have access to a memory folder with guidance "
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-wnjdaskq/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ },
+ "r9-resume-after-edit-resume": {
+  "requests": 1,
+  "first": {
+   "request_bytes": 63771,
+   "input_items": 9,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 10105
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 162
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 10516,
+     "head": "## Memory\\n\\nYou have access to a memory folder with guidance "
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-wnjdaskq/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    },
+    {
+     "i": 7,
+     "type": "message",
+     "role": "assistant",
+     "bytes": 114,
+     "head": "REPLY-OK"
+    },
+    {
+     "i": 8,
+     "type": "message",
+     "role": "user",
+     "bytes": 154,
+     "head": "【R2】接着说。"
+    }
+   ]
+  },
+  "has_old_summary_text": true,
+  "has_new_summary_text": false
+ },
+ "r10-ephemeral": {
+  "requests": 1,
+  "first": {
+   "request_bytes": 63491,
+   "input_items": 7,
+   "memory_items": [
+    {
+     "i": 2,
+     "role": "developer",
+     "text_bytes": 10105
+    }
+   ],
+   "summary_slots": [
+    {
+     "i": 2,
+     "summary_bytes_in_block": 162
+    }
+   ],
+   "mentions_add_ad_hoc_note": false,
+   "items": [
+    {
+     "i": 0,
+     "type": "additional_tools",
+     "role": "developer",
+     "bytes": 25347,
+     "head": ""
+    },
+    {
+     "i": 1,
+     "type": "message",
+     "role": "developer",
+     "bytes": 22148,
+     "head": "You are Codex, an agent based on GPT-6. You and the user sha"
+    },
+    {
+     "i": 2,
+     "type": "message",
+     "role": "developer",
+     "bytes": 10516,
+     "head": "## Memory\\n\\nYou have access to a memory folder with guidance "
+    },
+    {
+     "i": 3,
+     "type": "message",
+     "role": "developer",
+     "bytes": 2575,
+     "head": "<multi_agent_role>You are `/root`, the primary agent in a te"
+    },
+    {
+     "i": 4,
+     "type": "message",
+     "role": "developer",
+     "bytes": 410,
+     "head": "<multi_agent_mode>Any earlier instruction enabling proactive"
+    },
+    {
+     "i": 5,
+     "type": "message",
+     "role": "user",
+     "bytes": 755,
+     "head": "# AGENTS.md instructions for /tmp/u08r-po19nyis/ws\\n\\n<INSTRUC"
+    },
+    {
+     "i": 6,
+     "type": "message",
+     "role": "user",
+     "bytes": 180,
+     "head": "【R】你好，帮我看看测试怎么跑。"
+    }
+   ]
+  }
+ }
+}
