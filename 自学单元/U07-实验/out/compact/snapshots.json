@@ -1,0 +1,185 @@
+[
+ {
+  "step": "3 轮之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-11-51-01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7.jsonl",
+    "lines": 36,
+    "bytes": 99888,
+    "meta": {
+     "id": "01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 3,
+     "response_item": 12,
+     "world_state": 1,
+     "turn_context": 3,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 6,
+     "token_usage_record": 3,
+     "event_msg:token_count": 3,
+     "event_msg:task_complete": 3
+    }
+   }
+  ]
+ },
+ {
+  "step": "压缩之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-11-51-01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7.jsonl",
+    "lines": 48,
+    "bytes": 172230,
+    "meta": {
+     "id": "01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 4,
+     "response_item": 13,
+     "world_state": 2,
+     "turn_context": 4,
+     "event_msg:thread_settings_applied": 2,
+     "event_msg:item_completed": 7,
+     "token_usage_record": 4,
+     "event_msg:token_count": 6,
+     "event_msg:task_complete": 4,
+     "compacted": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "压缩后又说两句",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-11-51-01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7.jsonl",
+    "lines": 66,
+    "bytes": 182811,
+    "meta": {
+     "id": "01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】",
+     "【第4轮】",
+     "【第5轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 6,
+     "response_item": 17,
+     "world_state": 2,
+     "turn_context": 6,
+     "event_msg:thread_settings_applied": 2,
+     "event_msg:item_completed": 11,
+     "token_usage_record": 6,
+     "event_msg:token_count": 8,
+     "event_msg:task_complete": 6,
+     "compacted": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "回退到压缩之前再说一句",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-11-51-01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7.jsonl",
+    "lines": 66,
+    "bytes": 182811,
+    "meta": {
+     "id": "01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】",
+     "【第4轮】",
+     "【第5轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 6,
+     "response_item": 17,
+     "world_state": 2,
+     "turn_context": 6,
+     "event_msg:thread_settings_applied": 2,
+     "event_msg:item_completed": 11,
+     "token_usage_record": 6,
+     "event_msg:token_count": 8,
+     "event_msg:task_complete": 6,
+     "compacted": 1
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-11-52-01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7_01a19bbe-73ad-76f3-9aca-18db0ab22853.jsonl",
+    "lines": 11,
+    "bytes": 28835,
+    "meta": {
+     "id": "01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7",
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7",
+      "end_ordinal_exclusive": 57,
+      "end_byte_offset": 177528
+     }
+    },
+    "marks": [],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:task_started": 1,
+     "turn_context": 1,
+     "response_item": 2,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-11-52-01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7_01a19bbe-73f2-7e80-b24a-4d9c0c0765bc.jsonl",
+    "lines": 12,
+    "bytes": 29593,
+    "meta": {
+     "id": "01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7",
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbe-6ebf-7951-8b3b-8e80bfdb2fc7",
+      "end_ordinal_exclusive": 36,
+      "end_byte_offset": 99888
+     }
+    },
+    "marks": [],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 2,
+     "event_msg:task_started": 1,
+     "turn_context": 1,
+     "response_item": 2,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   }
+  ]
+ }
+]

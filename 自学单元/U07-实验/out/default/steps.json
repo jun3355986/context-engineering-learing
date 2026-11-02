@@ -1,0 +1,57 @@
+[
+ {
+  "label": "start",
+  "thread": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "history_mode": "paginated"
+ },
+ {
+  "label": "t1",
+  "thread": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "turn": "01a19bbb-b56f-71b2-b4ac-fcb2b55c64e4",
+  "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。"
+ },
+ {
+  "label": "t2",
+  "thread": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "turn": "01a19bbb-b5ad-7ba0-ae3d-1a7a3dadc2e9",
+  "text": "【第2轮】代号是 BLUE。"
+ },
+ {
+  "label": "t3",
+  "thread": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "turn": "01a19bbb-b5ce-7352-aa68-cffe107b70d8",
+  "text": "【第3轮】再说一句。"
+ },
+ {
+  "label": "fork",
+  "from": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "lastTurnId": "01a19bbb-b5ad-7ba0-ae3d-1a7a3dadc2e9",
+  "new_thread": "01a19bbb-b5fb-78a3-a478-b2c79b97d520",
+  "turns_in_response": 2
+ },
+ {
+  "label": "fork-say",
+  "thread": "01a19bbb-b5fb-78a3-a478-b2c79b97d520",
+  "turn": "01a19bbb-b619-7ac2-860e-806dc15d4203",
+  "text": "【分叉】在分叉里说一句。"
+ },
+ {
+  "label": "revert",
+  "thread": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "beforeTurnId": "01a19bbb-b5ad-7ba0-ae3d-1a7a3dadc2e9",
+  "thread_id_after": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "path_after": "/tmp/u07-5dbx3scu/home/sessions/2026/11/02/rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416_01a19bbb-b642-7ec2-8144-e84309fc9a4b.jsonl"
+ },
+ {
+  "label": "after-revert",
+  "thread": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "turn": "01a19bbb-b664-7c62-8f0c-c93375a5337a",
+  "text": "【第4轮】我叫什么？代号是什么？"
+ },
+ {
+  "label": "resume-say",
+  "thread": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+  "turn": "01a19bbb-b70b-7c11-a259-04fe1ad51591",
+  "text": "【第5轮】恢复之后说一句。"
+ }
+]

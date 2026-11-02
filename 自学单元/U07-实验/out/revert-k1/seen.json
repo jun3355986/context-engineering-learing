@@ -1,0 +1,30 @@
+[
+ {
+  "n": 1,
+  "label": "t1",
+  "input_items": 7,
+  "bytes": 55922,
+  "prompt_cache_key": "01a19bc0-8d55-7993-80f4-685c0e6bbd7d"
+ },
+ {
+  "n": 2,
+  "label": "t2",
+  "input_items": 9,
+  "bytes": 56193,
+  "prompt_cache_key": "01a19bc0-8d55-7993-80f4-685c0e6bbd7d"
+ },
+ {
+  "n": 3,
+  "label": "t3",
+  "input_items": 11,
+  "bytes": 56462,
+  "prompt_cache_key": "01a19bc0-8d55-7993-80f4-685c0e6bbd7d"
+ },
+ {
+  "n": 4,
+  "label": "after-revert-k1",
+  "input_items": 7,
+  "bytes": 55911,
+  "prompt_cache_key": "01a19bc0-8d55-7993-80f4-685c0e6bbd7d"
+ }
+]

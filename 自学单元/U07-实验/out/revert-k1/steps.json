@@ -1,0 +1,31 @@
+[
+ {
+  "label": "t1",
+  "thread": "01a19bc0-8d55-7993-80f4-685c0e6bbd7d",
+  "turn": "01a19bc0-8d74-7152-b6cc-76668667d60e",
+  "text": "【第1轮】我叫 Drake。规则：不要改数据库 schema。"
+ },
+ {
+  "label": "t2",
+  "thread": "01a19bc0-8d55-7993-80f4-685c0e6bbd7d",
+  "turn": "01a19bc0-8dd8-7593-b10e-4d48ce083b7b",
+  "text": "【第2轮】代号是 BLUE。"
+ },
+ {
+  "label": "t3",
+  "thread": "01a19bc0-8d55-7993-80f4-685c0e6bbd7d",
+  "turn": "01a19bc0-8df8-7ed2-9345-699eaad3b96f",
+  "text": "【第3轮】再说一句。"
+ },
+ {
+  "label": "revert",
+  "k": 1,
+  "beforeTurnId": "01a19bc0-8d74-7152-b6cc-76668667d60e"
+ },
+ {
+  "label": "after-revert-k1",
+  "thread": "01a19bc0-8d55-7993-80f4-685c0e6bbd7d",
+  "turn": "01a19bc0-8e3b-7a53-b49e-0c6b9042ec52",
+  "text": "【第4轮】我叫什么？代号是什么？"
+ }
+]

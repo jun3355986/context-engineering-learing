@@ -1,0 +1,435 @@
+[
+ {
+  "step": "t1 之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416.jsonl",
+    "lines": 18,
+    "bytes": 89403,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 1,
+     "response_item": 8,
+     "world_state": 1,
+     "turn_context": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "t3 之后（3 轮）",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416.jsonl",
+    "lines": 36,
+    "bytes": 99888,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 3,
+     "response_item": 12,
+     "world_state": 1,
+     "turn_context": 3,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 6,
+     "token_usage_record": 3,
+     "event_msg:token_count": 3,
+     "event_msg:task_complete": 3
+    }
+   }
+  ]
+ },
+ {
+  "step": "fork（lastTurnId=第2轮）之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416.jsonl",
+    "lines": 36,
+    "bytes": 99888,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 3,
+     "response_item": 12,
+     "world_state": 1,
+     "turn_context": 3,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 6,
+     "token_usage_record": 3,
+     "event_msg:token_count": 3,
+     "event_msg:task_complete": 3
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b5fb-78a3-a478-b2c79b97d520.jsonl",
+    "lines": 2,
+    "bytes": 23546,
+    "meta": {
+     "id": "01a19bbb-b5fb-78a3-a478-b2c79b97d520",
+     "forked_from_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "forked_from_ordinal_exclusive": 27,
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+      "end_ordinal_exclusive": 27,
+      "end_byte_offset": 94647
+     }
+    },
+    "marks": [],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "在分叉里说一句之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416.jsonl",
+    "lines": 36,
+    "bytes": 99888,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 3,
+     "response_item": 12,
+     "world_state": 1,
+     "turn_context": 3,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 6,
+     "token_usage_record": 3,
+     "event_msg:token_count": 3,
+     "event_msg:task_complete": 3
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b5fb-78a3-a478-b2c79b97d520.jsonl",
+    "lines": 11,
+    "bytes": 28821,
+    "meta": {
+     "id": "01a19bbb-b5fb-78a3-a478-b2c79b97d520",
+     "forked_from_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "forked_from_ordinal_exclusive": 27,
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+      "end_ordinal_exclusive": 27,
+      "end_byte_offset": 94647
+     }
+    },
+    "marks": [
+     "【分叉】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:task_started": 1,
+     "turn_context": 1,
+     "response_item": 2,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "revert（beforeTurnId=第2轮）之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416.jsonl",
+    "lines": 36,
+    "bytes": 99888,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 3,
+     "response_item": 12,
+     "world_state": 1,
+     "turn_context": 3,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 6,
+     "token_usage_record": 3,
+     "event_msg:token_count": 3,
+     "event_msg:task_complete": 3
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416_01a19bbb-b642-7ec2-8144-e84309fc9a4b.jsonl",
+    "lines": 2,
+    "bytes": 23480,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+      "end_ordinal_exclusive": 18,
+      "end_byte_offset": 89403
+     }
+    },
+    "marks": [],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b5fb-78a3-a478-b2c79b97d520.jsonl",
+    "lines": 11,
+    "bytes": 28821,
+    "meta": {
+     "id": "01a19bbb-b5fb-78a3-a478-b2c79b97d520",
+     "forked_from_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "forked_from_ordinal_exclusive": 27,
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+      "end_ordinal_exclusive": 27,
+      "end_byte_offset": 94647
+     }
+    },
+    "marks": [
+     "【分叉】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:task_started": 1,
+     "turn_context": 1,
+     "response_item": 2,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "回退后在原线程上说一句",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416.jsonl",
+    "lines": 36,
+    "bytes": 99888,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 3,
+     "response_item": 12,
+     "world_state": 1,
+     "turn_context": 3,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 6,
+     "token_usage_record": 3,
+     "event_msg:token_count": 3,
+     "event_msg:task_complete": 3
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416_01a19bbb-b642-7ec2-8144-e84309fc9a4b.jsonl",
+    "lines": 11,
+    "bytes": 28787,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+      "end_ordinal_exclusive": 18,
+      "end_byte_offset": 89403
+     }
+    },
+    "marks": [
+     "【第4轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:task_started": 1,
+     "turn_context": 1,
+     "response_item": 2,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b5fb-78a3-a478-b2c79b97d520.jsonl",
+    "lines": 11,
+    "bytes": 28821,
+    "meta": {
+     "id": "01a19bbb-b5fb-78a3-a478-b2c79b97d520",
+     "forked_from_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "forked_from_ordinal_exclusive": 27,
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+      "end_ordinal_exclusive": 27,
+      "end_byte_offset": 94647
+     }
+    },
+    "marks": [
+     "【分叉】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:task_started": 1,
+     "turn_context": 1,
+     "response_item": 2,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   }
+  ]
+ },
+ {
+  "step": "恢复并说一句之后",
+  "files": [
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416.jsonl",
+    "lines": 36,
+    "bytes": 99888,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated"
+    },
+    "marks": [
+     "【第1轮】",
+     "【第2轮】",
+     "【第3轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:task_started": 3,
+     "response_item": 12,
+     "world_state": 1,
+     "turn_context": 3,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:item_completed": 6,
+     "token_usage_record": 3,
+     "event_msg:token_count": 3,
+     "event_msg:task_complete": 3
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b551-7a20-bd30-6c5067e2e416_01a19bbb-b642-7ec2-8144-e84309fc9a4b.jsonl",
+    "lines": 22,
+    "bytes": 35045,
+    "meta": {
+     "id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+      "end_ordinal_exclusive": 18,
+      "end_byte_offset": 89403
+     }
+    },
+    "marks": [
+     "【第4轮】",
+     "【第5轮】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:task_started": 2,
+     "turn_context": 2,
+     "response_item": 5,
+     "event_msg:item_completed": 4,
+     "token_usage_record": 2,
+     "event_msg:token_count": 2,
+     "event_msg:task_complete": 2,
+     "world_state": 1
+    }
+   },
+   {
+    "file": "rollout-2026-11-02T10-08-52-01a19bbb-b5fb-78a3-a478-b2c79b97d520.jsonl",
+    "lines": 11,
+    "bytes": 28821,
+    "meta": {
+     "id": "01a19bbb-b5fb-78a3-a478-b2c79b97d520",
+     "forked_from_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+     "forked_from_ordinal_exclusive": 27,
+     "history_mode": "paginated",
+     "history_base": {
+      "thread_id": "01a19bbb-b551-7a20-bd30-6c5067e2e416",
+      "end_ordinal_exclusive": 27,
+      "end_byte_offset": 94647
+     }
+    },
+    "marks": [
+     "【分叉】"
+    ],
+    "types": {
+     "session_meta": 1,
+     "event_msg:thread_settings_applied": 1,
+     "event_msg:task_started": 1,
+     "turn_context": 1,
+     "response_item": 2,
+     "event_msg:item_completed": 2,
+     "token_usage_record": 1,
+     "event_msg:token_count": 1,
+     "event_msg:task_complete": 1
+    }
+   }
+  ]
+ }
+]
