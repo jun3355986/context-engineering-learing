@@ -88,10 +88,10 @@ ul,ol{padding-left:1.3em;margin:.4em 0}
 <body>
 <button class="btn theme" id="themeBtn" aria-label="切换浅色/深色">◐</button>
 <main>
-<p class="kicker">第 2 章 · 一次请求里装了什么 · 2026-11-02 · 条件：Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> / 模型 <code>gpt-6.1-sol</code> · 只有内置工具，没装 MCP 和自定义技能</p>
+<p class="kicker">第 2 章 · 一次请求里装了什么 · 2026-11-02 · 条件：Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> / 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 只有内置工具，没装 MCP 和自定义技能</p>
 <h1>你只说了一句话，请求里装了 1.3 万 token</h1>
 <p class="lede">你在 Codex 里打一句「帮我看下这个报错」，它发给模型的远不止这句话：还有工具说明、系统提示词、会话设置、项目规则和环境信息。这一章把这次请求拆开，看每块是什么、占多少、为什么这样排，以及会话往下走时请求怎么变。</p>
-<p class="note">条件里的模型用的是 Codex 的 <b>Lite 请求格式</b>（模型目录里 <code>use_responses_lite = true</code>）。它和普通格式只差一处：工具定义不放在请求顶层的 <code>tools</code> 字段，而是放进 <code>input</code> 列表的第一条。下文默认 Lite，第 1 节可以切到普通格式对比。</p>
+<p class="note">本章的数字都来自上面这个模型。思考级别（reasoning effort）指模型回答前想得多深，分 low、medium、high 等几档。换一个模型，请求的结构和大小都会变，第 1 节末尾用 <code>gpt-5.5</code> 做了对比。</p>
 
 <section class="qs" id="qs">
 <h2>带着这 5 个问题往下读</h2>
@@ -119,12 +119,21 @@ ul,ol{padding-left:1.3em;margin:.4em 0}
 </table></div>
 <p class="note">token 数按「UTF-8 字节数 ÷ 4，向上取整」算，这是 Codex 在本地估算用的算法，不是模型的真实分词，中文会估低。<sup><a href="#e2">2</a></sup> 请求体里还有约 1.2 KB 的 <code>client_metadata</code>，不在合计里。</p>
 
+<h3>换个模型，请求就不一样</h3>
+<p>同一句话、同样是思考级别 low，换成 <code>gpt-5.5</code>，请求只有 <b>36,201 字节，约 9,051 token</b>，结构也不同：<sup><a href="#e4">4</a></sup></p>
+<ul>
+<li><b>工具定义不在 <code>input</code> 里</b>，而是放在请求顶层一个单独的 <code>tools</code> 字段。</li>
+<li><b><code>input</code> 只有 4 条</b>：系统提示词、技能目录和权限说明、AGENTS.md 和环境信息、你的话。没有协作模式，也没有两条子代理说明。</li>
+<li><b>工具和系统提示词是另一套</b>：gpt-5.5 有 9 个工具，各自独立（执行命令、改文件、看图片等），共 9,414 字节；gpt-6.1-sol 是 3 组共 11 个工具，25,347 字节。系统提示词也是另一份。</li>
+</ul>
+<p>原因在 Codex 内置的模型表：每个模型一行设置，这两个模型有好几项不同。我核对过的是工具放在哪：由 <code>use_responses_lite</code> 这一项决定。在这个版本的表里，只有 gpt-5.5 设成 false，工具放在顶层；其余模型都是 true，工具放进 <code>input</code> 第一条。<sup><a href="#e4">4</a></sup> 工具集、子代理说明这些差别分别对应哪一项设置，我没有逐条核对【待核实】。模型一直在更新，所以本教程写数字时都注明模型和思考级别。</p>
+
 <h3>动手看：点一块看原文，拖滑块换掉你的话</h3>
-<p>条的宽度按字节比例画；切到「等宽」才看得见小块。滑块把「你的话」换成一段粘贴的日志，看它多大时会变成最大的一块。</p>
+<p>条的宽度按字节比例画；切到「等宽」才看得见小块。「模型」两个按钮切换上面对比的两个请求。滑块把「你的话」换成一段粘贴的日志，看它多大时会变成最大的一块。</p>
 <div class="ctrl">
-  <span>格式：</span>
-  <button class="btn" data-model="lite" aria-pressed="true">Lite（gpt-6.1-sol）</button>
-  <button class="btn" data-model="nonlite" aria-pressed="false">普通（gpt-5.5）</button>
+  <span>模型：</span>
+  <button class="btn" data-model="lite" aria-pressed="true">gpt-6.1-sol · low</button>
+  <button class="btn" data-model="nonlite" aria-pressed="false">gpt-5.5 · low</button>
   <span style="margin-left:8px">视图：</span>
   <button class="btn" data-view="prop" aria-pressed="true">按比例</button>
   <button class="btn" data-view="equal" aria-pressed="false">等宽</button>
@@ -167,11 +176,11 @@ for i,it in enumerate(json.load(sys.stdin)):
   <div style="border-color:var(--user)"><b>本轮</b>：你的话。每次都不一样。</div>
 </div>
 <p>整个请求里<b>没有 <code>system</code> 角色</b>，只有两种：<code>developer</code>，指应用（这里是 Codex）写给模型的指令；<code>user</code>，指来自用户这边的内容。Codex 把 AGENTS.md、环境信息和你的话都放成 <code>user</code>，所以 AGENTS.md 虽然是规则，角色却是 user。<sup><a href="#e3">3</a></sup> 历史里要是出现 system 消息，Codex 也会把它过滤掉。<sup><a href="#e13">13</a></sup></p>
-<p>换成普通格式（第 1 节可切换），工具定义挪到请求顶层的 <code>tools</code> 字段，<code>input</code> 只剩 4 条：系统提示词、技能和权限、AGENTS.md 和环境、你的话。<sup><a href="#e4">4</a></sup></p>
+<p>第 1 节末尾的 gpt-5.5 请求只有 4 条，排法相同：内置的在前，你的话在最后，也没有 system 角色。<sup><a href="#e4">4</a></sup></p>
 <div class="answer" id="a2">
 <p class="qh">回答问题 2</p>
 <p class="qq">请求由哪几块组成？谁前谁后？有没有 system 角色？</p>
-<p>Lite 格式下 7 条，顺序是：工具定义 → 系统提示词 → 会话配置（技能、权限、协作模式、子代理说明）→ AGENTS.md 和环境信息 → 你的话。没有 system 角色：前 5 条是 developer，后 2 条是 user。为什么稳定的放前面，见章末设计笔记。</p>
+<p>gpt-6.1-sol 的请求 7 条，顺序是：工具定义 → 系统提示词 → 会话配置（技能、权限、协作模式、子代理说明）→ AGENTS.md 和环境信息 → 你的话。没有 system 角色：前 5 条是 developer，后 2 条是 user。为什么稳定的放前面，见章末设计笔记。</p>
 </div>
 </section>
 
@@ -225,8 +234,8 @@ for i,it in enumerate(json.load(sys.stdin)):
 <ul>
 <li><b>往上</b>：当前目录和它上面的<b>每一级</b>都读，文档没提在项目根停下。</li>
 <li><b>往下</b>：子目录里的 CLAUDE.md，等 Claude 读、写或编辑那个子目录里的文件时才加载。Codex 不看子目录。</li>
-<li><b>长度</b>：启动时加载的每个文件整份给模型，单个文件超过 4 MiB 才整份跳过；按需加载的文件上限更小，超了只给开头，并提示模型自己去读剩下的。Codex 是项目文件共用 32 KiB，尾部静默截掉。</li>
-<li><b>引用</b>：支持 <code>@路径</code> 导入别的文件，最多套 4 层。</li>
+<li><b>长度</b>：启动时加载的文件，每份都整份给模型，单个文件超过 4 MiB 才整份跳过。子目录里按需加载的 CLAUDE.md 另有单个文件的上限，按字符算：上下文窗口 20 万 token 时是 <b>40,000 字符</b>；100 万 token 时，Claude Opus 4.6 和 Sonnet 4.6 是 200,000 字符，之后的模型是 150,000 字符（v2.1.309 起）。超了只给开头，末尾附一句提示，让模型需要时用 Read 工具（读文件的工具）看剩下的。Codex 是项目文件共用 32 KiB，尾部静默截掉。</li>
+<li><b>导入</b>：在 CLAUDE.md 文件里写一行 <code>@路径</code>（例如 <code>@docs/规范.md</code>），那个文件的内容就和 CLAUDE.md 一起加载。这是写在文件里的语法，不是在输入框里打的 @。被导入的文件里还能再写 <code>@路径</code>，一层套一层，最多 4 跳（原文 maximum depth of four hops）：CLAUDE.md 导入 A 是第 1 跳，A 再导入 B 是第 2 跳，依此类推。Codex 不展开 <code>@</code>。</li>
 <li><b>位置</b>：同样作为一条 user 消息，放在系统提示词之后。</li>
 </ul>
 <p>一句话：Codex 开局就把规则定下来，总量封顶；Claude Code 边干边加载，单个文件给得多，请求大小随你碰过的目录变化。</p>
@@ -329,7 +338,7 @@ fn render_diff(&amp;self, previous: PreviousSectionState&lt;'_, Self::Snapshot&g
 <section id="s6">
 <h2>设计笔记</h2>
 <ul>
-<li><b>稳定的在前、变化的追加在后。</b>Codex 自带测试明确要求：普通的第二轮请求要「保留前一次的前缀」（原文 retain the cached prefix）。<sup><a href="#e17">17</a></sup> 可见保住前缀是设计目标，和提示词缓存有关；能省多少钱，第 5 章算。</li>
+<li><b>稳定的在前、变化的追加在后。</b>Codex 自带测试明确要求：一般的第二轮请求要「保留前一次的前缀」（原文 retain the cached prefix）。<sup><a href="#e17">17</a></sup> 可见保住前缀是设计目标，和提示词缓存有关；能省多少钱，第 5 章算。</li>
 <li><b>项目 AGENTS.md 为什么不中途重读？</b>代码里没写理由。【推测】一是同一个会话里规则不会忽然变；二是工作环境可能在远程机器上，沿目录链探测文件要走网络（<code>agents_md.rs:51-53</code> 的注释提到探测走远程传输），每次请求都探测不划算。</li>
 <li><b>静默截断的代价。</b>超了不报错，模型不知道自己少看了什么，你只能翻日志。因为从尾部截、先给根目录，要紧的规则写在根目录、写在文件开头最稳。</li>
 <li><b>和 Claude Code 的取舍。</b>Codex 开局定死、总量封顶，请求大小可预期，代价是子目录里的规则用不上；Claude Code 按需加载，覆盖面大，代价是请求大小随你碰过的目录变化，什么时候加载了哪份规则也更难预料。</li>
@@ -340,7 +349,7 @@ fn render_diff(&amp;self, previous: PreviousSectionState&lt;'_, Self::Snapshot&g
 <h2>小结</h2>
 <ol>
 <li>一句 24 字节的话，请求约 1.34 万 token；你的话占 0.04%，工具定义和系统提示词合计 88%。</li>
-<li>Lite 格式下 7 条：工具定义 → 系统提示词 → 会话配置 → AGENTS.md 和环境 → 你的话。没有 system 角色，只有 developer 和 user。</li>
+<li>gpt-6.1-sol 的请求 7 条：工具定义 → 系统提示词 → 会话配置 → AGENTS.md 和环境 → 你的话。没有 system 角色，只有 developer 和 user。</li>
 <li>AGENTS.md 读项目根到当前目录的每一级，每级一份，从根往下拼，全局规则在最前；项目文件合计 32 KiB，超了尾部静默截掉。</li>
 <li>第二次请求：HTTP 整份重发；官方通道默认走 WebSocket，线上只发新增的，模型仍看到全部。</li>
 <li>会话中途的变化都追加在末尾，不改前面。全局 AGENTS.md 每次重读；项目 AGENTS.md 一个会话只读一次，中途改了要新开会话。</li>
@@ -352,10 +361,10 @@ fn render_diff(&amp;self, previous: PreviousSectionState&lt;'_, Self::Snapshot&g
 <p>Codex 版本：源码 <code>76ed3b4</code>，CLI <code>0.165.0</code>。路径相对 <code>codex-rs/</code>；实验目录相对 <code>自学单元/U01-实验/</code>，脚本 <code>u01_capture.py</code> 起一个本机假服务器抓请求，不联网、不花额度。</p>
 <div class="tablewrap"><table>
 <tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
-<tr id="e1"><td>1</td><td>一句话的请求 53,637 字节 ≈ 13,410 token；7 条 input 的字节数</td><td>实验 <code>out/latest</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e1"><td>1</td><td>一句话的请求 53,637 字节 ≈ 13,410 token；7 条 input 的字节数。两次实验的思考级别都由脚本固定为 low</td><td>实验 <code>out/latest</code>；<code>u01_capture.py:182</code>（<code>model_reasoning_effort = "low"</code>）</td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e2"><td>2</td><td>token 估算 = 字节数 ÷ 4 向上取整</td><td>源码 <code>ext/skills/src/render.rs:25</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e3"><td>3</td><td>input 的顺序与角色：5 条 developer + 2 条 user，没有 system</td><td>实验 <code>out/latest</code>；源码 <code>core/src/session/mod.rs:4665-4699</code></td><td><span class="tag lvl-m">中</span> 条目数随版本和特性变化</td></tr>
-<tr id="e4"><td>4</td><td>Lite 没有顶层 tools，工具在 input[0]；普通格式在顶层 tools，input 4 条</td><td>源码 <code>core/src/client.rs:965-1006</code>；实验 <code>out/latest</code>、<code>out/non-lite</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e3"><td>3</td><td>input 的顺序与角色：5 条 developer + 2 条 user，没有 system</td><td>实验 <code>out/latest</code>；源码 <code>core/src/session/mod.rs:4665-4699</code></td><td><span class="tag lvl-m">中</span> 条目数随模型、版本和特性变化</td></tr>
+<tr id="e4"><td>4</td><td>gpt-6.1-sol：没有顶层 tools，工具在 input[0]，input 7 条。gpt-5.5：工具在顶层 tools（9 个，9,414 字节），input 4 条，合计 36,201 字节。工具放哪由模型表的 use_responses_lite 决定，表里只有 gpt-5.5 是 false。工具集、子代理说明等其他差别对应哪项设置，没核对</td><td>源码 <code>core/src/client.rs:980-995</code>、<code>models-manager/models.json:1340,1359</code>；实验 <code>out/latest</code>、<code>out/non-lite</code>（<code>--model gpt-5.5</code>）</td><td><span class="tag lvl-h">高</span> 工具位置；<span class="tag lvl-l">待核实</span> 其他差别的原因</td></tr>
 <tr id="e5"><td>5</td><td>项目根默认以 .git 为标记；根到当前目录每级取第一个存在的 AGENTS.override.md → AGENTS.md → 备用文件名；不越过项目根，不看子目录</td><td>源码 <code>core/src/agents_md.rs:7-17,192-298</code>、<code>config/src/project_root_markers.rs:5</code>；测试 <code>core/tests/suite/agents_md.rs:318,449</code></td><td><span class="tag lvl-h">高</span> 源码 + 自带测试</td></tr>
 <tr id="e6"><td>6</td><td>项目被标为 untrusted 时不读项目 AGENTS.md</td><td>源码 <code>core/src/agents_md.rs:63-65</code>、<code>config/src/config_toml.rs:619-621</code>；测试 <code>agents_md.rs:647</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e7"><td>7</td><td>全局规则在前，用 <code>--- project-doc ---</code> 与项目规则分隔，合成一条 user 消息</td><td>源码 <code>core/src/agents_md.rs:49</code>；测试 <code>agents_md.rs:1734-1857</code>；全局 override 优先见测试 <code>agents_md.rs:1927-2050</code></td><td><span class="tag lvl-h">高</span></td></tr>
@@ -369,7 +378,7 @@ fn render_diff(&amp;self, previous: PreviousSectionState&lt;'_, Self::Snapshot&g
 <tr id="e15"><td>15</td><td>环境信息比较目录、日期、时区、网络、文件权限等，变了才追加；日期每次从时钟读</td><td>源码 <code>core/src/context/world_state/environment.rs:113-199</code>、<code>core/src/session/world_state.rs:280-290</code></td><td><span class="tag lvl-m">中</span> 读了源码，没实验</td></tr>
 <tr id="e16"><td>16</td><td>全局 AGENTS.md 每次请求前重读；项目 AGENTS.md 用缓存，只有工作环境或信任级别变了才重读；替换和移除的两句文案</td><td>源码 <code>core/src/agents_md_manager.rs:68-146</code>、<code>core/src/context/world_state/agents_md.rs:11-13,44-80</code>、<code>core/src/session/mod.rs:3911-3919</code></td><td><span class="tag lvl-h">高</span> 源码 + 测试 #17；没自己做实验</td></tr>
 <tr id="e17"><td>17</td><td>测试：两轮之间改写全局和项目 AGENTS.md，第二次请求出现新的全局内容、项目内容不变、开头与第一次相同</td><td>测试 <code>core/tests/suite/agents_md.rs:1734-1857</code>（注释：The global provider refreshes, while repository discovery keeps its cached snapshot）</td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e18"><td>18</td><td>Claude Code：读当前目录及以上每一级；子目录按需加载；单文件 4 MiB；按需文件有更小上限；<code>@</code> 导入最多 4 层；作为 user 消息放在系统提示词之后</td><td>官方文档 <code>code.claude.com/docs/en/memory</code>，2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，没实测</td></tr>
+<tr id="e18"><td>18</td><td>Claude Code：读当前目录及以上每一级；子目录按需加载；启动时加载的文件单个 4 MiB 封顶；按需加载的文件单个上限 40,000 字符（20 万 token 窗口），100 万窗口时 200,000（Opus 4.6、Sonnet 4.6）或 150,000 字符（之后的模型），v2.1.309 起；CLAUDE.md 里的 <code>@路径</code> 导入最多 4 跳（maximum depth of four hops）；作为 user 消息放在系统提示词之后</td><td>官方文档 <code>code.claude.com/docs/en/memory</code>，2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，没实测</td></tr>
 <tr id="e19"><td>19</td><td>挂 40 个假 MCP 工具（约 23 KB）后请求体不变；原因没查清</td><td>实验 <code>out/mcp40</code>（<code>u01_capture.py --mcp-tools 40</code>）</td><td><span class="tag lvl-h">高</span> 现象；<span class="tag lvl-l">待核实</span> 原因</td></tr>
 </table></div>
 </section>
@@ -481,7 +490,7 @@ function renderS4(){
   }
   $('#r3').innerHTML = chipsOf(items,'dim') + chipsOf(newI,'new');
   const bytes = D.req2.map(x=>fmt(x.bytes)).join(' 和 ');
-  const extra = lite ? '' : '<p class="note">第二次请求我只在 Lite 格式上抓过；普通格式是按同样规则画的，没有实测。</p>';
+  const extra = lite ? '' : '<p class="note">第二次请求我只用 gpt-6.1-sol 抓过；gpt-5.5 这一行是按同样规则画的，没有实测。</p>';
   $('#trnote').innerHTML = S4.tr==='http'
    ? '<p><b>实验（HTTP，本机假服务器）</b>：第 2 次请求的前 '+n+' 条与第 1 次逐项相同，工具定义和系统提示词也再发了一遍，后面追加两条（'+bytes+' 字节）。<sup><a href="#e10">10</a></sup> 模型本身不记得上一次请求，HTTP 下历史只能每次整份带上。这时发出去的和模型看到的一样。</p>'+extra
    : '<p><b>源码（没做实验）</b>：在支持 WebSocket 的通道上，Codex 带上 <code>previous_response_id</code>（意思是「接着上一次的响应往下」），只发上次之后新增的条目。上一次响应里服务端自己生成的条目（这里的工具调用）算已有，不重发。<sup><a href="#e11">11</a></sup></p><p>所以线上只有一条，模型仍看到全部。模型、工具、推理设置任何一项变了，或者历史对不上（比如被压缩、被回退），就退回整份发送。</p>';
