@@ -38,7 +38,7 @@
 </section>
 
 <section id="s1">
-<h2><span class="sn">1</span>5 万行，模型看到哪几行</h2>
+<h2><span class="sn">一、</span>5 万行，模型看到哪几行</h2>
 <p>朴素的做法有三种，各有毛病。整份放进去：一条命令 7.2 万 token，比请求里其他内容加起来还多，输出再大就装不下。只留开头：测试和编译的失败摘要通常在最后。只留结尾：丢了开头那段「命令在做什么」和最早的报错。</p>
 <p>Codex 的做法是<b>留头留尾，中间挖掉</b>。默认上限 1 万 token，换成字节是 4 万：开头 2 万字节、结尾 2 万字节，中间换成一行 <code>…62224 tokens truncated…</code>（截掉了 62,224 token）。<sup><a href="#e3">3</a></sup></p>
 <p>实测 gpt-6.1-sol：进入请求的输出是 40,158 字节，约 10,040 token。保留的是第 1–4,221 行和第 46,668–50,000 行，中间 42,446 行丢掉，第 25,000 行就在里面。两个切口都落在行中间，所以标记前后各有半个数字。<sup><a href="#e1">1</a></sup> 换成 gpt-5.5，切点完全一样，大小 40,217 字节。<sup><a href="#e2">2</a></sup> 标记和说明不算在 1 万里，所以结果比 1 万略多。</p>
@@ -83,7 +83,7 @@ Total output lines: 50000
 </section>
 
 <section id="s2">
-<h2><span class="sn">2</span>截在哪：最多四道闸</h2>
+<h2><span class="sn">二、</span>截在哪：最多四道闸</h2>
 <p>上面那 1 万 token 不是在一处定下的。输出从命令到请求，最多经过四处截断，哪几处起作用跟模型有关：gpt-5.5 直接调用命令工具 <code>exec_command</code>；gpt-6.1-sol 不直接调，它写一段 JavaScript 交给代码工具 <code>exec</code> 运行，JS 里再调 <code>exec_command</code>。第 2 章说 gpt-6.1-sol 有「3 组共 11 个工具」，<code>exec</code> 就在里面。</p>
 <div class="tablewrap"><table>
 <tr><th>闸</th><th>在哪</th><th>默认上限</th><th>谁能改、怎么改</th></tr>
@@ -138,7 +138,7 @@ Total output lines: 50000
 </section>
 
 <section id="s3">
-<h2><span class="sn">3</span>截掉的那段去哪了</h2>
+<h2><span class="sn">三、</span>截掉的那段去哪了</h2>
 <p>直觉是：Codex 会把会话写进存档，截掉的应该还在存档里。查了 4 次 gpt-6.1-sol 实验的存档（<code>~/.codex/sessions/</code> 下的 <code>.jsonl</code> 文件），<b>原始输出哪里都没有</b>：5 万行的存档里搜不到第 25,000 行。<sup><a href="#e10">10</a></sup><sup><a href="#e11">11</a></sup></p>
 <div class="tablewrap"><table>
 <tr><th>实验（gpt-6.1-sol，<code>seq 1 50000</code>）</th><th>进入请求</th><th>存档里那条</th></tr>
@@ -176,7 +176,7 @@ Total output lines: 50000
 </section>
 
 <section id="s4">
-<h2><span class="sn">4</span>跑 10 次，前面的输出还在吗</h2>
+<h2><span class="sn">四、</span>跑 10 次，前面的输出还在吗</h2>
 <p>在。输出写进历史以后，之后每次请求都带着它。第 2 章讲过：走 HTTP 时整份重发；走 WebSocket 时线上只发新增的部分，但模型看到的仍是全部。Codex 源码里没找到清理旧工具输出的机制【源码搜索，没穷尽】。<sup><a href="#e13">13</a></sup></p>
 <p>量一下有多大。这条输出放进请求是 47,910 字节，比正文的 40,158 字节多出约 7,700 字节，因为每个换行在请求的 JSON 里要写成 <code>\n</code> 两个字符。加上模型发起调用的那条，第二次请求从 54,808 字节涨到 102,921 字节，多了约 1.2 万 token。<sup><a href="#e12">12</a></sup></p>
 <div class="ctrl"><label for="rn">已经跑了 <b id="rnv">1</b> 次</label><input type="range" id="rn" min="0" max="10" step="1" value="1"></div>

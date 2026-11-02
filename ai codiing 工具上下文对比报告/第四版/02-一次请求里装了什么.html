@@ -15,7 +15,7 @@
 <p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 只有内置工具，没装 MCP 和自定义技能</p>
 </header>
 <p class="lede">你在 Codex 里打一句「帮我看下这个报错」，它发给模型的远不止这句话：还有工具说明、系统提示词、会话设置、项目规则和环境信息。这一章把这次请求拆开，看每块是什么、占多少、为什么这样排，以及会话往下走时请求怎么变。</p>
-<p class="note">本章的数字都来自上面这个模型。思考级别（reasoning effort）指模型回答前想得多深，分 low、medium、high 等几档。换一个模型，请求的结构和大小都会变，第 1 节末尾用 <code>gpt-5.5</code> 做了对比。</p>
+<p class="note">本章的数字都来自上面这个模型。思考级别（reasoning effort）指模型回答前想得多深，分 low、medium、high 等几档。换一个模型，请求的结构和大小都会变，第一节末尾用 <code>gpt-5.5</code> 做了对比。</p>
 
 <section class="qs" id="qs">
 <h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
@@ -29,7 +29,7 @@
 </section>
 
 <section id="s1">
-<h2><span class="sn">1</span>一句话的请求，拆开看</h2>
+<h2><span class="sn">一、</span>一句话的请求，拆开看</h2>
 <p>真实抓到的这次请求有 <b>53,637 字节，约 13,410 token</b>，你的那句话只占 6 token。<sup><a href="#e1">1</a></sup> <code>input</code> 是请求里按顺序排好的消息列表，一共 7 条：</p>
 <div class="tablewrap"><table>
 <tr><th>位置</th><th>角色</th><th>内容</th><th>字节</th><th>约 token</th><th>占比</th></tr>
@@ -91,7 +91,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 </section>
 
 <section id="s2">
-<h2><span class="sn">2</span>为什么这样排</h2>
+<h2><span class="sn">二、</span>为什么这样排</h2>
 <p>从前往后，是从「所有人都一样」到「只属于这一轮」：</p>
 <div class="ladder">
   <div style="border-color:var(--tools)"><b>通用</b>：工具定义 → 系统提示词。同一个模型、同一个版本，所有人、所有项目都一样。</div>
@@ -100,7 +100,7 @@ for i,it in enumerate(json.load(sys.stdin)):
   <div style="border-color:var(--user)"><b>本轮</b>：你的话。每次都不一样。</div>
 </div>
 <p>整个请求里<b>没有 <code>system</code> 角色</b>，只有两种：<code>developer</code>，指应用（这里是 Codex）写给模型的指令；<code>user</code>，指来自用户这边的内容。Codex 把 AGENTS.md、环境信息和你的话都放成 <code>user</code>，所以 AGENTS.md 虽然是规则，角色却是 user。<sup><a href="#e3">3</a></sup> 历史里要是出现 system 消息，Codex 也会把它过滤掉。<sup><a href="#e13">13</a></sup></p>
-<p>第 1 节末尾的 gpt-5.5 请求只有 4 条，排法相同：内置的在前，你的话在最后，也没有 system 角色。<sup><a href="#e4">4</a></sup></p>
+<p>第一节末尾的 gpt-5.5 请求只有 4 条，排法相同：内置的在前，你的话在最后，也没有 system 角色。<sup><a href="#e4">4</a></sup></p>
 <div class="answer" id="a2">
 <p class="qh">回答问题 2</p>
 <p class="qq">请求由哪几块组成？谁前谁后？有没有 system 角色？</p>
@@ -109,7 +109,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 </section>
 
 <section id="s3">
-<h2><span class="sn">3</span>AGENTS.md：读哪几份，怎么拼，多长会被截</h2>
+<h2><span class="sn">三、</span>AGENTS.md：读哪几份，怎么拼，多长会被截</h2>
 <p>最简单的做法是只读当前目录那一份。可大项目常在根目录写通用规则、在子模块写局部规则，只读一份就丢了另一半。Codex 沿着目录链把每一级都读进来，再用一个总预算封顶。</p>
 
 <h3>读哪几份</h3>
@@ -121,7 +121,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 </ul>
 
 <h3>怎么拼</h3>
-<p>从项目根往下，依次拼接。你个人的全局规则（<code>~/.codex/AGENTS.md</code>，同样优先找 override 那份）放在最前，和项目规则之间隔一行 <code>--- project-doc ---</code>。拼好的全文包成一条 user 消息，就是第 1 节的 <code>input[5]</code>。<sup><a href="#e7">7</a></sup> 文件内容原样放进去，写在里面的 <code>@某文件</code> 不会被展开成那个文件的内容。<sup><a href="#e9">9</a></sup></p>
+<p>从项目根往下，依次拼接。你个人的全局规则（<code>~/.codex/AGENTS.md</code>，同样优先找 override 那份）放在最前，和项目规则之间隔一行 <code>--- project-doc ---</code>。拼好的全文包成一条 user 消息，就是第一节的 <code>input[5]</code>。<sup><a href="#e7">7</a></sup> 文件内容原样放进去，写在里面的 <code>@某文件</code> 不会被展开成那个文件的内容。<sup><a href="#e9">9</a></sup></p>
 
 <h3>多长会被截</h3>
 <p>项目里所有 AGENTS.md 合计最多 <b>32,768 字节</b>（32 KiB）。按<b>字节</b>算，不按字符；预算先给根目录，读一份扣一份；超出的部分从<b>尾部</b>截掉。截了不报错，也不告诉模型，只在日志里留一条警告。<sup><a href="#e8">8</a></sup> 汉字在 UTF-8 里占 3 字节，所以 32 KiB 大约装 1.09 万个汉字。</p>
@@ -167,7 +167,7 @@ for i,it in enumerate(json.load(sys.stdin)):
 </section>
 
 <section id="s4">
-<h2><span class="sn">4</span>第二次请求：发出去的不一定等于模型看到的</h2>
+<h2><span class="sn">四、</span>第二次请求：发出去的不一定等于模型看到的</h2>
 <p>模型回了一个工具调用（比如「执行这条命令」），Codex 执行完，要把结果交回模型，于是发第二次请求。最直接的做法是把整个请求再发一遍，末尾加上这次的工具调用和执行结果。Codex 走 HTTP 时正是这样；走 WebSocket（一条一直开着的连接）时，可以只发新增的部分。</p>
 <p>走哪条：官方通道默认先走 WebSocket，出错且重试用尽后，这个会话剩下的请求全改走 HTTP；你在配置里自己加的第三方通道只走 HTTP。没有用户开关。<sup><a href="#e12">12</a></sup></p>
 <div class="ctrl">
@@ -187,8 +187,8 @@ for i,it in enumerate(json.load(sys.stdin)):
 </section>
 
 <section id="s5">
-<h2><span class="sn">5</span>会话中途变了，请求怎么变</h2>
-<p>最直接的做法是每次请求都重新拼一遍：重读 AGENTS.md、重新生成环境信息，替换掉旧的。这样请求的前半段会跟着变。Codex 不这么做。它把这些设置当成一组<b>状态</b>，每次请求前和上一次比：没变，什么都不加；变了，就在历史末尾追加一条更新，前面发过的内容一字不改。<sup><a href="#e14">14</a></sup> 第 1 节的会话配置（权限、协作模式、子代理说明）、AGENTS.md、环境信息都按这个规则走。追加的更新排在你的新消息前面。<sup><a href="#e14">14</a></sup></p>
+<h2><span class="sn">五、</span>会话中途变了，请求怎么变</h2>
+<p>最直接的做法是每次请求都重新拼一遍：重读 AGENTS.md、重新生成环境信息，替换掉旧的。这样请求的前半段会跟着变。Codex 不这么做。它把这些设置当成一组<b>状态</b>，每次请求前和上一次比：没变，什么都不加；变了，就在历史末尾追加一条更新，前面发过的内容一字不改。<sup><a href="#e14">14</a></sup> 第一节的会话配置（权限、协作模式、子代理说明）、AGENTS.md、环境信息都按这个规则走。追加的更新排在你的新消息前面。<sup><a href="#e14">14</a></sup></p>
 
 <h3>环境信息：变了才追加</h3>
 <p>当前目录、日期、时区、网络、文件权限，任何一项变了（比如会话跨过了午夜），下一次请求就多一条新的环境信息。<sup><a href="#e15">15</a></sup></p>
