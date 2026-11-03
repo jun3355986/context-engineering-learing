@@ -29,47 +29,50 @@
 <p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 对照 Claude Code 官方文档（2026-11-02 查阅）</p>
 </header>
 
-<p class="lede">压缩，是把前面的对话交给模型写成一段摘要，再用摘要换掉原来的对话。在一次 5 轮对话的实验里，压缩之后，第 1 轮那句「我叫 Drake，规则：不要改数据库 schema」的原文不见了，只剩摘要里转述的一句；命令的调用和输出、模型自己的回复也都没了。请求却只从 35,003 token 降到 33,965 token，因为留下来的两条长消息占了约 2 万。</p>
-<p class="note">第 3 章说过，旧的命令输出只有压缩或新开会话才能清掉，这一章接着讲压缩。token 仍是 Codex 的估算：UTF-8 字节数 ÷ 4，向上取整（见第 2 章）。实验用本机假服务器，每轮是一次 <code>codex exec</code> 或 <code>codex exec resume --last</code>，不联网。<sup><a href="#e1">1</a></sup></p>
+<p class="lede">压缩，是 Codex 把前面的对话交给模型写成一段摘要，再用这段摘要换掉原来的对话。在一次 5 轮对话的实验里，压缩之后，第 1 轮那句「我叫 Drake。规则：不要改数据库 schema」的原文不在请求里了，只剩摘要转述的一句；命令的调用和输出、模型的回复也都删掉了。可是请求只从 35,003 token 降到 33,965 token，少了约 1 千：这次占地方的是你自己贴的两段长日志，而压缩恰好保留你的原话。</p>
+<p class="note">这一章接着第 3 章：第 3 章说过，旧的命令输出要等压缩或新开会话，才会从请求里清掉。token 仍是 Codex 的估算：UTF-8 字节数 ÷ 4，向上取整（见第 2 章）。实验在本机起一个假的模型服务器，它按脚本回话，不联网；每一轮是一次单独的 <code>codex exec</code> 命令。<sup><a href="#e1">1</a></sup></p>
+<p>Codex 有两套压缩做法。用 ChatGPT 账号或 OpenAI API 密钥连 OpenAI 的服务（下文叫「官方通道」）时，服务器来压缩，叫<b>远端压缩</b>；连你在配置文件里写的别的服务地址（下文叫「自定义通道」）时，Codex 在本机压缩，叫<b>本地压缩</b>。实验的假服务器属于自定义通道，所以第二、三节讲本地压缩，第四节讲远端压缩哪里不同。</p>
 
 <section class="qs" id="qs">
 <h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
 <ol>
-<li id="q1">gpt-6.1-sol 的窗口（一次请求最多能装的 token 数）在官方模型目录里是 50 万。会话用到多少 token 时 Codex 会自动压缩？在一轮对话的哪个时刻压？你能自己让它压吗？<a class="jump" href="#a1">答案 ↓</a></li>
-<li id="q2">你第 1 轮说「我叫 Drake，不要改数据库 schema」，又聊了两轮，然后压缩了。压缩后的下一次请求里，这句原话还在吗？命令输出和模型自己的回复呢？<a class="jump" href="#a2">答案 ↓</a></li>
-<li id="q3">压缩会留下一部分你的原话。留哪几条、最多多少？一条 1.5 万 token 的长消息会怎样？<a class="jump" href="#a3">答案 ↓</a></li>
-<li id="q4">用 ChatGPT 账号登录、走 OpenAI 官方通道时，压缩还是同一套吗？你能看到摘要写了什么吗？<a class="jump" href="#a4">答案 ↓</a></li>
-<li id="q5">想让一条规则压缩后一定还在，写在哪最稳？Claude Code 又是怎么做的？<a class="jump" href="#a5">答案 ↓</a></li>
+<li id="q1">窗口是一次请求最多能装的 token 数，gpt-6.1-sol 在 Codex 从 OpenAI 下载的模型列表里是 50 万。会话用到多少 token 时，Codex 会自动压缩？在一轮对话（你发一句话，到模型给出最终回答）的哪个时刻压缩？你能自己让它压缩吗？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">你第 1 轮说「我叫 Drake。规则：不要改数据库 schema」，模型跑了一条命令；又聊了两轮，Codex 压缩了。压缩后的下一次请求里，第 1 轮这句原话还在吗？命令的输出、模型自己的回复呢？<a class="jump" href="#a2">答案 ↓</a></li>
+<li id="q3">压缩会保留你的一部分原话。保留哪几条、最多多少 token？你贴过一段 1.5 万 token 的日志，它会怎样？<a class="jump" href="#a3">答案 ↓</a></li>
+<li id="q4">走官方通道时，压缩还是这一套吗？你能看到摘要写了什么吗？<a class="jump" href="#a4">答案 ↓</a></li>
+<li id="q5">你想让一条规则在压缩后一定还在，写在哪里最稳？Claude Code 又是怎么做的？<a class="jump" href="#a5">答案 ↓</a></li>
 </ol>
 </section>
 
 <section id="s1">
-<h2><span class="sn">一、</span>什么时候压</h2>
-<p>最朴素的做法是等请求被拒了再压：服务器说「超出窗口」，就把历史压一压再发。问题是这一轮已经白发了一次，而压缩本身也要把整段历史发出去（第二节），这时它多半也装不下。所以 Codex 在窗口满之前留了余量。</p>
-<p><b>压缩线是窗口的 90%。</b>你在 <code>~/.codex/config.toml</code> 里写 <code>model_auto_compact_token_limit = 100000</code> 这样一行，可以把线压低，但不能高过 90%。<sup><a href="#e2">2</a></sup> 窗口看你连的是哪：</p>
+<h2><span class="sn">一、</span>什么时候压缩</h2>
+<p>最朴素的做法是等服务器拒绝了再压缩。这样有两个毛病：这次请求白发了；压缩本身也要发一次请求，把整段历史交给模型写摘要（第二节），历史已经超出窗口，这次请求多半也装不下。所以 Codex 在窗口满之前就压缩。</p>
+<p><b>Codex 拿窗口的 90% 当压缩线：用量到了这条线，就自动压缩。</b>你可以把压缩线调低：在 <code>~/.codex/config.toml</code> 里加一行 <code>model_auto_compact_token_limit = 100000</code>，压缩线就是 10 万 token。但调不过 90%：写得比 90% 高，Codex 仍按 90%。<sup><a href="#e2">2</a></sup></p>
+<p>90% 是多少，要看 Codex 认为 gpt-6.1-sol 的窗口多大。Codex 有两份模型资料：源码自带的模型表，跟着 CLI 一起装好；官方通道登录后从 OpenAI 服务器下载的模型列表，缓存在 <code>~/.codex/models_cache.json</code>。下载到列表时用列表里的数：</p>
 <div class="tablewrap"><table>
 <tr><th>条件</th><th>gpt-6.1-sol 的窗口</th><th>压缩线（90%）</th></tr>
-<tr><td>官方登录：Codex 从服务器拉到的模型目录（本机缓存 <code>~/.codex/models_cache.json</code>，2026-11-02 拉取）</td><td class="num">500,000</td><td class="num">450,000</td></tr>
-<tr><td>拉不到目录时，用源码自带的模型表（本章的假服务器实验就是这种）</td><td class="num">272,000</td><td class="num">244,800</td></tr>
+<tr><td>官方通道登录，用下载到的模型列表（2026-11-02 下载）</td><td class="num">500,000</td><td class="num">450,000</td></tr>
+<tr><td>下载不到列表时，用源码自带的模型表（本章的假服务器实验就是这种）</td><td class="num">272,000</td><td class="num">244,800</td></tr>
 </table></div>
-<p class="note">gpt-5.5 在两份表里都是 272,000。另有一条「窗口 95%」的线，因为压缩线最高只到 90%，95% 那条总是后到，平时碰不上。<sup><a href="#e3">3</a></sup></p>
-<p><b>「用了多少」主要看服务器报的数。</b>每次请求完成，服务器会报这次用了多少 token；Codex 拿上一次报的数，加上之后新写进历史、还没发出去的条目的估算，和压缩线比。<sup><a href="#e4">4</a></sup></p>
-<p><b>比的时机有两个。</b></p>
+<p class="note">gpt-5.5 在两份资料里都是 272,000。Codex 还算了一个「有效窗口」，是窗口的 95%（272,000 时是 258,400），用量到了它也会压缩。压缩线最高只到 90%，总比有效窗口先到，所以平时触发压缩的是压缩线。第 10、12 章还会用到有效窗口。<sup><a href="#e3">3</a></sup></p>
+<p><b>用了多少，主要看服务器报的数。</b>每次请求完成，服务器会报这次一共用了多少 token；Codex 拿上一次报的数，加上之后新写进历史的条目（按字节 ÷ 4 估算），和压缩线比较。<sup><a href="#e4">4</a></sup> 实验就利用了这一点：请求本身只有约 3.5 万 token，离压缩线很远；为了不真发几十万 token，实验让假服务器在第 3 轮报「用了 12 万 token」，又把压缩线配成 10 万，第 4 轮开始时用量就过了线。</p>
+<p><b>Codex 在两个时刻比较用量和压缩线。</b>先说清「一轮」：你发一句话，到模型给出最终回答，算一轮。一轮里模型可能调好几次工具，每调一次，Codex 把工具的输出写进历史，再发一次请求，模型接着干。</p>
 <ul>
-<li><b>一轮开始前</b>：你发了新消息，Codex 先比一次，到线就先压再处理你的消息。这时你的新消息还没写进历史，所以它不在压缩范围里，会原样留到压缩之后。源码里留了一条待办：这一步没把「即将写入的新消息」算进去，一条很大的新消息可能直接把请求撑过窗口。<sup><a href="#e5">5</a></sup></li>
-<li><b>一轮中间</b>：模型调了工具、还要接着干时，每一步之后比一次，到线就压，压完接着干。如果模型这一步已经说完了，就不压，等下一轮开始前再说。</li>
+<li><b>一轮开始前</b>：你发了新消息，Codex 先比较一次，过了压缩线就先压缩，再处理你的消息。这时你的新消息还没写进历史，不在压缩的范围里，压缩完原样接在最后。源码里留了一条待办，说这一步没把即将写入的新消息算进用量；一条很大的新消息，可能直接让请求超出窗口（超出以后怎样，见第 10 章）。<sup><a href="#e5">5</a></sup></li>
+<li><b>一轮中间</b>：模型调了工具、还要接着干时，每调一次工具，Codex 比较一次，过了线就压缩，压缩完模型接着干。如果模型这一步已经给出最终回答，Codex 这时不压缩，留到下一轮开始前再比较。</li>
 </ul>
-<p>此外还有两种情况会压：<sup><a href="#e6">6</a></sup></p>
+<p>另外还有三种情况会压缩：<sup><a href="#e6">6</a></sup></p>
 <ul>
-<li><b>手动</b>：在 Codex 的输入框里打 <code>/compact</code>。</li>
-<li><b>会话中途换模型</b>：模型表里每个模型有一个「压缩格式编号」（<code>comp_hash</code>），gpt-5.5 是 2911，gpt-6.1-sol 是 3000。编号不同，下一轮开始前先用旧模型压一次，所以这两个模型来回换，每换一次就压一次。编号相同、但新模型窗口更小且当前用量已过新模型的线，也会压。</li>
+<li><b>一轮结束后</b>：默认不压缩。在 <code>config.toml</code> 写 <code>model_post_turn_compact_threshold_percent = 40</code>，模型给出最终回答后，用量过了有效窗口的 40%（103,360 token）就压缩。第 12 章用它让压缩落在一件事做完时。</li>
+<li><b>手动</b>：在 Codex 的输入框里打 <code>/compact</code>。它不带参数，不能指定摘要写什么（第 12 章）。</li>
+<li><b>会话中途换模型</b>：模型表给每个模型一个编号 <code>comp_hash</code>，源码注释叫它「压缩兼容性哈希」，Codex 用它判断前后两个模型的压缩结果能不能通用。gpt-5.5 是 2911，gpt-6.1-sol 是 3000。换模型时编号不同，Codex 在下一轮开始前先用旧模型压缩一次，所以这两个模型来回换，每换一次就压缩一次。编号相同时，如果新模型的窗口比旧模型小、当前用量又已过新模型的压缩线，也会先压缩。</li>
 </ul>
 
-<h3>动手算：用了多少会压</h3>
-<p>选窗口和你的配置，拖「上一次请求用了多少」。按源码规则算，未实验；只有「272,000 + 配 100,000 + 用了 120,000」这一组做过实验。</p>
+<h3>动手算：用到多少会压缩</h3>
+<p>选窗口和你的配置，拖动滑块改「上一次请求用了多少」，看过没过压缩线。按源码规则算，没做实验；只有「窗口 272,000、配 100,000、用了 120,000」这一组做过实验，就是上面说的第 3 轮。</p>
 <div class="ctrl"><span>窗口：</span>
-  <button class="btn" data-w="500000" aria-pressed="true">500,000（官方目录）</button>
-  <button class="btn" data-w="272000" aria-pressed="false">272,000（源码自带表）</button>
+  <button class="btn" data-w="500000" aria-pressed="true">500,000（下载的模型列表）</button>
+  <button class="btn" data-w="272000" aria-pressed="false">272,000（源码自带的模型表）</button>
 </div>
 <div class="ctrl"><span>你配的 <code>model_auto_compact_token_limit</code>：</span>
   <button class="btn" data-cfg="0" aria-pressed="true">不配</button>
@@ -85,18 +88,28 @@
 
 <div class="answer" id="a1">
 <p class="qh">回答问题 1</p>
-<p class="qq">用到多少会自动压缩？什么时候压？能自己压吗？</p>
-<p>用到窗口的 90% 就压：官方登录时 gpt-6.1-sol 是 45 万 token（窗口 50 万）；你可以用 <code>model_auto_compact_token_limit</code> 把线调低，不能调过 90%。比的时机是一轮开始前和一轮中间模型还要接着干的时候。手动压就在输入框里打 <code>/compact</code>。</p>
+<p class="qq">用到多少会自动压缩？什么时候压缩？能自己压缩吗？</p>
+<p>用量到窗口的 90% 就自动压缩：官方通道登录时，gpt-6.1-sol 的窗口是 50 万，压缩线是 45 万 token。你可以在 <code>config.toml</code> 里用 <code>model_auto_compact_token_limit</code> 把压缩线调低，调不过 90%。Codex 在一轮开始前、以及一轮中间模型还要接着干时比较用量和压缩线；一轮结束后默认不压缩，可以在配置里打开。想自己压缩，在输入框里打 <code>/compact</code>。</p>
 </div>
 </section>
 
 <section id="s2">
-<h2><span class="sn">二、</span>压缩时发生了什么，压完剩什么</h2>
-<p>实验做了 5 轮：第 1 轮说名字和规则，模型跑一次 <code>seq 1 3000</code>（这次沙箱报了错，输出只有一行错误信息，不影响结论）；第 2 轮发一条约 1.5 万 token 的长消息；第 3 轮发一条约 6 千 token 的消息，假服务器报告「这次用了 12 万 token」。压缩线配成 10 万，所以第 4 轮一开始就压了。<sup><a href="#e1">1</a></sup></p>
-<p><b>压缩是一次单独的请求。</b>Codex 把整段历史原样发出去，末尾加一段 9 行的英文提示词，大意是「你在做一次上下文检查点压缩，给接手的模型写一份交接摘要：进度和关键决定、约束和用户偏好、剩下要做的、继续工作需要的数据」。实验里这次请求 140,656 字节，比上一次正常请求还大 644 字节。<sup><a href="#e7">7</a></sup> 模型回一段摘要，Codex 再拼出新历史。</p>
+<h2><span class="sn">二、</span>压缩时发生了什么，压缩完剩什么</h2>
+<p>先把实验的 5 轮列出来，这一节和下一节的数字都出自这次实验。括号里是这句话的 token 数。<sup><a href="#e1">1</a></sup></p>
+<div class="tablewrap"><table>
+<tr><th>轮</th><th>你说的话</th><th>这一轮发生了什么</th></tr>
+<tr><td>第 1 轮</td><td>「我叫 Drake。规则：不要改数据库 schema。先跑一下 seq 看看。」（23 token）</td><td>模型调用一次命令 <code>seq 1 3000</code>。本机的沙箱起不来，命令没跑成，输出只有一行报错（303 字节）</td></tr>
+<tr><td>第 2 轮</td><td>「下面是一大段日志：……」（15,060 token）</td><td>模型回一句话</td></tr>
+<tr><td>第 3 轮</td><td>「再补一段：……」（5,957 token）</td><td>模型回一句话；假服务器报「这次用了 12 万 token」</td></tr>
+<tr><td>第 4 轮</td><td>「继续。」</td><td>一开始就压缩：12 万过了配置的压缩线 10 万</td></tr>
+<tr><td>第 5 轮</td><td>「还记得我叫什么吗？」</td><td>新起一个进程，接着这个会话</td></tr>
+</table></div>
+<p>第 2–5 轮用 <code>codex exec resume --last</code> 接着上一轮。两段「日志」是凑长度的重复文字。</p>
+<p><b>压缩是一次单独的请求。</b>Codex 把整段历史原样发给模型，末尾加一段 9 行的英文提示词，大意是「给接手的模型写一份交接摘要：进度和关键决定、约束和用户偏好、剩下要做的事、继续需要的数据」。实验里这次请求 140,656 字节，比第 3 轮的正常请求（140,012 字节）还多 644 字节：多出来的是第 3 轮模型的回复（125 字节）和这段提示词（519 字节）。<sup><a href="#e7">7</a></sup> 模型回一段摘要，Codex 再用摘要拼出新的历史。</p>
+<p>这次压缩请求要是本身也超出窗口，服务器会拒绝它。本地压缩这时从历史最前面一条删起，删一条重发一次，直到发得出去。第 10 章第三节做了这个实验：最前面的是工具定义、系统提示词这些 Codex 自己放的条目，所以最先删掉的是它们，然后才轮到你的话。<sup><a href="#e16">16</a></sup></p>
 
 <h3>动手看：压缩前后的请求</h3>
-<p>三次请求都是实验抓到的（<code>input</code> 里每一条的 JSON 字节数）。点按钮切换，划线的是这次请求里已经没有的。</p>
+<p>三次请求都是实验抓到的。每行是请求 <code>input</code> 里的一条，数字是它的 JSON 字节数（含引号等格式字符，比正文略大）。划线的是这次请求里已经没有的条目。</p>
 <div class="ctrl">
   <button class="btn" data-st="before" aria-pressed="true">第 3 轮：压缩前</button>
   <button class="btn" data-st="compact" aria-pressed="false">压缩请求</button>
@@ -106,37 +119,46 @@
 <div class="legend" id="lg"></div>
 <div class="panel" id="rowst"></div>
 
-<p>压缩后的请求从前往后是：</p>
+<p>压缩后，第 4 轮的请求有 10 条，从前往后是：</p>
 <ol>
-<li><b>工具定义、系统提示词</b>：照旧放最前。</li>
-<li><b>你的原话</b>：从最新往前挑，最多约 2 万 token（第三节）。这次留下第 2 轮（被截短）和第 3 轮，第 1 轮没留。</li>
-<li><b>Codex 自己写的那几条</b>：技能目录、权限、子代理说明、AGENTS.md 和环境信息。它们不是被「保留」下来的，是按当前设置重新生成、插回去的，位置在最后一条保留的原话前面。所以第 2 轮被夹在了它们前面。<sup><a href="#e8">8</a></sup></li>
-<li><b>摘要</b>：作为一条「用户」消息放在末尾，前面拼一段固定的英文说明，大意是「另一个模型做过这件事，下面是它的思考摘要，在它的基础上继续，别重复」。<sup><a href="#e9">9</a></sup></li>
-<li><b>你这一轮的新消息</b>：第 4 轮「继续」，压缩时还没写进历史，原样接在最后。</li>
+<li><b>工具定义、系统提示词</b>：照旧放在最前面。</li>
+<li><b>第 2 轮你的话</b>：截短后保留（截法见第三节）。</li>
+<li><b>Codex 自己写的 4 条</b>：技能目录、权限和协作模式（一条），子代理的两条说明，AGENTS.md 和环境信息（一条）。它们不是从旧历史里保留的，是 Codex 按当前设置重新生成、插在最后一条保留的原话（第 3 轮）前面，所以第 2 轮排到了这 4 条前面。<sup><a href="#e8">8</a></sup></li>
+<li><b>第 3 轮你的话</b>：整条保留。</li>
+<li><b>摘要</b>：作为一条「用户」消息，前面拼一段固定的英文说明，大意是「另一个模型做过这件事，下面是它的摘要，在此基础上继续」。<sup><a href="#e9">9</a></sup></li>
+<li><b>第 4 轮你的新消息「继续。」</b>：压缩时还没写进历史，原样接在最后。</li>
 </ol>
-<p>不见了的有：第 1 轮原话、命令的调用和输出、三条模型回复。它们只在摘要里留下转述，转述成什么样由写摘要的模型决定。这次摘要是假服务器写死的一句「用户叫 Drake；规则是不要改数据库 schema；已跑过一次 seq 命令」，真实模型会写多长、漏不漏，这个实验测不出来。</p>
-<p><b>原文还在本机存档里。</b>会话存档（<code>~/.codex/sessions/</code> 下的 <code>.jsonl</code>）不删旧记录，只在后面追加一条「压缩」记录，里面存着新历史。第 5 轮是新起的进程，恢复会话时用的就是这份新历史，第 1 轮没有回来。<sup><a href="#e10">10</a></sup> 压完 Codex 还会提示一句：长会话和多次压缩会让模型变得不那么准，尽量新开会话。<sup><a href="#e11">11</a></sup></p>
+<p>第 4 轮的请求和压缩请求比，少了 6 条：第 1 轮你的原话、命令的调用和输出、三条模型回复。它们只在摘要里留下转述。这次的摘要是假服务器写死的一句「用户叫 Drake；规则是不要改数据库 schema；已跑过一次 seq 命令」；真实模型会不会漏掉规则，这个实验测不出来。</p>
+<p><b>为什么请求只少了约 1 千 token。</b>和第 3 轮的请求比：删掉的 5 条（第 1 轮原话、命令调用和输出、两条回复）一共只有 980 字节，因为命令没跑成，输出只有一行报错；第 2 轮截短，少了 3,969 字节；新加摘要 639 字节、第 4 轮的话 156 字节。合起来少 4,154 字节。占地方的是两段日志，而压缩保留原话。命令正常跑完的话，<code>seq 1 3000</code> 约 1.4 万字节的输出也会整条删掉【按规则推，没实验】。</p>
+<p><b>原文还在本机存档里，模型看不到。</b>压缩换掉的是内存里的会话历史；磁盘上的会话存档（<code>~/.codex/sessions/</code> 下的 <code>.jsonl</code>，第 3 章分过这两处）不删旧记录，只在后面追加一条压缩记录 <code>compacted</code>，里面存着新历史。实验里第 1 轮原文在存档第 12 行，压缩记录在第 49 行。第 5 轮新起进程，从存档恢复时用的是新历史，第 1 轮的话没有回来。<sup><a href="#e10">10</a></sup> 想让压缩前的对话回到请求里，可以回退到压缩那一轮之前（第 8 章第四节）。<sup><a href="#e22">22</a></sup></p>
+<p>压缩完，Codex 会显示一句提示：长会话和多次压缩会让模型变得不那么准，尽量新开会话。<sup><a href="#e11">11</a></sup></p>
 
 <div class="answer" id="a2">
 <p class="qh">回答问题 2</p>
 <p class="qq">压缩后，第 1 轮那句原话、命令输出、模型回复还在吗？</p>
-<p>都不在了（本地压缩的实验）。第 1 轮只剩摘要里的转述；命令的调用和输出、模型回复全部删掉。还在的是最近的两条原话、重新生成的 AGENTS.md 和环境信息、摘要，以及你这一轮的新消息。原文只留在本机的会话存档里，模型看不到。</p>
+<p>都不在了（本地压缩的实验）。第 1 轮的话只剩摘要里的转述；命令的调用和输出、模型回复全部删掉。还在的是：工具定义和系统提示词，最近两轮的原话（一条截短），重新生成的 AGENTS.md 和环境信息，摘要，第 4 轮的新消息。原文只留在本机存档里，模型看不到。</p>
 </div>
 </section>
 
 <section id="s3">
-<h2><span class="sn">三、</span>你的原话留多少</h2>
-<p>只靠摘要，风险是模型把你的要求转述歪了。全留原话，又占地方。Codex 的做法是<b>只留你说的话，从最新一条往前留，留满约 2 万 token 为止</b>。<sup><a href="#e12">12</a></sup></p>
+<h2><span class="sn">三、</span>你的原话保留多少</h2>
+<p>只留摘要，风险是模型把你的要求转述歪了；原话全部保留，又太占地方。Codex 取中间：<b>只保留你亲手发的消息，从最新一条往前，保留满约 2 万 token 为止</b>。<sup><a href="#e12">12</a></sup></p>
 <ul>
-<li><b>只算你亲手发的消息。</b>历史里还有几条「用户」角色的条目是 Codex 自己写的，比如 AGENTS.md、环境信息、上一次压缩的摘要，这些不算。模型的回复、工具调用和输出也不算。</li>
-<li><b>从新到旧，装得下就整条留。</b>每条按「字节 ÷ 4」估算 token，从预算 20,000 里扣。</li>
-<li><b>装不下的那条截短后留下，然后停。</b>截法和第 3 章一样：留开头和结尾，中间换成 <code>…N tokens truncated…</code>。消息里的图片在这一步丢掉。更早的消息一条都不再看。</li>
+<li><b>只算你亲手发的消息。</b>Codex 自己写的「用户」条目（AGENTS.md 和环境信息、上次压缩的摘要）不算，模型回复、工具调用和输出也不算。</li>
+<li><b>从新到旧，装得下就整条保留。</b>每条按「字节 ÷ 4」估算 token，从 20,000 的预算里扣。</li>
+<li><b>装不下的那条，截短后保留，然后停下。</b>截短的办法和第 3 章一样：保留开头和结尾，中间换成一行 <code>…N tokens truncated…</code>，意思是「这里截断丢掉了 N token」。更早的消息一条都不再看。</li>
+<li><b>保留下来的消息里有图片的，图片都去掉，只留文字。</b>整条装得下也一样。</li>
 </ul>
-<p>实验对上了这个规则：第 3 轮 5,957 token，整条留下，预算剩 14,043；第 2 轮 15,060 token 装不下，被截成开头 28,086 字节 + 结尾 28,086 字节，中间标记 <code>…1017 tokens truncated…</code>，正好是 15,060 − 14,043；第 1 轮只有 23 token，但已经轮不到了。<sup><a href="#e12">12</a></sup></p>
-<p>所以压缩省多少，要看你说过的话有多长。这次两条长消息占了约 2 万，压完只少了约 1 千 token。按规则算，压缩后的请求至少有：第 2 章那 13,410 token 左右的固定部分，加上最多约 2 万的原话，再加摘要。</p>
+<p>拿实验对一下。第 3 轮最新，从它算起：</p>
+<ul>
+<li>第 3 轮 5,957 token，装得下，整条保留，预算剩 20,000 − 5,957 = 14,043。</li>
+<li>第 2 轮 15,060 token，超过剩下的 14,043，截短：开头留 28,086 字节，结尾留 28,086 字节，合起来 56,172 字节，正好 14,043 token；中间的标记是 <code>…1017 tokens truncated…</code>，1,017 = 15,060 − 14,043。预算用完，停下。</li>
+<li>第 1 轮只有 23 token，但已经轮不到它了，只剩摘要里的转述。</li>
+</ul>
+<p>所以压缩后的请求多大，主要看你说过的话多长。这次 Codex 固定放的条目（工具定义、系统提示词和第二节那 4 条）是 54,696 字节，约 13,674 token；原话正好用满 2 万预算；加上摘要和第 4 轮的话，就是 33,965 token。你的话再长，压缩后也大致是这个数【按规则推】。</p>
 
-<h3>动手算：留下哪几条</h3>
-<p>拖三条消息的长短（第 3 条最新），看哪条整条留、哪条被截、哪条只剩摘要。按源码规则算；「实验」按钮是实测的三条。</p>
+<h3>动手算：保留哪几条</h3>
+<p>拖动三条消息的长短（第 3 条最新），看哪条整条保留、哪条截短、哪条只剩摘要。按源码规则算；「实验」按钮是实验里的三轮。远端压缩（第四节）也按这个规则保留原话，只是预算 64,000。</p>
 <div class="ctrl">
   <button class="btn" data-pre="exp" aria-pressed="true">实验：23 / 15,060 / 5,957</button>
   <button class="btn" data-pre="short" aria-pressed="false">都很短</button>
@@ -144,7 +166,7 @@
 </div>
 <div class="ctrl"><span>预算：</span>
   <button class="btn" data-bud="20000" aria-pressed="true">20,000（本地压缩）</button>
-  <button class="btn" data-bud="64000" aria-pressed="false">64,000（官方通道，第四节）</button>
+  <button class="btn" data-bud="64000" aria-pressed="false">64,000（远端压缩）</button>
 </div>
 <div class="ctrl"><label for="m1s">第 1 条 <b id="m1v"></b> token</label><input type="range" id="m1s" min="0" max="30000" step="1" value="23"></div>
 <div class="ctrl"><label for="m2s">第 2 条 <b id="m2v"></b> token</label><input type="range" id="m2s" min="0" max="30000" step="1" value="15060"></div>
@@ -153,8 +175,8 @@
 
 <div class="answer" id="a3">
 <p class="qh">回答问题 3</p>
-<p class="qq">留哪几条原话、最多多少？1.5 万 token 的长消息会怎样？</p>
-<p>只留你亲手发的消息，从最新往前，最多约 2 万 token（本地压缩）。装不下的那条留开头和结尾、中间截掉，然后就停，更早的全靠摘要。1.5 万 token 的消息如果是最新的，整条留下；如果前面已经用掉一部分预算（实验里用掉 5,957），它被截短，再往前的消息哪怕只有 23 token 也留不下。</p>
+<p class="qq">保留哪几条原话、最多多少？贴过的 1.5 万 token 日志会怎样？</p>
+<p>只保留你亲手发的消息，从最新往前，最多约 2 万 token（远端压缩 6.4 万）。装不下的那条保留开头和结尾、中间截断，然后停下，更早的全靠摘要。1.5 万 token 的日志如果是最新一条，整条保留；如果后面的话先用掉了一部分预算（实验里第 3 轮用掉 5,957），它就截短，再往前的话哪怕只有 23 token 也保留不了。</p>
 </div>
 
 <div class="source">
@@ -168,16 +190,16 @@ for message in user_messages.iter().rev() {           // 从最新一条往前
         break;
     }
     let tokens = approx_token_count(&amp;message.message); // 字节 ÷ 4
-    // 装得下、并且全是文字，才整条留
+    // 装得下、并且全是文字，才原样整条保留
     let preserve_content = tokens &lt;= remaining
         &amp;&amp; content.iter().all(|part| matches!(part, ContentItem::InputText { .. }));
     if !preserve_content {
-        // 只取文字部分（图片丢掉），截到剩下的预算：留头留尾
+        // 只取文字部分（图片去掉），截短到剩下的预算：保留开头和结尾
         set_annotated_content(&amp;mut item, truncate_annotated_text(parts, remaining));
     }
     selected_messages.push(item);                     // 先放进去
     if tokens &gt; remaining {
-        break;                                        // 截过的这条是最后一条
+        break;                                        // 截短的这条是最后一条
     }
     remaining = remaining.saturating_sub(tokens);
 }
@@ -187,72 +209,71 @@ selected_messages.reverse();                          // 倒回时间顺序</pre
 
 <section id="s4">
 <h2><span class="sn">四、</span>官方通道：摘要是加密的</h2>
-<p>上面两节是<b>本地压缩</b>：摘要由模型按 Codex 的提示词写成文字，Codex 自己拼新历史。用 ChatGPT 账号或 OpenAI API 密钥连官方服务（还有 Azure）时，走的是另一套<b>远端压缩</b>；连自己配的服务地址（比如本章的假服务器），才走本地压缩。<sup><a href="#e13">13</a></sup></p>
-<p>远端压缩有三处不同：<sup><a href="#e14">14</a></sup><sup><a href="#e15">15</a></sup></p>
+<p>第二、三节讲的都是本地压缩：摘要是模型按 Codex 的提示词写出来的文字，新历史由 Codex 在本机拼。走官方通道时（连 Azure 上的 OpenAI 服务也一样），Codex 用远端压缩。<sup><a href="#e13">13</a></sup> 这一节只读了源码，没做实验：假服务器给不出加密摘要，连官方服务要花额度。</p>
+<p>远端压缩和本地压缩有三处不同：<sup><a href="#e14">14</a></sup><sup><a href="#e15">15</a></sup></p>
 <ul>
-<li><b>摘要你看不到。</b>Codex 仍把整段历史发出去，末尾不加提示词，而是加一条 <code>{"type":"compaction_trigger"}</code>，意思是「请压缩」。服务器回一条 <code>compaction</code> 条目，内容在 <code>encrypted_content</code> 字段里，是加密的。Codex 原样存下、下次原样发回，它和你都读不到摘要写了什么。你在 <code>config.toml</code> 里配的 <code>compact_prompt</code>（换掉那 9 行提示词）也只对本地压缩有效。</li>
-<li><b>原话留得多。</b>预算是 64,000 token，还是从新到旧、装不下的截短后停。能留的除了你的消息，还有钩子（hook，你配置的、在特定时机自动运行的脚本）注入的提示，以及别的代理发来的消息（每条不超过 1 万 token，子代理交回的最终结果不留）。</li>
-<li><b>工具输出照样不留。</b>有一个保留工具输出的开关 <code>retain_client_tool_outputs</code>，还在开发中，默认关闭。另外，如果压缩前历史已经超过窗口，Codex 会从最新往前，把工具输出换成一句「Output exceeded the available model context and was truncated」，直到装得下再发。</li>
+<li><b>摘要你看不到。</b>Codex 仍发整段历史，末尾不加那 9 行提示词，而是加一条 <code>{"type":"compaction_trigger"}</code>（请压缩）。服务器回一条 <code>compaction</code> 条目，摘要在 <code>encrypted_content</code> 字段里，是加密的。Codex 原样存下、之后原样发回，Codex 和你都读不到。服务器用什么提示词、摘要多长，也看不到【待核实】。</li>
+<li><b>原话保留得多。</b>预算是 64,000 token（本地压缩是 20,000），规则一样：从新到旧，装不下的截短后停下。除了你的消息，还保留两类：钩子注入的提示（钩子是你在配置里写的脚本，在特定时机自动运行，第五节讲），以及别的代理发来的消息（多个代理协作时互相发的消息，见第 7 章）。别的代理发来的消息，超过 1 万 token 的那条不保留，子代理交回的最终结果也不保留。</li>
+<li><b>工具输出照样不保留。</b>有一个保留工具输出的开关 <code>retain_client_tool_outputs</code>，还在开发中，默认关。</li>
 </ul>
-<p>本地压缩遇到「压缩请求本身超出窗口」时，做法是删掉历史最前面的一条再试，一直删到装得下。<sup><a href="#e16">16</a></sup></p>
-<p class="note">远端压缩只读了源码，没做实验：假服务器给不出真的加密摘要，连官方服务又要花额度。服务器那边用什么提示词、摘要多长，都看不到【待核实】。</p>
+<p>历史已经超出窗口时，两边的办法也不同。本地压缩等服务器拒绝以后，从历史最前面一条删起（第二节）。远端压缩在发之前先估算：超出了，就从最新一条往前，把工具输出换成一句「Output exceeded the available model context and was truncated」，碰到不是工具输出的条目就停；换完仍超出，也照样发。<sup><a href="#e15">15</a></sup></p>
 
 <div class="answer" id="a4">
 <p class="qh">回答问题 4</p>
 <p class="qq">官方通道的压缩还是同一套吗？能看到摘要吗？</p>
-<p>不是同一套。官方通道走远端压缩：服务器返回一段加密的摘要，Codex 和你都看不到内容；你的原话留得更多（64,000 token，本地是 20,000）；工具输出和模型回复同样不留。只有连自己配的服务地址时，才走本地压缩、摘要是明文。</p>
+<p>不是同一套。官方通道走远端压缩：服务器返回加密的摘要，Codex 和你都看不到；原话保留得更多（64,000 token，本地压缩 20,000）；工具输出和模型回复同样不保留。连自定义通道（比如本章的假服务器）时才走本地压缩，摘要是明文。</p>
 </div>
 </section>
 
 <section id="s5">
-<h2><span class="sn">五、</span>让一句话压缩后还在</h2>
-<p>从上面几节能推出：压缩后一定还在的，是 Codex 每次重新生成的那几条，以及最近的原话。所以办法按稳的程度排：</p>
+<h2><span class="sn">五、</span>让一条规则压缩后还在</h2>
+<p>前面几节说明，压缩后一定还在的有两类：Codex 每次重新生成、插回去的条目（AGENTS.md 和环境信息等），以及最近的原话。所以办法按稳的程度排：</p>
 <ol>
-<li><b>写进 AGENTS.md。</b>它每次压缩后都被插回去（实验里那条 752 字节的就是），不靠摘要。第 2 章讲过：项目里的 AGENTS.md 一个会话只读一次，会话中途改了文件，插回去的是会话开始时读到的版本【推测：按第 2 章的源码结论，压缩时没单独验证】。<sup><a href="#e17">17</a></sup></li>
-<li><b>快压缩时再说一遍。</b>最近的原话优先保留。反过来，很长的消息（贴日志、贴代码）会把预算占满，挤掉更早的短要求。</li>
-<li><b>用钩子在压缩后补一段。</b>在钩子配置文件 <code>hooks.json</code>（放在 <code>~/.codex/</code> 或项目的 <code>.codex/</code> 下）里配一个 <code>SessionStart</code> 钩子，匹配来源 <code>compact</code>，它的输出会在压缩后加进上下文。<code>PreCompact</code>、<code>PostCompact</code> 两个钩子只能叫停压缩，改不了摘要。【读了源码，没做实验】<sup><a href="#e18">18</a></sup></li>
-<li><b>本地压缩可以换提示词。</b>在 <code>config.toml</code> 写 <code>compact_prompt = "……"</code>，或用 <code>experimental_compact_prompt_file</code> 指向一个文件，比如要求「原样抄下用户给过的所有规则」。官方通道无效（第四节）。<sup><a href="#e19">19</a></sup></li>
+<li><b>写进 AGENTS.md。</b>比如在项目根目录的 <code>AGENTS.md</code> 写一行「不要改数据库 schema」。每次压缩后它都重新插回去，不靠摘要（实验里那条 752 字节）。插回去的是 Codex 手里那份，压缩时不重读磁盘：项目 AGENTS.md 一个会话只读一次（第 2 章），用 <code>resume</code> 新起进程时才重读（第 8 章）；会话中途改了文件，压缩后插回的仍是旧版本【读了源码，没做实验】。<sup><a href="#e17">17</a></sup></li>
+<li><b>快压缩时再说一遍。</b>最近的原话优先保留。反过来，贴日志、贴代码会占满 2 万的预算，把更早的短要求挤出去，实验里第 1 轮的规则就是这样没的。第 12 章量过：规则只写在第 1 句话里，后面贴的日志超过约 8 万字节（2 万 token），压缩后规则就不在请求里了。</li>
+<li><b>用钩子在压缩后补一段。</b>钩子写在 <code>~/.codex/</code> 或项目 <code>.codex/</code> 目录下的 <code>hooks.json</code> 里。配一个 <code>SessionStart</code> 钩子，匹配来源 <code>compact</code>，它的输出会在压缩后加进上下文。<code>PreCompact</code>、<code>PostCompact</code> 两个钩子只能叫停压缩，改不了摘要【读了源码，没做实验】。<sup><a href="#e18">18</a></sup></li>
+<li><b>本地压缩可以换提示词。</b>在 <code>config.toml</code> 里写 <code>compact_prompt = "……"</code>，或写 <code>experimental_compact_prompt_file = "文件路径"</code>，换掉第二节说的那 9 行提示词，比如要求「原样抄下用户给过的所有规则」。走官方通道时无效（第四节）。<sup><a href="#e19">19</a></sup></li>
 </ol>
 
 <div class="compare">
 <h3>对照：Claude Code 重新读文件</h3>
-<p>据官方文档（2026-11-02 查阅），Claude Code 压缩也是把对话写成摘要，文档只说摘要会保留「你的请求和关键代码片段」，没说保留原话。差别在压缩后补回什么：<sup><a href="#e20">20</a></sup></p>
+<p>据官方文档（2026-11-02 查阅），Claude Code 压缩也是写摘要，文档只说保留「你的请求和关键代码片段」，没说保留原话。差别在压缩后补回什么：<sup><a href="#e20">20</a></sup></p>
 <ul>
-<li><b>从磁盘重读</b>：项目根目录的 CLAUDE.md、不带 <code>paths:</code> 的规则、自动记忆、计划模式写的计划。带 <code>paths:</code> 的规则和子目录里的 CLAUDE.md 要等再碰到相关文件才重新加载。</li>
+<li><b>从磁盘重读</b>：项目根目录的 CLAUDE.md、不带 <code>paths:</code> 的规则、自动记忆、计划模式写的计划。带 <code>paths:</code> 的规则和子目录里的 CLAUDE.md，要等 Claude 再碰到相关文件才重新加载。</li>
 <li><b>重读最近的文件</b>：本会话读过或改过的文件，按最近修改挑最多 5 个重新读进来；超过 5,000 token 的只给路径。</li>
-<li><b>用过的技能</b>：正文重新放回，每个最多 5,000 token、合计 25,000，超了先丢最早用的。</li>
-<li><b>你能插手</b>：输入框里打 <code>/compact focus on the auth bug fix</code>，指定摘要重点；或在 CLAUDE.md 里写一节「Compact Instructions」。</li>
-<li><b>什么时候压</b>：不设置时，原生 100 万窗口的模型大约在 96.7 万 token 压，其他多数情况到模型窗口上限才压；输入框里打 <code>/autocompact 500k</code> 可以提前。<sup><a href="#e21">21</a></sup></li>
+<li><b>用过的技能</b>：正文放回，每个最多 5,000 token、合计 25,000。</li>
+<li><b>你能指定摘要的重点</b>：在输入框里打 <code>/compact focus on the auth bug fix</code>；或在 CLAUDE.md 里写一节「Compact Instructions」。</li>
+<li><b>什么时候压缩</b>：不设置时，窗口本身就是 100 万的模型约在 96.7 万 token 压缩，其他多数情况到窗口上限才压缩；输入框里打 <code>/autocompact 500k</code> 可以提前。<sup><a href="#e21">21</a></sup></li>
 </ul>
-<p>一句话：Codex 留你的原话，不管文件；Claude Code 不承诺留原话，但会把最近的文件和规则文件重新读回来。</p>
+<p>简单说：Codex 保留你的原话、插回 AGENTS.md，但不重读你的代码文件；Claude Code 不承诺保留原话，但会把最近的文件和规则文件重新读回来。</p>
 </div>
 
 <div class="answer" id="a5">
 <p class="qh">回答问题 5</p>
-<p class="qq">想让一条规则压缩后一定还在，写在哪最稳？Claude Code 呢？</p>
-<p>Codex 里写进 AGENTS.md 最稳：每次压缩后都会插回去，不靠摘要。其次是快压缩时再说一遍，或配一个匹配 <code>compact</code> 的 <code>SessionStart</code> 钩子在压缩后补进去。Claude Code 里写进项目根目录的 CLAUDE.md，压缩后会从磁盘重读；带 <code>paths:</code> 的规则不会立刻回来。</p>
+<p class="qq">想让一条规则压缩后一定还在，写在哪里最稳？Claude Code 呢？</p>
+<p>Codex 里写进 AGENTS.md 最稳：每次压缩后都插回去，不靠摘要。其次是快压缩时再说一遍，或配一个匹配 <code>compact</code> 的 <code>SessionStart</code> 钩子。Claude Code 里写进项目根目录的 CLAUDE.md，压缩后从磁盘重读；带 <code>paths:</code> 的规则不会马上回来。</p>
 </div>
 </section>
 
 <section id="notes">
 <h2>设计笔记</h2>
 <ul>
-<li><b>为什么只留你的原话。</b>你的要求换个说法可能就变了意思，而且没处再找；文件和命令输出，模型需要时可以重读、重跑。代价是压缩后模型手里没有精确的代码和输出，得重新读。代码里没写理由【推测】。</li>
-<li><b>为什么截短最后一条、不跳过它去找更早的短消息。</b>跳过会让留下的原话不连续，「先说 A、再说 C」，中间的 B 没了。代价是那条可能被截在要紧处【推测】。</li>
-<li><b>本地 2 万、远端 6.4 万。</b>本地压完还要把系统提示词、AGENTS.md 等插回同一份历史，留太多压完就又贴着线，可能一轮接一轮地压【推测】。远端为什么敢留 6.4 万，源码看不出来。</li>
-<li><b>加密摘要的取舍。</b>摘要由服务器生成、只有服务器能读，可能带着纯文字表达不了的模型内部状态；代价是你没法检查它漏了什么【推测】。</li>
-<li><b>别的做法。</b>第三版资料里提到，有的 agent 留的是「最近一段连续的历史」，连工具输出一起留，切点要避开把工具调用和它的输出拆开。本机没有那些 agent 的源码，没核对【待核实】。</li>
+<li><b>为什么只保留你的原话。</b>你的要求换个说法，意思可能就变了，而且没处再找；文件和命令输出，模型需要时可以重读、重跑。代价是压缩后模型手里没有精确的代码和输出，得重新读。代码里没写理由【推测】。</li>
+<li><b>为什么截短最后一条，不跳过它去找更早的短消息。</b>跳过会让保留的原话不连续：你先说 A、再说 B、最后说 C，跳过 B 就只剩 A 和 C。代价是那条可能正好在要紧处截断【推测】。</li>
+<li><b>本地 2 万、远端 6.4 万。</b>本地压缩完，还要把系统提示词、AGENTS.md 等插回同一份历史；原话留太多，压缩完又贴着压缩线，可能一轮接一轮地压缩【推测】。远端为什么敢留 6.4 万，源码看不出来。</li>
+<li><b>加密摘要的取舍。</b>摘要由服务器生成、只有服务器能读，里面可能带着文字表达不了的模型内部状态；代价是你没法检查它漏了什么【推测】。</li>
+<li><b>别的做法。</b>据别的 agent 的资料，有的 agent 保留的是「最近一段连续的历史」，连工具输出一起保留，切的位置要避开把工具调用和它的输出拆开。本机没有那些 agent 的源码，没核对【待核实】。</li>
 </ul>
 </section>
 
 <section id="summary">
 <h2>小结</h2>
 <ol>
-<li>用到窗口的 90% 自动压缩（官方登录时 gpt-6.1-sol 是 45 万 token），时机是一轮开始前和一轮中间；可以配置调低，手动压打 <code>/compact</code>。</li>
-<li>压缩后，较早的原话、命令调用和输出、模型回复都不在了，只剩摘要里的转述；AGENTS.md 和环境信息会重新插回，原文只留在本机存档。</li>
-<li>本地压缩只留你亲手发的消息，从最新往前最多约 2 万 token，装不下的那条截短后停。</li>
-<li>官方通道走远端压缩：摘要加密、你看不到，原话留 6.4 万 token，工具输出同样不留。</li>
-<li>要一条规则压缩后还在，写进 AGENTS.md 最稳；Claude Code 则是写进项目根目录的 CLAUDE.md，压缩后会重读。</li>
+<li>用量到窗口的 90% 自动压缩（官方通道登录时，gpt-6.1-sol 是 45 万 token）；Codex 在一轮开始前和一轮中间比较；压缩线可以在配置里调低，一轮结束后压缩要另外打开，手动压缩打 <code>/compact</code>。</li>
+<li>压缩后，较早的原话、命令的调用和输出、模型的回复都不在请求里了，只剩摘要里的转述；AGENTS.md 和环境信息重新插回；原文只留在本机存档里。</li>
+<li>本地压缩只保留你亲手发的消息，从最新往前最多约 2 万 token，装不下的那条截短后停下；贴一大段日志，会把更早的话挤掉。</li>
+<li>官方通道走远端压缩：摘要加密、你看不到，原话保留 6.4 万 token，工具输出同样不保留。</li>
+<li>要一条规则压缩后还在，Codex 里写进 AGENTS.md 最稳；Claude Code 里写进项目根目录的 CLAUDE.md，压缩后会重读。</li>
 </ol>
 </section>
 
@@ -261,27 +282,28 @@ selected_messages.reverse();                          // 倒回时间顺序</pre
 <p>Codex 版本：源码 <code>76ed3b4</code>，CLI <code>0.165.0</code>。源码路径相对 <code>codex-rs/</code>；实验目录是 <code>自学单元/U03-实验/out/default/</code>，脚本是 <code>自学单元/U03-实验/u03_compact.py</code>。</p>
 <div class="tablewrap"><table>
 <tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
-<tr id="e1"><td>1</td><td>实验条件：本机假服务器（HTTP，自定义通道 <code>mock</code>），全新临时 <code>CODEX_HOME</code>，<code>--sandbox read-only</code>，模型 gpt-6.1-sol、思考级别 low；<code>model_auto_compact_token_limit = 100000</code>，第 3 轮回复报告用量 120,000；5 轮各一个进程；2026-11-02 运行。第 1 轮的 <code>seq</code> 在沙箱里报错，工具输出 303 字节</td><td><code>u03_compact.py</code>；<code>runs.json</code>、<code>server-seen.json</code>、<code>req-02-after-tool-t1.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e2"><td>2</td><td>压缩线 = min(配置值, 窗口 × 90%)；配置项 <code>model_auto_compact_token_limit</code> 覆盖模型表里的值</td><td>源码 <code>protocol/src/openai_models.rs:529-540</code>、<code>models-manager/src/model_info.rs:29-31</code>、<code>core/src/session/context_window.rs:60-81,103-110</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e3"><td>3</td><td>gpt-6.1-sol 窗口：源码自带表 272,000；本机模型目录缓存 500,000（2026-11-02 拉取）。管理器先装自带表，再用服务器目录覆盖。gpt-5.5 自带表 272,000。95% 线：<code>effective_context_window_percent</code> 默认 95</td><td><code>models-manager/models.json</code>；<code>~/.codex/models_cache.json</code>；源码 <code>models-manager/src/manager.rs:285-352</code>、<code>protocol/src/openai_models.rs:393-395</code>、<code>core/src/session/context_window.rs:83-86</code></td><td><span class="tag lvl-m">中</span> 官方登录时用哪份，读了源码没实测</td></tr>
+<tr id="e1"><td>1</td><td>实验条件：本机假服务器（HTTP，自定义通道 <code>mock</code>），全新临时 <code>CODEX_HOME</code>，<code>--sandbox read-only</code>，模型 gpt-6.1-sol、思考级别 low；<code>model_auto_compact_token_limit = 100000</code>，第 3 轮回复报告用量 120,000；5 轮各一个进程（第 2–5 轮 <code>exec resume --last</code>）；2026-11-02 运行。第 1 轮的 <code>seq</code> 在沙箱里报错，工具输出 303 字节。三条消息正文：91 / 60,240 / 23,828 字节，估算 23 / 15,060 / 5,957 token</td><td><code>u03_compact.py</code>；<code>runs.json</code>、<code>server-seen.json</code>、<code>req-02-after-tool-t1.json</code>、<code>req-04-user-t3.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e2"><td>2</td><td>压缩线 = min(配置值, 窗口 × 90%)；配置项 <code>model_auto_compact_token_limit</code> 覆盖模型表里的值（按默认的计数范围 <code>Total</code>）</td><td>源码 <code>protocol/src/openai_models.rs:529-540</code>、<code>models-manager/src/model_info.rs:29-31</code>、<code>core/src/session/context_window.rs:60-81,103-110</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e3"><td>3</td><td>gpt-6.1-sol 窗口：源码自带表 272,000；本机模型列表缓存 500,000（2026-11-02 下载）。管理器先装自带表，再用服务器列表覆盖。gpt-5.5 自带表 272,000。有效窗口：<code>effective_context_window_percent</code> 默认 95，用量到它也强制压缩</td><td><code>models-manager/models.json</code>；<code>~/.codex/models_cache.json</code>；源码 <code>models-manager/src/manager.rs:285-352</code>、<code>protocol/src/openai_models.rs:393-395</code>、<code>core/src/session/context_window.rs:83-86,105-110</code></td><td><span class="tag lvl-m">中</span> 官方登录时用哪份，读了源码没实测</td></tr>
 <tr id="e4"><td>4</td><td>当前用量 = 上一次服务器报的 <code>total_tokens</code> + 之后新增条目的估算</td><td>源码 <code>core/src/context_manager/history.rs:939-956</code>；实验：报 120,000 后下一轮开头触发</td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e5"><td>5</td><td>一轮开始前压缩，在新消息写入历史之前；源码待办说明没把新消息算进去</td><td>源码 <code>core/src/session/turn.rs:189-200,1373-1398</code>；实验 <code>req-05-compact-t3.json</code>：没有第 4 轮消息，元数据 <code>"phase":"pre_turn"</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e6"><td>6</td><td>一轮中间：模型还要接着干且到线时压；一轮结束后压的阈值 <code>model_post_turn_compact_threshold_percent</code> 默认 0（不压）；手动 <code>/compact</code>；换模型时 <code>comp_hash</code> 不同（gpt-5.5 为 2911，gpt-6.1-sol 为 3000）就用旧模型先压，相同但新窗口更小且已过线也压</td><td>源码 <code>core/src/session/turn.rs:654-686,1406-1495</code>、<code>models-manager/models.json</code>、<code>core/src/config/mod.rs:4418-4420</code>、<code>core/src/session/context_window.rs:111-117</code>、<code>core/src/tasks/compact.rs:28-95</code></td><td><span class="tag lvl-m">中</span> 只有「一轮开始前」做了实验</td></tr>
-<tr id="e7"><td>7</td><td>本地压缩请求 = 整段历史 + 9 行提示词，模型和思考级别同正常请求；140,656 字节，上一次正常请求 140,012 字节</td><td>源码 <code>core/src/compact.rs:126-136,277-282</code>、<code>prompts/templates/compact/prompt.md</code>；实验 <code>req-04-user-t3.json</code>、<code>req-05-compact-t3.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e8"><td>8</td><td>新历史：工具定义和系统提示词在前；保留的原话；重新生成的初始上下文插在最后一条保留原话之前；摘要在末尾</td><td>源码 <code>core/src/compact.rs:85-116,391-436,641-700,806-818</code>；实验 <code>req-06-user-t4.json</code>（10 条）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e6"><td>6</td><td>一轮中间：模型还要接着干且到线时压缩；一轮结束后压缩的阈值 <code>model_post_turn_compact_threshold_percent</code> 默认 0（不压缩），大于 0 时按有效窗口的百分比；手动 <code>/compact</code>，不带参数（第 12 章，<code>tui/src/slash_command.rs:170-190</code>）；换模型时 <code>comp_hash</code>（源码注释：compaction compatibility hash）不同（gpt-5.5 为 2911，gpt-6.1-sol 为 3000）就用旧模型先压缩，相同但新窗口更小且已过线也压缩</td><td>源码 <code>core/src/session/turn.rs:654-686,1406-1495</code>、<code>models-manager/models.json</code>、<code>core/src/config/mod.rs:4418-4420</code>、<code>core/src/session/context_window.rs:111-117</code>、<code>core/src/tasks/compact.rs:28-95</code></td><td><span class="tag lvl-m">中</span> 本章只有「一轮开始前」做了实验；轮末压缩见第 12 章回放</td></tr>
+<tr id="e7"><td>7</td><td>本地压缩请求 = 整段历史 + 9 行提示词，模型和思考级别同正常请求；140,656 字节，第 3 轮的正常请求 140,012 字节，多出第 3 轮回复 125 + 提示词 519</td><td>源码 <code>core/src/compact.rs:126-136,277-282</code>、<code>prompts/templates/compact/prompt.md</code>；实验 <code>req-04-user-t3.json</code>、<code>req-05-compact-t3.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e8"><td>8</td><td>新历史：工具定义和系统提示词在前；保留的原话；重新生成的初始上下文插在最后一条保留原话之前；摘要在后；第 4 轮新消息接在最后（共 10 条）。和第 3 轮请求比：删 5 条共 980 字节，第 2 轮 60,374 → 56,405，加摘要 639、第 4 轮 156，合计 140,012 → 135,858</td><td>源码 <code>core/src/compact.rs:85-116,391-436,641-700,806-818</code>；实验 <code>req-04-user-t3.json</code>、<code>req-06-user-t4.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e9"><td>9</td><td>摘要作为用户消息，前面拼固定说明「Another language model started to solve this problem…」</td><td>源码 <code>prompts/templates/compact/summary_prefix.md</code>、<code>core/src/compact.rs:404</code>；实验 <code>req-06</code> 第 9 条</td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e10"><td>10</td><td>存档不删旧记录：第 1 轮原文在第 12 行，第 49 行追加 <code>compacted</code> 记录（含 <code>replacement_history</code> 9 条）；第 5 轮新进程恢复后用的是压缩后的历史</td><td>实验 <code>rollout.jsonl</code>、<code>req-07-user-t5.json</code>；源码 <code>core/src/session/mod.rs:4198-4382</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e11"><td>11</td><td>压缩成功后提示「Long threads and multiple compactions can cause the model to be less accurate…」</td><td>源码 <code>core/src/compact.rs:442-445</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e12"><td>12</td><td>候选只收用户亲手发的消息（排除 Codex 注入的条目和上次摘要）；预算 20,000，从新到旧，装不下的截短（留头尾、去掉图片）后停。实验：第 3 轮 5,957 整条；第 2 轮 15,060 → 头尾各 28,086 字节 + <code>…1017 tokens truncated…</code>；第 1 轮（23 token）没留</td><td>源码 <code>core/src/compact.rs:64,604-624,715-805</code>；实验 <code>req-04</code>、<code>req-06</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e12"><td>12</td><td>候选只收用户亲手发的消息（排除 Codex 注入的条目和上次摘要）；预算 20,000，从新到旧，装不下的截短（留头尾）后停；含图片的消息不论装不装得下都只取文字。实验：第 3 轮 5,957 整条；第 2 轮 15,060 → 头尾各 28,086 字节 + <code>…1017 tokens truncated…</code>；第 1 轮（23 token）没留</td><td>源码 <code>core/src/compact.rs:64,604-624,715-805</code>；实验 <code>req-04</code>、<code>req-06</code></td><td><span class="tag lvl-h">高</span> 规则和实验；<span class="tag lvl-m">中</span> 图片一条只读了源码</td></tr>
 <tr id="e13"><td>13</td><td>OpenAI 官方通道和 Azure 默认支持远端压缩（V2），其他通道默认不支持，走本地压缩；自动和手动压缩都按这个分</td><td>源码 <code>model-provider/src/capabilities.rs:30-52</code>、<code>core/src/session/turn.rs:1546-1610</code>、<code>core/src/tasks/compact.rs:63-95</code></td><td><span class="tag lvl-m">中</span> 读了源码，没实验</td></tr>
 <tr id="e14"><td>14</td><td>远端压缩：历史末尾加 <code>compaction_trigger</code>；服务器必须正好回 1 条 <code>compaction</code>，内容是 <code>encrypted_content</code>；重试最多 2 次；不用 <code>compact_prompt</code></td><td>源码 <code>core/src/compact_remote_v2_attempt.rs:166-180</code>、<code>core/src/compact_remote_v2.rs:87-91,375-478</code>、<code>protocol/src/models.rs:1279-1293</code></td><td><span class="tag lvl-m">中</span> 读了源码，没实验</td></tr>
-<tr id="e15"><td>15</td><td>远端保留：预算 64,000，从新到旧；留用户消息、钩子提示、别的代理的消息（单条 ≤ 10,000，子代理最终结果不留）；保留工具输出的开关 <code>retain_client_tool_outputs</code> 在开发中、默认关；压缩前超窗口时把最新的工具输出换成一句提示</td><td>源码 <code>core/src/compact_remote_v2.rs:87-88,480-503,529-583,605-700</code>、<code>features/src/lib.rs:2078-2087</code>、<code>core/src/compact_remote_history.rs:18-19,70-135</code></td><td><span class="tag lvl-m">中</span> 读了源码，没实验</td></tr>
-<tr id="e16"><td>16</td><td>本地压缩请求超出窗口时，删掉最前面一条再试</td><td>源码 <code>core/src/compact.rs:359-368</code></td><td><span class="tag lvl-m">中</span> 没实验</td></tr>
-<tr id="e17"><td>17</td><td>压缩后 AGENTS.md 和环境信息重新插回</td><td>实验 <code>req-06</code> 第 7 条（752 字节）；源码 <code>core/src/compact.rs:85-100</code>；会话中途改文件是否反映见第 2 章（未实验）</td><td><span class="tag lvl-h">高</span> 插回；<span class="tag lvl-l">推测</span> 用哪个版本</td></tr>
+<tr id="e15"><td>15</td><td>远端保留：预算 64,000，从新到旧；留用户消息、钩子提示、别的代理的消息（单条 ≤ 10,000，子代理最终结果不留）；保留工具输出的开关 <code>retain_client_tool_outputs</code> 在开发中、默认关；发之前估算超出窗口时，从最新一条往前把工具输出换成一句提示，碰到不能改写的条目就停，换完仍超出也照发</td><td>源码 <code>core/src/compact_remote_v2.rs:87-88,480-503,529-583,605-700</code>、<code>features/src/lib.rs:2078-2087</code>、<code>core/src/compact_remote_history.rs:18-19,70-135</code>；第 10 章证据 #14</td><td><span class="tag lvl-m">中</span> 读了源码，没实验</td></tr>
+<tr id="e16"><td>16</td><td>本地压缩请求被拒（超出窗口）时，删掉历史最前面一条再发；删除顺序先是工具定义、系统提示词等 Codex 放的条目，再到用户的话；只剩 1 条才报错</td><td>源码 <code>core/src/compact.rs:359-371</code>；实验 <code>自学单元/U09-实验/out/sumover-sse-manual</code>（第 10 章证据 #10、#12）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e17"><td>17</td><td>压缩后 AGENTS.md 和环境信息重新插回；插回的 AGENTS.md 取本步的 <code>loaded_agents_md</code>（来自 <code>agents_md_manager.refresh</code>，项目文件一个会话读一次，见第 2 章），压缩时不另外读磁盘</td><td>实验 <code>req-06</code> 第 7 条（752 字节）；源码 <code>core/src/compact.rs:85-100</code>、<code>core/src/session/world_state.rs:215</code>、<code>core/src/session/mod.rs:3911-3919</code>；resume 时重读见第 8 章</td><td><span class="tag lvl-h">高</span> 插回；<span class="tag lvl-m">中</span> 用哪个版本，读了源码没做改文件的实验</td></tr>
 <tr id="e18"><td>18</td><td><code>PreCompact</code>/<code>PostCompact</code> 钩子只能叫停；压缩后排队一次 <code>SessionStart</code>（来源 <code>compact</code>），它的输出作为额外上下文加入；钩子从配置目录的 <code>hooks.json</code> 读</td><td>源码 <code>core/src/hook_runtime.rs:128-178,544-606</code>、<code>core/src/session/mod.rs:4377-4380</code>、<code>hooks/src/engine/discovery.rs:340-343</code></td><td><span class="tag lvl-m">中</span> 读了源码，没实验</td></tr>
 <tr id="e19"><td>19</td><td><code>compact_prompt</code> 或 <code>experimental_compact_prompt_file</code> 替换本地压缩的提示词</td><td>源码 <code>core/src/config/mod.rs:4103-4110,4192-4199</code>、<code>core/src/compact.rs:126-131</code></td><td><span class="tag lvl-m">中</span> 没实验</td></tr>
 <tr id="e20"><td>20</td><td>Claude Code 压缩后：根目录 CLAUDE.md、无 <code>paths:</code> 规则、自动记忆、计划从磁盘重读；最多重读 5 个最近修改的文件（超 5,000 token 只给路径）；技能正文每个 5,000、合计 25,000；<code>/compact</code> 可带重点；CLAUDE.md 里可写「Compact Instructions」</td><td>官方文档 <code>code.claude.com/docs/en/context-window</code>（What survives compaction）、<code>how-claude-code-works</code>（When context fills up），2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，没实测</td></tr>
-<tr id="e21"><td>21</td><td>Claude Code 默认到模型窗口上限才压；原生 100 万窗口的模型约 967K 压；<code>/autocompact</code> 可设 100K–1M</td><td>官方文档 <code>code.claude.com/docs/en/model-config</code>（Default auto-compact thresholds、Set the auto-compact window），2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，没实测</td></tr>
+<tr id="e21"><td>21</td><td>Claude Code 默认到模型窗口上限才压缩；原生 100 万窗口的模型约 967K 压缩；<code>/autocompact</code> 可设 100K–1M</td><td>官方文档 <code>code.claude.com/docs/en/model-config</code>（Default auto-compact thresholds、Set the auto-compact window），2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，没实测</td></tr>
+<tr id="e22"><td>22</td><td>回退到压缩那一轮之前，摘要消失，请求前 11 条与压缩前的请求逐字相同</td><td>第 8 章第四节；实验 <code>自学单元/U07-实验/out/compact</code></td><td><span class="tag lvl-h">高</span></td></tr>
 </table></div>
 </section>
 </main>
@@ -306,12 +328,12 @@ function renderS1(){
     + (pw < 100 ? '<div style="position:absolute;left:'+pw+'%;top:0;bottom:0;right:0;background:repeating-linear-gradient(45deg,var(--line) 0 4px,transparent 4px 8px)"></div>' : '');
   const isExp = w===272000 && S1.cfg===100000 && used===120000;
   let t = '<p>'+(isExp ? '<span class="tag lvl-h">实验 out/default</span>' : '<span class="tag">按源码规则算，未实验</span>')+'</p>';
-  t += '<p>窗口 '+fmt(w)+'，90% 是 '+fmt(line90)+'。';
-  if(S1.cfg){ t += S1.cfg > line90 ? '你配的 '+fmt(S1.cfg)+' 高过 90%，不起作用。' : '你配的 '+fmt(S1.cfg)+' 更低，按它。'; }
-  t += '压缩线 = <b>'+fmt(line)+' token</b>（黑竖线）。</p>';
-  if(used > w) t += '<p class="bad">已经超过窗口 '+fmt(w)+'（斜线区），这时请求会被服务器拒绝；正常情况下早在压缩线就压了。</p>';
-  else if(hit) t += '<p class="bad">已到线：下一轮开始前（或这一轮中间、模型还要接着干时）自动压缩。</p>';
-  else t += '<p class="ok">没到线，还差 '+fmt(line-used)+' token。</p>';
+  t += '<p>窗口 '+fmt(w)+'，它的 90% 是 '+fmt(line90)+'。';
+  if(S1.cfg){ t += S1.cfg > line90 ? '你配的 '+fmt(S1.cfg)+' 比 90% 高，不起作用。' : '你配的 '+fmt(S1.cfg)+' 比 90% 低，压缩线就用它。'; }
+  t += '压缩线是 <b>'+fmt(line)+' token</b>（黑竖线）。</p>';
+  if(used > w) t += '<p class="bad">用量已经超过窗口 '+fmt(w)+'（斜线区），这时服务器会拒绝请求；正常情况下，用量到压缩线时就已经压缩了。</p>';
+  else if(hit) t += '<p class="bad">用量已到压缩线：下一轮开始前（或这一轮中间、模型还要接着干时），Codex 自动压缩。</p>';
+  else t += '<p class="ok">用量没到压缩线，还差 '+fmt(line-used)+' token。</p>';
   $('#m1t').innerHTML = t;
 }
 $$('[data-w]').forEach(b=>b.onclick=()=>{ S1.w=+b.dataset.w; press('[data-w]',b); renderS1(); });
@@ -319,30 +341,30 @@ $$('[data-cfg]').forEach(b=>b.onclick=()=>{ S1.cfg=+b.dataset.cfg; press('[data-
 $('#used').oninput = renderS1;
 
 /* 第二节：压缩前后的请求（实验 out/default 的 req-04 / req-05 / req-06，每条 input 的 JSON 字节数） */
-const CAT = {tools:['工具定义','--tools'], system:['系统提示词','--system'], session:['Codex 注入的说明','--session'],
-  project:['AGENTS.md + 环境','--project'], user:['你的话','--user'], reply:['模型的调用和回复','--reply'],
+const CAT = {tools:['工具定义','--tools'], system:['系统提示词','--system'], session:['Codex 写的说明','--session'],
+  project:['AGENTS.md + 环境信息','--project'], user:['你的话','--user'], reply:['工具调用、输出和模型回复','--reply'],
   sum:['摘要','--half'], cp:['压缩提示词','--cut']};
 const BASE = [
   ['tools','工具定义',25347],['system','系统提示词',22148],['session','技能目录 + 权限 + 协作模式',3464],
-  ['session','子代理说明',2575],['session','子代理开关',410],['project','AGENTS.md + 环境信息',752]
+  ['session','子代理角色说明',2575],['session','子代理开关说明',410],['project','AGENTS.md + 环境信息',752]
 ];
 const HIST = [
   ['user','第 1 轮：我叫 Drake，不要改 schema',225],['reply','命令调用 seq 1 3000',202],['reply','命令输出（沙箱报错）',303],
-  ['reply','回复 1',125],['user','第 2 轮：长消息',60374],['reply','回复 2',125],['user','第 3 轮：消息',23962]
+  ['reply','回复 1',125],['user','第 2 轮：长日志',60374],['reply','回复 2',125],['user','第 3 轮：再补一段',23962]
 ];
 const STATES = {
   before:{rows: BASE.concat(HIST).map(r=>r.concat([''])), total:140012,
     note:'第 3 轮的正常请求：13 条，140,012 字节 ≈ 35,003 token。'},
   compact:{rows: BASE.concat(HIST, [['reply','回复 3',125,''],['cp','压缩提示词（9 行）',519,'新']]).map(r=>r.length===3?r.concat(['']):r), total:140656,
-    note:'压缩请求：整段历史原样发出，末尾加回复 3 和压缩提示词，140,656 字节 ≈ 35,164 token。'},
+    note:'压缩请求：整段历史原样发出，比第 3 轮的请求多两条（第 3 轮模型的回复、压缩提示词），140,656 字节 ≈ 35,164 token。'},
   after:{rows:[
-    ['tools','工具定义',25347,''],['system','系统提示词',22148,''],['user','第 2 轮：长消息（截短）',56405,'截短'],
-    ['session','技能目录 + 权限 + 协作模式',3464,'重新生成'],['session','子代理说明',2575,'重新生成'],['session','子代理开关',410,'重新生成'],
-    ['project','AGENTS.md + 环境信息',752,'重新生成'],['user','第 3 轮：消息',23962,''],['sum','摘要（含固定说明）',639,'新'],['user','第 4 轮：继续。',156,'新'],
+    ['tools','工具定义',25347,''],['system','系统提示词',22148,''],['user','第 2 轮：长日志（截短）',56405,'截短'],
+    ['session','技能目录 + 权限 + 协作模式',3464,'重新生成'],['session','子代理角色说明',2575,'重新生成'],['session','子代理开关说明',410,'重新生成'],
+    ['project','AGENTS.md + 环境信息',752,'重新生成'],['user','第 3 轮：再补一段',23962,''],['sum','摘要（含固定说明）',639,'新'],['user','第 4 轮：继续。',156,'新'],
     ['user','第 1 轮：我叫 Drake，不要改 schema',225,'gone'],['reply','命令调用 seq 1 3000',202,'gone'],['reply','命令输出（沙箱报错）',303,'gone'],
     ['reply','回复 1',125,'gone'],['reply','回复 2',125,'gone'],['reply','回复 3',125,'gone']
   ], total:135858,
-    note:'第 4 轮的请求：10 条，135,858 字节 ≈ 33,965 token，只比压缩前少约 1 千 token。划线的 6 条已经不在请求里（只在本机存档里）。'}
+    note:'第 4 轮的请求：10 条，135,858 字节 ≈ 33,965 token，只比第 3 轮的请求少约 1 千 token。划线的 6 条已经不在请求里，只在本机存档里。'}
 };
 function renderS2(st){
   const S = STATES[st], max = 60374;
@@ -358,7 +380,7 @@ function renderS2(st){
 $('#lg').innerHTML = Object.values(CAT).map(([n,v])=>'<span><i style="background:var('+v+')"></i>'+n+'</span>').join('');
 $$('[data-st]').forEach(b=>b.onclick=()=>{ press('[data-st]',b); renderS2(b.dataset.st); });
 
-/* 第三节：原话留下哪几条（按源码规则：从新到旧，装不下截短后停） */
+/* 第三节：原话保留哪几条（按源码规则：从新到旧，装不下截短后停） */
 const PRE = {exp:[23,15060,5957], short:[40,80,60], big:[100,200,25000]};
 let BUD = 20000;
 function renderS3(){
@@ -366,14 +388,14 @@ function renderS3(){
   m.forEach((v,i)=>$('#m'+(i+1)+'v').textContent = fmt(v));
   let rem = BUD; const res = ['','',''];
   for(let i=2;i>=0;i--){
-    if(rem===0){ res[i]='<span class="bad">没留，只剩摘要里的转述</span>'; continue; }
-    if(m[i] <= rem){ res[i]='<span class="ok">整条留下</span>'; rem -= m[i]; }
-    else { res[i]='<span class="bad">截短：留 '+fmt(rem)+' token，中间截掉 '+fmt(m[i]-rem)+'</span>'; rem = 0; }
+    if(rem===0){ res[i]='<span class="bad">没保留，只剩摘要里的转述</span>'; continue; }
+    if(m[i] <= rem){ res[i]='<span class="ok">整条保留</span>'; rem -= m[i]; }
+    else { res[i]='<span class="bad">截短：开头和结尾共保留 '+fmt(rem)+' token，中间截断丢掉 '+fmt(m[i]-rem)+' token</span>'; rem = 0; }
   }
   const isExp = BUD===20000 && m[0]===23 && m[1]===15060 && m[2]===5957;
   let t = '<p>'+(isExp ? '<span class="tag lvl-h">实验 out/default</span>' : '<span class="tag">按源码规则算，未实验</span>')+'</p><ul>';
   for(let i=2;i>=0;i--) t += '<li>第 '+(i+1)+' 条（'+fmt(m[i])+' token）：'+res[i]+'</li>';
-  t += '</ul><p>原话共占 '+fmt(BUD-rem)+' / '+fmt(BUD)+' token。'+(BUD===64000?'官方通道还会算上钩子提示和别的代理的消息，这里没画。':'')+'</p>';
+  t += '</ul><p>保留的原话共占 '+fmt(BUD-rem)+' / '+fmt(BUD)+' token。'+(BUD===64000?'远端压缩还会把钩子提示和别的代理发来的消息算进预算，这里没画。':'')+'</p>';
   $('#m3t').innerHTML = t;
 }
 ['#m1s','#m2s','#m3s'].forEach(s=>$(s).oninput=()=>{ $$('[data-pre]').forEach(x=>x.setAttribute('aria-pressed','false')); renderS3(); });
