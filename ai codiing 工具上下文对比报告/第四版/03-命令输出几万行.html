@@ -23,7 +23,7 @@
 <h1>命令输出了 5 万行，模型只看到头尾约 1 万 token</h1>
 <p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code>；对照 <code>gpt-5.5</code>，思考级别 <code>low</code></p>
 </header>
-<p class="lede">让 agent 跑一条命令，输出 5 万行、288,894 字节，整份放进请求的话，按 Codex 的估算要 72,224 token（约 7.2 万），是第 2 章那次只说一句话的请求（13,410 token）的 5 倍多。但 Codex 实际只放进去约 1 万 token。它保留输出的开头一段和结尾一段，中间丢掉，换成一行标记。</p>
+<p class="lede">让 agent 跑一条命令，输出 5 万行、288,894 字节。整份放进请求的话，按 Codex 的估算要 72,224 token（约 7.2 万）；第 2 章那次请求只说了一句话，一共 13,410 token，这里是它的 5 倍多。但 Codex 实际只放进去约 1 万 token：保留输出的开头一段和结尾一段，中间丢掉，换成一行标记。</p>
 <p class="note">本章的例子都是这一条命令：<code>seq 1 50000</code>，它打印 1 到 50000，每个数一行。后文的 72,224 token 就是它的原文大小，各组实验都从它出发；只有两处换了命令，换的地方会说明为什么换。token 数仍是 Codex 的估算：UTF-8 字节数 ÷ 4，向上取整（见第 2 章）。实验在本机起一个假的模型服务器，让 Codex 真的执行命令，再抓下它发出的下一次请求，不联网。<sup><a href="#e16">16</a></sup></p>
 
 <section class="qs" id="qs">
@@ -39,7 +39,7 @@
 
 <section id="s1">
 <h2><span class="sn">一、</span>5 万行的输出，模型看到哪几行</h2>
-<p>把一条很长的输出放进请求，最朴素的做法有三种，各有毛病。整份放进去：这一条就是 72,224 token，比请求里其他内容加起来还多，输出再长，窗口就装不下了。只留开头：测试和编译的失败摘要通常在最后，会被丢掉。只留结尾：命令开头写着它在做什么，最早的报错也在开头，会被丢掉。</p>
+<p>把一条很长的输出放进请求，最朴素的做法有三种，各有毛病。整份放进去：这一条就是 72,224 token，比请求里其他内容加起来还多，输出再长，窗口就装不下了。只留开头：测试和编译的失败摘要通常在最后，这样就丢了。只留结尾：命令开头写着它在做什么，最早的报错也在开头，这样也丢了。</p>
 <p>Codex 的做法是<b>保留开头和结尾，丢掉中间</b>。上限默认是 1 万 token，Codex 按 1 token = 4 字节换算成 4 万字节，开头留 2 万字节，结尾留 2 万字节。原文 72,224 token，留下 1 万，中间的 62,224 token 丢掉，换成一行标记 <code>…62224 tokens truncated…</code>，意思是「这里截断丢掉了 62,224 token」。<sup><a href="#e3">3</a></sup></p>
 <p>实测和这个算法对得上。gpt-6.1-sol 这次实验里，进入请求的输出是 40,158 字节，约 10,040 token；比 1 万多出的 40 token 是运行信息和截断说明（下一小节列出来），它们不算在上限里。保留下来的是第 1–4,221 行和第 46,668–50,000 行，共 7,554 行；中间第 4,222–46,667 行（42,446 行）丢掉，第 25,000 行就在里面。<sup><a href="#e1">1</a></sup> 换成 gpt-5.5，保留的行完全一样，只是开头的运行信息多几行，总共 40,217 字节。<sup><a href="#e2">2</a></sup></p>
 
@@ -78,7 +78,7 @@ Total output lines: 50000
 <ul>
 <li><code>Warning</code> 那一行：原文有 72,224 token。</li>
 <li><code>Total output lines</code> 那一行：原文有 50,000 行。</li>
-<li>中间的标记：这里丢掉了 62,224 token。标记两边的 <code>42</code> 和 <code>7</code> 是被切开的数字。Codex 按字节切，不按行切：开头的 2 万字节正好停在第 4,222 行「4222」的前两个字符，结尾的 2 万字节从第 46,667 行「46667」的最后一个字符开始，这两行就只剩半截，和标记连成了一行。</li>
+<li>中间的标记：这里丢掉了 62,224 token。标记两边的 <code>42</code> 和 <code>7</code> 是切开后剩下的半截数字。Codex 按字节切，不按行切：开头的 2 万字节正好停在第 4,222 行「4222」的前两个字符，结尾的 2 万字节从第 46,667 行「46667」的最后一个字符开始，这两行就只剩半截，和标记连成了一行。</li>
 </ul>
 <p>从这三处，模型知道原文多大、丢了多少。丢的是哪几行，只能靠前后保留下来的内容去推。<code>seq</code> 的输出是连续的数字，前面停在 4221、后面从 46668 接上，模型能算出丢的是第 4,222–46,667 行。换成一份构建日志，前后内容没有这种规律，模型只知道中间少了 62,224 token，推不出少的是哪些日志、里面有没有报错。</p>
 
@@ -106,7 +106,7 @@ Total output lines: 50000
 <tr><td>① 进程输出缓冲</td><td>命令运行时，Codex 用一块内存收集输出</td><td>1 MiB：开头、结尾各留 512 KiB，中间丢掉</td><td>谁都不能改，写死在代码里<sup><a href="#e5">5</a></sup></td></tr>
 <tr><td>② 命令工具 <code>exec_command</code></td><td>命令跑完，<code>exec_command</code> 把结果交出去时</td><td>1 万 token</td><td>模型：调用时传参数 <code>max_output_tokens</code><sup><a href="#e6">6</a></sup></td></tr>
 <tr><td>③ 代码工具 <code>exec</code></td><td>只有 gpt-6.1-sol 经过：JavaScript 跑完，结果交回模型时</td><td>1 万 token</td><td>模型：在 JavaScript 第一行写 <code>// @exec: {"max_output_tokens": 30000}</code><sup><a href="#e8">8</a></sup></td></tr>
-<tr><td>④ 写入历史</td><td>输出写进会话历史时</td><td>基数 × 1.2；基数默认 1 万，所以是 1.2 万 token</td><td>你：在 <code>~/.codex/config.toml</code> 里加一行，如 <code>tool_output_token_limit = 2000</code>，改的是基数<sup><a href="#e9">9</a></sup></td></tr>
+<tr><td>④ 写入历史</td><td>输出写进会话历史时（会话历史和存档是两处，第三节讲区别）</td><td>基数 × 1.2；基数默认 1 万，所以是 1.2 万 token</td><td>你：在 <code>~/.codex/config.toml</code> 里加一行，如 <code>tool_output_token_limit = 2000</code>，改的是基数<sup><a href="#e9">9</a></sup></td></tr>
 </table></div>
 <p>拿 <code>seq 1 50000</code> 的 72,224 token 对着这张表走一遍，有两处和直觉不同：</p>
 <ul>
@@ -165,7 +165,12 @@ Total output lines: 50000
 <tr><td>你把基数调成 2,000</td><td class="num">2,407 token</td><td class="num">10,040 token</td></tr>
 <tr><td>模型把两处上限都设成 3 万</td><td class="num">12,007 token</td><td class="num">30,039 token</td></tr>
 </table></div>
-<p>只有后两组，存档里记下的比进入请求的多，这两组正好都是在截断点 ④ 截断的。原因是存档记下的是经过 ①②③、还没经过 ④ 的版本。所以 ④ 截断时丢掉的部分，存档里还能找到；①②③ 截断时丢掉的，存档里也没有，命令一结束就没了。</p>
+<p>后两组里，存档记下的比进入请求的多。原因要从命令跑完以后说起：输出经过 ①②③ 以后，Codex 把它同时写到两个地方。<sup><a href="#e10">10</a></sup></p>
+<ul>
+<li><b>会话历史</b>：放在内存里的对话记录，之后每次请求都从这里拼出来，模型看到的就是这一份。写进这里时，截断点 ④ 再截断一次。</li>
+<li><b>会话存档</b>：磁盘上的 <code>.jsonl</code> 文件。写进这里的是没经过 ④ 的那份，不再截断。</li>
+</ul>
+<p>所以 ④ 截断丢掉的部分，还留在存档里。基数调成 2,000 那组，请求里只有 2,407 token，存档里是 ③ 交出来的 10,040 token；两处都设成 3 万那组，请求里 12,007 token，存档里 30,039 token。存档里多出的这部分，这个会话里的模型看不到，只有你打开文件才看得到。①②③ 发生在写入这两个地方之前，它们丢掉的内容两边都没有，命令一结束就没了。默认情况下只有 ③ 截断，所以存档里也只有约 1 万 token。</p>
 <p>原文丢了，模型想看中间，只能再跑一次命令，这次改一改命令，只输出需要的那几行。拿本章的例子说，想看第 24,990–25,010 行，就跑 <code>seq 1 50000 | sed -n '24990,25010p'</code>，输出只有 21 行，不会被截断。</p>
 <p>真实场景里，输出很长的多是测试和构建，比如 <code>make test</code>，重跑一遍可能要几分钟。预计输出会很长时，可以一开始就把完整输出写进文件，之后按需读文件的一部分：</p>
 <ul>
@@ -179,7 +184,7 @@ Total output lines: 50000
 <div class="answer" id="a3">
 <p class="qh">回答问题 3</p>
 <p class="qq">截断时丢掉的那段，还能找回来吗？</p>
-<p>找不回来。存档里记的也是截断过的版本（默认同样约 1 万 token），288,894 字节的原文哪里都没留。只有写入历史时（截断点 ④）丢掉的部分，存档里还在。想看中间，只能再跑一次命令，用 <code>grep</code>、<code>sed</code>、<code>tail</code> 只取需要的那几行；或者一开始就把输出写进文件，再分段读。</p>
+<p>找不回来。存档里记的也是截断过的版本（默认同样约 1 万 token），288,894 字节的原文哪里都没留。例外是截断点 ④：Codex 把输出写进会话历史时才按 ④ 截断，写进存档的是截断前那份，所以 ④ 丢掉的部分存档里还有，只是模型看不到。想看中间，只能再跑一次命令，用 <code>grep</code>、<code>sed</code>、<code>tail</code> 只取需要的那几行；或者一开始就把输出写进文件，再分段读。</p>
 </div>
 
 <div class="compare">
@@ -255,7 +260,7 @@ output: match self.max_output_tokens {
 <ol>
 <li>5 万行（72,224 token）的输出，模型只看到第 1–4,221 行和第 46,668–50,000 行，约 1 万 token；中间换成一行标记。</li>
 <li>模型知道少了多少（开头的说明和中间的标记），不知道少了哪几行。</li>
-<li>截断时丢掉的找不回来：存档里也是截断过的版本，只有写入历史时（截断点 ④）丢掉的部分还在。想看中间，就再跑一次命令，用 grep、sed、tail 只取需要的行。</li>
+<li>截断时丢掉的找不回来：存档里也是截断过的版本。只有截断点 ④ 丢掉的部分还在存档里，因为存档写的是 ④ 之前的那份。想看中间，就再跑一次命令，用 grep、sed、tail 只取需要的行。</li>
 <li>最后的大小取几个截断点里最小的上限：gpt-6.1-sol 的模型自己最多调到 1.2 万，gpt-5.5 的模型只能调低；只在配置里调高也不够，两边都要调高。</li>
 <li>旧输出不会清掉，每次约 1.2 万 token，之后每次请求都重发，直到压缩或新开会话。</li>
 </ol>
@@ -275,7 +280,7 @@ output: match self.max_output_tokens {
 <tr id="e7"><td>7</td><td>JS 里调用 <code>exec_command</code>：传了上限按它截，没传就把原文整份交给 JS</td><td>源码 <code>core/src/tools/context.rs:469-472</code>；实验 <code>seq50000-lite</code>（只有一组说明，原文 token 数 72,224）</td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e8"><td>8</td><td><code>exec</code> 的结果按它自己的上限截，默认 1 万；JS 第一行 <code>// @exec: {...}</code> 可改。命令上限要到 5 万时，仍被截回 10,040 token，出现两组说明</td><td>源码 <code>core/src/tools/code_mode/mod.rs:263-300,318-335</code>、<code>core/src/tools/code_mode/execute_spec.rs:11</code>；实验 <code>seq50000-lite-req50000</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e9"><td>9</td><td>写入历史时按「基数 × 1.2」截；基数默认取模型表的 1 万，<code>tool_output_token_limit</code> 可改。两处都调到 3 万 → 12,007 token；基数 2,000 → 2,407 token</td><td>源码 <code>core/src/context_manager/history.rs:555-577</code>、<code>utils/output-truncation/src/lib.rs:19-21</code>、<code>models-manager/src/model_info.rs:32-44</code>；实验 <code>seq50000-lite-both30000</code>、<code>seq50000-lite-limit2000</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e10"><td>10</td><td>存档里存的是截断点 ④ 之前的文本：4 组实验分别为 10,040 / 10,040 / 10,040 / 30,039 token；都搜不到第 25,000 行</td><td>实验 <code>seq50000-lite</code>、<code>seq50000-lite-req50000</code>、<code>seq50000-lite-limit2000</code>、<code>seq50000-lite-both30000</code> 的 <code>rollout.jsonl</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e10"><td>10</td><td>存档里存的是截断点 ④ 之前的文本：4 组实验分别为 10,040 / 10,040 / 10,040 / 30,039 token；都搜不到第 25,000 行。同一条输出，写进会话历史的是复制的一份，复制后按 ④ 截断；写进存档的是没截断的那份</td><td>源码 <code>core/src/session/mod.rs:3727-3740</code>（先写会话历史，再把同一批条目写进存档）、<code>core/src/context_manager/history.rs:565-576</code>（复制一份再截断）；实验 <code>seq50000-lite</code>、<code>seq50000-lite-req50000</code>、<code>seq50000-lite-limit2000</code>、<code>seq50000-lite-both30000</code> 的 <code>rollout.jsonl</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e11"><td>11</td><td>会话存档在 Codex 主目录（默认 <code>~/.codex</code>）的 <code>sessions/</code> 下，每个会话一个 <code>.jsonl</code> 文件</td><td>源码 <code>rollout/src/lib.rs:86</code>；实验脚本从临时主目录的 <code>sessions/</code> 取到存档（<code>u02_capture.py:223-225</code>）</td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e12"><td>12</td><td>第一次请求 54,808 字节；第二次 102,921 字节，追加「调用」203 字节、「输出」47,910 字节</td><td>实验 <code>seq50000-lite</code> 的 <code>req-1</code>、<code>req-2</code>（按整条条目的 JSON 字节数）</td><td><span class="tag lvl-h">高</span> 单次；10 次是推算</td></tr>
 <tr id="e13"><td>13</td><td>没找到清理旧工具输出的机制</td><td>源码搜索 <code>core/src</code>（clear、prune、microcompact 等，命中的都只清元数据或进程）；第 2 章实验：第二次请求整份重发</td><td><span class="tag lvl-m">中</span> 没穷尽，没做多轮实验</td></tr>
