@@ -19,46 +19,48 @@
 <main class="page">
 <header class="chap-head">
 <p class="kicker">第 6 章</p>
-<h1>接了 30 个 MCP 工具，请求没变大：代价从「装」挪到了「找」</h1>
+<h1>接了 30 个 MCP 工具，gpt-6.1-sol 的请求一字没变：工具改由模型自己去找</h1>
 <p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>、<code>gpt-5.5</code>，思考级别都是 <code>low</code> · 对照 Claude Code 官方文档和 Anthropic 接口文档（都是 2026-11-02 查阅）</p>
 </header>
 
-<p class="lede">实验里给 Codex 接上 3 个假 MCP 服务器、共 30 个工具：gpt-6.1-sol 的请求和不接时一字不差（工具部分 25,347 字节），gpt-5.5 只多出约 2 KB 固定内容。同样 30 个工具，换成 Codex 模型表里没有的模型名，请求一下多出 12,159 字节。工具没有消失，是从请求里挪到了「模型自己去找」这一步，新的问题出在找不到、找错、乱调上。</p>
-<p class="note">MCP（Model Context Protocol）是让 agent 接入外部工具的协议，一个 MCP 服务器提供一组工具。本章实验用本机假服务器和我写的假 MCP 服务器（<code>u05_fake_mcp.py</code>，3 个服务器各 10 个工具，名字和描述是照问题单、数据库、监控告警的样子写的），HTTP 通道，不联网。模型的回答是剧本写死的，所以本章能证明「请求里有什么、工具怎么返回」，测不了「真实模型会怎么选」。字节数口径同第 2 章：顶层 <code>tools</code> 字段和每条 <code>input</code> 条目各自 <code>json.dumps</code> 后相加，token ≈ 字节 ÷ 4（Codex 的本地估算）。</p>
+<p class="lede">实验里给 Codex 接上 3 个 MCP 服务器、共 30 个工具，gpt-6.1-sol 的请求和不接时一字不差，gpt-5.5 的请求多出 1,983 字节，而且这个数不随工具个数变。可是同样 30 个工具，换一个 Codex 不认识的模型名，请求一下多出 12,159 字节。区别在于工具的定义有没有写进请求：前两种情况，Codex 不把定义放进请求，模型要用时自己去找；新的问题也就出在找不到、找错、乱调上。</p>
+<p class="note">MCP（Model Context Protocol）是让 agent 接入外部工具的协议：一个 MCP 服务器是一个单独运行的程序，向 agent 提供一组工具，比如查问题单、查数据库。本章的 3 个 MCP 服务器是我写的假服务器（<code>u05_fake_mcp.py</code>），名字和描述照问题单（tracker）、数据库（database）、监控告警（monitor）的样子写，各 10 个工具。模型服务器也是本机的假服务器，它按我写的剧本回话：剧本让它搜什么、调什么，它就回什么，不联网。所以本章能证明「请求里有什么、Codex 把什么还给模型」，测不了「真实模型会怎么选」。字节数是把请求顶层的 <code>tools</code> 字段和 <code>input</code> 里每一条各自转成 JSON 文本后相加（第 2 章的算法），token ≈ 字节 ÷ 4（Codex 的估算）。<sup><a href="#e3">3</a></sup></p>
+<p>下文常比两个模型。第 2 章讲过，gpt-6.1-sol 和 gpt-5.5 的请求本来就不一样：gpt-6.1-sol 的工具定义放在 <code>input</code> 的第 1 条，gpt-5.5 的放在请求顶层的 <code>tools</code> 字段，系统提示词也是两份。所以两个模型不接 MCP 时，请求大小本来就不同（实验里是 54,848 和 37,002 字节）。本章只比同一个模型接与不接 MCP 的差别。</p>
 
 <section class="qs" id="qs">
 <h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
 <ol>
-<li id="q1">你给 Codex 接了 3 个 MCP 服务器，共 30 个工具。请求里会多出这 30 个工具的定义吗？gpt-6.1-sol 和 gpt-5.5 一样吗？<a class="jump" href="#a1">答案 ↓</a></li>
-<li id="q2">请求里没有这些定义，模型怎么知道有哪些工具、怎么调用？两个模型的做法一样吗？<a class="jump" href="#a2">答案 ↓</a></li>
-<li id="q3">查工具靠搜索。搜索词和工具描述对不上时，模型拿到什么？搜到了，就等于选对了吗？<a class="jump" href="#a3">答案 ↓</a></li>
-<li id="q4">模型没搜过就直接写出一个工具名去调，或者写错了名字，或者调的是一个已被关掉的工具，会发生什么？（第 5 章留下的问题：关掉工具后，定义还在请求开头，会不会误用？）<a class="jump" href="#a4">答案 ↓</a></li>
-<li id="q5">如果工具定义直接写进请求，一个工具占多少字节？有什么办法压？Claude Code 默认怎么做？<a class="jump" href="#a5">答案 ↓</a></li>
+<li id="q1">你给 Codex 接了 3 个 MCP 服务器，共 30 个工具。每个工具都有名字、描述和参数说明，合起来叫工具的定义。请求里会多出这 30 个定义吗？gpt-6.1-sol 和 gpt-5.5 一样吗？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">如果请求里没有这些定义，模型怎么知道有哪些工具、怎么调用？两个模型的做法一样吗？<a class="jump" href="#a2">答案 ↓</a></li>
+<li id="q3">gpt-5.5 查工具靠 Codex 提供的搜索。搜索词和工具描述里的词对不上时，模型拿到什么？搜到了，就等于找对了吗？<a class="jump" href="#a3">答案 ↓</a></li>
+<li id="q4">模型没搜过就直接写出一个工具名去调，或者写错了名字，或者调的是一个已经关掉的工具，Codex 会怎样处理？<a class="jump" href="#a4">答案 ↓</a></li>
+<li id="q5">如果工具定义直接写进请求，一个工具占多少字节？有什么办法让它少占一些？Claude Code 缺省怎么做？<a class="jump" href="#a5">答案 ↓</a></li>
 </ol>
 </section>
 
 <section id="s1">
 <h2><span class="sn">一、</span>30 个 MCP 工具，请求里一个都没有</h2>
-<p><b>最朴素的做法，是把每个工具的名字、描述、参数定义都写进请求的工具列表。</b>工具少时没问题。接上几个 MCP 服务器后，这份列表要在每一次请求的最开头重发一遍（第 2 章），模型每次还要从里面挑。Anthropic 的文档给了一个量级：GitHub、Slack、Sentry、Grafana、Splunk 五个服务器，光工具定义就约 5.5 万 token；并且 Claude 选对工具的能力，在可用工具超过 30–50 个之后下降。<sup><a href="#e1">1</a></sup>这是官方对 Claude 模型的说法，本章没有测过模型选工具的准确率【未测】。</p>
-<p><b>Codex 的做法是 MCP 工具先不放进请求，等模型搜到了再给。</b>依据是模型表（<code>models-manager/models.json</code>）里每个模型的 <code>supports_search_tool</code>：为 true，MCP 工具登记为「延后」（Deferred）；为 false，登记为「直连」（Direct），定义直接写进请求。<code>76ed3b4</code> 的模型表里 11 个模型这一项全是 true，包括 gpt-6.1-sol 和 gpt-5.5。Codex 不认识的模型名，用一份后备资料，这一项是 false。<sup><a href="#e2">2</a></sup></p>
-<p><b>实验：同样 30 个工具，三种模型名下请求的变化。</b>每行是同一个剧本跑两次，一次不接 MCP，一次接 3 个服务器。<sup><a href="#e3">3</a></sup></p>
+<p><b>最朴素的做法，是把每个工具的定义都写进请求。</b>工具少时没问题。接上几个 MCP 服务器后，这份定义每次请求都要在最前面重发一遍（第 2 章），模型每次还要从里面挑。Anthropic 的文档给了一个量级：GitHub、Slack、Sentry、Grafana、Splunk 五个服务器，光工具定义就约 5.5 万 token；文档还说，可用工具超过 30–50 个之后，Claude 选对工具的能力会下降。<sup><a href="#e1">1</a></sup>这是官方对 Claude 模型的说法，本章没有测过模型选工具的准确率【未测】。</p>
+<p><b>Codex 的做法是 MCP 工具先不写进请求，等模型找的时候再给。</b>Codex 登记每个 MCP 工具时，从两种方式里选一种：<b>延后</b>（Deferred），定义先不写进请求，模型要用时自己去找；<b>直连</b>（Direct），定义直接写进每一次请求。选哪种，看模型资料里这个模型的 <code>supports_search_tool</code>（支不支持搜索工具）：true 就延后，false 就直连。<sup><a href="#e2">2</a></sup></p>
+<p>第 4 章讲过，Codex 有两份模型资料：源码自带的模型表，和官方通道登录后从 OpenAI 下载的模型列表。<code>76ed3b4</code> 的模型表里 11 个模型（含 gpt-6.1-sol 和 gpt-5.5）、2026-11-02 下载的列表里 10 个模型，这一项全是 true。两份资料里都没有的模型名，Codex 用一份后备资料，这一项是 false，MCP 工具就直连。什么时候会碰到这种模型名？比如在自定义通道里接别家的模型，<code>config.toml</code> 里写的模型名不在两份资料里【推测：没逐个查别家的模型名】。实验用 <code>--model not-a-real-model</code> 模拟这种情况。<sup><a href="#e2">2</a></sup></p>
+<p><b>实验：同样 30 个工具，三种模型名下请求的变化。</b>每一行是同一个剧本跑两次，一次不接 MCP，一次接 3 个服务器，比较两次的请求大小。<sup><a href="#e3">3</a></sup></p>
 <div class="tablewrap"><table>
-<tr><th>模型名</th><th>不接 MCP</th><th>接 30 个工具</th><th>多出</th><th>多出的是什么</th></tr>
-<tr><td><code>gpt-6.1-sol</code></td><td class="num">54,848</td><td class="num">54,848</td><td class="num">0</td><td>工具部分 25,347 字节逐字相同，其余条目也相同</td></tr>
-<tr><td><code>gpt-5.5</code></td><td class="num">37,002</td><td class="num">38,985</td><td class="num">+1,983</td><td>3 个「资源」工具共 1,943 字节，<code>tool_search</code> 的说明里多列了 3 个服务器名（+34）</td></tr>
-<tr><td>模型表里没有的名字（实验用 <code>not-a-real-model</code>）</td><td class="num">38,590</td><td class="num">50,749</td><td class="num">+12,159</td><td>3 个资源工具 1,943 + 30 个工具定义 10,204（平均 340 字节/个）</td></tr>
+<tr><th>模型名</th><th class="num">不接 MCP 时的请求（字节）</th><th class="num">接 30 个工具时的请求（字节）</th><th class="num">多出（字节）</th><th>多出的是什么</th></tr>
+<tr><td><code>gpt-6.1-sol</code></td><td class="num">54,848</td><td class="num">54,848</td><td class="num">0</td><td>工具定义那一条（25,347 字节）逐字相同，其余条目也相同</td></tr>
+<tr><td><code>gpt-5.5</code></td><td class="num">37,002</td><td class="num">38,985</td><td class="num">+1,983</td><td>3 个资源工具共 1,943 字节；<code>tool_search</code> 的说明里多列了 3 个服务器名（+34）</td></tr>
+<tr><td>两份资料里都没有的名字（<code>not-a-real-model</code>）</td><td class="num">38,590</td><td class="num">50,749</td><td class="num">+12,159</td><td>3 个资源工具 1,943 字节 + 30 个工具定义 10,204 字节（平均每个 340 字节）</td></tr>
 </table></div>
-<p>资源工具（<code>list_mcp_resources</code>、<code>list_mcp_resource_templates</code>、<code>read_mcp_resource</code>）让模型列出和读取 MCP 服务器提供的资源（文件、文档之类）。只要配了 MCP 服务器，gpt-5.5 和直连的请求里就有它们，和服务器有几个工具无关。<sup><a href="#e3">3</a></sup></p>
+<p>表里的「资源工具」是 Codex 自带的 3 个工具（<code>list_mcp_resources</code>、<code>list_mcp_resource_templates</code>、<code>read_mcp_resource</code>），让模型列出和读取 MCP 服务器提供的资源，比如文件、文档。只要配了 MCP 服务器，gpt-5.5 和直连时的请求里就有这 3 个，和服务器有几个工具无关。所以 gpt-5.5 多出的 1,983 字节是固定的；只有直连时，请求才随工具个数增长。<code>tool_search</code> 是 gpt-5.5 找工具用的搜索工具，第二节讲。<sup><a href="#e3">3</a></sup></p>
 
 <h3>动手算：接多少个工具，请求涨多少</h3>
-<p>选一种情形，拖「接几个工具」和「平均一个多大」。延后的两种情形与工具数无关（实验只验证了 30 个）；直连按「固定 1,943 + 个数 × 平均大小」算，实验里 30 个（平均 340 字节）和 40 个（平均 589 字节）都对得上。</p>
-<div class="ctrl"><span>模型：</span>
+<p>选一种模型名，拖「接几个工具」和「平均一个多大」。前两种是延后：多出的字节与工具个数无关（实验只验证过 30 个）。直连按「固定 1,943 字节 + 个数 × 平均大小」算，实验里 30 个（平均 340 字节）和 40 个（平均 589 字节，第五节）都对得上。</p>
+<div class="ctrl"><span>模型名：</span>
   <button class="btn" data-m="sol" aria-pressed="true">gpt-6.1-sol</button>
   <button class="btn" data-m="g55" aria-pressed="false">gpt-5.5</button>
-  <button class="btn" data-m="dir" aria-pressed="false">模型表里没有的名字（直连）</button>
+  <button class="btn" data-m="dir" aria-pressed="false">两份资料里都没有的名字（直连）</button>
 </div>
 <div class="ctrl"><label for="n1">接 <b id="n1v"></b> 个工具</label><input type="range" id="n1" min="0" max="200" step="1" value="30"></div>
-<div class="ctrl"><label for="b1">直连时平均一个 <b id="b1v"></b> 字节</label><input type="range" id="b1" min="100" max="2000" step="10" value="340"></div>
+<div class="ctrl"><label for="b1">直连时平均一个工具 <b id="b1v"></b> 字节</label><input type="range" id="b1" min="100" max="2000" step="10" value="340"></div>
 <div class="meter" id="m1"></div>
 <div class="legend"><span><i style="background:var(--keep)"></i>不接 MCP 时的请求</span><span><i style="background:var(--cut)"></i>接了 MCP 多出的部分</span></div>
 <div class="panel" id="m1t"></div>
@@ -66,33 +68,40 @@
 <div class="answer" id="a1">
 <p class="qh">回答问题 1</p>
 <p class="qq">接 3 个 MCP 服务器、共 30 个工具，请求里会多出这 30 个定义吗？gpt-6.1-sol 和 gpt-5.5 一样吗？</p>
-<p>不会多出定义。gpt-6.1-sol 的请求一字不变；gpt-5.5 多约 2 KB 固定内容（3 个资源工具 + 服务器名），不随工具数增长。只有模型名不在 Codex 模型表里时才直连，30 个工具多出 12,159 字节，工具越多越大。</p>
+<p>不会多出这 30 个定义。gpt-6.1-sol 的请求一字不变；gpt-5.5 多出 1,983 字节，是 3 个资源工具和搜索工具说明里的服务器名，不随工具个数增长。只有模型名不在 Codex 的两份模型资料里时，Codex 才把定义直接写进请求：30 个工具多出 12,159 字节，工具越多，请求越大。</p>
 </div>
 </section>
 
 <section id="s2">
-<h2><span class="sn">二、</span>没有定义，模型靠什么找到工具</h2>
-<p><b>两个模型用两种办法，但都是「模型自己发起一步」。</b>差别来自模型表的 <code>tool_mode</code>：gpt-6.1-sol 是 <code>code_mode_only</code>（只给一个 <code>exec</code> 入口，模型写 JavaScript 去调其他工具，第 3 章讲过），gpt-5.5 是空，走独立的函数工具。<sup><a href="#e4">4</a></sup></p>
+<h2><span class="sn">二、</span>请求里没有定义，模型靠什么找到工具</h2>
+<p><b>两个模型用两种办法找工具，但都要模型自己先多走一步。</b>差别来自模型资料里的另一项 <code>tool_mode</code>（工具怎么调用）。gpt-6.1-sol 是 <code>code_mode_only</code>：第 3 章讲过，它不直接调用工具，而是写一段 JavaScript 交给 <code>exec</code> 工具运行，由这段脚本去调用别的工具。gpt-5.5 这一项是空的：每个工具在请求顶层的 <code>tools</code> 里单独列出，模型直接调用。<sup><a href="#e4">4</a></sup></p>
 
-<h3>gpt-5.5：调 tool_search，定义追加在历史末尾</h3>
-<p>请求的顶层 <code>tools</code> 里有一个 <code>tool_search</code>，参数是 <code>query</code> 和 <code>limit</code>（缺省返回 8 个）。它的说明列出有哪些「来源」（Codex 自带的子代理工具，加上 <code>database</code>、<code>monitor</code>、<code>tracker</code> 三个服务器）。模型调它，Codex 在所有延后工具里做搜索，把命中的<b>完整定义</b>作为一条 <code>tool_search_output</code> 放进历史；然后模型才能调 <code>mcp__tracker.list_issues</code>。实验里查 <code>list open issues</code>：返回 8 个工具，这一条 3,210 字节；3 次请求里顶层 <code>tools</code> 始终是 11,397 字节，没变，新内容只追加在末尾。<sup><a href="#e5">5</a></sup></p>
+<h3>gpt-5.5：调用 tool_search，搜到的定义追加在历史末尾</h3>
+<p>gpt-5.5 请求顶层的 <code>tools</code> 里有一个 <code>tool_search</code>，参数是搜索词 <code>query</code> 和最多返回几个 <code>limit</code>（缺省 8 个）。它的说明里列出能搜哪些「来源」：3 个 MCP 服务器 <code>database</code>、<code>monitor</code>、<code>tracker</code>，还有 Codex 自带的子代理工具（Codex 自己的一部分工具也是延后的）。模型调用 <code>tool_search</code>，Codex 在所有延后的工具里搜索，把搜到的工具的<b>完整定义</b>作为一条 <code>tool_search_output</code> 追加进历史。模型看到定义，才知道有这个工具、参数怎么填，再去调用 <code>mcp__tracker.list_issues</code> 这样的名字。<sup><a href="#e5">5</a></sup></p>
+<p>实验里，剧本让假服务器搜 <code>list open issues</code>：返回 8 个工具，这一条 <code>tool_search_output</code> 3,210 字节。这次会话的 3 次请求里，顶层 <code>tools</code> 始终是 11,397 字节，没变，新内容只追加在末尾，所以请求的开头不变，第 5 章说的缓存照样接得上。<sup><a href="#e5">5</a></sup></p>
 
 <h3>gpt-6.1-sol：在 exec 的脚本里过滤 ALL_TOOLS</h3>
-<p>它的请求里没有 <code>tool_search</code>。<code>exec</code> 的说明里有这么一段：「有些延后的嵌套工具可能没写在本说明里。它们仍可从全局 <code>tools</code> 对象取用，并列在 <code>ALL_TOOLS</code> 里；要找一个，按 <code>name</code> 和 <code>description</code> 过滤 <code>ALL_TOOLS</code>。」（译自说明原文，接不接 MCP 这段都一样。）实验里让脚本这样写：<sup><a href="#e6">6</a></sup></p>
+<p>gpt-6.1-sol 的请求里没有 <code>tool_search</code>。<code>exec</code> 工具的说明里有这么一段：「有些延后的嵌套工具可能没写在本说明里。它们仍可从全局 <code>tools</code> 对象取用，并列在 <code>ALL_TOOLS</code> 里；要找一个，按 <code>name</code> 和 <code>description</code> 过滤 <code>ALL_TOOLS</code>。」（译自说明原文；接不接 MCP，这段都一样。）也就是说，脚本里能拿到一个叫 <code>ALL_TOOLS</code> 的列表，每项是一个工具的名字和描述；模型自己写代码在里面挑。<sup><a href="#e6">6</a></sup></p>
+<p>实验里假服务器扮演模型，分两步发了两段脚本：<sup><a href="#e6">6</a></sup></p>
+<ol>
+<li>先列出 <code>ALL_TOOLS</code> 里有几项、有哪些 MCP 工具名。结果是 41 项：30 个 MCP 工具，加 11 个 Codex 自带的工具（<code>exec_command</code>、<code>apply_patch</code> 等）。这一步的输出进历史，1,196 字节。</li>
+<li>再按 <code>issue</code> 过滤，并调用其中一个：
 <pre>const hits = ALL_TOOLS.filter(t =&gt; /issue/i.test(t.name + ' ' + t.description));
-text(JSON.stringify(hits.map(t =&gt; t.name)));
-const r = await tools.mcp__tracker__list_issues({state: 'open'});</pre>
-<p><code>ALL_TOOLS</code> 有 41 项（30 个 MCP 工具 + 11 个 Codex 自带的嵌套工具），过滤出 9 个名字，调用也成功了。进入历史的只有脚本打印的部分：第一次 1,196 字节，第二次 629 字节。模型要是把整个 <code>ALL_TOOLS</code> 打印出来，是 18,723 个字符（约 4,700 token），而且 <code>exec</code> 的输出有上限（第 3 章）。</p>
-<p><b>两种办法的共同代价：多一次往返。</b>模型得先搜（或先写一段过滤脚本），结果回来，才能发出真正的调用。这是请求里省下 30 个定义的代价。</p>
+text(JSON.stringify(hits.map(t =&gt; t.name)));          // 打印过滤出的名字
+const r = await tools.mcp__tracker__list_issues({state: 'open'});   // 调用其中一个</pre>
+过滤出 9 个名字，调用也成功了。这一步的输出进历史，629 字节。</li>
+</ol>
+<p>进历史的只有脚本打印出来的部分。脚本要是把整个 <code>ALL_TOOLS</code> 都打印出来，是 18,723 个字符（约 4,700 token），低于第 3 章说的 1 万 token 输出上限，会整份进历史；只打印需要的几个名字，进历史的就少得多。</p>
+<p><b>两种办法的共同代价：多一次往返。</b>往返是指 Codex 发一次请求、模型回一次。不论哪种办法，模型都得先搜（或先写一段过滤脚本），等结果回来，才能发出真正的调用。这是请求里省掉 30 个定义的代价。</p>
 
 <div class="source">
 <h3>看源码：MCP 工具什么时候延后</h3>
-<p><code>core/src/mcp_tool_exposure.rs</code> 第 84–88 行，和 <code>core/src/tools/spec_plan.rs</code> 第 265–272 行（节选，注释是我加的）。<sup><a href="#e2">2</a></sup></p>
-<pre>// 登记 MCP 工具：search_tool_enabled 来自模型表的 supports_search_tool
+<p><code>core/src/mcp_tool_exposure.rs</code> 第 84–88 行，和 <code>core/src/tools/spec_plan.rs</code> 第 265–272 行（节选，中文注释是我加的）。<sup><a href="#e2">2</a></sup></p>
+<pre>// 登记 MCP 工具：search_tool_enabled 来自模型资料的 supports_search_tool
 let exposure = if search_tool_enabled {
-    ToolExposure::Deferred      // 先不放进请求
+    ToolExposure::Deferred      // 延后：先不写进请求
 } else {
-    ToolExposure::Direct        // 定义直接写进请求
+    ToolExposure::Direct        // 直连：定义直接写进请求
 };
 
 // 后面再按「搜索工具开着、且不是只准用代码模式」过一遍
@@ -110,106 +119,114 @@ exposures = if model_info.supports_search_tool
 <div class="answer" id="a2">
 <p class="qh">回答问题 2</p>
 <p class="qq">请求里没有这些定义，模型怎么知道有哪些工具、怎么调用？两个模型一样吗？</p>
-<p>不一样。gpt-5.5 调 <code>tool_search</code>，Codex 把命中的完整定义追加到历史末尾，模型再调。gpt-6.1-sol 没有 <code>tool_search</code>，在 <code>exec</code> 的脚本里过滤 <code>ALL_TOOLS</code>，再直接调 <code>tools.mcp__服务器__工具名(...)</code>。差别来自模型表的 <code>tool_mode</code>。两种都要多一次往返。</p>
+<p>不一样。gpt-5.5 调用 <code>tool_search</code>，Codex 把搜到的工具的完整定义追加到历史末尾，模型看到定义后再调用。gpt-6.1-sol 没有 <code>tool_search</code>，它在 <code>exec</code> 的脚本里过滤 <code>ALL_TOOLS</code> 这个列表，再在脚本里调用 <code>tools.mcp__服务器__工具名(...)</code>。差别来自模型资料里的 <code>tool_mode</code>。两种办法都要多一次往返。</p>
 </div>
 </section>
 
 <section id="s3">
 <h2><span class="sn">三、</span>搜索靠词对上：对不上返回空，对上了也可能排错</h2>
-<p><b>Codex 的搜索是 BM25，不理解意思，只数词。</b>BM25 是一种老办法：查询里的词在哪个工具的文字里出现、这个词稀不稀有，据此打分，不懂同义词。Codex 用英文分词。每个工具参与打分的文字是：工具全名、服务器名、标题、描述、各参数的<b>名字</b>（不含参数的说明）。<sup><a href="#e7">7</a></sup></p>
+<p>这一节只讲 gpt-5.5 的 <code>tool_search</code>，搜索由 Codex 来做。gpt-6.1-sol 的过滤代码是模型自己写的，怎么匹配由模型决定（实验里用的是正则表达式），不经过这套搜索。</p>
+<p><b>Codex 的搜索是 BM25，不理解意思，只数词。</b>BM25 是一种老的打分办法：看搜索词里的词在哪个工具的文字里出现、这个词稀不稀有，据此给每个工具打分，不懂同义词。Codex 按英文的规则把文字切成词。每个工具参加打分的文字有：工具全名、服务器名、标题、描述、各参数的<b>名字</b>（参数的说明不算）。打完分，Codex 取分数最高的 <code>limit</code> 个返回。<sup><a href="#e7">7</a></sup></p>
 
-<h3>动手看：我搜了 12 次，各返回什么</h3>
-<p>下面是 gpt-5.5、30 个工具下的真实结果（剧本让它查这些词，Codex 真的在搜）。每条我先写下「想要」的工具，再看它在不在返回里。查询词是我写的，不是模型写的，这 12 条<b>不是命中率</b>，只说明机制。<sup><a href="#e8">8</a></sup></p>
+<h3>动手看：12 次搜索，各返回什么</h3>
+<p>下面是 gpt-5.5、接 30 个工具时的实验结果：搜索词由剧本发出，搜索是 Codex 真的在做。每条我先写下「想要」的工具，再看它在不在返回里。搜索词是我写的，不是模型写的，所以这 12 条<b>不是命中率</b>，只用来说明搜索怎么工作。<sup><a href="#e8">8</a></sup></p>
 <div class="ctrl" id="qbtns"></div>
 <div class="panel" id="m2t"></div>
 
 <p><b>三种情况各有一例。</b></p>
 <ul>
-<li><b>词对不上，返回空。</b>描述里写的是 <code>issues</code>，我搜 <code>tickets</code>，没有一个工具命中；<code>CPU usage</code> 对不上 <code>query_metrics</code> 的「metric」「time series」；中文查询对上英文描述，同样为空。返回是一条 160 字节的 <code>tool_search_output</code>，<code>tools</code> 是空数组，没有报错，也没有提示。模型看到的就是「没有」。<sup><a href="#e9">9</a></sup></li>
-<li><b>命中了，但名额被别的占了。</b><code>list open issues</code> 返回 8 个，其中只有 <code>list_issues</code> 是想要的，另外 7 个是 <code>list_incidents</code>、<code>list_tables</code> 这类带「list」的。<code>close the bug</code> 还带出 Codex 自带的 <code>close_agent</code>、<code>resume_agent</code>，因为内置的延后工具和 MCP 工具共用一个索引。</li>
-<li><b>名额少时排错。</b>同样查 <code>list open issues</code>，<code>limit</code> 设成 1，返回的是 <code>monitor.list_incidents</code>；查 <code>issue</code>、<code>limit</code> 设成 3，返回 <code>add_label</code>、<code>add_comment</code>、<code>assign_issue</code>，没有 <code>list_issues</code>。</li>
+<li><b>词对不上，返回空。</b>问题单工具的描述里写的是 <code>issues</code>，我搜 <code>tickets</code>，没有一个工具命中；搜 <code>CPU usage</code>，也对不上 <code>query_metrics</code> 描述里的「metric」「time series」；用中文搜英文描述的工具，同样为空。这时返回的是一条 160 字节的 <code>tool_search_output</code>，里面的 <code>tools</code> 是空列表，没有报错，也没有提示。模型看到的就是「没有这样的工具」。<sup><a href="#e9">9</a></sup></li>
+<li><b>想要的搜到了，但返回的大多不是想要的。</b><code>list open issues</code> 返回 8 个，想要的 <code>list_issues</code> 在里面，另外 7 个是 <code>list_incidents</code>、<code>list_tables</code> 这类带「list」的。<code>close the bug</code> 还带出了 Codex 自带的 <code>close_agent</code>、<code>resume_agent</code>，因为 Codex 自带的延后工具和 MCP 工具放在同一个搜索范围里。</li>
+<li><b><code>limit</code> 设得小，第一名可能不是想要的。</b>同样搜 <code>list open issues</code>，<code>limit</code> 设成 1，返回的是 <code>monitor.list_incidents</code>；搜 <code>issue</code>、<code>limit</code> 设成 3，返回 <code>add_label</code>、<code>add_comment</code>、<code>assign_issue</code>，没有 <code>list_issues</code>。</li>
 </ul>
 
-<h3>动手算：搜索结果留在历史里，要多背多少</h3>
-<p>搜到的完整定义是追加进历史的，之后每次请求都带着（直到压缩，第 4 章）。实验里一次搜索的结果约 160 字节 + 每个工具约 380 字节（1 个 641、3 个 1,335、7 个 2,838、8 个 3,210，都落在这条线附近），再加上搜索调用本身约 170 字节。拖「每次返回几个」「搜几次」。</p>
+<h3>动手算：搜索结果留在历史里，要多带多少</h3>
+<p>搜到的完整定义是追加进历史的，之后每次请求都带着，直到压缩（第 4 章）。实验里一次搜索的结果约「160 字节 + 每个工具约 380 字节」：返回 1 个是 641 字节，3 个是 1,335，7 个是 2,838，8 个是 3,210，都落在这条线附近；再加上模型发出搜索的那条调用，约 170 字节。拖「每次返回几个」「搜了几次」看合计。</p>
 <div class="ctrl"><label for="k3">每次返回 <b id="k3v"></b> 个工具</label><input type="range" id="k3" min="0" max="20" step="1" value="8"></div>
 <div class="ctrl"><label for="t3">本会话搜了 <b id="t3v"></b> 次</label><input type="range" id="t3" min="0" max="30" step="1" value="5"></div>
 <div class="panel" id="m3t"></div>
 
 <div class="answer" id="a3">
 <p class="qh">回答问题 3</p>
-<p class="qq">搜索词和工具描述对不上时，模型拿到什么？搜到了，就等于选对了吗？</p>
-<p>对不上就拿到一个空数组，没有报错也没有提示。搜到也不等于选对：返回按 BM25 分数取前 <code>limit</code> 个，实验里 <code>limit</code> 为 1 时排第一的是 <code>list_incidents</code> 而不是 <code>list_issues</code>。模型之后怎么改写查询、会不会放弃，是模型的行为，本章没测【未测】。</p>
+<p class="qq">gpt-5.5 的搜索词和工具描述里的词对不上时，模型拿到什么？搜到了，就等于找对了吗？</p>
+<p>对不上，模型拿到一个空列表，没有报错也没有提示。搜到了也不等于找对：Codex 按 BM25 的分数取前 <code>limit</code> 个返回，实验里 <code>limit</code> 设成 1 时，排第一的是 <code>list_incidents</code>，不是想要的 <code>list_issues</code>。模型拿到空结果后怎么改写搜索词、会不会放弃，是模型的行为，本章没测【未测】。</p>
 </div>
 </section>
 
 <section id="s4">
-<h2><span class="sn">四、</span>没搜过、写错、被关掉的名字</h2>
-<p><b>搜索是找定义的办法，不是调用的门槛。</b>三个实验都是让假服务器直接回一个工具调用，看 Codex 把什么还给模型：<sup><a href="#e10">10</a></sup></p>
+<h2><span class="sn">四、</span>没搜过、写错、已关掉的工具名</h2>
+<p><b>搜索是模型找定义的办法，不是调用前必须过的一关。</b>下面四个实验，都是让假服务器直接回一个工具调用，看 Codex 把什么还给模型：<sup><a href="#e10">10</a></sup></p>
 <div class="tablewrap"><table>
-<tr><th>模型</th><th>模型写出的调用</th><th>还给模型的</th><th>多进历史的</th></tr>
-<tr><td><code>gpt-5.5</code></td><td><code>mcp__tracker.list_issues</code>，没搜过，名字是对的</td><td>照常执行，返回工具的内容</td><td>调用 149 + 输出 252 字节</td></tr>
-<tr><td><code>gpt-5.5</code></td><td>同上，但 MCP 服务器没配 <code>default_tools_approval_mode = "approve"</code></td><td>「MCP tool call requires approval, but approval policy is never」</td><td>调用 149 + 输出 282 字节</td></tr>
-<tr><td><code>gpt-5.5</code></td><td><code>mcp__tracker.list_tickets</code>，名字写错</td><td>「unsupported call: mcp__trackerlist_tickets」</td><td>调用 150 + 输出 159 字节</td></tr>
-<tr><td><code>gpt-6.1-sol</code>，用 <code>-c features.sleep_tool=false</code> 关掉了 <code>clock.sleep</code></td><td><code>clock.sleep</code></td><td>「unsupported call: clocksleep」，没有执行</td><td>调用 136 + 输出 145 字节</td></tr>
+<tr><th>模型</th><th>模型发出的调用</th><th>Codex 还给模型的</th><th>写进历史的字节</th></tr>
+<tr><td><code>gpt-5.5</code></td><td><code>mcp__tracker.list_issues</code>：没搜过，名字是对的</td><td>照常执行，返回工具的结果</td><td>调用 149 + 结果 252</td></tr>
+<tr><td><code>gpt-5.5</code></td><td>同上，但这个 MCP 服务器的配置里没写 <code>default_tools_approval_mode = "approve"</code></td><td>「MCP tool call requires approval, but approval policy is never」，没有执行</td><td>调用 149 + 结果 282</td></tr>
+<tr><td><code>gpt-5.5</code></td><td><code>mcp__tracker.list_tickets</code>：名字写错</td><td>「unsupported call: mcp__trackerlist_tickets」，没有执行</td><td>调用 150 + 结果 159</td></tr>
+<tr><td><code>gpt-6.1-sol</code></td><td><code>clock.sleep</code>：这个工具已经用 <code>-c features.sleep_tool=false</code> 关掉了</td><td>「unsupported call: clocksleep」，没有执行</td><td>调用 136 + 结果 145</td></tr>
 </table></div>
-<p>第二行是 MCP 工具默认要用户批准（<code>codex exec</code> 里批准策略是 <code>never</code>，就直接拒绝）；其余实验都在服务器配置里写了 <code>default_tools_approval_mode = "approve"</code>，让调用能走到底。报错里的名字是命名空间和工具名直接拼在一起，没有分隔符，这是 Codex 的写法。<sup><a href="#e10">10</a></sup></p>
-<p><b>第 5 章的问题有答案了：关掉工具，开头的定义还在，调它不会真的执行。</b>关掉 <code>sleep_tool</code> 之后，请求开头的工具定义逐字不变（还是 25,347 字节，仍然列着 <code>clock[sleep]</code>），只在末尾追加一条 274 字节的 developer 消息：「The following namespaces are no longer available. Do not call tools in them unless those tools are declared in a later update: - clock」。模型要是不理会，照调 <code>clock.sleep</code>，Codex 回「unsupported call」。<sup><a href="#e11">11</a></sup>代价是浪费一次往返，加上调用和报错共约 280 字节留在历史里。模型会不会遵守那条说明、收到报错后怎么改，要真实模型才能测【未测】。</p>
+<p>第二行要解释一下批准。Codex 缺省要你批准每一次 MCP 工具调用；<code>codex exec</code> 运行时不问你，它的批准策略是 <code>never</code>（从不问），所以直接拒绝。其余实验都在 <code>~/.codex/config.toml</code> 里这个服务器的一节（如 <code>[mcp_servers.tracker]</code>）写了 <code>default_tools_approval_mode = "approve"</code>，意思是这个服务器的工具不用问、直接批准，调用才能走到底。报错里的名字是命名空间（服务器名或工具组名）和工具名直接拼在一起，中间没有分隔符，这是 Codex 的写法。<sup><a href="#e10">10</a></sup></p>
+<p><b>关掉的工具，定义还在请求开头，模型照样调用时 Codex 不执行。</b>第 5 章讲过，<code>sleep</code> 是 Codex 自带的一个工具（属于 <code>clock</code> 组），关掉它之后，请求开头的工具定义逐字不变（还是 25,347 字节，仍然列着 <code>clock[sleep]</code>），只在末尾追加一条 274 字节的说明：「The following namespaces are no longer available. Do not call tools in them unless those tools are declared in a later update: - clock」。这个实验在同一个会话里分两个进程：第 1 个进程里调用 <code>clock.sleep</code>，正常执行；第 2 个进程关掉它，模型不理会那条说明、照样调用，Codex 回「unsupported call」。<sup><a href="#e11">11</a></sup>代价是白白多一次往返，调用和报错共约 280 字节留在历史里。真实模型会不会遵守那条说明、收到报错后怎么改，要真实模型才能测【未测】。</p>
 
 <div class="answer" id="a4">
 <p class="qh">回答问题 4</p>
-<p class="qq">没搜过就直接调、写错名字、调已关掉的工具，会发生什么？关掉工具后定义还在开头，会不会误用？</p>
-<p>名字对，没搜过也能调通（过批准那一关的话）；名字写错或工具已关，Codex 回一句「unsupported call: …」，不执行，调用和报错留在历史里。所以关掉工具后「误用」不会产生真实调用，只会浪费一次往返。</p>
+<p class="qq">模型没搜过就直接调用、写错名字、调用已关掉的工具，Codex 会怎样处理？</p>
+<p>名字对，没搜过也能调通（前提是这个调用得到了批准）。名字写错或工具已关掉，Codex 回一句「unsupported call: …」，不执行，调用和报错留在历史里。所以关掉的工具虽然定义还在请求开头，模型照样调用也不会真的执行，只是白白多一次往返。</p>
 </div>
 </section>
 
 <section id="s5">
-<h2><span class="sn">五、</span>直连时一个工具多大，怎么压</h2>
-<p><b>直连时请求随工具数线性涨，实验里一个工具 340–589 字节。</b>模型名不在 Codex 模型表里（自建通道常见这种情况【推测】），MCP 工具直接写进请求。<sup><a href="#e12">12</a></sup></p>
+<h2><span class="sn">五、</span>直连时一个工具多大，怎么减少</h2>
+<p><b>直连时，请求随工具个数成比例地涨，实验里一个工具 340–589 字节。</b>下面都用两份资料里都没有的模型名（<code>not-a-real-model</code>），让 MCP 工具直连：<sup><a href="#e12">12</a></sup></p>
 <div class="tablewrap"><table>
-<tr><th>配置（模型表里没有的名字）</th><th>MCP 工具部分</th><th>平均一个</th></tr>
-<tr><td>问题单服务器，10 个工具</td><td class="num">3,592 字节</td><td class="num">359</td></tr>
-<tr><td>3 个服务器，30 个工具</td><td class="num">10,204 字节</td><td class="num">340</td></tr>
-<tr><td>凑数服务器，40 个工具（描述约 300 字节，3 个带说明的参数）</td><td class="num">23,575 字节</td><td class="num">589</td></tr>
+<tr><th>接的 MCP 服务器</th><th class="num">MCP 工具定义合计（字节）</th><th class="num">平均一个（字节）</th></tr>
+<tr><td>问题单服务器，10 个工具</td><td class="num">3,592</td><td class="num">359</td></tr>
+<tr><td>3 个服务器，30 个工具</td><td class="num">10,204</td><td class="num">340</td></tr>
+<tr><td>凑数服务器，40 个工具（每个描述约 300 字节，3 个带说明的参数）</td><td class="num">23,575</td><td class="num">589</td></tr>
 </table></div>
-<p>我写的假工具描述只有一两句、1–3 个参数。真实 MCP 服务器的工具有多大，没拿真实服务器测过【待核实】。Codex 对每个工具的输入定义有个压缩阈值，缺省 5,000 字节，配置项是 <code>tool_input_schema_max_bytes</code>（源码注释，没做实验）。<sup><a href="#e13">13</a></sup></p>
-<p><b>最直接的办法是只放行用得到的工具。</b>写在 <code>~/.codex/config.toml</code> 里那个 MCP 服务器的一节：</p>
+<p>我写的假工具描述只有一两句、1–3 个参数。真实 MCP 服务器的工具有多大，没拿真实服务器测过【待核实】。Codex 有个配置项 <code>tool_input_schema_max_bytes</code>，写在 MCP 服务器那一节里：源码注释说，一个工具的输入参数定义超过这个字节数，Codex 就把它压缩，缺省 5,000 字节。压缩成什么样，没做实验。<sup><a href="#e13">13</a></sup></p>
+<p><b>最直接的办法是只放行用得到的工具。</b>同样写在 <code>~/.codex/config.toml</code> 里那个 MCP 服务器的一节：</p>
 <pre>[mcp_servers.tracker]
 command = "…"
-enabled_tools = ["list_issues", "create_issue"]   # 只注册这两个；另有 disabled_tools 是反过来排除</pre>
-<p>实验里问题单服务器从 10 个工具缩到 2 个，工具部分 3,592 → 930 字节。<sup><a href="#e13">13</a></sup>延后模式下同样有用：自带测试检查了被禁用的工具搜不到。<sup><a href="#e14">14</a></sup></p>
+enabled_tools = ["list_issues", "create_issue"]   # 只登记这两个；另有 disabled_tools，作用相反：列出的不登记</pre>
+<p>实验里问题单服务器从 10 个工具缩到 2 个，工具定义从 3,592 字节降到 930 字节。<sup><a href="#e13">13</a></sup>延后时这个办法同样有用：Codex 自带的测试检查过，没登记的工具搜不到。<sup><a href="#e14">14</a></sup></p>
 
 <div class="compare">
-<h3>对照：Claude Code 默认延后，并且能按服务器豁免</h3>
-<p>Claude Code 默认把所有 MCP 工具延后，开局只载入工具名和服务器的 instructions（服务器自述用途的文字），模型要用时通过 <code>ToolSearch</code> 取定义；官方文档说没有每服务器工具数的固定上限，实际上限是上下文窗口。启动前设环境变量 <code>ENABLE_TOOL_SEARCH</code>（例如 <code>ENABLE_TOOL_SEARCH=auto:5 claude</code>）：<code>false</code> 是全部直连，<code>auto</code> 是工具定义合计低于窗口 10% 时直连，<code>auto:5</code> 是把 10% 改成 5%。在项目 <code>.mcp.json</code> 里那个服务器的条目写 <code>"alwaysLoad": true</code>，这个服务器的工具始终直连。过长的文字会被截断：服务器 instructions 和直连工具的描述 4,096 字符，经搜索加载的工具描述 16,384 字符。<sup><a href="#e15">15</a></sup>按文档，Claude Code 的请求里仍带着这些工具的完整定义，只是标了 <code>defer_loading</code>，由服务端决定哪些展开进上下文；这和 Codex 根本不往请求里放不同，我没抓过 Claude Code 的请求【待核实】。<sup><a href="#e16">16</a></sup></p>
+<h3>对照：Claude Code 缺省延后，可以按服务器改成直连</h3>
+<p>据官方文档（2026-11-02 查阅），Claude Code 的做法和 Codex 延后的思路一样，但能调的地方更多：<sup><a href="#e15">15</a></sup></p>
+<ul>
+<li><b>缺省全部延后。</b>开局只载入工具名和服务器的 instructions（服务器自己写的用途说明），模型要用某个工具时，通过 <code>ToolSearch</code> 工具取它的定义。文档说没有每个服务器最多几个工具的固定上限，实际的上限是窗口。</li>
+<li><b>整体开关是环境变量 <code>ENABLE_TOOL_SEARCH</code>，</b>启动前设，例如 <code>ENABLE_TOOL_SEARCH=auto:5 claude</code>。<code>false</code> 是全部直连；<code>auto</code> 是工具定义合计不到窗口的 10% 时直连；<code>auto:5</code> 把 10% 改成 5%。</li>
+<li><b>单个服务器改成直连：</b>在项目的 <code>.mcp.json</code> 里，那个服务器的条目写 <code>"alwaysLoad": true</code>。</li>
+<li><b>过长的文字会截断：</b>服务器 instructions 和直连工具的描述最多 4,096 字符，经搜索加载的工具描述最多 16,384 字符。</li>
+</ul>
+<p>还有一处和 Codex 不同。按文档，Claude Code 的请求里其实仍带着延后工具的完整定义，只是标上 <code>defer_loading</code>，由服务器决定把哪些展开进模型的上下文；Codex 则根本不把延后的定义放进请求。我没抓过 Claude Code 的请求，这一点只有文档【待核实】。<sup><a href="#e16">16</a></sup></p>
 </div>
 
 <div class="answer" id="a5">
 <p class="qh">回答问题 5</p>
-<p class="qq">工具定义直接写进请求，一个占多少字节？怎么压？Claude Code 默认怎么做？</p>
-<p>实验里平均一个 340–589 字节，真实服务器可能更大。用 <code>enabled_tools</code> 只放行要用的（10 个缩到 2 个，3,592 → 930 字节）。Claude Code 默认延后，靠 <code>ToolSearch</code> 取定义，可用 <code>alwaysLoad</code> 把常用服务器豁免成直连。</p>
+<p class="qq">工具定义直接写进请求时，一个占多少字节？有什么办法让它少占？Claude Code 缺省怎么做？</p>
+<p>实验里平均一个 340–589 字节，用的是描述很短的假工具；真实服务器的工具多大没测【待核实】。最直接的办法是在 <code>config.toml</code> 里用 <code>enabled_tools</code> 只放行要用的工具（10 个缩到 2 个，3,592 字节降到 930 字节）。Claude Code 缺省把 MCP 工具全部延后，靠 <code>ToolSearch</code> 取定义；常用的服务器可以用 <code>alwaysLoad</code> 改成直连。</p>
 </div>
 </section>
 
 <section id="notes">
 <h2>设计笔记</h2>
 <ul>
-<li><b>省的是窗口和每次请求的重发，付的是往返和找不到。</b>工具定义在请求开头，每次重发；延后之后开头不变，也利于第 5 章的缓存（实验里 3 次请求顶层 <code>tools</code> 都是 11,397 字节，搜索结果追加在末尾）。但每多一步搜索，就多一次请求。Anthropic 的文档建议把最常用的 3–5 个工具留作直连，Claude Code 的 <code>alwaysLoad</code> 就是这个用途；Codex 0.165.0 的配置里没找到逐服务器的等价开关，搜索不穷尽【待核实】。</li>
-<li><b>「越多越容易用错」目前只有三块证据。</b>一是直连时定义占的字节数（本章实验）；二是官方对 Claude 模型说 30–50 个工具后选择变差（文档，非本章测量）；三是延后时检索会漏、会排错（本章实验，查询词是我写的）。模型在真实对话里选错的比例，本章没有数据。</li>
-<li><b>gpt-6.1-sol 不用 <code>tool_search</code>，改在脚本里过滤，原因代码没写【推测】。</b>脚本过滤可以只打印需要的几行，不必像 <code>tool_search_output</code> 那样把完整定义整份塞回历史；代价是模型得自己写对过滤代码。</li>
-<li><b>内置延后工具和 MCP 工具共用一个搜索索引。</b>实验里 <code>close the bug</code> 带出了 <code>close_agent</code>、<code>resume_agent</code>。接的工具越多，这类串味的机会越多。</li>
-<li><b>别的做法。</b>第三版资料提到 Grok Build 先 BM25 检索再用 <code>use_tool</code> 调用、opencode v2 让模型把调用写进 <code>execute</code> 的代码里；本机没有这两个 agent 的源码，没核对【待核实】。</li>
+<li><b>省的是窗口和每次请求的重发，付的是往返和找不到。</b>工具定义在请求开头，每次都重发；延后之后开头不变，也有利于第 5 章的缓存（实验里 3 次请求顶层 <code>tools</code> 都是 11,397 字节，搜索结果追加在末尾）。但每搜一次，就多一次往返。Anthropic 的文档建议把最常用的 3–5 个工具留作直连，Claude Code 的 <code>alwaysLoad</code> 就是这个用途；Codex 0.165.0 的配置里，我没找到按服务器改成直连的开关，但没有逐项穷尽【待核实】。</li>
+<li><b>「工具越多越容易用错」，目前只有三块证据。</b>一是直连时定义占的字节数（本章实验）；二是官方对 Claude 模型说，工具超过 30–50 个后选择变差（文档，不是本章测的）；三是延后时搜索会漏、会排错（本章实验，搜索词是我写的）。真实对话里模型选错工具的比例，本章没有数据。</li>
+<li><b>gpt-6.1-sol 不用 <code>tool_search</code>，改在脚本里过滤，代码没写原因【推测】。</b>一个可能的好处：脚本可以只打印需要的几行，不必像 <code>tool_search_output</code> 那样把完整定义整份追加进历史；代价是模型得自己写对过滤代码。</li>
+<li><b>Codex 自带的延后工具和 MCP 工具在同一个搜索范围里。</b>实验里 <code>close the bug</code> 带出了 <code>close_agent</code>、<code>resume_agent</code>。接的工具越多，这类不相干的结果占掉名额的机会越多。</li>
+<li><b>别的做法。</b>有的 agent 先用 BM25 搜工具、再通过一个统一的调用工具去调；有的让模型把工具调用写进一段代码里执行，和 gpt-6.1-sol 的 <code>exec</code> 类似。本机没有其他 agent 的源码，它们具体怎么做没核对【待核实】。</li>
 </ul>
 </section>
 
 <section id="summary">
 <h2>小结</h2>
 <ol>
-<li>接 30 个 MCP 工具，gpt-6.1-sol 的请求不变，gpt-5.5 多约 2 KB 固定内容；只有模型名不在 Codex 模型表里才直连，30 个工具多出 12,159 字节。</li>
-<li>没有定义时，gpt-5.5 调 <code>tool_search</code>，gpt-6.1-sol 在 <code>exec</code> 脚本里过滤 <code>ALL_TOOLS</code>；差别来自模型表的 <code>tool_mode</code>，两种都多一次往返。</li>
-<li>搜索是数词的 BM25：词对不上返回空数组，没有任何提示；名额少时第一名也可能不是想要的。</li>
-<li>名字对，没搜过也能调；名字错或已关掉的工具，Codex 回「unsupported call」，不执行，浪费一次往返。</li>
-<li>直连时一个工具实验里 340–589 字节；用 <code>enabled_tools</code> 只放行要用的。Claude Code 默认延后，可用 <code>alwaysLoad</code> 豁免。</li>
+<li>接 30 个 MCP 工具，gpt-6.1-sol 的请求一字不变，gpt-5.5 多出固定的 1,983 字节；只有模型名不在 Codex 的两份模型资料里才直连，30 个工具多出 12,159 字节。</li>
+<li>请求里没有定义时，gpt-5.5 调用 <code>tool_search</code>，gpt-6.1-sol 在 <code>exec</code> 脚本里过滤 <code>ALL_TOOLS</code>；差别来自模型资料的 <code>tool_mode</code>，两种都多一次往返。</li>
+<li>gpt-5.5 的搜索是只数词的 BM25：词对不上返回空列表，没有任何提示；<code>limit</code> 设得小时，第一名也可能不是想要的。</li>
+<li>名字对，没搜过也能调用；名字写错或工具已关掉，Codex 回「unsupported call」，不执行，白白多一次往返。</li>
+<li>直连时一个工具在实验里 340–589 字节；用 <code>enabled_tools</code> 只放行要用的。Claude Code 缺省延后，可以用 <code>alwaysLoad</code> 把单个服务器改成直连。</li>
 </ol>
 </section>
 
@@ -219,18 +236,18 @@ enabled_tools = ["list_issues", "create_issue"]   # 只注册这两个；另有 
 <div class="tablewrap"><table>
 <tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
 <tr id="e1"><td>1</td><td>Anthropic 文档：典型五服务器配置工具定义约 55k token；可用工具超过 30–50 个后选择能力下降；延后工具的完整定义仍随每次请求发送，由服务端决定展开哪些；常用的 3–5 个工具不延后；单次搜索缺省返回 5 个</td><td>官方文档 <code>platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool</code>，2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，对 Claude 模型，非本章测量</td></tr>
-<tr id="e2"><td>2</td><td>MCP 工具按 <code>supports_search_tool</code> 登记为 Deferred 或 Direct；<code>tool_search</code> 只在该项为 true 且存在带检索信息的延后工具时才加；后备模型资料里该项为 false；<code>76ed3b4</code> 的模型表 11 个模型该项全为 true</td><td>源码 <code>core/src/mcp_tool_exposure.rs:84-88</code>、<code>core/src/tools/spec_plan.rs:265-272,391-398</code>、<code>models-manager/src/model_info.rs:136</code>、<code>models-manager/models.json</code>（<code>supports_search_tool</code> 11 处）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e2"><td>2</td><td>MCP 工具按 <code>supports_search_tool</code> 登记为 Deferred 或 Direct；<code>tool_search</code> 只在该项为 true 且存在带检索信息的延后工具时才加；后备模型资料里该项为 false；<code>76ed3b4</code> 的模型表 11 个模型该项全为 true；本机下载的模型列表 <code>~/.codex/models_cache.json</code>（2026-11-02 下载，10 个模型，不含 gpt-5.5）也全为 true</td><td>源码 <code>core/src/mcp_tool_exposure.rs:84-88</code>、<code>core/src/tools/spec_plan.rs:265-272,391-398</code>、<code>models-manager/src/model_info.rs:136</code>、<code>models-manager/models.json</code>（<code>supports_search_tool</code> 11 处）；本机 <code>models_cache.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e3"><td>3</td><td>请求大小实验：全新临时 <code>CODEX_HOME</code>，假 Responses 服务器 + 假 MCP 服务器（tracker / database / monitor 各 10 个工具），HTTP，<code>sandbox_mode = "read-only"</code>，思考级别 low，剧本 <code>sleep:3000;text</code>；gpt-6.1-sol 54,848 → 54,848（工具部分逐字相同）；gpt-5.5 37,002 → 38,985，顶层 <code>tools</code> 9,414 → 11,397，差在 3 个资源工具（651 + 740 + 552）和 <code>tool_search</code>（+34）；模型表里没有的名字 38,590 → 50,749，顶层 <code>tools</code> 17,713 → 29,872。总字节是本章口径（工具 + input 的 json.dumps），线上实际请求体略小</td><td>实验 <code>out/e1b-gpt61-0tools</code>、<code>e1-gpt61-30tools</code>、<code>e2-gpt55-0tools</code>、<code>e2-gpt55-30tools</code>、<code>e10-unknown-none</code>、<code>e10-unknown-three</code>；<code>analyze.py</code> 第一节</td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e4"><td>4</td><td>模型表：gpt-6.1-sol 的 <code>tool_mode</code> 是 <code>code_mode_only</code>，gpt-5.5 是 null；未设时按特性开关决定，缺省 Direct。此前未决的「gpt-5.5 和 gpt-6.1-sol 工具集差别」，工具放在哪、有没有 <code>exec</code> 由 <code>tool_mode</code>（以及第 2 章的 <code>use_responses_lite</code>）决定；系统提示词的差别没逐项核对</td><td>源码 <code>models-manager/models.json</code>（gpt-6.1-sol 第 177 行起、<code>tool_mode</code> 第 193 行；gpt-5.5 第 1340 行起、第 1356 行）、<code>core/src/tools/mod.rs:63-72</code></td><td><span class="tag lvl-h">高</span> 工具表；<span class="tag lvl-m">中</span> 系统提示词差别没核对</td></tr>
+<tr id="e4"><td>4</td><td>模型表：gpt-6.1-sol 的 <code>tool_mode</code> 是 <code>code_mode_only</code>，gpt-5.5 是 null；未设时按特性开关决定，缺省 Direct。工具放在哪、有没有 <code>exec</code> 由 <code>tool_mode</code>（以及第 2 章的 <code>use_responses_lite</code>）决定；系统提示词的差别没逐项核对</td><td>源码 <code>models-manager/models.json</code>（gpt-6.1-sol 第 177 行起、<code>tool_mode</code> 第 193 行；gpt-5.5 第 1340 行起、第 1356 行）、<code>core/src/tools/mod.rs:63-72</code></td><td><span class="tag lvl-h">高</span> 工具表；<span class="tag lvl-m">中</span> 系统提示词差别没核对</td></tr>
 <tr id="e5"><td>5</td><td>gpt-5.5 搜索流程：顶层 <code>tools</code> 含 <code>tool_search</code>（参数 <code>query</code>、<code>limit</code>，缺省 8），说明里列来源；模型调用后 <code>tool_search_output</code> 追加进历史（<code>list open issues</code> 3,210 字节）；3 次请求顶层 <code>tools</code> 恒为 11,397 字节；随后 <code>mcp__tracker.list_issues</code> 调用成功</td><td>实验 <code>out/e5-gpt55-search-then-call</code>、<code>e2-gpt55-30tools</code>；源码 <code>tools/src/tool_discovery.rs:7</code>、<code>core/src/tools/handlers/tool_search_spec.rs</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e6"><td>6</td><td>gpt-6.1-sol 的 <code>exec</code> 说明含「Some deferred nested tools may be omitted…listed in <code>ALL_TOOLS</code>…filter <code>ALL_TOOLS</code> by name and description」，接不接 MCP 逐字相同；实验脚本里 <code>ALL_TOOLS.length</code> = 41（30 个 MCP + 11 个自带：<code>apply_patch</code>、<code>clock__curr_time</code>、<code>create_goal</code>、<code>exec_command</code>、<code>get_goal</code>、3 个资源工具、<code>update_goal</code>、<code>view_image</code>、<code>write_stdin</code>），整个序列化 18,723 字符；过滤得 9 个名字；<code>tools.mcp__tracker__list_issues</code> 调用成功；输出条目 1,196、629 字节</td><td>源码 <code>code-mode-protocol/src/description.rs:16-17,46</code>；实验 <code>out/e9-gpt61-exec-allt</code>、<code>e13-gpt61-all-names</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e6"><td>6</td><td>gpt-6.1-sol 的 <code>exec</code> 说明含「Some deferred nested tools may be omitted…listed in <code>ALL_TOOLS</code>…filter <code>ALL_TOOLS</code> by name and description」，接不接 MCP 逐字相同；实验分两段脚本：第 1 段列 <code>ALL_TOOLS.length</code> = 41 和 30 个 MCP 名（输出条目 1,196 字节），第 2 段按 <code>/issue/i</code> 过滤得 9 个名字并调用 <code>tools.mcp__tracker__list_issues</code>，成功（输出条目 629 字节）；11 个自带：<code>apply_patch</code>、<code>clock__curr_time</code>、<code>create_goal</code>、<code>exec_command</code>、<code>get_goal</code>、3 个资源工具、<code>update_goal</code>、<code>view_image</code>、<code>write_stdin</code>；整个 <code>ALL_TOOLS</code> 序列化 18,723 字符</td><td>源码 <code>code-mode-protocol/src/description.rs:16-17,46</code>；实验 <code>out/e9-gpt61-exec-allt</code>（<code>req-3.json</code> 末尾 4 条）、<code>e13-gpt61-all-names</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e7"><td>7</td><td>搜索：BM25，<code>Language::English</code>；每个工具的检索文字 = 全名 + 可调用名 + 工具名 + 服务器名 + 标题 + 描述 + 连接器名 + 命名空间描述 + 插件名 + 排序后的参数名（<code>input_schema.properties</code> 的键，不含参数说明）；结果按分数取前 <code>limit</code> 个，再按服务器合并</td><td>源码 <code>core/src/tools/handlers/mcp.rs:555-602</code>、<code>core/src/tools/handlers/tool_search.rs:172,342-356</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e8"><td>8</td><td>12 次查询的结果：<code>list open issues</code>（8 个，3,210 字节）、<code>show me firing alerts</code>（5 个，2,027）、<code>how many rows in the users table</code>（8 个，2,977）、<code>close the bug</code>（3 个，含 <code>multi_agent_v1.close_agent</code>、<code>resume_agent</code>，1,728）、<code>page the on-call engineer</code>（2 个，957）、<code>find tickets about login</code>（0）、<code>add an index</code>（4 个，1,763）、<code>what is the CPU usage</code>（0）、<code>列出未解决的问题单</code>（0）、<code>list</code> limit 20（7 个，2,838）、<code>issue</code> limit 3（3 个，1,335）、<code>list open issues</code> limit 1（<code>monitor.list_incidents</code>，641）。「想要的工具」是我事先指定的，查询词是我写的</td><td>实验 <code>out/e4-gpt55-8queries</code>、<code>e8-gpt55-chinese-query</code>、<code>e15-gpt55-limit</code>；<code>analyze.py</code> 第三节</td><td><span class="tag lvl-h">高</span> 结果；<span class="tag lvl-l">推测</span> 不代表真实模型的查询</td></tr>
 <tr id="e9"><td>9</td><td>搜不到时返回的条目：<code>{"type":"tool_search_output","status":"completed","execution":"client","tools":[]}</code>，160 字节，无报错文字</td><td>实验 <code>out/e8-gpt55-chinese-query/req-2.json</code>（<code>input</code> 末尾）</td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e10"><td>10</td><td>调用实验（gpt-5.5）：没搜过直接调 <code>mcp__tracker.list_issues</code>（设了 <code>default_tools_approval_mode = "approve"</code>）→ 执行并返回；没设 → 「MCP tool call requires approval, but approval policy is never」；写错名字 → 「unsupported call: mcp__trackerlist_tickets」。报错名字是命名空间和工具名直接拼接</td><td>实验 <code>out/e6-gpt55-call-without-search</code>、<code>e6b-gpt55-call-needs-approval</code>、<code>e7-gpt55-call-wrong-name</code>；源码 <code>core/src/tools/registry.rs:962-966</code>、<code>core/src/tools/mod.rs:47-60</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e11"><td>11</td><td>关掉工具（gpt-6.1-sol，第 2 个进程 <code>exec resume --last -c features.sleep_tool=false</code>）：请求开头的 <code>additional_tools</code> 仍是 25,347 字节、仍含 <code>clock[sleep]</code>；末尾追加 274 字节的 developer 消息；模型照调 <code>clock.sleep</code> → 「unsupported call: clocksleep」（145 字节），未执行。说明文字的出处是 <code>incremental_tools</code> 的提示词</td><td>实验 <code>out/e12-gpt61-disabled-tool-called</code>（<code>req-3.json</code> 第 10 条、<code>req-4.json</code> 第 12–13 条）；源码 <code>prompts/src/model_messages/incremental_tools.rs:38-40</code></td><td><span class="tag lvl-h">高</span> 假服务器；<span class="tag lvl-l">待核实</span> 真实模型是否遵守</td></tr>
+<tr id="e10"><td>10</td><td>调用实验（gpt-5.5）：没搜过直接调 <code>mcp__tracker.list_issues</code>（设了 <code>default_tools_approval_mode = "approve"</code>）→ 执行并返回；没设 → 「MCP tool call requires approval, but approval policy is never」；写错名字 → 「unsupported call: mcp__trackerlist_tickets」。报错名字是命名空间和工具名直接拼接</td><td>实验 <code>out/e6-gpt55-call-without-search</code>、<code>e6b-gpt55-call-needs-approval</code>、<code>e7-gpt55-call-wrong-name</code>；源码 <code>core/src/tools/registry.rs:962-966</code>、<code>core/src/tools/mod.rs:47-60</code>、<code>config/src/mcp_types.rs</code>（<code>default_tools_approval_mode</code> 的注释）</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e11"><td>11</td><td>关掉工具（gpt-6.1-sol，第 2 个进程 <code>exec resume --last -c features.sleep_tool=false</code>）：第 1 个进程里 <code>clock.sleep</code> 正常执行（结果 160 字节「Sleep completed」）；第 2 个进程请求开头的 <code>additional_tools</code> 仍是 25,347 字节、仍含 <code>clock[sleep]</code>；末尾追加 274 字节的 developer 消息；模型照调 <code>clock.sleep</code> → 「unsupported call: clocksleep」（145 字节），未执行。说明文字的出处是 <code>incremental_tools</code> 的提示词</td><td>实验 <code>out/e12-gpt61-disabled-tool-called</code>（<code>req-3.json</code> 第 10 条、<code>req-4.json</code> 第 12–13 条）；源码 <code>prompts/src/model_messages/incremental_tools.rs:38-40</code></td><td><span class="tag lvl-h">高</span> 假服务器；<span class="tag lvl-l">待核实</span> 真实模型是否遵守</td></tr>
 <tr id="e12"><td>12</td><td>直连实验（<code>--model not-a-real-model</code>）：10 个工具 3,592 字节；30 个 10,204 字节（平均 340）；40 个凑数工具 23,575 字节（平均 589）；另有 3 个资源工具 1,943 字节</td><td>实验 <code>out/e14-unknown-tracker-all10</code>、<code>e10-unknown-three</code>、<code>e10-unknown-bulk40</code>；<code>analyze.py</code> 第二节</td><td><span class="tag lvl-h">高</span> 假工具；<span class="tag lvl-l">待核实</span> 真实服务器的工具大小</td></tr>
-<tr id="e13"><td>13</td><td><code>enabled_tools</code>（只注册这些）、<code>disabled_tools</code>（在其后排除）、<code>tool_input_schema_max_bytes</code>（缺省 5,000 字节压缩阈值）；实验 10 → 2 个工具：3,592 → 930 字节</td><td>源码 <code>config/src/mcp_types.rs:252,284-288</code>；实验 <code>out/e14-unknown-tracker-enabled2</code></td><td><span class="tag lvl-h">高</span> <code>enabled_tools</code>；<span class="tag lvl-m">中</span> 5,000 字节只读了注释，没做实验</td></tr>
+<tr id="e13"><td>13</td><td><code>enabled_tools</code>（只登记这些）、<code>disabled_tools</code>（在其后排除）、<code>tool_input_schema_max_bytes</code>（注释：「UTF-8 byte threshold for compacting each ordinary MCP tool input schema. Defaults to 5,000 bytes」）；实验 10 → 2 个工具：3,592 → 930 字节</td><td>源码 <code>config/src/mcp_types.rs:252-255,284-288</code>；实验 <code>out/e14-unknown-tracker-enabled2</code></td><td><span class="tag lvl-h">高</span> <code>enabled_tools</code>；<span class="tag lvl-m">中</span> 5,000 字节只读了注释，没做实验</td></tr>
 <tr id="e14"><td>14</td><td>被禁用的 MCP 工具不进检索索引</td><td>Codex 自带测试 <code>core/tests/suite/search_tool.rs:1271</code>（<code>tool_search_indexes_only_enabled_non_app_mcp_tools</code>），没自己跑</td><td><span class="tag lvl-m">中</span> 只读了测试</td></tr>
 <tr id="e15"><td>15</td><td>Claude Code：工具搜索缺省开；开局只载入工具名和服务器 instructions；无每服务器工具数固定上限；<code>ENABLE_TOOL_SEARCH</code> 取值 <code>true</code> / <code>auto</code>（低于窗口 10% 时直连）/ <code>auto:N</code> / <code>false</code>；服务器配置 <code>alwaysLoad</code>；instructions 与直连工具描述上限 4,096 字符，搜索加载的工具描述 16,384 字符（<code>CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH</code> 可改，需 v2.1.280 起）；Opus 4、Sonnet 4、Haiku 4.5 及之后的模型才用，更早的模型全部直连</td><td>官方文档 <code>code.claude.com/docs/en/mcp</code>（含 v2.1.305 的说明），2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，没自己跑</td></tr>
 <tr id="e16"><td>16</td><td>Claude Code 经网关时请求里带 <code>defer_loading</code> 字段和 <code>tool_reference</code> 块；Anthropic 接口里延后工具的定义仍随每次请求发送</td><td>官方文档 <code>code.claude.com/docs/en/mcp</code>（网关一节）、同 #1</td><td><span class="tag lvl-m">中</span> 文档；没抓过 Claude Code 的请求</td></tr>
@@ -256,17 +273,17 @@ function renderS1(){
   const base = BASE[M1];
   const pct = 100 * add / (base + add);
   $('#m1').innerHTML = '<div class="keep" style="width:'+(100-pct)+'%"></div><div class="cut" style="width:'+pct+'%"></div>';
-  let t = '<p><span class="tag lvl-h">固定部分来自实验 #3</span> <span class="tag">'+(M1==='dir'?'随个数线性涨：按实验 30、40 个的平均值推，未验证其他个数':'与工具数无关：只验证过 30 个')+'</span></p>';
-  t += '<p>不接 MCP 的请求 <b>'+fmt(base)+'</b> 字节；接 '+n+' 个工具多出 <b>'+fmt(add)+'</b> 字节 ≈ <b>'+fmt(Math.ceil(add/4))+' token</b>，占请求的 '+pct.toFixed(1)+'%。</p>';
-  if (M1 === 'sol') t += '<p>gpt-6.1-sol 的 MCP 工具不在请求里，查工具靠 <code>exec</code> 脚本过滤 <code>ALL_TOOLS</code>（第二节）。</p>';
-  if (M1 === 'g55') t += '<p>多出的是 3 个资源工具和服务器名，工具定义本身要等 <code>tool_search</code> 搜到才进历史（第二、三节）。</p>';
-  if (M1 === 'dir' && n > 0) t += '<p>这些定义每次请求都在最开头；第 5 章：开头不变时按 0.05 倍计价，但窗口照占。</p>';
+  let t = '<p><span class="tag lvl-h">固定部分来自实验 #3</span> <span class="tag">'+(M1==='dir'?'随个数成比例地涨：按实验 30、40 个的平均值推，没验证别的个数':'与工具个数无关：只验证过 30 个')+'</span></p>';
+  t += '<p>不接 MCP 时请求 <b>'+fmt(base)+'</b> 字节；接 '+n+' 个工具多出 <b>'+fmt(add)+'</b> 字节，约 <b>'+fmt(Math.ceil(add/4))+' token</b>，占请求的 '+pct.toFixed(1)+'%。</p>';
+  if (M1 === 'sol') t += '<p>gpt-6.1-sol 的 MCP 工具定义不在请求里，模型找工具靠 <code>exec</code> 脚本过滤 <code>ALL_TOOLS</code>（第二节）。</p>';
+  if (M1 === 'g55') t += '<p>多出的是 3 个资源工具和搜索工具说明里的服务器名；工具定义本身要等 <code>tool_search</code> 搜到才进历史（第二、三节）。</p>';
+  if (M1 === 'dir' && n > 0) t += '<p>这些定义每次请求都在最前面；第 5 章：开头不变时从缓存读，按全价的 0.05 倍收，但窗口照占。</p>';
   $('#m1t').innerHTML = t;
 }
 $$('[data-m]').forEach(x => x.onclick = () => { M1 = x.dataset.m; press('[data-m]', x); renderS1(); });
 ['#n1','#b1'].forEach(s => $(s).oninput = renderS1);
 
-/* 第三节：12 次查询（实验 e4、e8、e15）。want：我事先指定的想要的工具 */
+/* 第三节：12 次搜索（实验 e4、e8、e15）。want：我事先指定的想要的工具 */
 const Q = [
   {q:'list open issues', lim:'缺省 8', want:'tracker.list_issues', b:3210, r:['monitor.list_incidents','monitor.create_incident','monitor.list_dashboards','monitor.list_alerts','tracker.list_issues','tracker.list_labels','database.list_tables','database.list_indexes']},
   {q:'list open issues', lim:'1', want:'tracker.list_issues', b:641, r:['monitor.list_incidents']},
@@ -284,10 +301,10 @@ const Q = [
 $('#qbtns').innerHTML = Q.map((x,i) => '<button class="btn" data-qi="'+i+'" aria-pressed="'+(i===0)+'">'+x.q+(x.lim==='缺省 8'?'':'（limit '+x.lim+'）')+'</button>').join('');
 function renderS3a(i){
   const x = Q[i], hit = x.want && x.r.includes(x.want);
-  let t = '<p>查询 <b>'+x.q+'</b>，<code>limit</code> '+x.lim+'；想要的工具：'+(x.want ? '<code>'+x.want+'</code>' : '无（只看返回多少）')+'。</p>';
+  let t = '<p>搜索词 <b>'+x.q+'</b>，<code>limit</code> '+x.lim+'；想要的工具：'+(x.want ? '<code>'+x.want+'</code>' : '无（只看返回多少）')+'。</p>';
   t += x.r.length ? '<ul class="hits">'+x.r.map(n => '<li'+(n===x.want?' class="want"':'')+'>'+n+'</li>').join('')+'</ul>'
-                  : '<ul class="hits"><li class="empty">空数组，没有报错，没有提示</li></ul>';
-  t += '<p>这条结果 <b>'+fmt(x.b)+'</b> 字节进入历史；返回 '+x.r.length+' 个'+(x.want ? '，想要的工具<b>'+(hit?'在':'不在')+'</b>里'+(hit && x.r.length>1 ? '，另外 '+(x.r.length-1)+' 个不是想要的' : '')+'。' : '。')+'</p>';
+                  : '<ul class="hits"><li class="empty">空列表，没有报错，没有提示</li></ul>';
+  t += '<p>这条结果 <b>'+fmt(x.b)+'</b> 字节，追加进历史；返回 '+x.r.length+' 个'+(x.want ? '，想要的工具<b>'+(hit?'在':'不在')+'</b>里面'+(hit && x.r.length>1 ? '，另外 '+(x.r.length-1)+' 个不是想要的' : '')+'。' : '。')+'</p>';
   $('#m2t').innerHTML = t;
 }
 $$('[data-qi]').forEach(b => b.onclick = () => { press('[data-qi]', b); renderS3a(+b.dataset.qi); });
@@ -298,7 +315,7 @@ function renderS3b(){
   $('#k3v').textContent = k; $('#t3v').textContent = s;
   const one = 160 + k * 380 + 170, total = s * one;
   let t = '<p><span class="tag lvl-l">推测</span> <span class="tag">按实验拟合，只验证到每次返回 8 个</span></p>';
-  t += '<p>一次搜索进历史约 <b>'+fmt(one)+'</b> 字节；搜 '+s+' 次共 <b>'+fmt(total)+'</b> 字节 ≈ <b>'+fmt(Math.ceil(total/4))+' token</b>，之后每次请求都带着，直到压缩。</p>';
+  t += '<p>一次搜索进历史约 <b>'+fmt(one)+'</b> 字节；搜 '+s+' 次共 <b>'+fmt(total)+'</b> 字节，约 <b>'+fmt(Math.ceil(total/4))+' token</b>，之后每次请求都带着，直到压缩。</p>';
   $('#m3t').innerHTML = t;
 }
 ['#k3','#t3'].forEach(s => $(s).oninput = renderS3b);

@@ -22,43 +22,48 @@
 <p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 价目来自 OpenAI 官方文档，对照 Claude Code 官方文档（都是 2026-11-02 查阅）</p>
 </header>
 
-<p class="lede">每次请求都把整段历史重发一遍（第 3 章）。实验里一个会话连发 5 次请求，每一次都是上一次原样加一截尾巴：从 54,870 字节涨到 56,512 字节，前面一个字节没动。服务器认出这段一模一样的开头，就不必从头再算；按 OpenAI 的价目，gpt-6.1-sol 这部分只收普通输入价的 5%。</p>
-<p class="note">token 仍是 Codex 的估算：UTF-8 字节数 ÷ 4，向上取整（见第 2 章）。实验用本机假服务器，分 HTTP 和 WebSocket 两种通道各跑一遍，每轮是一次 <code>codex exec</code> 或 <code>codex exec resume --last</code>，不联网。本章的「价钱」都写成普通输入价（输入 token 没碰缓存时的单价）的倍数，不写美元；用 ChatGPT 账号登录时，缓存命中的部分怎么折算进套餐额度，官方没公开【待核实】。<sup><a href="#e1">1</a></sup></p>
+<p class="lede">第 2 章说过，Codex 每发一次请求，都把整段对话历史从头再发一遍。实验里一个会话连发 5 次请求，请求从 54,870 字节涨到 56,512 字节，而且每一次都是上一次的内容一字不改、末尾再加几条。服务器认出这段和上次一模一样的开头，就不必从头再算；按 OpenAI 的价目，gpt-6.1-sol 的这段开头只收没用缓存时的 5%。</p>
+<p class="note">「全价」指输入 token 没用上缓存时的单价。本章的价钱都写成全价的倍数，不写美元；用 ChatGPT 账号登录时，用上缓存的部分怎么折算进套餐额度，官方没公开【待核实】。token 仍是 Codex 的估算：UTF-8 字节数 ÷ 4，向上取整（见第 2 章）。实验在本机起一个假的模型服务器，它只记下收到的请求、按脚本回话，不联网，也不真的缓存。实验分 3 轮，第 1 轮是一次 <code>codex exec</code>，第 2、3 轮各是一次 <code>codex exec resume --last</code>（接着上一个会话聊），所以 3 轮是 3 个进程。<sup><a href="#e1">1</a></sup></p>
+<p>Codex 把请求发给服务器有两种连接方式。<b>HTTP</b>：每次请求单独发一次，把整份请求发过去。<b>WebSocket</b>：连上以后一直不断开，同一条连接上可以来回收发很多次。用 ChatGPT 账号或 OpenAI API 密钥连 OpenAI 的服务（第 4 章叫「官方通道」）时，Codex 缺省走 WebSocket；连你在配置文件里写的别的服务地址（「自定义通道」）时缺省走 HTTP。实验的假服务器属于自定义通道，两种连接方式各跑了一遍：第一、二、三节用 HTTP 那一遍的数据，第四节讲 WebSocket 哪里不同。</p>
 
 <section class="qs" id="qs">
 <h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
 <ol>
-<li id="q1">一个会话发到第 30 次请求，前 29 次的内容又跟着发了一遍。这些重复的部分要按全价再算一次吗？缓存（prompt cache）省下的是什么，窗口占用会变小吗？<a class="jump" href="#a1">答案 ↓</a></li>
-<li id="q2">缓存只认「从第一个字开始、一字不差」的开头。如果请求里只改了一个工具、或 AGENTS.md 里的一个字，后面没改的内容还能用缓存吗？<a class="jump" href="#a2">答案 ↓</a></li>
-<li id="q3">Codex 一个会话里，下一次请求的开头会和上一次一模一样吗？中途关掉一个工具、跨了一天、退出后用 <code>resume</code> 接着聊，又会怎样？<a class="jump" href="#a3">答案 ↓</a></li>
-<li id="q4">官方通道默认走 WebSocket（一种连上后一直不断、双向收发的连接），第二次请求只发新增的一两条。这算缓存吗？它省的是什么？<a class="jump" href="#a4">答案 ↓</a></li>
-<li id="q5">压缩把历史换成摘要，开头变了，缓存接不上。压缩一次要多付多少？之后发几次请求才回本？<a class="jump" href="#a5">答案 ↓</a></li>
+<li id="q1">一个会话发到第 30 次请求时，前 29 次发过的内容又跟着发了一遍。这些重复的部分要按全价再付一次吗？缓存（服务器把算过的开头存起来，下次直接用）省下的是什么，窗口占用会不会变小？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">缓存只认从第一个字起一字不差的开头。如果请求里只改了一个工具的定义，或者 AGENTS.md 里的一个字，后面没改的内容还能用缓存吗？<a class="jump" href="#a2">答案 ↓</a></li>
+<li id="q3">在 Codex 的一个会话里，下一次请求的开头会和上一次一模一样吗？如果中途关掉一个工具、日期跨了一天、改了 AGENTS.md，或者退出后用 <code>resume</code> 接着聊，开头又会怎样？<a class="jump" href="#a3">答案 ↓</a></li>
+<li id="q4">走 WebSocket 时，第二次请求只发新增的一两条。这算缓存吗？它省的是什么？<a class="jump" href="#a4">答案 ↓</a></li>
+<li id="q5">压缩（第 4 章：把前面的对话换成一段摘要）会改掉请求的开头，缓存接不上。压缩一次要多付多少？压缩后要发几次请求，省下的钱才能抵掉多付的这一笔？<a class="jump" href="#a5">答案 ↓</a></li>
 </ol>
 </section>
 
 <section id="s1">
 <h2><span class="sn">一、</span>重发的部分按什么价算</h2>
-<p><b>最朴素的做法是每次都从头算。</b>模型读输入时，要为每个 token 算一组中间结果（技术名叫 KV，可以理解成「读到这里为止的笔记」），后面的 token 都要参考前面的笔记。会话里请求一次比一次长，开头那段被算了一遍又一遍。</p>
-<p><b>提示词缓存（prompt caching）是把算好的中间结果存一段时间。</b>下一次请求的开头和存过的一字不差，服务器就直接取出来用，只算新增的尾巴。它存的是计算结果，不是聊天记录：请求里没带的内容，模型照样看不到，缓存不会让它多「记得」什么。<sup><a href="#e2">2</a></sup></p>
-<p><b>省下的是钱和等待时间。</b>OpenAI 文档对 gpt-6.1-sol 这类模型（GPT-5.6 及之后）的规定：<sup><a href="#e2">2</a></sup></p>
+<p><b>最朴素的做法是每次都从头算。</b>模型读输入时，要为每个 token 算一组中间结果，后面的 token 都要参考前面所有 token 的中间结果。这组中间结果技术上叫 KV（键和值），可以理解成「读到这里为止的笔记」。会话里的请求一次比一次长，开头那段每次都要重新算：到第 30 次请求，开头的工具定义已经算了 30 遍。</p>
+<p><b>提示词缓存（prompt caching，下文简称缓存）是服务器把算好的中间结果存一段时间。</b>下一次请求的开头和存下的那段一字不差，服务器就直接取出来用，只算后面新增的部分。缓存存的是计算结果，不是聊天记录：请求里没带的内容，模型照样看不到，缓存不会让模型多记得什么。<sup><a href="#e2">2</a></sup></p>
+<p><b>缓存省下的是钱和等待时间。</b>先说钱。OpenAI 文档对 GPT-5.6 及之后的模型（gpt-6.1-sol 也在内）这样定价：<sup><a href="#e2">2</a></sup></p>
 <div class="tablewrap"><table>
-<tr><th>这部分输入</th><th>按普通输入价的几倍收</th></tr>
-<tr><td>没碰缓存的</td><td class="num">1</td></tr>
-<tr><td>从缓存读出来的（gpt-6.1-sol）</td><td class="num">0.05</td></tr>
-<tr><td>这次新写进缓存的，存 30 分钟（默认）</td><td class="num">1.25</td></tr>
+<tr><th>这部分输入</th><th>按全价的几倍收</th></tr>
+<tr><td>没用上缓存的</td><td class="num">1</td></tr>
+<tr><td>从缓存读出来的</td><td class="num">0.1（gpt-6.1-sol 是 0.05）</td></tr>
+<tr><td>这次新写进缓存的，存 30 分钟（缺省）</td><td class="num">1.25</td></tr>
 <tr><td>这次新写进缓存的，存 12 小时</td><td class="num">2.5</td></tr>
 </table></div>
-<p>每个 token 只按其中一种计价，不叠加。缓存默认就开，不用传参数；开头不到 1,024 token 不缓存。Codex 0.165.0 不传任何缓存参数（源码里没有 <code>prompt_cache_options</code>），所以用的就是默认的 30 分钟。<sup><a href="#e3">3</a></sup> 文档还说缓存能缩短「开始回答之前处理输入的时间」，但不保证每次都更快。</p>
-<p><b>窗口一点没省。</b>命中缓存的 token 仍在请求里，模型仍要「看」它们。Codex 算窗口占用，用的是服务器报的总数，命中的部分照算，第 4 章的压缩线照样一步步逼近。<sup><a href="#e4">4</a></sup></p>
-<p><b>去哪看命中了多少。</b>服务器每次回复都报 <code>cached_tokens</code>，Codex 读进来叫 <code>cached_input_tokens</code>。实验里让假服务器每次报 4,321，三处都看得到：<sup><a href="#e4">4</a></sup></p>
+<p>「新写进缓存」是指：这部分是服务器这次新算的，算完存起来留给下一次用。每个 token 只按表里的一种价收：新写进缓存的按 1.25 倍收，不是先收 1 倍、再另收 1.25 倍。所以缓存第一次写入时，比不用缓存多付 25%，要靠后面几次从缓存读回来。</p>
+<p>缓存缺省就开，请求里不用带参数。开头不到 1,024 token 不缓存；Codex 的请求光是开头那几条固定内容（工具定义、系统提示词等）就有约 1.37 万 token，总能缓存。想存 12 小时，要在请求里带参数指定；Codex 0.165.0 不带（源码里搜不到 <code>prompt_cache_options</code> 这类参数），所以用的是缺省的 30 分钟。<sup><a href="#e3">3</a></sup></p>
+<p>再说等待时间。文档说缓存能缩短模型开始回答之前处理输入的时间，但不保证每次都更快。快多少本章没测，假服务器没有真的缓存。</p>
+<p><b>窗口一点没省。</b>用上缓存的 token 仍在请求里，模型仍要「看」它们，只是不用重新算。Codex 算窗口占用，用的是服务器报的这次请求的 token 总数，用上缓存的部分照样算在里面；第 4 章的压缩线照样一步步逼近。<sup><a href="#e4">4</a></sup></p>
+
+<h3>去哪看用上了多少缓存</h3>
+<p>服务器每次回复都报一个数 <code>cached_tokens</code>，意思是这次输入里有多少 token 是从缓存读的；Codex 读进来，改名叫 <code>cached_input_tokens</code>。假服务器没有真的缓存，实验让它每次固定报 4,321，看这个数在 Codex 里出现在哪：<sup><a href="#e4">4</a></sup></p>
 <ul>
-<li><code>codex exec --json</code>：最后一行 <code>turn.completed</code> 的 <code>usage</code>，是整个会话累计的数（实验第 1 轮 3 次请求，显示 12,963）。</li>
-<li>会话存档 <code>~/.codex/sessions/</code> 下的 <code>.jsonl</code>：每次请求一条 <code>token_count</code>，其中 <code>last_token_usage</code> 是这一次的。</li>
-<li>交互界面里打 <code>/status</code>：「Token usage」一行是「没命中的输入 + 输出」，不含命中的部分；<code>codex exec</code> 结束时打印的「tokens used」也是这个口径。</li>
+<li><b>能看到：<code>codex exec --json</code> 的最后一行。</b>这一行是 <code>turn.completed</code>，里面 <code>usage</code> 的 <code>cached_input_tokens</code> 是整个会话累计的数。实验第 1 轮发了 3 次请求，这里显示 12,963，就是 3 × 4,321。</li>
+<li><b>能看到：会话存档。</b>存档是 Codex 写在磁盘上的会话记录（第 3 章），在 <code>~/.codex/sessions/</code> 下，每个会话一个 <code>.jsonl</code> 文件。每次请求后有一条 <code>token_count</code> 记录，其中 <code>last_token_usage</code> 是这一次请求的数。</li>
+<li><b>看不到：<code>/status</code> 和「tokens used」。</b>在交互界面的输入框里打 <code>/status</code>，「Token usage」一行算的是「没用上缓存的输入 + 输出」；<code>codex exec</code> 结束时打印的「tokens used」也是这个算法。两处都不含用上缓存的部分。</li>
 </ul>
 
 <h3>动手算：一个会话付了多少</h3>
-<p>第一次请求取实验值 13,718 token（gpt-6.1-sol，一句话）。拖「每次在末尾加多少」和「发了几次」，看全价和用缓存的差别。按上表价目算，假设每次都接上了上一次的缓存、新增部分都写进缓存，未实验。</p>
+<p>下面接着用实验的数：第 1 轮开始时你只说了一句话，第一次请求 54,870 字节，约 13,718 token。拖滑块改「每次在末尾加多少」和「发了几次」，比较两种付法：不用缓存，每次整份按全价付；用缓存，每次把上一次请求的全部内容从缓存读出来（0.05 倍），只把新增的部分写进缓存（1.25 倍）。这是按上表价目算的，假设每次都接上了上一次的缓存，没有实验。</p>
 <div class="ctrl"><label for="n1">发了 <b id="n1v"></b> 次请求</label><input type="range" id="n1" min="1" max="100" step="1" value="30"></div>
 <div class="ctrl"><label for="d1">每次在末尾加 <b id="d1v"></b> token</label><input type="range" id="d1" min="0" max="12000" step="100" value="2000"></div>
 <div class="ctrl"><span>中途：</span>
@@ -67,98 +72,99 @@
 </div>
 <div class="meter" id="m1a"></div>
 <div class="meter" id="m1b"></div>
-<div class="legend"><span><i style="background:var(--cut)"></i>全价（不用缓存）</span><span><i style="background:var(--keep)"></i>用缓存折合成全价</span></div>
+<div class="legend"><span><i style="background:var(--cut)"></i>不用缓存（全价）</span><span><i style="background:var(--keep)"></i>用缓存，折合成全价</span></div>
 <div class="panel" id="m1t"></div>
 
 <div class="answer" id="a1">
 <p class="qh">回答问题 1</p>
-<p class="qq">重复发的部分要按全价再算吗？缓存省的是什么？窗口会变小吗？</p>
-<p>不用。只要开头和上一次一字不差、缓存没过期（默认 30 分钟），重复的部分从缓存读，gpt-6.1-sol 只收普通输入价的 5%，服务器也不用重算，开始回答前的等待通常更短。代价是新写进缓存的部分按 1.25 倍收。窗口占用不变：命中的 token 仍在请求里，照样算进压缩线。</p>
+<p class="qq">一个会话发到第 30 次请求，重复发的部分要按全价再付吗？缓存省的是什么？窗口占用会变小吗？</p>
+<p>不用按全价付。只要这次请求的开头和上一次一字不差、缓存没过期（缺省存 30 分钟），重复的部分从缓存读，gpt-6.1-sol 只按全价的 5% 收；服务器也不用重算，开始回答前的等待通常更短。代价是新写进缓存的部分按全价的 1.25 倍收。窗口占用一点不变：用上缓存的 token 仍在请求里，照样算进压缩线。</p>
 </div>
 </section>
 
 <section id="s2">
 <h2><span class="sn">二、</span>从哪一个字开始接不上</h2>
-<p><b>从第一处不同开始，后面全要重算，哪怕没改。</b>每个 token 的中间结果都依赖它前面的全部内容；前面变了，后面那份结果就不是原来那份了。所以一次改动影响多大，看它在哪，不看它改了几个字。<sup><a href="#e2">2</a></sup></p>
-<p><b>「开头」不只是文字。</b>OpenAI 文档列的：OpenAI 自己加的说明、developer 消息、工具定义（名字、描述、参数、顺序）、对话历史，还有几个请求设置，比如模型、思考级别（<code>reasoning.effort</code>）、是否允许并行调工具。会话中途把思考级别从 low 换成 high，开头的文字一个没变，缓存也接不上。<sup><a href="#e2">2</a></sup></p>
-<p><b>缓存存在每次请求的结尾。</b>不额外指定时，服务器在「最后一条合格消息」末尾存一份。合格的是：用户消息、连着的几条工具结果里的最后一条、开头那组 developer 消息里的最后一条。Codex 的请求总是以你的话或工具输出结尾，所以每次基本整份存下；下一次能接上的，是改动之前最近那一次旧请求的结尾。<sup><a href="#e2">2</a></sup></p>
-<p><b>没接上，比不用缓存还贵。</b>接不上的部分要重新写进缓存，按 1.25 倍收。缓存过期也是这样：30 分钟没用到，下一次整份重写。</p>
+<p><b>从第一处不同开始，后面的全要重算，哪怕后面一个字没改。</b>第一节说过，每个 token 的中间结果都要参考它前面的全部内容；前面变了一个字，后面每个 token 的中间结果都和存下的那份不一样了。所以一处改动让缓存损失多少，看它在请求里的位置，不看它改了几个字：改在越前面，后面要重算的越多。<sup><a href="#e2">2</a></sup></p>
+<p><b>「开头」不只是你看得到的文字。</b>OpenAI 文档把缓存要比较的这段开头叫前缀（prefix），它包括：OpenAI 在服务器端加的说明、developer 消息（第 2 章：Codex 放规则和设置的那几条）、工具定义（名字、描述、参数、顺序）、对话历史，还有几个请求设置，比如模型、思考级别（<code>reasoning.effort</code>）、允不允许一次并行调用几个工具（<code>parallel_tool_calls</code>）。所以会话中途把思考级别从 low 换成 high，请求里的文字一个没变，缓存也接不上。<sup><a href="#e2">2</a></sup></p>
+<p><b>服务器在每次请求的末尾存一份缓存。</b>服务器不为每个 token 单独存一份，而是在某个位置存一份「从第一个 token 到这里为止」的中间结果，这个位置叫断点。请求里不指定断点时（Codex 不指定），服务器把断点放在最后一条合格的消息末尾。合格的消息有三种：你说的话；连着几条工具结果里的最后一条；开头那组 developer 消息里的最后一条。Codex 的请求总是以你的话或工具输出结尾，所以每次请求的断点基本就在请求末尾，整份请求都存了下来。<sup><a href="#e2">2</a></sup></p>
+<p><b>下一次请求能接上的，是改动之前最近的那个断点。</b>拿实验的 5 次请求举例：假如第 5 次请求改了第 2 次工具输出（第 11 条）。第 3 次请求的断点在第 11 条末尾，那份缓存里已经算进了旧的第 11 条，用不上；第 2 次请求的断点在第 9 条末尾，在改动之前，所以前 9 条能从缓存读，第 10 条起全部重算。这是按文档的规则推的，没有用真实服务验证【推测】。</p>
+<p><b>没接上，比不用缓存还贵。</b>接不上的部分要重新算、重新写进缓存，按全价的 1.25 倍收。缓存过期也是这样：30 分钟内没有请求用到它，下一次请求就要整份按 1.25 倍重写。</p>
 
 <h3>动手看：改哪一条，要重写多少</h3>
-<p>下面是实验的第 5 次请求（16 条，56,512 字节 ≈ 14,128 token），每段宽度按字节数。点按钮选改哪里。「能接上」按上一段的规则推（改动之前最近一次旧请求的结尾），未实验。</p>
+<p>下面这条是实验的第 5 次请求：<code>input</code> 里有 16 条（每条是什么见第 2 章），共 56,512 字节，约 14,128 token。每一段的宽度按这一条的字节数画，鼠标停在一段上能看到名字。点按钮选「假如改了哪一条」。能接上多少，按上面的规则推（改动之前最近的断点），没有实验。</p>
 <div class="ctrl">
-  <button class="btn" data-ch="append" aria-pressed="true">什么都不改，末尾追加</button>
+  <button class="btn" data-ch="append" aria-pressed="true">什么都不改，只在末尾追加</button>
   <button class="btn" data-ch="out2" aria-pressed="false">改第 2 次工具输出</button>
   <button class="btn" data-ch="u1" aria-pressed="false">改第 1 轮你的话</button>
   <button class="btn" data-ch="agents" aria-pressed="false">改 AGENTS.md</button>
   <button class="btn" data-ch="tools" aria-pressed="false">改工具定义</button>
 </div>
 <div class="meter seg" id="m2"></div>
-<div class="legend"><span><i style="background:var(--keep)"></i>从缓存读（0.05 倍）</span><span><i style="background:var(--cut)"></i>改动处</span><span><i style="background:var(--half)"></i>没改，但要重写（1.25 倍）</span></div>
+<div class="legend"><span><i style="background:var(--keep)"></i>从缓存读（0.05 倍）</span><span><i style="background:var(--cut)"></i>改动的那一条</span><span><i style="background:var(--half)"></i>没改，但要重写（1.25 倍）</span></div>
 <div class="panel" id="m2t"></div>
 
 <div class="answer" id="a2">
 <p class="qh">回答问题 2</p>
-<p class="qq">只改一个工具、或 AGENTS.md 里的一个字，后面没改的还能用缓存吗？</p>
-<p>不能。从改动那条起，后面全部重写，按 1.25 倍收。工具定义和 AGENTS.md 都在请求的最前面，在实验那次请求里，改了它们，14,128 token 整份重写，花费是正常追加时的约 20 倍。好在 Codex 尽量不让这种事发生：项目 AGENTS.md 一个会话只读一次，中途改了文件不会进请求；gpt-6.1-sol 的工具变了也只在末尾追加说明（第三节）。</p>
+<p class="qq">只改了一个工具的定义，或者 AGENTS.md 里的一个字，后面没改的内容还能用缓存吗？</p>
+<p>不能。从改动的那一条起，后面全部重写，按全价的 1.25 倍收。工具定义和 AGENTS.md 都排在请求的最前面：在实验的第 5 次请求里，改了它们，14,128 token 要整份重写，这次请求的花费是只在末尾追加时的约 20 倍。好在 Codex 尽量不改前面：AGENTS.md 改了、gpt-6.1-sol 的工具变了，Codex 都是在末尾追加，不改开头那份（第三节）。</p>
 </div>
 </section>
 
 <section id="s3">
 <h2><span class="sn">三、</span>Codex 怎么让开头不变</h2>
-<p><b>实验里，每一次请求都是上一次原样加尾巴。</b>3 个进程、5 次请求，逐条比较 <code>input</code>：<sup><a href="#e5">5</a></sup></p>
+<p><b>实验里，每一次请求都是上一次一字不改、末尾再加几条。</b>3 个进程一共发了 5 次请求，比较脚本把相邻两次请求的 <code>input</code> 逐条比较：<sup><a href="#e5">5</a></sup></p>
 <div class="tablewrap"><table>
-<tr><th>请求</th><th>发生在</th><th>条数</th><th class="num">字节</th><th>和上一次比</th></tr>
-<tr><td>1</td><td>第 1 轮开始</td><td class="num">7</td><td class="num">54,870</td><td>—</td></tr>
-<tr><td>2</td><td>第 1 次工具调用后</td><td class="num">9</td><td class="num">55,252</td><td>前 7 条不变，加「工具调用 + 输出」</td></tr>
-<tr><td>3</td><td>第 2 次工具调用后</td><td class="num">11</td><td class="num">55,634</td><td>前 9 条不变，同上</td></tr>
-<tr><td>4</td><td>第 2 轮（新进程 <code>resume</code>）</td><td class="num">13</td><td class="num">55,924</td><td>前 11 条不变，加「回复 + 你的话」</td></tr>
-<tr><td>5</td><td>第 3 轮（新进程，关掉一个工具）</td><td class="num">16</td><td class="num">56,512</td><td>前 13 条不变，加「回复 + 工具变更说明 + 你的话」</td></tr>
+<tr><th>请求</th><th>什么时候发的</th><th>条数</th><th class="num">字节</th><th>和上一次请求比</th></tr>
+<tr><td>1</td><td>第 1 轮开始（第 1 个进程，<code>codex exec</code>）</td><td class="num">7</td><td class="num">54,870</td><td>—</td></tr>
+<tr><td>2</td><td>第 1 轮，模型第 1 次调用工具之后</td><td class="num">9</td><td class="num">55,252</td><td>前 7 条不变，加 2 条：工具调用和工具输出</td></tr>
+<tr><td>3</td><td>第 1 轮，模型第 2 次调用工具之后</td><td class="num">11</td><td class="num">55,634</td><td>前 9 条不变，同样加 2 条</td></tr>
+<tr><td>4</td><td>第 2 轮开始（第 2 个进程，<code>resume</code>）</td><td class="num">13</td><td class="num">55,924</td><td>前 11 条不变，加 2 条：第 1 轮的最终回复、你第 2 轮的话</td></tr>
+<tr><td>5</td><td>第 3 轮开始（第 3 个进程，<code>resume</code> 时关掉一个工具）</td><td class="num">16</td><td class="num">56,512</td><td>前 13 条不变，加 3 条：第 2 轮的回复、一条工具变更说明、你第 3 轮的话</td></tr>
 </table></div>
-<p>除了 <code>input</code>，请求里其他字段五次都一样，包括 <code>prompt_cache_key</code>（下面说）。换了进程也没变，因为续接会话时历史是从存档原样读回来的。</p>
-<p><b>中途的变化都追加在末尾，不改前面。</b>第 2 章说过会话设置是这样，下面几种也是：</p>
+<p>请求里 <code>input</code> 以外的字段也逐个比过：只有 <code>client_metadata</code> 每轮不同，因为里面带着这一轮的编号；OpenAI 文档列出的前缀里没有这一项。其余字段五次都一样，包括 <code>prompt_cache_key</code>（本节最后说）。换了进程，开头也没变：<code>resume</code> 时，Codex 从存档里把历史原样读回来，再接着往后加。<sup><a href="#e5">5</a></sup></p>
+<p><b>中途的变化都追加在末尾，不改前面。</b>第 2 章讲过，会话设置（权限、协作模式等）变了，Codex 在末尾追加一条新的。下面四种变化也是这样处理的：</p>
 <ul>
-<li><b>关掉一个工具。</b>第 3 轮用 <code>codex exec -c features.sleep_tool=false resume --last "…"</code> 关掉了 <code>clock</code> 组里的 <code>sleep</code> 工具。开头那条 25,347 字节的工具定义原样留着，里面仍有 <code>sleep</code>；末尾多了一条 274 字节的 developer 消息：「The following namespaces are no longer available. Do not call tools in them…: - clock」。模型靠这句知道它不能用了。<sup><a href="#e6">6</a></sup></li>
-<li><b>加工具、换模型。</b>Codex 自带测试里的场景说明：换模型时，在末尾追加一条说明、变了的工具定义和替换后的系统提示词，「不改写前缀」；等下次压缩，再把它们并回开头。这套做法叫 <code>incremental_tools</code>（增量工具），只用在把工具定义放进 <code>input</code> 的模型上，比如 gpt-6.1-sol；CLI 0.165.0 默认打开（源码 <code>76ed3b4</code> 里还是「开发中、默认关」）。gpt-5.5 的工具放在请求的顶层 <code>tools</code> 字段，同一个测试的另一组显示：每次带完整的当前工具表，变了就整份换掉，按 OpenAI 文档，这会让缓存从工具定义处断开。<sup><a href="#e7">7</a></sup></li>
-<li><b>跨了一天。</b>环境信息那条里有 <code>&lt;current_date&gt;2026-11-02&lt;/current_date&gt;</code>。日期变了，Codex 不改那条，而是在末尾追加一条新的环境信息。【读了源码，没实验】<sup><a href="#e8">8</a></sup></li>
-<li><b>改项目的 AGENTS.md。</b>一个会话只读一次（第 2 章），中途改了文件，本会话的请求里还是旧版本，开头也就不变。代码没写理由，可能就是为了保住缓存【推测】；Claude Code 的文档对 CLAUDE.md 明确这样解释（见下面对照）。</li>
+<li><b>关掉一个工具。</b><code>sleep</code> 是 Codex 自带的一个工具，让模型等一会儿，属于 <code>clock</code> 这一组。第 3 轮用 <code>codex exec -c features.sleep_tool=false resume --last "…"</code> 关掉了它。第 5 次请求开头那条 25,347 字节的工具定义一字没改，里面仍有 <code>sleep</code>；末尾多了一条 274 字节的 developer 消息：「The following namespaces are no longer available. Do not call tools in them…: - clock」。模型只能靠这句话知道 <code>clock</code> 组的工具不能用了；它要是照样去调用，Codex 不会执行（第 6 章做了实验）。<sup><a href="#e6">6</a></sup></li>
+<li><b>换模型、加工具。</b>第 2 章讲过，gpt-6.1-sol 的工具定义是 <code>input</code> 里的第 1 条，gpt-5.5 的工具定义放在请求顶层的 <code>tools</code> 字段。两种放法，工具变了时处理不一样。Codex 自带的测试里有一个会话中途换模型的场景：gpt-6.1-sol 这种放法下，Codex 在末尾追加三样东西：一条说明、变了的工具定义、替换后的系统提示词，测试说明里写着「不改写前缀」；等下一次压缩，再把它们合并回开头。这套做法在 Codex 里叫 <code>incremental_tools</code>（增量工具）。gpt-5.5 那一组测试则显示：每次请求都带完整的当前工具表，工具变了就整份换掉；按 OpenAI 文档，缓存会从工具定义那里断开。这一条只有自带测试，没自己做实验；源码 <code>76ed3b4</code> 里 <code>incremental_tools</code> 标的是「开发中、缺省关」，本机装的 CLI 0.165.0 用 <code>codex features list</code> 查，显示已经打开。<sup><a href="#e7">7</a></sup></li>
+<li><b>日期跨了一天。</b>第 2 章讲过的环境信息那一条里写着当天的日期 <code>&lt;current_date&gt;2026-11-02&lt;/current_date&gt;</code>。日期变了，Codex 不改那一条，而是在末尾追加一条新的环境信息。这一条读了源码，没做实验（实验没有跨天）。<sup><a href="#e8">8</a></sup></li>
+<li><b>改了 AGENTS.md。</b>第 2 章讲过两份 AGENTS.md：全局那份 <code>~/.codex/AGENTS.md</code> 每次请求前都重读，改了就在末尾追加新全文；项目里那份，同一个进程里只读一次，中途改了文件，这个进程后面的请求里还是旧版本（第 2 章；同一个进程中途改文件的实验还没做）。退出后用 <code>resume</code> 接着聊时，新进程会重读项目那份，和存档里记下的旧版本比较，不一样就在末尾追加新全文，并注明「替换之前的 AGENTS.md」（第 8 章做了实验）。几种情况都不改开头那份旧的。代码没写为什么同一个进程里不重读项目那份，可能是为了保住缓存【推测】；Claude Code 的文档对 CLAUDE.md 明确写了是这个理由（见下面的对照）。<sup><a href="#e16">16</a></sup></li>
 </ul>
-<p><b><code>prompt_cache_key</code> 是给服务器的分组提示。</b>Codex 每次请求都带它，值是会话 id；子代理这类内部会话用「来源:父会话 id」。按 OpenAI 文档，对较早的模型，它帮服务器把相关请求送到同一批机器上，提高命中的机会；对 gpt-6.1-sol 这类新模型，它是可选的，主要用来分开统计缓存用量。两种情况都不保证命中，命中只看开头是否一字不差。<sup><a href="#e9">9</a></sup></p>
+<p><b><code>prompt_cache_key</code> 是给服务器的分组提示。</b>Codex 每次请求都带这个字段，值通常是会话编号；子代理和父会话用的是同一个（第 7 章的实验）；只有 Codex 在后台自己开的内部会话（比如第 9 章的记忆合并）用「来源:父会话编号」。按 OpenAI 文档，对较早的模型，服务器靠它把同一组请求送到同一批机器上，提高接上缓存的机会；对 gpt-6.1-sol 这类 GPT-5.6 之后的模型，它可有可无，主要用来分开统计各组请求用了多少缓存。两种情况它都不保证接上：接不接得上，只看开头是否一字不差。<sup><a href="#e9">9</a></sup></p>
 
 <div class="compare">
-<h3>对照：Claude Code 自己放缓存标记</h3>
-<p>据官方文档（2026-11-02 查阅），Claude Code 连的是 Anthropic 的接口，要在请求里自己放缓存标记（<code>cache_control</code>，最多 4 个），指明「存到这里」。思路和 Codex 一样是「少变的放前面、新内容加在末尾」，但写得更细：<sup><a href="#e14">14</a></sup><sup><a href="#e15">15</a></sup></p>
+<h3>对照：Claude Code 自己放断点</h3>
+<p>据官方文档（2026-11-02 查阅），Claude Code 连的是 Anthropic 的接口，断点要请求方自己在请求里放（叫 <code>cache_control</code> 标记，最多 4 个）。思路和 Codex 一样，是「少变的放前面，新内容加在末尾」，但分得更细：<sup><a href="#e14">14</a></sup><sup><a href="#e15">15</a></sup></p>
 <ul>
-<li><b>三层</b>：系统提示词和工具定义 → 项目上下文（CLAUDE.md、自动记忆、不带 <code>paths:</code> 的规则）→ 对话。后面一层变了，前面的仍能命中。</li>
-<li><b>存多久</b>：默认 5 分钟；用 Claude 订阅、还在套餐额度内时，主对话请求 1 小时。写入 5 分钟的按 1.25 倍、1 小时的按 2 倍；读按 0.1 倍（Opus 5.5、Sonnet 5.5 是 0.05 倍）。可在设置里用 <code>promptCacheTtl</code> 自己选。</li>
-<li><b>会断缓存的操作</b>：换模型；多数模型上改思考强度；开快速模式；工具定义没延后加载时连上或移除 MCP 服务器；压缩；图片攒多了被批量移除；升级 Claude Code。会话中途换模型时，如果缓存还热，它会先问你确认。</li>
-<li><b>不断缓存的</b>：会话中途改 CLAUDE.md（也不生效，等 <code>/clear</code>、<code>/compact</code> 或重启）；技能、计划模式的说明都作为消息追加；<code>/rewind</code> 退回到旧的开头，正好命中旧缓存。</li>
-<li><b>看命中</b>：输入框打 <code>/usage</code>，会话一栏有一行「Prompt cache (main)」，写命中比例、没命中几次、可能的原因（v2.1.251 起）。</li>
+<li><b>分三层，从前往后排</b>：系统提示词和工具定义 → 项目上下文（CLAUDE.md、自动记忆、不带 <code>paths:</code> 的规则）→ 对话。后面一层变了，前面的层仍能从缓存读。</li>
+<li><b>缓存存多久</b>：缺省 5 分钟；用 Claude 订阅、还在套餐额度内时，主对话的请求存 1 小时。可在设置文件里用 <code>promptCacheTtl</code> 自己选。写进 5 分钟缓存的按全价的 1.25 倍收，写进 1 小时的按 2 倍；读按 0.1 倍（Opus 5.5、Sonnet 5.5 是 0.05 倍）。</li>
+<li><b>会让缓存接不上的操作</b>：换模型；在多数模型上改思考强度；开快速模式；连上或移除 MCP 服务器（工具定义没延后加载时）；压缩；图片攒多了被批量移除；升级 Claude Code。会话中途换模型时，如果缓存还没过期，它会先问你确认。</li>
+<li><b>不影响缓存的操作</b>：会话中途改 CLAUDE.md（改了也不马上生效，要等 <code>/clear</code>、<code>/compact</code> 或重启）；技能、计划模式的说明都作为新消息追加在末尾；<code>/rewind</code> 退回到旧的开头，正好接上旧的缓存。</li>
+<li><b>看用上了多少缓存</b>：在输入框打 <code>/usage</code>，会话一栏有一行「Prompt cache (main)」，写着用上缓存的比例、几次没接上、可能的原因（v2.1.251 起）。</li>
 </ul>
 </div>
 
 <div class="answer" id="a3">
 <p class="qh">回答问题 3</p>
-<p class="qq">下一次请求的开头和上一次一样吗？关工具、跨天、<code>resume</code> 呢？</p>
-<p>一样。实验的 5 次请求，每次都是上一次原样加尾巴，<code>resume</code> 换了进程也一样。中途的变化都追加在末尾：关掉工具是加一条「这些工具不能用了」的说明（gpt-6.1-sol；gpt-5.5 会整份换工具表），跨天是加一条新的环境信息，改项目 AGENTS.md 则本会话根本不读。</p>
+<p class="qq">在 Codex 的一个会话里，下一次请求的开头会和上一次一样吗？关掉工具、跨天、改 AGENTS.md、<code>resume</code> 呢？</p>
+<p>一样。实验的 5 次请求，每次都是上一次一字不改、末尾再加几条；<code>resume</code> 换了进程也一样，因为历史是从存档原样读回来的。中途的变化都追加在末尾：关掉工具，是追加一条「这些工具不能用了」的说明（gpt-6.1-sol；gpt-5.5 会整份换掉工具表）；跨了一天，是追加一条新的环境信息；改了项目的 AGENTS.md，同一个进程里不重读，<code>resume</code> 时才在末尾追加新全文。</p>
 </div>
 </section>
 
 <section id="s4">
 <h2><span class="sn">四、</span>WebSocket 只发新增的条目</h2>
-<p><b>走 HTTP 时，每次请求整份重发。</b>实验里第 1 轮第二次请求的请求体 56,816 字节，其中 99% 是上一次发过的。<sup><a href="#e5">5</a></sup></p>
-<p><b>走 WebSocket 时，同一条连接上只发新增的。</b>请求带上 <code>previous_response_id</code>（上一次回复的编号），<code>input</code> 只放上一次之后新增的条目，服务器按编号把前面接上。实验把假服务器的通道配置改成 <code>supports_websockets = true</code> 重跑：<sup><a href="#e10">10</a></sup></p>
+<p><b>走 HTTP 时，每次请求整份重发。</b>实验第 1 轮的第 2 次请求，整个请求体 56,816 字节，其中 99% 是第 1 次请求已经发过的。<sup><a href="#e5">5</a></sup></p>
+<p><b>走 WebSocket 时，同一条连接上只发新增的。</b>请求里带上 <code>previous_response_id</code>（上一次回复的编号），<code>input</code> 里只放上一次之后新增的条目；服务器按编号找到上一次的请求和回复，把前面接上。自定义通道要走 WebSocket，在 <code>config.toml</code> 里这个服务的配置下（实验里是 <code>[model_providers.mock]</code>）加一行 <code>supports_websockets = true</code>。实验就这样改了配置，同样跑 3 轮：<sup><a href="#e10">10</a></sup></p>
 <ul>
-<li>同一进程里，工具调用后的两次请求各只发 1 条（工具输出，257 字节），整条消息 1,989 字节，HTTP 下是约 5.7 万字节。上一次模型回的工具调用不用再发，服务器那边本来就有。</li>
-<li>假服务器按编号拼回完整请求，和 HTTP 下的逐字一样（去掉条目 id 和临时目录名之后）。模型那边收到的上下文没少。<sup><a href="#e11">11</a></sup></li>
-<li>每个进程连上后先发一条 <code>generate: false</code> 的空请求（预热），只带设置不带内容；第一次真正的请求接在它后面，所以 <code>input</code> 要整份发。<code>resume</code> 是新进程、新连接，同样整份发（57,688 字节）。</li>
-<li>连不上时退回 HTTP。第一次跑实验，假服务器的握手回应写错了，Codex 每个进程试了 7 次，之后这个进程的请求全走 HTTP。</li>
+<li><b>同一个进程里，只发新增的条目。</b>第 1 轮里，模型每调用一次工具，Codex 发下一次请求时，<code>input</code> 只有 1 条：工具输出，257 字节。连同模型名、设置等字段，这次在连接上发的整条 WebSocket 消息是 1,989 字节；HTTP 下同一次请求约 5.7 万字节。模型上一次回的工具调用也不用再发，服务器那边本来就有。</li>
+<li><b>发过去的少了，模型看到的没少。</b>假服务器按编号把前面拼回去，拼出的完整请求和 HTTP 那一遍里对应的那次请求逐字相同。比较前去掉了三样每次运行都随机生成的东西：条目编号（请求里每一条都带一个编号 <code>id</code>，形如 <code>msg_01a19b5e-…</code>）、临时目录名、回复编号。<sup><a href="#e11">11</a></sup></li>
+<li><b>每个进程的第一次请求整份发。</b>每个进程连上以后，先发一条 <code>generate: false</code> 的请求（不让模型生成回答），只带设置、不带对话内容，源码里叫预热（prewarm）。预热没带对话内容，第一次真正的请求没有可以接的，<code>input</code> 仍整份发。<code>resume</code> 是新进程、新连接，所以第 2、3 轮的第一次请求也整份发（第 2 轮那次是 57,688 字节）。</li>
+<li><b>连不上就改走 HTTP。</b>第一次跑实验时，假服务器的握手回应（建立 WebSocket 连接时服务器回的那一步）写错了，Codex 在每个进程里试了 7 次，之后这个进程的请求全走 HTTP。</li>
 </ul>
-<p><b>只发新增，有条件。</b>Codex 每次先检查：除 <code>input</code> 外的字段（模型、工具、思考设置、<code>prompt_cache_key</code> 等）都没变，并且新的 <code>input</code> 是以「上一次的 <code>input</code> + 上一次的回复」开头的。有一条不满足，就整份重发。这和缓存的条件很像，都要求前面一字不差。<sup><a href="#e10">10</a></sup></p>
+<p><b>只发新增，有两个条件。</b>Codex 每次发请求前先检查：第一，除 <code>input</code> 外的字段（模型、工具、思考设置、<code>prompt_cache_key</code> 等）都和上一次一样；第二，新的 <code>input</code> 是以「上一次的 <code>input</code> + 上一次的回复」开头的。有一条不满足，就整份重发。这和缓存的条件很像，都要求前面一字不差。<sup><a href="#e10">10</a></sup></p>
 
 <div class="source">
 <h3>看源码：前面一字不差，才只发新增的</h3>
-<p><code>core/src/client.rs</code> 第 1500–1530 行，节选，注释是我加的。<sup><a href="#e10">10</a></sup></p>
+<p><code>core/src/client.rs</code> 第 1500–1530 行，节选，中文注释是我加的。<sup><a href="#e10">10</a></sup></p>
 <pre>fn get_incremental_items(&amp;self, request, last_response) -&gt; Result&lt;Vec&lt;ResponseItem&gt;, _&gt; {
     let previous_request = self.websocket_session.last_request.as_ref()
         .ok_or(NonIncrementalReason::NoPreviousRequest)?;   // 这条连接上没发过：整份发
@@ -181,84 +187,87 @@
 }</pre>
 </div>
 
-<p><b>它和缓存是两层东西。</b>只发新增，省的是上传的字节和服务器解析请求的工夫；模型要处理的还是完整的上下文。缓存省的是模型那边的计算。HTTP 下整份重发，照样能命中缓存。走 WebSocket 时，用量和计价会不会因此不同，OpenAI 的缓存文档没提 WebSocket，也没提 <code>previous_response_id</code>【待核实】。<sup><a href="#e2">2</a></sup></p>
+<p><b>只发新增和缓存是两回事。</b>只发新增，省的是网络上传的字节和服务器解析请求的工夫；模型要处理的还是完整的上下文。缓存省的是模型那边的计算。走 HTTP 整份重发，开头一字不差，照样能接上缓存。走 WebSocket 时，用量和计价会不会因此不同，OpenAI 的缓存文档没提 WebSocket，也没提 <code>previous_response_id</code>【待核实】。<sup><a href="#e2">2</a></sup></p>
 
 <div class="answer" id="a4">
 <p class="qh">回答问题 4</p>
-<p class="qq">WebSocket 只发新增条目，算缓存吗？省的是什么？</p>
-<p>不算。它省的是传输：同一条连接上，下一次请求只带上一次回复的编号和新增条目（实验里 1,989 字节对 HTTP 的约 5.7 万字节），服务器把前面接上，模型看到的上下文一条不少。模型那边要不要重算，由缓存决定，和走哪种连接无关。换进程、换设置、历史被改写（比如压缩），都会退回整份发送。</p>
+<p class="qq">走 WebSocket 时，第二次请求只发新增的一两条。这算缓存吗？它省的是什么？</p>
+<p>不算缓存。它省的是传输：同一条连接上，下一次请求只带上一次回复的编号和新增的条目（实验里 1,989 字节，HTTP 下约 5.7 万字节），服务器把前面接上，模型看到的上下文一条不少。模型那边要不要重算，由缓存决定，和走哪种连接无关。换了进程、改了设置、压缩改写了历史，Codex 都退回整份发送。</p>
 </div>
 </section>
 
 <section id="s5">
 <h2><span class="sn">五、</span>压缩一次，缓存重建一次</h2>
-<p><b>压缩请求本身能吃到缓存。</b>第 4 章的实验里，本地压缩请求是上一次请求原样加两条（回复 + 压缩提示词），前 13 条一条没动，开头整份接得上。Claude Code 的文档也说，缓存还热时，它的摘要请求从缓存读。<sup><a href="#e12">12</a></sup><sup><a href="#e14">14</a></sup></p>
-<p><b>压缩之后的第一次请求，大部分要重写。</b>用第 4 章的数据逐条比：压缩后第 0、1 条（工具定义、系统提示词，共 47,495 字节 ≈ 11,874 token）内容和压缩前一样，但条目 id 换了新的；从第 2 条起内容就不同了，因为保留的原话排到了技能目录前面（第 4 章第二节）。id 算不算进匹配，OpenAI 文档没写【待核实】。所以最好的情况，开头约 1.19 万 token 能接上，剩下约 2.2 万 token 按 1.25 倍重写；最坏的情况整份重写。<sup><a href="#e12">12</a></sup></p>
-<p><b>划不划算，看压缩前有多大。</b>不压缩，以后每次请求都要从缓存读一遍旧的大开头，每次付它的 5%；压缩了，要多付压缩请求和一次重写，之后每次读的变短。实验那组压完只少了 1,038 token，要发五百多次请求才追平，等于回不了本，它只是用来演示的。按官方压缩线 45 万压到 4 万（压缩后的大小是假设值），第 3 次请求起就比不压便宜（开头接不上时第 4 次）。</p>
+<p>前四节讲的都是开头不变的情况。压缩是 Codex 自己改掉开头的时候：第 4 章讲过，压缩时 Codex 把整段历史发给模型写摘要，再用摘要换掉大部分历史。本章的实验没有压缩，这一节改用第 4 章实验的请求来算：压缩前的请求 35,003 token，压缩后 33,965 token。</p>
+<p><b>压缩请求本身能接上缓存。</b>第 4 章实验里，让模型写摘要的那次请求（压缩请求），是上一次请求一字不改、末尾加两条：模型的回复和要它写摘要的提示词，共 161 token；前 13 条一条没动，开头整份能接上。Claude Code 的文档也说，缓存还没过期时，它写摘要的请求从缓存读。<sup><a href="#e12">12</a></sup><sup><a href="#e14">14</a></sup></p>
+<p><b>压缩之后的第一次请求，大部分要重写。</b>把第 4 章压缩前后的请求逐条比较：第 1、2 条（工具定义和系统提示词，共 47,495 字节，约 11,874 token）内容没变，但条目编号（第四节）换了：压缩后 Codex 重新生成这两条，编号也跟着换新。从第 3 条起内容就不同了：保留下来的第 2 轮原话，排在了技能目录等 4 条设置前面（第 4 章第二节）。编号算不算进缓存比较，OpenAI 文档没写【待核实】。所以压缩后的第一次请求：最好的情况，开头约 1.19 万 token 能接上，其余约 2.2 万 token 按 1.25 倍重写；最坏的情况，编号也算，3.4 万 token 整份重写。<sup><a href="#e12">12</a></sup></p>
+<p><b>压缩在钱上是先多付、后少付。</b>多付的是两次请求：压缩请求本身（大部分从缓存读），加上压缩后第一次请求的重写。少付的是以后的每一次请求：开头变短了，每次从缓存读的部分少了。少付的累计起来抵掉多付的那一笔，就算回本。</p>
+<p><b>压缩前越大，越快回本。</b>第 4 章实验的那次压缩只少了 1,038 token，压缩后每次请求只少付约 52 个 token 的全价（1,038 × 0.05；下面的钱数都这样折合），压缩那两次请求却要付约 3 万；要到压缩后第 549 次请求才追平，实际会话里等于回不了本。这次少得少，是因为第 4 章实验里占地方的是你贴的两段长日志，而压缩恰好保留你的原话。换一组大的数：官方通道下 gpt-6.1-sol 的压缩线是 450,000 token（第 4 章），假设压缩后剩 40,000（这个数是假设的，没实验）。这时压缩后每次请求少付 20,500，压缩那两次请求付约 5.8 万，到压缩后第 3 次请求，累计花费就比不压缩少；如果编号也算、开头接不上，要到第 4 次。</p>
 
-<h3>动手算：压缩几次请求后回本</h3>
-<p>拖压缩前后的大小，看多发几次请求后累计花费追平。按第一节价目算，未实验；没算摘要的输出 token（输出价目另算）。</p>
+<h3>动手算：压缩后几次请求回本</h3>
+<p>拖动压缩前后的大小，看压缩后发到第几次请求，累计花费追平不压缩。按第一节的价目算，没有实验；摘要是模型的输出，输出另有价目，这里没算。</p>
 <div class="ctrl">
-  <button class="btn" data-cp="exp" aria-pressed="true">实验：35,003 → 33,965</button>
-  <button class="btn" data-cp="line" aria-pressed="false">官方线：450,000 → 40,000</button>
+  <button class="btn" data-cp="exp" aria-pressed="true">第 4 章实验：35,003 → 33,965</button>
+  <button class="btn" data-cp="line" aria-pressed="false">官方压缩线：450,000 → 40,000</button>
 </div>
 <div class="ctrl"><label for="p5">压缩前的请求 <b id="p5v"></b> token</label><input type="range" id="p5" min="20000" max="450000" step="1" value="35003"></div>
 <div class="ctrl"><label for="a5s">压缩后的请求 <b id="a5v"></b> token</label><input type="range" id="a5s" min="12000" max="80000" step="1" value="33965"></div>
 <div class="ctrl"><span>压缩后开头那 11,874 token：</span>
-  <button class="btn" data-sh="11874" aria-pressed="true">能接上（id 不算）</button>
-  <button class="btn" data-sh="0" aria-pressed="false">接不上（id 也算）</button>
+  <button class="btn" data-sh="11874" aria-pressed="true">能接上（编号不算进比较）</button>
+  <button class="btn" data-sh="0" aria-pressed="false">接不上（编号也算）</button>
 </div>
 <div class="panel" id="m5t"></div>
 
 <div class="answer" id="a5">
 <p class="qh">回答问题 5</p>
-<p class="qq">压缩一次多付多少？几次请求后回本？</p>
-<p>压缩请求本身能读缓存，多付的主要是压缩后第一次请求：除了开头约 1.19 万 token 的工具定义和系统提示词（id 不算进匹配时），其余按 1.25 倍重写。回本看压缩前有多大：45 万压到 4 万，第 3 次请求起就比不压便宜（开头接不上时第 4 次）；实验里 3.5 万只压掉 1 千，要五百多次请求才追平。压缩主要是为窗口，钱上只有大会话才省。</p>
+<p class="qq">压缩一次要多付多少？压缩后要发几次请求，省下的钱才能抵掉多付的这一笔？</p>
+<p>压缩请求本身能从缓存读，多付的主要是压缩后的第一次请求：除了开头约 1.19 万 token 的工具定义和系统提示词（条目编号不算进比较时），其余都按 1.25 倍重写。几次回本，看压缩前有多大：45 万压到 4 万，压缩后第 3 次请求起累计花费就比不压缩少（开头接不上时第 4 次）；第 4 章实验里 3.5 万只压掉 1 千，要到第 549 次才追平。压缩首先是为了窗口，钱上只有压缩前很大时才省。</p>
 </div>
 </section>
 
 <section id="notes">
 <h2>设计笔记</h2>
 <ul>
-<li><b>追加不改写，代价是旧内容留着。</b>关掉的工具，定义还在开头，只靠末尾一句话说明不能用；变化多了，说明散在历史各处，模型得自己把前后对上。压缩时再把它们并回开头（自带测试的场景说明）。会不会因此更容易用错工具，没测过【推测】。</li>
-<li><b>项目 AGENTS.md 一次只读一次：保缓存，也意味着改了不生效。</b>想让新规则马上起作用，只能新开会话。Claude Code 对 CLAUDE.md 是同一个取舍，文档写明了原因；Codex 源码没写【推测】。</li>
-<li><b>缓存没接上，比不用缓存贵 25%。</b>写入按 1.25 倍收，所以「中途换模型、换思考级别」不是免费的。Claude Code 在缓存还热时换模型会先问一句，Codex 没有这个提示（第 4 章说过，Codex 换模型还可能先压一次）。</li>
-<li><b>WebSocket 的服务器怎么记得上一次。</b>Codex 的请求都带 <code>store: false</code>（不让服务器保存回复），却还能用 <code>previous_response_id</code> 接上，可能是服务器把上一次的内容留在这条连接的内存里，所以一换连接就得整份重发【推测】。</li>
-<li><b>别的做法。</b>第三版资料提到，有的 agent 自己在请求里放多个缓存标记，把变化快慢不同的部分分层存；Claude Code 的「三层」就是这种。本机没有其他 agent 的源码，没核对【待核实】。</li>
+<li><b>追加不改写，代价是旧内容留在历史里。</b>关掉的工具，定义还在开头，只靠末尾一句话说明不能用（模型照样调用时 Codex 不执行，第 6 章）；变化多了，说明散在历史各处，模型要自己把前后对上。压缩时 Codex 再把它们合并回开头（自带测试的场景说明）。会不会因此更容易用错工具，没测过【推测】。</li>
+<li><b>项目 AGENTS.md 同一个进程里不重读：保住了缓存，代价是改了不马上生效。</b>想让新规则起作用，要退出后 <code>resume</code> 或新开会话；<code>resume</code> 后旧规则和新规则会同时留在历史里，直到下一次压缩（第 8 章）。Claude Code 对 CLAUDE.md 是同一个取舍，文档写明了原因；Codex 源码没写原因【推测】。</li>
+<li><b>缓存没接上，比不用缓存贵 25%。</b>写入按 1.25 倍收，所以中途换模型、换思考级别都不是免费的。Claude Code 在缓存还没过期时换模型会先问一句，Codex 没有这个提示；而且 Codex 里 gpt-5.5 和 gpt-6.1-sol 来回换，每换一次还会先压缩一次（第 4 章）。</li>
+<li><b>WebSocket 的服务器怎么记得上一次。</b>Codex 的请求都带 <code>store: false</code>（不让服务器保存这次的回复），却还能用 <code>previous_response_id</code> 接上，可能是服务器把上一次的内容留在这条连接的内存里，所以一换连接就要整份重发【推测】。</li>
+<li><b>别的做法。</b>有的 agent 自己在请求里放多个断点，按变化快慢把请求分层缓存；Claude Code 的三层就是这样。本机没有其他 agent 的源码，它们具体怎么放没核对【待核实】。</li>
 </ul>
 </section>
 
 <section id="summary">
 <h2>小结</h2>
 <ol>
-<li>重发的开头不用按全价再算：接上缓存的部分，gpt-6.1-sol 只收普通输入价的 5%，也少等一会；新写进缓存的按 1.25 倍；窗口占用一点不少。</li>
+<li>重发的开头不用按全价再付：接上缓存的部分，gpt-6.1-sol 只按全价的 5% 收，也少等一会儿；新写进缓存的按 1.25 倍收；窗口占用一点不少。</li>
 <li>缓存从第一处不同开始接不上，后面没改的也要重写；工具定义、AGENTS.md 都在最前面，改了就整份重写。</li>
-<li>Codex 一个会话里的请求总是上一次原样加尾巴：关工具、跨天、换模型都追加在末尾，项目 AGENTS.md 中途不重读，<code>resume</code> 也不改开头。</li>
-<li>WebSocket 只发新增条目，省的是传输，不是计算；模型看到的上下文不变，换进程或历史被改写就整份重发。</li>
-<li>压缩后大部分要按 1.25 倍重写；压缩前越大越快回本，45 万压到 4 万时第 3 次请求起就省钱。</li>
+<li>Codex 一个会话里的请求总是上一次一字不改、末尾再加几条：关工具、跨天、换模型、改 AGENTS.md 都追加在末尾，<code>resume</code> 也不改开头。</li>
+<li>WebSocket 只发新增条目，省的是传输，不是计算；模型看到的上下文不变；换进程、改设置或压缩改写了历史，就整份重发。</li>
+<li>压缩后的第一次请求大部分要按 1.25 倍重写；压缩前越大越快回本，45 万压到 4 万时，压缩后第 3 次请求起就省钱。</li>
 </ol>
 </section>
 
 <section id="evidence">
 <h2>证据表</h2>
-<p>Codex 版本：源码 <code>76ed3b4</code>，CLI <code>0.165.0</code>。源码路径相对 <code>codex-rs/</code>。本章实验在 <code>自学单元/U04-实验/</code>：脚本 <code>u04_cache.py</code>、比较脚本 <code>analyze.py</code>，输出 <code>out/http/</code>、<code>out/ws/</code>、<code>out/ws-bad-handshake/</code>；压缩数据用第 4 章的 <code>自学单元/U03-实验/out/default/</code>。</p>
+<p>Codex 版本：源码 <code>76ed3b4</code>，CLI <code>0.165.0</code>。源码路径相对 <code>codex-rs/</code>。本章实验在 <code>自学单元/U04-实验/</code>：脚本 <code>u04_cache.py</code>、比较脚本 <code>analyze.py</code>，输出 <code>out/http/</code>、<code>out/ws/</code>、<code>out/ws-bad-handshake/</code>；压缩数据用第 4 章的 <code>自学单元/U03-实验/out/default/</code>。正文里的条目序号从 1 数。</p>
 <div class="tablewrap"><table>
 <tr><th>#</th><th>结论</th><th>出处</th><th>等级</th></tr>
 <tr id="e1"><td>1</td><td>实验条件：本机假服务器（自定义通道 <code>mock</code>，同一端口接 HTTP 和 WebSocket），全新临时 <code>CODEX_HOME</code>，<code>sandbox_mode = "read-only"</code>，模型 gpt-6.1-sol、思考级别 low；3 个进程（<code>exec</code>、<code>exec resume --last</code>、带 <code>-c features.sleep_tool=false</code> 的 <code>exec resume --last</code>）；假服务器每次报 <code>cached_tokens = 4321</code>（不是真实缓存）；2026-11-02 运行</td><td><code>u04_cache.py</code>；<code>out/*/runs.json</code>、<code>seen.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e2"><td>2</td><td>OpenAI 提示词缓存规则（GPT-5.6 及之后）：默认开启；整段渲染后的前缀一致才复用，前缀含 OpenAI 的说明、developer 消息、工具定义、历史及 <code>model</code>、<code>reasoning.effort</code>、<code>parallel_tool_calls</code> 等设置；最短 1,024 token；隐式断点在最后一条合格消息末尾（用户消息、连续工具结果的最后一条、开头 developer 组的最后一条）；默认存 30 分钟；读 0.1 倍（gpt-6.1-sol 0.05 倍），写 30 分钟 1.25 倍、12 小时 2.5 倍，不叠加；能缩短开始回答前的处理时间但不保证；页面未提 WebSocket 和 <code>previous_response_id</code></td><td>官方文档 <code>developers.openai.com/api/docs/guides/prompt-caching</code>，2026-11-02 查阅（页面无日期）</td><td><span class="tag lvl-m">中</span> 官方文档，没有真实计费数据</td></tr>
+<tr id="e2"><td>2</td><td>OpenAI 提示词缓存规则（GPT-5.6 及之后）：缺省开启；整段渲染后的前缀一致才复用，前缀含 OpenAI 的说明、developer 消息、工具定义、历史及 <code>model</code>、<code>reasoning.effort</code>、<code>parallel_tool_calls</code> 等设置；最短 1,024 token；隐式断点在最后一条合格消息末尾（用户消息、连续工具结果的最后一条、开头 developer 组的最后一条）；缺省存 30 分钟；读 0.1 倍（gpt-6.1-sol 0.05 倍），写 30 分钟 1.25 倍、12 小时 2.5 倍，不叠加；能缩短开始回答前的处理时间但不保证；页面没提 WebSocket 和 <code>previous_response_id</code>。「改动之后能接上的是改动前最近的断点」是按这些规则推的</td><td>官方文档 <code>developers.openai.com/api/docs/guides/prompt-caching</code>，2026-11-02 查阅（页面无日期）</td><td><span class="tag lvl-m">中</span> 官方文档，没有真实计费数据</td></tr>
 <tr id="e3"><td>3</td><td>Codex 不传缓存存活时间参数：源码（不含测试）里没有 <code>prompt_cache_options</code>、<code>prompt_cache_retention</code></td><td>源码全文搜索；请求字段见 <code>core/src/client.rs:1078-1094</code>；实验 <code>out/http/req-01.json</code> 的顶层字段</td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e4"><td>4</td><td>用量解析：<code>cached_tokens</code> → <code>cached_input_tokens</code>，<code>cache_write_tokens</code> → <code>cache_write_input_tokens</code>；窗口占用 = <code>total_tokens</code>（含命中部分）；<code>/status</code> 的 Token usage 和 <code>exec</code> 的「tokens used」= 未命中输入 + 输出；<code>exec --json</code> 的 <code>turn.completed.usage</code> 是会话累计（实验 12,963 = 3 × 4,321）；存档每次请求一条 <code>token_count</code></td><td>源码 <code>codex-api/src/sse/responses.rs:119-151</code>、<code>protocol/src/protocol.rs:2555-2566</code>、<code>tui/src/status/card.rs:367-372</code>、<code>exec/src/event_processor_with_human_output.rs:403-404,518-522</code>、<code>exec/src/event_processor_with_jsonl_output.rs:118-129</code>；实验 <code>out/http/runs.json</code>、<code>rollout.jsonl</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e5"><td>5</td><td>5 次请求（HTTP）逐条比较：每次都是上一次的 <code>input</code> 原样加尾巴；除 <code>input</code>、<code>client_metadata</code> 外字段全同，<code>prompt_cache_key</code> 跨进程不变；字节数 54,870 / 55,252 / 55,634 / 55,924 / 56,512；第 2 次请求体 56,816 字节</td><td>实验 <code>out/http/req-01…05.json</code>、<code>seen.json</code>；<code>analyze.py out/http</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e4"><td>4</td><td>用量解析：<code>cached_tokens</code> → <code>cached_input_tokens</code>，<code>cache_write_tokens</code> → <code>cache_write_input_tokens</code>；窗口占用 = <code>total_tokens</code>（含用上缓存的部分）；<code>/status</code> 的 Token usage 和 <code>exec</code> 的「tokens used」= 没用上缓存的输入 + 输出；<code>exec --json</code> 的 <code>turn.completed.usage</code> 是会话累计（实验 12,963 = 3 × 4,321）；存档每次请求一条 <code>token_count</code></td><td>源码 <code>codex-api/src/sse/responses.rs:119-151</code>、<code>protocol/src/protocol.rs:2555-2566</code>、<code>tui/src/status/card.rs:367-372</code>、<code>exec/src/event_processor_with_human_output.rs:403-404,518-522</code>、<code>exec/src/event_processor_with_jsonl_output.rs:118-129</code>；实验 <code>out/http/runs.json</code>、<code>rollout.jsonl</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e5"><td>5</td><td>5 次请求（HTTP）逐条比较：每次都是上一次的 <code>input</code> 原样加尾巴；除 <code>input</code>、<code>client_metadata</code>（含本轮 <code>turn_id</code>）外字段全同，<code>prompt_cache_key</code> 跨进程不变；各次 <code>input</code> 条目字节合计 54,870 / 55,252 / 55,634 / 55,924 / 56,512；第 2 次请求体 56,816 字节</td><td>实验 <code>out/http/req-01…05.json</code>、<code>seen.json</code>；<code>analyze.py out/http</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e6"><td>6</td><td>关掉 <code>sleep_tool</code> 后：前 13 条不变，第 15 条是 274 字节的 developer 消息「The following namespaces are no longer available…- clock」；开头工具定义不变</td><td>实验 <code>out/http/req-05.json</code> 第 14 条（从 0 数）</td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e7"><td>7</td><td><code>incremental_tools</code>：要求 <code>use_responses_lite</code> 且特性打开；打开时 <code>tools</code>、<code>base_instructions</code> 置空、改由历史携带；源码里「开发中、默认关」，CLI 0.165.0 <code>codex features list</code> 显示 stable、true；自带测试：换模型时追加说明、变化的工具和替换的系统提示词，不改写前缀，压缩后并回；gpt-5.5 那组（Responses API）每次带完整工具表、变了就替换</td><td>源码 <code>features/src/lib.rs:1591-1596</code>、<code>core/src/session/step_context.rs:54-62</code>、<code>core/src/session/turn.rs:1666-1695</code>、<code>core/tests/suite/scenarios_incremental_tools.rs:27-160</code> 及快照 <code>all__suite__scenarios__incremental_tools__incremental_tools.snap</code>、<code>…_responses_api.snap</code></td><td><span class="tag lvl-h">高</span> 换模型那部分只有测试，没自己实验</td></tr>
-<tr id="e8"><td>8</td><td>环境信息含 <code>current_date</code>；日期变化时生成一条新的环境信息片段（追加）；按时间单独提醒的 <code>current_time_reminder</code> 在 0.165.0 仍是开发中、默认关</td><td>源码 <code>core/src/context/world_state/environment.rs:146-151,179-193</code>、<code>features/src/lib.rs:1933-1938</code>；实验 <code>req-01.json</code> 第 5 条；<code>codex features list</code></td><td><span class="tag lvl-m">中</span> 跨天没实验</td></tr>
-<tr id="e9"><td>9</td><td><code>prompt_cache_key</code> 取值：配置覆盖值 → 内部会话「来源:父会话 id」→ 会话 id；ChatGPT 通道从会话 id 头推导缓存亲和；OpenAI 文档：较早模型用于路由，5.6 之后可选、主要用于分开统计，都不保证命中</td><td>源码 <code>core/src/client.rs:646-669</code>；官方文档同 #2</td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e10"><td>10</td><td>WebSocket：带 <code>previous_response_id</code>，只发新增条目；条件是除 <code>input</code> 外字段不变、新 <code>input</code> 以「上次 input + 上次回复」开头；实验：同进程工具调用后的请求只发 1 条（257 字节，消息 1,989 字节），<code>resume</code> 后整份（57,688 字节），每个进程先发 <code>generate: false</code> 的空预热；握手失败 7 次后改走 HTTP</td><td>源码 <code>core/src/client.rs:389-455,1500-1541</code>、<code>core/src/session/startup_prewarm.rs:305-445</code>；测试 <code>core/tests/suite/client_websockets.rs:1356-1450,1964-2010</code>；实验 <code>out/ws/seen.json</code>、<code>msg-03.json</code>、<code>out/ws-bad-handshake/seen.json</code></td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e7"><td>7</td><td><code>incremental_tools</code>：要求 <code>use_responses_lite</code> 且特性打开；打开时 <code>tools</code>、<code>base_instructions</code> 置空、改由历史携带；源码里「开发中、缺省关」，CLI 0.165.0 <code>codex features list</code> 显示 stable、true；自带测试：换模型时追加说明、变化的工具和替换的系统提示词，不改写前缀，压缩后并回；gpt-5.5 那组（Responses API）每次带完整工具表、变了就替换</td><td>源码 <code>features/src/lib.rs:1591-1596</code>、<code>core/src/session/step_context.rs:54-62</code>、<code>core/src/session/turn.rs:1666-1695</code>、<code>core/tests/suite/scenarios_incremental_tools.rs:27-160</code> 及快照 <code>all__suite__scenarios__incremental_tools__incremental_tools.snap</code>、<code>…_responses_api.snap</code></td><td><span class="tag lvl-h">高</span> 换模型那部分只有测试，没自己实验</td></tr>
+<tr id="e8"><td>8</td><td>环境信息含 <code>current_date</code>；日期变化时生成一条新的环境信息片段（追加）；按时间单独提醒的 <code>current_time_reminder</code> 在 0.165.0 仍是开发中、缺省关</td><td>源码 <code>core/src/context/world_state/environment.rs:146-151,179-193</code>、<code>features/src/lib.rs:1933-1938</code>；实验 <code>req-01.json</code> 第 5 条；<code>codex features list</code></td><td><span class="tag lvl-m">中</span> 跨天没实验</td></tr>
+<tr id="e9"><td>9</td><td><code>prompt_cache_key</code> 取值：配置覆盖值 → 内部会话（<code>SessionSource::Internal</code>：记忆合并、Guardian）用「来源:父会话 id」→ 其余用会话 id；子代理（<code>SubAgent</code>）不走第二条，第 7 章实验里父子请求的 <code>prompt_cache_key</code> 相同；ChatGPT 通道从会话 id 头推导缓存亲和；OpenAI 文档：较早模型用于路由，5.6 之后可选、主要用于分开统计，都不保证命中</td><td>源码 <code>core/src/client.rs:646-669</code>、<code>protocol/src/protocol.rs:3025-3028</code>；第 7 章证据 #6；官方文档同 #2</td><td><span class="tag lvl-h">高</span></td></tr>
+<tr id="e10"><td>10</td><td>WebSocket：带 <code>previous_response_id</code>，只发新增条目；条件是除 <code>input</code> 外字段不变、新 <code>input</code> 以「上次 input + 上次回复」开头；实验：同进程工具调用后的请求只发 1 条（257 字节，消息 1,989 字节），<code>resume</code> 后整份（57,688 字节），每个进程先发 <code>generate: false</code> 的空预热；握手失败 7 次后改走 HTTP</td><td>源码 <code>core/src/client.rs:389-455,1500-1541</code>、<code>core/src/session/startup_prewarm.rs:305-445</code>；测试 <code>core/tests/suite/client_websockets.rs:1356-1450,1964-2010</code>；实验 <code>out/ws/seen.json</code>、<code>msg-03.json</code>、<code>out/ws-bad-handshake/seen.json</code>；配置写法见 <code>u04_cache.py</code> 的 <code>[model_providers.mock]</code></td><td><span class="tag lvl-h">高</span></td></tr>
 <tr id="e11"><td>11</td><td>WebSocket 下按编号拼回的完整请求与 HTTP 下逐字相同（去掉条目 id、临时目录名、回复编号后）</td><td>实验 <code>out/http/req-01,03,05</code> 对 <code>out/ws/req-02,04,08</code></td><td><span class="tag lvl-h">高</span></td></tr>
-<tr id="e12"><td>12</td><td>本地压缩请求与上一次请求前 13 条相同；压缩后第 0、1 条内容不变但 id 换新（25,347 + 22,148 字节），第 2 条起不同；请求 35,003 → 33,965 token；id 是否参与缓存匹配未知</td><td>实验 <code>U03-实验/out/default/req-04、05、06</code>；<code>analyze.py</code></td><td><span class="tag lvl-h">高</span> 内容比较；<span class="tag lvl-l">待核实</span> id 的影响</td></tr>
-<tr id="e13"><td>13</td><td>交互里的花费、回本次数都按 #2 的价目规则算，假设每次都接上上一次的缓存；摘要输出未计</td><td>本页脚本</td><td><span class="tag lvl-l">推测</span> 模型估算，未实验</td></tr>
-<tr id="e14"><td>14</td><td>Claude Code：三层顺序；会断缓存的操作清单；中途改 CLAUDE.md 不断缓存也不生效；技能、计划模式说明作为消息追加；<code>/rewind</code> 命中旧缓存；摘要请求在缓存热时读缓存；TTL 默认 5 分钟、订阅额度内主对话 1 小时、<code>promptCacheTtl</code> 可设；<code>/usage</code> 的 Prompt cache (main) 行（v2.1.251 起）；文档还提到会「清理旧工具结果」并计为预期的缓存重建</td><td>官方文档 <code>code.claude.com/docs/en/prompt-caching</code>、<code>code.claude.com/docs/en/costs</code>，2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，没实测</td></tr>
-<tr id="e15"><td>15</td><td>Anthropic 接口：<code>cache_control</code> 断点最多 4 个；前缀顺序 tools → system → messages；默认 5 分钟、可选 1 小时；写 1.25 / 2 倍，读 0.1 倍（Opus 5.5、Sonnet 5.5 为 0.05 倍）</td><td>官方文档 <code>platform.claude.com/docs/en/build-with-claude/prompt-caching</code>，2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档</td></tr>
+<tr id="e12"><td>12</td><td>本地压缩请求与上一次请求前 13 条相同；压缩后第 0、1 条（从 0 数）内容不变但 id 换新（25,347 + 22,148 字节），第 2 条起不同；请求 35,003 → 33,965 token；id 是否参与缓存匹配未知</td><td>实验 <code>U03-实验/out/default/req-04、05、06</code>；<code>analyze.py</code></td><td><span class="tag lvl-h">高</span> 内容比较；<span class="tag lvl-l">待核实</span> id 的影响</td></tr>
+<tr id="e13"><td>13</td><td>交互里的花费、回本次数都按 #2 的价目规则算，假设每次都接上上一次的缓存；摘要输出未计。第五节的数：实验那组压缩两次请求合计约 30,159、每次少付 51.9、第 549 次追平；45 万 → 4 万（假设值）合计约 58,452、每次少付 20,500、第 3 次（开头接不上时约 72,701、第 4 次）</td><td>本页脚本</td><td><span class="tag lvl-l">推测</span> 模型估算，未实验</td></tr>
+<tr id="e14"><td>14</td><td>Claude Code：三层顺序；会断缓存的操作清单；中途改 CLAUDE.md 不断缓存也不生效；技能、计划模式说明作为消息追加；<code>/rewind</code> 命中旧缓存；摘要请求在缓存热时读缓存；TTL 缺省 5 分钟、订阅额度内主对话 1 小时、<code>promptCacheTtl</code> 可设；<code>/usage</code> 的 Prompt cache (main) 行（v2.1.251 起）；文档还提到会「清理旧工具结果」并计为预期的缓存重建</td><td>官方文档 <code>code.claude.com/docs/en/prompt-caching</code>、<code>code.claude.com/docs/en/costs</code>，2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档，没实测</td></tr>
+<tr id="e15"><td>15</td><td>Anthropic 接口：<code>cache_control</code> 断点最多 4 个；前缀顺序 tools → system → messages；缺省 5 分钟、可选 1 小时；写 1.25 / 2 倍，读 0.1 倍（Opus 5.5、Sonnet 5.5 为 0.05 倍）</td><td>官方文档 <code>platform.claude.com/docs/en/build-with-claude/prompt-caching</code>，2026-11-02 查阅</td><td><span class="tag lvl-m">中</span> 官方文档</td></tr>
+<tr id="e16"><td>16</td><td>AGENTS.md 的变化都追加、不改开头：全局 <code>~/.codex/AGENTS.md</code> 每次请求前重读，变了追加替换消息；项目 AGENTS.md 同一进程只读一次；<code>resume</code>（新进程）时与存档基线比较，不同就追加 380 字节的「替换」消息和新全文，旧条目（763 字节）不动</td><td>第 2 章证据 #14 及第 2 章正文；第 8 章证据 #16（实验 <code>U07-实验/out/default/req-06-resume-say.json</code>）、#17（源码 <code>core/src/context/world_state/agents_md.rs:12-13, 40-79</code>）</td><td><span class="tag lvl-h">高</span> <code>resume</code> 那部分；<span class="tag lvl-m">中</span> 同一进程中途改文件没做实验</td></tr>
 </table></div>
 </section>
 </main>
@@ -267,7 +276,7 @@
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const fmt = n => Math.round(n).toLocaleString('en-US');
 const press = (sel, el) => $$(sel).forEach(x => x.setAttribute('aria-pressed', x === el));
-const READ = 0.05, WRITE = 1.25;   // gpt-6.1-sol：缓存读、30 分钟写入，相对普通输入价
+const READ = 0.05, WRITE = 1.25;   // gpt-6.1-sol：缓存读、30 分钟写入，相对全价
 
 /* 第一节：一个会话付了多少（按官方价目规则算，未实验） */
 const B1 = 13718;   // 实验 out/http/req-01：54,870 字节 ÷ 4
@@ -287,9 +296,9 @@ function renderS1(){
   $('#m1b').innerHTML = '<div class="keep" style="width:'+Math.max(0.5,100*cached/full)+'%"></div>';
   let t = '<p><span class="tag">按官方价目规则算，未实验</span></p>';
   t += '<p>最后一次请求 <b>'+fmt(T(n))+' token</b>，这就是它占的窗口，用不用缓存都一样。</p>';
-  t += '<p>不用缓存：'+n+' 次合计按 <b>'+fmt(full)+'</b> 个 token 的全价付。<br>用缓存：折合 <b>'+fmt(cached)+'</b> 个，是全价的 <b>'+(100*cached/full).toFixed(1)+'%</b>。</p>';
-  if(n===1) t += '<p class="bad">只发一次时，缓存只有写入没有读取，反而多付 25%。</p>';
-  if(gapAt && n>1) t += '<p>第 '+gapAt+' 次请求前停过一次，缓存过期，那一次 '+fmt(T(gapAt))+' token 整份按 1.25 倍重写。</p>';
+  t += '<p>不用缓存：'+n+' 次请求合计按 <b>'+fmt(full)+'</b> 个 token 的全价付。<br>用缓存：折合 <b>'+fmt(cached)+'</b> 个 token 的全价，是不用缓存时的 <b>'+(100*cached/full).toFixed(1)+'%</b>。</p>';
+  if(n===1) t += '<p class="bad">只发一次请求时，缓存只有写入、没有读取，反而多付 25%。</p>';
+  if(gapAt && n>1) t += '<p>第 '+gapAt+' 次请求之前停过 30 分钟以上，缓存过期，这一次的 '+fmt(T(gapAt))+' token 要整份按 1.25 倍重写。</p>';
   $('#m1t').innerHTML = t;
 }
 ['#n1','#d1'].forEach(s => $(s).oninput = renderS1);
@@ -303,19 +312,19 @@ const ITEMS = [
   ['工具调用 2',125,'--reply'],['工具输出 2',257,'--reply'],['回复',134,'--reply'],['第 2 轮你的话',156,'--user'],
   ['回复',134,'--reply'],['工具变更说明',274,'--session'],['第 3 轮你的话',180,'--user']
 ];
-const ENDS = [7,9,11,13];   // 前 4 次请求各自结尾在第几条之后（缓存存在这些位置）
-const CH = {append:13, out2:10, u1:6, agents:5, tools:0};   // 改动从第几条开始（从 0 数）
-const CHNAME = {append:'第 4 次请求之后新增的 3 条', out2:'第 2 次工具输出', u1:'第 1 轮你的话', agents:'AGENTS.md + 环境信息', tools:'工具定义'};
+const ENDS = [7,9,11,13];   // 前 4 次请求的断点各在第几条末尾（从 1 数）
+const CH = {append:13, out2:10, u1:6, agents:5, tools:0};   // 改动从哪一条开始（从 0 数，第 11 条 = 下标 10）
+const CHNAME = {append:'第 4 次请求之后新增的 3 条', out2:'第 2 次工具输出（第 11 条）', u1:'第 1 轮你的话（第 7 条）', agents:'AGENTS.md + 环境信息（第 6 条）', tools:'工具定义（第 1 条）'};
 function renderS2(key){
   const c = CH[key];
-  const reuse = Math.max(0, ...ENDS.filter(e => e <= c));   // 改动之前最近一次旧请求的结尾
+  const reuse = Math.max(0, ...ENDS.filter(e => e <= c));   // 改动之前最近的断点
   const total = ITEMS.reduce((s,x)=>s+x[1],0);
   let readB = 0, restB = 0;
   const changed = i => key === 'append' ? i >= c : i === c;   // 追加：新增的 3 条；其他：被改的那一条
   $('#m2').innerHTML = ITEMS.map(([name,b],i)=>{
     const cls = i < reuse ? 'var(--keep)' : changed(i) ? 'var(--cut)' : 'var(--half)';
     if(i < reuse) readB += b; else restB += b;
-    return '<div title="'+name+' '+fmt(b)+' 字节" style="width:'+(100*b/total)+'%;min-width:3px;background:'+cls+'"></div>';
+    return '<div title="第 '+(i+1)+' 条：'+name+' '+fmt(b)+' 字节" style="width:'+(100*b/total)+'%;min-width:3px;background:'+cls+'"></div>';
   }).join('');
   const tok = x => Math.ceil(x/4);
   const rt = tok(readB), wt = tok(total) - rt;
@@ -323,15 +332,15 @@ function renderS2(key){
   const best = READ*tok(55924) + WRITE*(tok(total)-tok(55924));
   let t = '<p><span class="tag lvl-h">条目和字节：实验 out/http/req-05</span> <span class="tag">能接上多少：按文档规则推，未实验</span></p>';
   t += '<p>改动：<b>'+CHNAME[key]+'</b>。</p>';
-  t += '<p>能从缓存读：前 '+reuse+' 条，'+fmt(readB)+' 字节 ≈ <b>'+fmt(rt)+' token</b>'+(reuse? '（第 '+(ENDS.indexOf(reuse)+1)+' 次请求的结尾）':'')+'。<br>要写进缓存（1.25 倍）：'+fmt(restB)+' 字节 ≈ <b>'+fmt(wt)+' token</b>。</p>';
-  t += '<p>这次请求折合 <b>'+fmt(cost)+'</b> 个 token 的全价'+(key==='append' ? '。' : '，是正常追加（'+fmt(best)+'）的 <b>'+(cost/best).toFixed(1)+' 倍</b>。')+'</p>';
-  if(key==='agents') t += '<p>实际上 Codex 一个会话只读一次项目 AGENTS.md，会话中途改文件不会进请求（第三节）。这里假设它进了。</p>';
+  t += '<p>能从缓存读：前 '+reuse+' 条，'+fmt(readB)+' 字节，约 <b>'+fmt(rt)+' token</b>'+(reuse? '（接上第 '+(ENDS.indexOf(reuse)+1)+' 次请求的断点）':'（没有断点在改动之前）')+'。<br>要写进缓存（1.25 倍）：'+fmt(restB)+' 字节，约 <b>'+fmt(wt)+' token</b>。</p>';
+  t += '<p>这次请求折合 <b>'+fmt(cost)+'</b> 个 token 的全价'+(key==='append' ? '。' : '，是只在末尾追加时（'+fmt(best)+'）的 <b>'+(cost/best).toFixed(1)+' 倍</b>。')+'</p>';
+  if(key==='agents') t += '<p>实际上 Codex 不会改这一条：AGENTS.md 改了，新全文追加在末尾（第三节）。这里假设它改了开头那份。</p>';
   if(key==='tools') t += '<p>gpt-5.5 的工具表变了就是这种情况；gpt-6.1-sol 会改成在末尾追加一条说明（第三节）。</p>';
   $('#m2t').innerHTML = t;
 }
 $$('[data-ch]').forEach(b => b.onclick = () => { press('[data-ch]', b); renderS2(b.dataset.ch); });
 
-/* 第五节：压缩几次请求后回本（按官方价目规则算，未实验；摘要输出不计） */
+/* 第五节：压缩后几次请求回本（按官方价目规则算，未实验；摘要输出不计） */
 const CP = {exp:[35003,33965], line:[450000,40000]};
 const PROMPT = 161;   // 压缩请求末尾新增的两条：35,164 − 35,003（实验）
 let SH = 11874;
@@ -345,14 +354,14 @@ function renderS5(){
   const comp = n => once + (n-1)*READ*A;        // 压了：之后每次读新开头
   let be = null;
   if(A < P){ for(let n=1;n<=100000;n++){ if(comp(n) <= noComp(n)){ be = n; break; } } }
-  let t = '<p><span class="tag">按官方价目规则算，未实验</span>'+((P===35003&&A===33965)?' <span class="tag lvl-h">大小：实验 U03</span>':'')+'</p>';
-  t += '<p>压缩多付一次：压缩请求 '+fmt(READ*P + WRITE*PROMPT)+' + 压缩后第一次请求 '+fmt(READ*S + WRITE*(A-S))+' = <b>'+fmt(once)+'</b>（折合全价 token，下同）。</p>';
-  t += '<p>不压缩，以后每次请求读旧开头要付 '+fmt(READ*P)+'；压缩后每次付 '+fmt(READ*A)+'，每次省 <b>'+fmt(READ*(P-A))+'</b>。</p>';
+  let t = '<p><span class="tag">按官方价目规则算，未实验</span>'+((P===35003&&A===33965)?' <span class="tag lvl-h">大小：第 4 章实验 U03</span>':'')+'</p>';
+  t += '<p>压缩那两次请求：压缩请求 '+fmt(READ*P + WRITE*PROMPT)+' + 压缩后第一次请求 '+fmt(READ*S + WRITE*(A-S))+' = <b>'+fmt(once)+'</b>（都折合成全价 token，下同）。</p>';
+  t += '<p>之后每次请求：不压缩，从缓存读旧开头要付 '+fmt(READ*P)+'；压缩了，读新开头只付 '+fmt(READ*A)+'，每次少付 <b>'+fmt(READ*(P-A))+'</b>。</p>';
   if(A >= P) t += '<p class="bad">压缩后不比压缩前小，钱上永远回不了本。</p>';
-  else if(be===null) t += '<p class="bad">10 万次请求内回不了本；这次压缩只为窗口。</p>';
-  else if(be>100) t += '<p class="bad">要发到第 '+fmt(be)+' 次请求才追平，实际会话里等于回不了本；这次压缩只为窗口。</p>';
-  else t += '<p class="ok">压缩后发到第 '+be+' 次请求，累计花费追平不压缩；再往后都是省的。</p>';
-  t += '<p>别忘了另一面：不压缩的话，请求还会继续涨，到窗口上限就发不出去了。</p>';
+  else if(be===null) t += '<p class="bad">10 万次请求内回不了本；这次压缩只为了窗口。</p>';
+  else if(be>100) t += '<p class="bad">要到压缩后第 '+fmt(be)+' 次请求才追平，实际会话里等于回不了本；这次压缩只为了窗口。</p>';
+  else t += '<p class="ok">到压缩后第 '+be+' 次请求，累计花费追平不压缩；再往后都是省的。</p>';
+  t += '<p>另一面：不压缩的话，请求还会继续变长，到窗口上限就发不出去了（第 10 章）。</p>';
   $('#m5t').innerHTML = t;
 }
 ['#p5','#a5s'].forEach(s => $(s).oninput = () => { $$('[data-cp]').forEach(x=>x.setAttribute('aria-pressed','false')); renderS5(); });

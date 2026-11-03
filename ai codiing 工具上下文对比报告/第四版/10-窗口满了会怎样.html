@@ -22,14 +22,14 @@
 </header>
 
 <p class="lede">实验里 <code>gpt-6.1-sol</code> 的会话已经用了约 19.4 万 token，我再发一条约 12 万 token 的日志，服务器拒绝了这次请求。Codex 回了一句「Codex ran out of room in the model's context window」，没有压缩，也没有重发；接着发的两句短话各被拒一次。直到手动压缩：压缩请求自己被拒 7 次，每次删掉历史里最旧的一条，第 8 次才装得下。</p>
-<p class="note"><b>窗口</b>：一次请求最多能装的 token 数。<b>压缩</b>：把前面的对话写成摘要换掉原文（第 4 章）。token 仍是 Codex 的估算：UTF-8 字节数 ÷ 4 向上取整（第 2 章）。实验用本机假服务器：它自己带一个窗口，把请求里各条的字节数 ÷ 4 相加，超过就拒绝；连的是自定义通道，所以压缩走第 4 章讲的本地压缩。真实服务器按真实分词计数，拒绝的时机会和 Codex 的估算有出入；OpenAI 官方通道的远端压缩只读了源码，没做实验。脚本和输出在 <code>自学单元/U09-实验/</code>。<sup><a href="#e1">1</a></sup></p>
+<p class="note"><b>窗口</b>：一次请求最多能装的 token 数。<b>压缩</b>：把前面的对话写成摘要换掉原文（第 4 章）。<b>流</b>：服务器的回答不是一次性发回，而是边生成边一段段发回（流式）；请求失败时，服务器也可以在流里发一个「失败」事件，而不是直接回一个 HTTP 错误码。token 仍是 Codex 的估算：UTF-8 字节数 ÷ 4 向上取整（第 2 章）。实验用本机假服务器：它自己带一个窗口，把请求里各条的字节数 ÷ 4 相加，超过就拒绝；连的是自定义通道（第 4 章：不是 OpenAI 官方服务的地址），所以压缩走第 4 章讲的本地压缩。每次实验用 <code>codex app-server</code>（第 8 章）发指令驱动会话。实验 A、B、C 的第 1 句话都以「我叫 Drake。规则：不要改数据库 schema。」开头，后面接填充文字凑大小。真实服务器按真实分词计数，拒绝的时机会和 Codex 的估算有出入；OpenAI 官方通道的远端压缩只读了源码，没做实验。脚本和输出在 <code>自学单元/U09-实验/</code>。<sup><a href="#e1">1</a></sup></p>
 
 <div class="tablewrap"><table>
-<tr><th>实验</th><th>前两轮</th><th>第 3 轮发的消息</th><th>服务器怎么拒</th><th>输出目录 <code>out/</code></th></tr>
-<tr><td>A</td><td>各约 4 万 token</td><td>40 万个汉字，估算 30 万 token：单条就比窗口大</td><td>流里发失败事件</td><td><code>bigmsg-sse</code></td></tr>
-<tr><td>B</td><td>各约 9 万 token</td><td>16 万个汉字，估算 12 万 token：总量超窗，单条装得下</td><td>流里发失败事件</td><td><code>sumover-sse</code>、<code>sumover-sse-manual</code>（多一步手动压缩）</td></tr>
-<tr><td>C</td><td>同 A</td><td>同 A</td><td>回 HTTP 400</td><td><code>bigmsg-http400</code></td></tr>
-<tr><td>D</td><td colspan="2">窗口只有 14,000 token 的小窗口，第 1 轮连调 5 次工具；对照组不改窗口</td><td>不拒绝</td><td><code>smallwin-14000</code>、<code>smallwin-default</code></td></tr>
+<tr><th>实验</th><th>第 1、2 轮各发的消息</th><th>第 3 轮发的消息</th><th>服务器怎么拒绝</th><th>输出目录 <code>out/</code></th></tr>
+<tr><td>A</td><td>各约 4 万 token</td><td>40 万个汉字，估算 30 万 token：单条就比窗口大</td><td>在流里发失败事件</td><td><code>bigmsg-sse</code></td></tr>
+<tr><td>B</td><td>各约 9 万 token</td><td>16 万个汉字，估算 12 万 token：总量超窗，单条装得下</td><td>在流里发失败事件</td><td><code>sumover-sse</code>、<code>sumover-sse-manual</code>（多一步手动压缩）</td></tr>
+<tr><td>C</td><td>同 A</td><td>同 A</td><td>直接回 HTTP 400 错误码</td><td><code>bigmsg-http400</code></td></tr>
+<tr><td>D</td><td colspan="2">把窗口配成只有 14,000 token，第 1 轮让模型连调 5 次工具；对照组不改窗口（第五节）</td><td>不拒绝</td><td><code>smallwin-14000</code>、<code>smallwin-default</code></td></tr>
 </table></div>
 
 <section class="qs" id="qs">
@@ -45,27 +45,27 @@
 
 <section id="s1">
 <h2><span class="sn">一、</span>「满」有几条线</h2>
-<p>Codex 里和「满」有关的数有四个，下表是 <code>gpt-6.1-sol</code> 用源码自带表时的值（第 4 章：官方登录时模型目录里窗口是 500,000，算法相同）。<sup><a href="#e2">2</a></sup></p>
+<p>Codex 里和「满」有关的数有四个，下表是 <code>gpt-6.1-sol</code> 用源码自带的模型表时的值（第 4 章：官方通道登录、用下载的模型列表时，窗口是 500,000，其余按同样的比例算）。<sup><a href="#e2">2</a></sup></p>
 <div class="tablewrap"><table>
-<tr><th>名字</th><th>值</th><th>谁用</th></tr>
-<tr><td>窗口</td><td class="num">272,000</td><td>模型表里写的上限</td></tr>
-<tr><td>有效窗口 = 窗口 × 95%</td><td class="num">258,400</td><td>Codex 认为「满」的线；界面剩余百分比以它为基准</td></tr>
-<tr><td>压缩线 = 窗口 × 90%</td><td class="num">244,800</td><td>自动压缩的触发线（第 4 章）</td></tr>
+<tr><th>这条线</th><th class="num">值</th><th>用在哪</th></tr>
+<tr><td>窗口</td><td class="num">272,000 token</td><td>模型表里写的上限</td></tr>
+<tr><td>有效窗口 = 窗口 × 95%</td><td class="num">258,400 token</td><td>Codex 认为「满」的线；界面剩余百分比以它为基准</td></tr>
+<tr><td>压缩线 = 窗口 × 90%</td><td class="num">244,800 token</td><td>自动压缩的触发线（第 4 章）</td></tr>
 <tr><td>单条消息上限</td><td class="num">1,048,576 字符</td><td>输入框和 <code>codex app-server</code> 在发出前检查，超了不发<sup><a href="#e3">3</a></sup></td></tr>
 </table></div>
 <p>单条消息的上限按字符算，不按 token 算。一个汉字占 3 字节，Codex 估算 ÷ 4，所以满上限的汉字消息估算约 78.6 万 token（1,048,576 × 3 ÷ 4），是窗口的近三倍；同样长度的纯英文约 26.2 万。所以「一条消息就超窗」是可能发生的，实验 A 就是 40 万个汉字。</p>
-<p>输入框下面的「X% left」用的是上一次请求的用量：(有效窗口 − 用量) ÷ (有效窗口 − 12,000)，12,000 是写死的、当作固定开头的基线。用量走到压缩线 244,800 时显示约 6%（按源码算，没在终端界面里看过）。<sup><a href="#e4">4</a></sup></p>
+<p>TUI 输入框下面显示的「X% left」（还剩百分之几），用的是上一次请求的用量：(有效窗口 − 用量) ÷ (有效窗口 − 12,000)，12,000 是写死的、当作固定开头的基线。用量走到压缩线 244,800 时显示约 6%（按源码算，没在终端界面里看过）。<sup><a href="#e4">4</a></sup></p>
 </section>
 
 <section id="s2">
 <h2><span class="sn">二、</span>请求被拒：不重发，话留在历史里</h2>
-<p>最朴素的做法是被拒了就压缩、再发一次。Codex 的主请求没有这一步：服务器在流里发来一条 <code>response.failed</code>（意思是「这次请求失败了」），错误码是 <code>context_length_exceeded</code>，Codex 把它记成「窗口超限」，标记会话已满，这一轮以失败收场。实验 A、B 里这一轮都只有 1 次请求。你看到的是这句话：</p>
+<p>最朴素的做法是被拒了就压缩、再发一次。Codex 的主请求（正常对话时发的请求，区别于压缩时发的压缩请求）没有这一步：服务器在流里发来一条 <code>response.failed</code>（意思是「这次请求失败了」），错误码是 <code>context_length_exceeded</code>，Codex 把它记成「窗口超限」，标记会话已满，这一轮以失败收场。实验 A、B 里这一轮都只有 1 次请求。你看到的是这句话：</p>
 <pre>Codex ran out of room in the model's context window. Start a new thread or clear earlier history before retrying.</pre>
-<p>app-server 推送的这一轮状态是 <code>failed</code>，错误信息 <code>contextWindowExceeded</code>。<sup><a href="#e5">5</a></sup></p>
+<p>app-server 推送给客户端的这一轮状态是 <code>failed</code>，错误信息 <code>contextWindowExceeded</code>。<sup><a href="#e5">5</a></sup></p>
 <p><b>被拒的话已经写进历史。</b>实验 B 里，被拒的那次请求有 11 条；之后每发一句短话，下一次请求就多一条：12、13、14。那条 12 万 token 的日志一直在里面，每次都被一起发出去。<sup><a href="#e6">6</a></sup></p>
 <p><b>下一句开头压不压缩，要看一个算式。</b>「标记已满」的做法是把「上次用量」（第 4 章：上一次服务器报的数）改成：</p>
 <pre>上次用量 = max(有效窗口 − 会话累计用量, 0)</pre>
-<p>会话累计用量是此前每次请求服务器报的 <code>total_tokens</code> 加起来，每次请求都把整段历史重新算一遍。实验 A 里累计 147,534，上次用量记成 258,400 − 147,534 = 110,866；实验 B 里发了两次请求累计就是 297,537，已经超过 258,400，上次用量记成 0。<sup><a href="#e7">7</a></sup>下一轮开头，Codex 拿「上次用量 + 之后新增条目的估算」（也就是被拒的那条消息）和压缩线 244,800 比：A 是 110,866 + 约 30 万，开头先压缩；B 是 0 + 约 12 万，不压缩，下一句直接发出去，整段历史没变小，于是再被拒一次。<sup><a href="#e8">8</a></sup></p>
+<p>会话累计用量是此前每次请求服务器报的 <code>total_tokens</code> 加起来。每次请求都带着整段历史，服务器每次报的数都包含整段历史，所以加起来远大于历史本身。实验 A 里累计 147,534，上次用量记成 258,400 − 147,534 = 110,866；实验 B 里发了两次请求累计就是 297,537，已经超过 258,400，上次用量记成 0。<sup><a href="#e7">7</a></sup>下一轮开头，Codex 拿「上次用量 + 之后新增条目的估算」（也就是被拒的那条消息）和压缩线 244,800 比：A 是 110,866 + 约 30 万，开头先压缩；B 是 0 + 约 12 万，不压缩，下一句直接发出去，整段历史没变小，于是再被拒一次。<sup><a href="#e8">8</a></sup></p>
 
 <h3>动手算：被拒之后，下一句开头会不会先压缩</h3>
 <p>按源码规则算；两个预设各做过一次实验，其余是按同一条规则外推。假设上一次请求已经被服务器拒了。</p>
@@ -88,7 +88,7 @@
 
 <section id="s3">
 <h2><span class="sn">三、</span>压缩请求也被拒：从最旧的一条删起</h2>
-<p>压缩请求是整段历史加一段提示词（第 4 章），历史超窗，压缩请求也超窗。本地压缩的做法是：被拒就删掉历史最前面的一条（和它配对的工具调用与输出一起删），重新计重试次数，再发；删到只剩一条还被拒，才标记已满并报错。注释写的理由是「从头删，保住按前缀匹配的缓存，同时让最近的消息完整」。<sup><a href="#e10">10</a></sup></p>
+<p>压缩请求是整段历史加一段提示词（第 4 章），历史超窗，压缩请求也超窗。本地压缩的做法是：被拒就删掉历史最前面的一条（和它配对的工具调用与输出一起删），重试次数从零算起，再发；删到只剩一条还被拒，才标记已满并报错。注释写的理由是「从头删，保住按前缀匹配的缓存，同时让最近的消息完整」。<sup><a href="#e10">10</a></sup></p>
 
 <div class="source">
 <h3>看源码：被拒就删最旧的一条再试</h3>
@@ -106,7 +106,7 @@
 }</pre>
 </div>
 
-<p>实验 B 里被拒 3 次后手动压缩（<code>/compact</code> 背后的 <code>thread/compact/start</code>）。压缩请求一共发了 8 次，前 7 次被拒，第 8 次成功。点下面的按钮看每一次请求里还剩什么。<sup><a href="#e11">12</a></sup></p>
+<p>实验 B 里被拒 3 次后手动压缩（<code>/compact</code> 背后的 <code>thread/compact/start</code>）。压缩请求一共发了 8 次，前 7 次被拒，第 8 次成功。点下面的按钮看每一次请求里还剩什么。<sup><a href="#e11">11</a></sup></p>
 
 <h3>动手看：压缩请求每次被拒，删了哪一条</h3>
 <p>数据来自 <code>out/sumover-sse-manual</code> 的 8 次压缩请求，各条字节数是抓到的；估算 token 由这些字节数当场相加 ÷ 4 算出。</p>
@@ -115,10 +115,10 @@
 <div class="panel" id="p2"></div>
 <div class="legend"><span><i style="background:var(--tools)"></i>Codex 放的固定开头</span><span><i style="background:var(--user)"></i>你的话</span><span><i style="background:var(--reply)"></i>模型回复</span><span><i style="background:var(--half)"></i>压缩提示词</span></div>
 
-<p><b>删的顺序是：先 Codex 自己放的，后才是你的话。</b>历史最前面是工具定义（25,347 字节），最先被删；第二次删的是历史里的系统提示词，可压缩请求发现历史里没有系统提示词会补回去，所以第 2 次和第 3 次请求逐字相同，白发了一次；然后是技能目录、两条子代理说明、AGENTS.md；到第 7 次删完这些，请求还是被拒，才轮到你的第 1 句话（36 万字节），这一删就装得下了。<sup><a href="#e12">13</a></sup></p>
-<p><b>摘要是在删剩下的东西上写的。</b>第 8 次请求里没有第 1 句话，第 1 句里的「不要改数据库 schema」摘要看不到。这次摘要是假服务器写死的，真实模型会写成什么测不出来，但它只能转述它看到的。压缩完成后，新历史按第 4 章的规则留你亲手发的消息：从新到旧、预算 2 万 token，那条日志被截成 80,180 字节（头尾各一半），第 4、5 句留下，第 1、2 句不在。压缩后的下一次请求是 33,996 token。所以那条规则在摘要里没有，在留下的原话里也没有。<sup><a href="#e13">14</a></sup></p>
+<p><b>删的顺序是：先 Codex 自己放的，后才是你的话。</b>历史最前面是工具定义（25,347 字节），最先被删；第二次删的是历史里的系统提示词，可压缩请求发现历史里没有系统提示词会补回去，所以第 2 次和第 3 次请求逐字相同，白发了一次；然后是技能目录、两条子代理说明、AGENTS.md；到第 7 次删完这些，请求还是被拒，才轮到你的第 1 句话（36 万字节），这一删就装得下了。<sup><a href="#e12">12</a></sup></p>
+<p><b>摘要是在删剩下的东西上写的。</b>第 8 次请求里没有第 1 句话，第 1 句里的「不要改数据库 schema」，写摘要的模型看不到。实验里的摘要是假服务器写死的一句话，里面恰好写着这条规则，那是我写剧本时放进去的，不是因为摘要看到了第 1 句；真实模型只能转述它看到的内容，会写成什么测不出来。压缩完成后，新历史按第 4 章的规则留你亲手发的消息：从新到旧、预算 2 万 token，那条日志被截成 80,180 字节（头尾各一半），第 4、5 句留下，第 1、2 句不在。压缩后的下一次请求是 33,996 token。所以对真实模型来说，那条规则不会在摘要里（它没看到），也不在留下的原话里。<sup><a href="#e13">13</a></sup></p>
 <p><b>更极端的情况是实验 A。</b>单条消息就比窗口大，压缩请求被拒了 11 次，每次删一条，连日志本身也删掉，第 12 次请求里只剩系统提示词和压缩提示词两条，摘要什么对话都没看到。之后日志仍以截短的形式（80,234 字节）留在历史里。</p>
-<p><b>官方通道不是这一套。</b>源码里「删最旧一条」只出现在本地压缩这一处。官方通道的远端压缩（第 4 章）在发出前，把历史里的工具输出从新到旧换成一句提示，直到估算装得下；没有工具输出可换了，就原样发。只读了源码，没做实验。<sup><a href="#e14">15</a></sup></p>
+<p><b>官方通道不是这一套。</b>源码里「删最旧一条」只出现在本地压缩这一处。官方通道的远端压缩（第 4 章）在发出前，把历史里的工具输出从新到旧换成一句提示，直到估算装得下；没有工具输出可换了，就原样发。只读了源码，没做实验。<sup><a href="#e14">14</a></sup></p>
 
 <div class="answer" id="a2">
 <p class="qh">回答问题 2</p>
@@ -129,16 +129,16 @@
 
 <section id="s4">
 <h2><span class="sn">四、</span>服务器怎么报，Codex 才认</h2>
-<p>Codex 只认一种报法：流里的 <code>response.failed</code> 事件，错误码是 <code>context_length_exceeded</code>。HTTP 400 的响应体里即使写着同一个错误码，也会被当成普通的无效请求，原样把服务器的正文显示给你。Codex 自带的单元测试用的是流里的格式；真实 OpenAI 服务实际怎么报，我没有抓到，【待核实】。<sup><a href="#e15">16</a></sup></p>
+<p>Codex 只认一种报法：流里的 <code>response.failed</code> 事件，错误码是 <code>context_length_exceeded</code>。HTTP 400 的响应体里即使写着同一个错误码，也会被当成普通的无效请求，原样把服务器的正文显示给你。Codex 自带的单元测试用的是流里的格式；真实 OpenAI 服务实际怎么报，我没有抓到，【待核实】。<sup><a href="#e15">15</a></sup></p>
 <p>实验 C 把服务器换成回 HTTP 400，其余同 A：</p>
 <div class="tablewrap"><table>
-<tr><th></th><th>实验 A：流里的失败事件</th><th>实验 C：HTTP 400</th></tr>
+<tr><th>比较项</th><th>实验 A：流里的失败事件</th><th>实验 C：HTTP 400</th></tr>
 <tr><td>被拒那一轮</td><td>1 次请求；错误是上面那句「ran out of room」（<code>contextWindowExceeded</code>）</td><td>1 次请求；错误是服务器的 JSON 正文原样显示（<code>other</code>）</td></tr>
 <tr><td>下一句话</td><td>压缩请求 12 次（11 次被拒、第 12 次成功），再 1 次正常请求，成功</td><td>压缩请求 6 次，内容一模一样，全被拒，约 6 秒后失败，没有正常请求</td></tr>
 <tr><td>再下一句、新进程恢复后的一句</td><td>各 1 次正常请求，成功</td><td>各又是 6 次相同的压缩请求，都失败</td></tr>
 <tr><td>历史</td><td>压成摘要，变小</td><td>一条没删，每句被拒的话都留在里面（压缩请求的条数 12、13、14，每次多的是新被拒的那句）</td></tr>
 </table></div>
-<p>6 次是因为这类错误被当成普通错误：首次加重试 5 次（<code>stream_max_retries</code> 缺省 5），两次之间要等，一轮共约 6 秒。每次都把约 1.58 MB 的整段历史重发一遍，历史却没变。如果你的服务用 HTTP 400 报超窗，第二、三节的自动善后一样也没有，只能靠第六节的办法。<sup><a href="#e16">17</a></sup></p>
+<p>6 次是因为这类错误被当成普通错误：首次加重试 5 次（<code>stream_max_retries</code> 缺省 5），两次之间要等，一轮共约 6 秒。每次都把约 1.58 MB 的整段历史重发一遍，历史却没变。如果你的服务用 HTTP 400 报超窗，第二、三节的自动善后一样也没有，只能靠第六节的办法。<sup><a href="#e16">16</a></sup></p>
 
 <div class="answer" id="a3">
 <p class="qh">回答问题 3</p>
@@ -151,7 +151,7 @@
 <h2><span class="sn">五、</span>固定部分就占满窗口：每一步都压</h2>
 <p>前面都假设压缩能把历史压下来。如果压缩线以下的空间连固定部分都装不下，压缩就压不动，而且每一步都会再压一次。实验 D 在 <code>~/.codex/config.toml</code> 里写：</p>
 <pre>model_context_window = 14000</pre>
-<p>这行告诉 Codex 这个模型的窗口只有 14,000 token（自建模型窗口小时要这样配）。于是有效窗口 13,300，压缩线 12,600，而 <code>gpt-6.1-sol</code> 一句话的请求固定部分就是 1.3 万多 token（第 2 章）。服务器这边不拒绝，只看 Codex 自己怎么做。第 1 轮假服务器让模型连调 5 次工具（脚本只让 JS 输出一个 <code>ok</code>，不执行命令）。<sup><a href="#e17">18</a></sup></p>
+<p>这行告诉 Codex 这个模型的窗口只有 14,000 token（自建模型窗口小时要这样配）。于是有效窗口 13,300，压缩线 12,600，而 <code>gpt-6.1-sol</code> 一句话的请求固定部分就是 1.3 万多 token（第 2 章）。服务器这边不拒绝，只看 Codex 自己怎么做。第 1 轮假服务器让模型连调 5 次工具：gpt-6.1-sol 调工具是写一段 JavaScript 交给 <code>exec</code> 运行（第 3 章），这里的脚本只输出一个 <code>ok</code>，不执行命令。<sup><a href="#e17">17</a></sup></p>
 
 <h3>动手看：模型调了 k 次工具，发了多少</h3>
 <p>两组各取同一次实验里前面的请求；不改窗口的对照组不压缩，小窗口组每次调完工具都先压缩。</p>
@@ -163,8 +163,8 @@
 <div class="panel" id="p3c"></div>
 
 <p>5 步下来，对照组 6 次请求，估算输入合计 83,616 token；小窗口组 11 次请求（6 次正常、5 次压缩），合计 152,090 token，多 82%。压缩没有用：压缩只能换掉对话，动不了固定部分（第 4 章），所以压完的请求仍约 1.38 万 token，高于压缩线，下一步又压。第 2 轮开头也先压了一次。</p>
-<p><b>这条路上没有刹车。</b>源码在这一步留的注释是「只要压缩能把用量压到远低于线，就不用担心死循环」；我在 <code>core/src</code> 里搜了「连续」「次数」之类的计数，没找到（搜索，未穷尽）。所以模型接着干多少步，就压多少次，真实模型一轮几十步的话，就是几十次压缩【按这条规则推，没用真实模型试】。<sup><a href="#e18">19</a></sup></p>
-<p>现实里会碰到：固定部分是第 2 章的 1.3 万加 AGENTS.md（最多 32,768 字节，约 8,192 token）再加第 6 章里直连的 MCP 工具。按规则算，窗口 32,768 token 的自建模型，压缩线是 29,491，固定部分加起来约 2.2 万，离线只剩约 7,900。</p>
+<p><b>这条路上没有刹车。</b>源码在这一步留的注释是「只要压缩能把用量压到远低于线，就不用担心死循环」；我在 <code>core/src</code> 里搜了「连续」「次数」之类的计数，没找到（搜索，未穷尽）。所以模型接着干多少步，就压多少次，真实模型一轮几十步的话，就是几十次压缩【按这条规则推，没用真实模型试】。<sup><a href="#e18">18</a></sup></p>
+<p>现实里会碰到这种情况。固定部分是第 2 章那次请求的 13,410 token，加上 AGENTS.md（最多 32,768 字节，约 8,192 token），如果 MCP 工具直连（第 6 章），还要再加。按规则算，一个窗口 32,768 token 的自建模型，压缩线是 29,491；固定部分光前两项就是 13,410 + 8,192 = 21,602，离压缩线只剩约 7,900 token。</p>
 
 <div class="answer" id="a4">
 <p class="qh">回答问题 4</p>
@@ -178,9 +178,9 @@
 <p>实验 B 在三次被拒之后试了前两条，都有效。</p>
 <div class="tablewrap"><table>
 <tr><th>出路</th><th>怎么做</th><th>实验结果</th><th>代价</th></tr>
-<tr><td>手动压缩</td><td>输入框里打 <code>/compact</code></td><td>8 次请求，7 次被拒，第 8 次成功；之后一句短话成功，请求 33,996 token<sup><a href="#e11">12</a></sup></td><td>摘要看不到最早的几句（第三节）</td></tr>
-<tr><td>回退</td><td>输入框为空时按两下 Esc，选被拒的那一句之前，回车（第 8 章）</td><td>下一次请求 11 条、193,873 token：第 1、2 句原话都在，被拒的日志和中间那次压缩一起撤销<sup><a href="#e19">20</a></sup></td><td>日志也没了，要重新想办法给</td></tr>
-<tr><td>新开会话</td><td>输入框里打 <code>/new</code><sup><a href="#e20">21</a></sup></td><td>没实验</td><td>历史清空；能记得什么见第 9 章</td></tr>
+<tr><td>手动压缩</td><td>输入框里打 <code>/compact</code></td><td>8 次请求，7 次被拒，第 8 次成功；之后一句短话成功，请求 33,996 token<sup><a href="#e11">11</a></sup></td><td>摘要看不到最早的几句（第三节）</td></tr>
+<tr><td>回退</td><td>输入框为空时按两下 Esc，选被拒的那一句之前，回车（第 8 章）</td><td>下一次请求 11 条、193,873 token：第 1、2 句原话都在，被拒的日志和中间那次压缩一起撤销<sup><a href="#e19">19</a></sup></td><td>日志也没了，要重新想办法给</td></tr>
+<tr><td>新开会话</td><td>输入框里打 <code>/new</code><sup><a href="#e20">20</a></sup></td><td>没实验</td><td>历史清空；能记得什么见第 9 章</td></tr>
 </table></div>
 <p>预防靠第 3 章：别把大日志直接贴进输入框，让 agent 读文件，命令输出已经被截到约 1 万 token。</p>
 
@@ -188,11 +188,11 @@
 <h3>对照：Claude Code 把「压不动」分成几种，并且会停</h3>
 <p>据官方文档（<code>code.claude.com/docs/en/errors</code>、<code>troubleshooting</code>，2026-11-02 查阅，页面里最新的版本号是 v2.1.309；只有文档，没抓过请求）：</p>
 <ul>
-<li><b>超窗的提示</b>：终端里是 <code>Context limit reached · /compact or /clear to continue</code>，<code>-p</code> 输出里是 <code>Prompt is too long</code>。<sup><a href="#e21">22</a></sup></li>
-<li><b>自动压缩的顺序</b>：先把最旧的几轮写成摘要、留最新的；一整轮都摘要不了时，最后一招是把你最新的一条 prompt 原文留下、之前的全部写成摘要。要带过去的内容没有模型回复、你自己的话又不到约 1,000 token 时跳过，让你 <code>/clear</code>。<sup><a href="#e21">22</a></sup></li>
-<li><b>压缩本身失败</b>：显示 <code>Prompt is too long · automatic compaction failed: &lt;原因&gt;</code>；对话只有一轮时显示 <code>this conversation is a single exchange and cannot be compacted</code>。<sup><a href="#e21">22</a></sup></li>
-<li><b>压完又被立刻填满</b>：连续几次后报 <code>Autocompact is thrashing</code>，停止重试（文档没写具体次数）。对应本章第五节：Codex 没有这一步。<sup><a href="#e22">23</a></sup></li>
-<li><b>请求体另有 32 MB 的限制</b>：压缩也塞不下时，文档让你按两下 Esc 回退，或 <code>/clear</code>。<sup><a href="#e23">24</a></sup></li>
+<li><b>超窗的提示</b>：终端里是 <code>Context limit reached · /compact or /clear to continue</code>，<code>-p</code> 输出里是 <code>Prompt is too long</code>。<sup><a href="#e21">21</a></sup></li>
+<li><b>自动压缩的顺序</b>：先把最旧的几轮写成摘要、留最新的；一整轮都摘要不了时，最后一招是把你最新的一条 prompt 原文留下、之前的全部写成摘要。要带过去的内容没有模型回复、你自己的话又不到约 1,000 token 时跳过，让你 <code>/clear</code>。<sup><a href="#e21">21</a></sup></li>
+<li><b>压缩本身失败</b>：显示 <code>Prompt is too long · automatic compaction failed: &lt;原因&gt;</code>；对话只有一轮时显示 <code>this conversation is a single exchange and cannot be compacted</code>。<sup><a href="#e21">21</a></sup></li>
+<li><b>压完又被立刻填满</b>：连续几次后报 <code>Autocompact is thrashing</code>，停止重试（文档没写具体次数）。对应本章第五节：Codex 没有这一步。<sup><a href="#e22">22</a></sup></li>
+<li><b>请求体另有 32 MB 的限制</b>：压缩也塞不下时，文档让你按两下 Esc 回退，或 <code>/clear</code>。<sup><a href="#e23">23</a></sup></li>
 </ul>
 <p>文档的版本说明里有一条：v2.1.269 之前，一整轮都摘要不了的会话「每一轮都失败」。这类卡死在 Claude Code 里也出现过。</p>
 </div>
