@@ -22,49 +22,31 @@
 <main class="page">
 <header class="chap-head">
 <p class="kicker">第 8 章</p>
-<h1>回退、分叉、恢复都不删磁盘上的记录，也都不动你的文件：被撤销的只是下一次请求里的历史</h1>
+<h1>回退以后，模型还能看到什么？分叉和恢复又从哪里接着聊？</h1>
 <p class="meta">2026-11-02 · Codex 源码 <code>76ed3b4</code> / CLI <code>0.165.0</code> · 模型 <code>gpt-6.1-sol</code>，思考级别 <code>low</code> · 对照 Claude Code 官方文档（2026-11-02 查阅）</p>
 </header>
 
-<p class="lede">实验里在 Codex 中说了 3 句话，再回退到第 2 句之前：磁盘上原来的会话文件仍是 36 行、99,888 字节，一个字节没变；可是下一次发给模型的请求里，历史只剩第 1 句和它的回复，第 2、3 句不见了。回退、分叉、恢复改的都是「下一次请求里装什么」，不删旧记录，也不碰你磁盘上的项目文件。</p>
-<p class="note">先交代几个词。<b>会话文件</b>：第 3 章说的存档，Codex 源码叫 rollout；每个会话在 <code>~/.codex/sessions/年/月/日/</code> 下有一个 <code>.jsonl</code> 文件，一行一条记录。<b>线程</b>（thread）：Codex 内部对一个会话的叫法，每个线程有一个编号（一串 UUID），写在文件名里。<b>轮</b>（turn）：你发一句话，到 Codex 答完，算一轮（第 4 章）。<b>TUI</b>：Codex 在终端里的交互界面，就是你平时打字的地方。</p>
-<p class="note">实验在 <code>自学单元/U07-实验/</code>。模型服务器是本机的假服务器，按剧本回话，不联网。我没有在终端里按键，而是用 <code>codex app-server</code> 操作会话：这是 Codex 的一种后台模式，别的程序通过它发 JSON 格式的指令（JSON-RPC）来新建、回退、分叉、恢复会话。TUI 里的按键和命令，最后调用的也是这些指令（源码位置见第一、三节）。为了不和「发给模型的请求」混淆，下文把这些叫「指令」。因为模型的回答是剧本写死的，本章只回答「请求里有什么、磁盘上写了什么」。</p>
-<div class="tablewrap"><table>
-<tr><th>操作</th><th>你在哪里用</th><th>对应的指令</th></tr>
-<tr><td>回退</td><td>TUI 输入框为空时按 <code>Esc</code> 两下，用 <code>←</code> <code>→</code> 选一句你说过的话，回车；那句话回到输入框里</td><td><code>thread/revert</code></td></tr>
-<tr><td>分叉</td><td>TUI 输入框里打 <code>/fork</code>（后面可跟一个名字），或在命令行运行 <code>codex fork --last</code></td><td><code>thread/fork</code></td></tr>
-<tr><td>恢复</td><td>命令行运行 <code>codex resume</code>（<code>--last</code> 接最近一个会话；不带参数会列出会话让你选，加 <code>--all</code> 列出所有目录的会话），或在 TUI 里打 <code>/resume</code></td><td><code>thread/resume</code></td></tr>
-<tr><td>压缩（第 4 章）</td><td>TUI 输入框里打 <code>/compact</code></td><td><code>thread/compact/start</code></td></tr>
-</table></div>
 
-<section class="qs" id="qs">
-<h2 data-toc="开篇问题">带着这 5 个问题往下读</h2>
-<ol>
-<li id="q1">你在 Codex 里说了 3 句话，按 Esc 两下回到第 2 句之前。磁盘上的会话文件删了哪些行？下一次请求里，模型还看得到第 2、3 句吗？<a class="jump" href="#a1">答案 ↓</a></li>
-<li id="q2">被撤回的那几轮里，agent 改过你项目里的文件。回退之后，这些文件会恢复原样吗？Claude Code 一样吗？<a class="jump" href="#a2">答案 ↓</a></li>
-<li id="q3">输入 <code>/fork</code> 分叉和回退有什么不同？分叉之后，原来的会话变不变？分出来的会话第一次发请求，能和原会话共用缓存吗？<a class="jump" href="#a3">答案 ↓</a></li>
-<li id="q4">会话已经压缩过一次（第 4 章），之后再回退：压缩会被撤销吗？这取决于回退到哪里吗？<a class="jump" href="#a4">答案 ↓</a></li>
-<li id="q5">关掉 Codex，过一天用 <code>codex resume</code> 接着聊。模型拿到的历史是什么样的？这期间你改过 AGENTS.md，它知道吗？<a class="jump" href="#a5">答案 ↓</a></li>
-</ol>
-</section>
+<p class="lede">实验里，我和 Codex 聊了三轮，随后回到第二轮开始之前，换了一句话。模型收到的请求里，前面聊过的只剩第一轮。但打开磁盘上的旧会话文件，三轮对话都还在。如果第二轮里 Codex 还改过一个项目文件，回退后打开它，也仍能看到那次改动。</p>
+<p>这里有三样东西。<b>会话记录</b>是 Codex 存在你电脑上的聊天存档。每当你发来新消息，Codex 从存档中选出这次要接着聊的部分，连同新消息一起发给模型，这就是<b>下一次请求</b>。至于你让 Codex 编辑的代码或 SQL，它们是<b>项目文件</b>，保存在你的工作目录里。回退以后，分别去这三个地方看，会得到三个不同的答案。</p>
+<section class="qs" id="qs"><h2 data-toc="开篇问题">这一章要回答的五个问题</h2><ol>
+<li id="q1">回退到第 2 句之前，再发一句新话，模型还能看到哪几轮对话？<a class="jump" href="#a1">答案 ↓</a></li>
+<li id="q2">第 2 轮改过项目文件，回退对话以后，文件会是什么样？<a class="jump" href="#a2">答案 ↓</a></li>
+<li id="q3">想试另一种做法，同时保留原来的对话，该怎么分叉？<a class="jump" href="#a3">答案 ↓</a></li>
+<li id="q4">对话已经压缩成摘要，回退到哪里才能再看到压缩前的回复？<a class="jump" href="#a4">答案 ↓</a></li>
+<li id="q5">关掉 Codex，改了项目规则再恢复会话，下一次请求里会出现什么？<a class="jump" href="#a5">答案 ↓</a></li>
+</ol></section>
 
 <section id="s1">
-<h2><span class="sn">一、</span>回退：旧文件一个字节不动，另存一份新文件接着写</h2>
-<p><b>最朴素的做法是把被撤回的那几行从会话文件里删掉。</b>删了就找不回来，也没法事后查「它当时到底看到了什么」。Codex 不删，它做两件事：另建一个新文件，让新文件引用旧文件里要保留的那一段开头；再把「这个线程现在用哪个文件」的记录改成新文件。这条记录存在本机的一个 SQLite 数据库里，源码叫它指针。<sup><a href="#e1">1</a></sup></p>
-
-<h3>实验：3 句话，回退到第 2 句之前</h3>
-<p>先说 3 句话（每句假服务器回一句），再发 <code>thread/revert</code> 指令。每一轮都有编号，指令的参数 <code>beforeTurnId</code> 表示「回退到这一轮之前」，这里填第 2 轮的编号。然后在同一个线程上再说一句。每一步之后，列出 <code>sessions/</code> 下的文件：</p>
-<div class="tablewrap"><table>
-<tr><th>步骤</th><th>旧文件</th><th>新文件</th></tr>
-<tr><td>说完 3 句</td><td class="num">36 行 / 99,888 字节</td><td>—</td></tr>
-<tr><td>回退之后</td><td class="num">36 行 / 99,888 字节（逐字没变）</td><td class="num">2 行 / 23,480 字节</td></tr>
-<tr><td>回退后再说一句</td><td class="num">36 行 / 99,888 字节</td><td class="num">11 行 / 28,787 字节</td></tr>
-</table></div>
-<p><b>新文件怎么用 2 行代表整个历史。</b>会话文件的第一行是 <code>session_meta</code>，记着这个会话的基本信息，其中有系统提示词全文（22,093 字节），所以新文件只有 2 行也有 23 KB。新文件的 <code>session_meta</code> 比旧文件多一项 <code>history_base</code>，里面写着 <code>end_ordinal_exclusive</code> 是 18、<code>end_byte_offset</code> 是 89,403，意思是「这个会话的前半段，是旧文件的前 18 行（前 89,403 字节）」。这正好是第 1 句说完时旧文件的长度：第 1 轮写完是 18 行，之后每轮约 9 行。新文件里记录的序号从 18 接着往下数。文件名比旧文件多一段 <code>_新文件编号</code>；线程编号没变，第 5 章讲的 <code>prompt_cache_key</code> 也没变。<sup><a href="#e2">2</a></sup></p>
-<p><b>回退后的第一次请求有 9 条。</b>前 6 条是每次请求都在的固定开头：工具定义、系统提示词、技能目录、两条子代理说明（第 7 章）、AGENTS.md 加环境信息，共 54,707 字节。后面是第 1 句、它的回复、你新说的话。它和回退前最后一次请求（11 条）的前 8 条逐字相同；按第 5 章的规则，这 8 条能从缓存读，后面的要重新写进缓存（这是按规则推的，没用真实服务验证）。<sup><a href="#e3">3</a></sup></p>
-
-<h3>动手看：回退到第 k 句之前</h3>
-<p>原会话有 3 轮。选一个回退点，看下一次请求装什么、磁盘上多了什么。三组读数各来自一次单独的实验（回退后都再说一句 180 字节的话），不是推算出来的。<sup><a href="#e4">4</a></sup></p>
+<h2><span class="sn">一、</span>回退以后，下一句话接在第一轮后面</h2>
+<p>你发一句话，Codex 答完，算一轮。假如已经聊了三轮，你想换掉第二句，可以在 Codex 终端的输入框为空时连按两下 <kbd>Esc</kbd>，用左右方向键选中自己发过的第二句，再按回车。那句话会回到输入框里。你可以重新措辞，再把它发出去。这里选的是<b>从哪句话开始重说</b>，所以保留到第一轮的回复为止。<sup><a href="#e5">5</a></sup></p>
+<p>为了看清 Codex 究竟发了什么，实验用脚本让 Codex 执行同样的回退，再发一句新话。本机有个程序代替模型接收请求，把收到的内容记下来，再按剧本回复。因此下面可以直接对照存档和请求。终端按键的说明来自源码，实验实际操作的是后台接口。</p>
+<h3>同一次回退，打开两处看</h3>
+<p><b>先看请求。</b>回退后发出的第一份请求里，和这段对话有关的内容依次是「我的第一句 → 第一轮的回复 → 我刚发的新话」。前面还有六条工具和运行环境等说明。这样数下来一共九条。第二轮和第三轮的原话、回复都没有发过来，也没有一条摘要告诉模型「刚才试过另一条路」。<sup><a href="#e3">3</a></sup><sup><a href="#e20">20</a></sup></p>
+<p><b>再看存档。</b>聊完三轮时，旧文件一共有 36 行。刚回退完，旧文件一个字节都没改，旁边却多了一个只有 2 行的新文件。第一轮的一问一答去了哪里？还在旧文件里。新文件记下了从哪里读和读到哪里，用白话说就是「先读旧文件的前 18 行，到第一轮结束为止，以后的对话接着写在我这里」。存档里也会写入设置和运行时的事件。这次实验里，前 18 行恰好记到第一轮结束。<sup><a href="#e2">2</a></sup></p>
+<p>Codex 给每个会话一个编号，内部叫「线程编号」。它另外记着每个编号当前对应哪个会话文件。回退时，Codex 把这个编号对应的文件换成刚建的那份。等你再发消息，你仍在原来的会话里，新消息和回复会记进新文件。旧文件里虽然还有后两轮，Codex 读取旧文件时已经知道该停在哪里。<sup><a href="#e1">1</a></sup></p>
+<h3>换一个回退点，看哪些对话会保留</h3>
+<p>下面每个按钮都对应一次实验。上排是原来的三轮对话，每个「轮」都包括你的话和当轮回复。下排是回退后模型收到的内容。默认选中第二句，和刚才的例子相同。若选第一句，连第一轮也要重说，请求就只带日常的工具和环境说明以及你刚发的新话。<sup><a href="#e4">4</a></sup></p>
 <div class="ctrl"><span>回退到：</span>
   <button class="btn" data-k="1" aria-pressed="false">第 1 句之前</button>
   <button class="btn" data-k="2" aria-pressed="true">第 2 句之前</button>
@@ -76,47 +58,22 @@
 <div class="chips" id="c1b"></div>
 <div class="panel" id="p1"></div>
 
-<h3>只能回退到「你说过的某句话」之前</h3>
-<p>TUI 里能选的是你发过的消息，不能回到某次工具调用的中间。输入框是空的，按 Esc 才有反应：按第一下是预备，第二下打开记录，从最近一句往前选；回车后，TUI 发出 <code>thread/revert</code> 指令，把那句话放回输入框，在同一个线程上继续。<sup><a href="#e5">5</a></sup></p>
-<p>回退只对新格式的会话有效。会话文件的 <code>session_meta</code> 里有一项 <code>history_mode</code>，取值是旧格式 <code>legacy</code> 或新格式 <code>paginated</code>（分页）；本机 0.165.0 新建的会话都是 <code>paginated</code>。旧格式的会话和临时会话（不写磁盘的那种），<code>thread/revert</code> 会拒绝。另外还有一种旧的回退写法：在文件末尾追加一条 <code>ThreadRolledBack</code> 标记，意思是「丢掉最近 N 轮」，恢复会话时 Codex 从后往前读，跳过这几轮。0.165.0 还认这条标记，但我没有找到写入它的代码（搜过，没有穷尽）。<sup><a href="#e6">6</a></sup></p>
 
-<div class="source">
-<h3>看源码：回退只做两件事：建新文件、换指针</h3>
-<p><code>thread-store/src/local/revert_thread.rs</code> 第 15–18 行与第 135–151 行，节选，中文注释是我加的。开头的英文注释说：回退时新建一个不再改动的会话文件，旧文件原样保留，新文件引用要保留的前缀，唯一会改的是 SQLite 里这个线程的文件路径指针。<sup><a href="#e2">2</a></sup></p>
-<pre>/// Revert an unloaded paginated thread by creating a new immutable rollout file.
-///
-/// Old rollouts stay intact. The new file references the retained prefix, and the only mutable
-/// cutover is the existing SQLite rollout-path pointer for the thread.
-...
-let replaced = state_db
-    .replace_rollout_path_if_current(
-        thread_id,
-        expected_sqlite_path.as_path(),   // 开始回退时读到的旧文件路径
-        replacement_path.as_path(),       // 新文件
-    )
-    .await ...?;
-if !replaced {                            // 指针已经被别处换过：删掉新文件，报冲突
-    let _ = tokio::fs::remove_file(replacement_path.as_path()).await;
-    return Err(ThreadStoreError::Conflict {
-        message: format!("thread {thread_id} changed while it was being reverted"),
-    });
-}</pre>
-</div>
-
-<div class="answer" id="a1">
-<p class="qh">回答问题 1</p>
-<p class="qq">你在 Codex 里说了 3 句话，按 Esc 两下回到第 2 句之前。磁盘上的会话文件删了哪些行？下一次请求里，模型还看得到第 2、3 句吗？</p>
-<p>一行都没删：旧文件仍是 36 行、99,888 字节。Codex 另建一个新文件，用 <code>history_base</code> 引用旧文件的前 18 行（第 1 句说完时的位置），线程编号不变，SQLite 里的指针换成新文件。下一次请求 9 条，只有固定开头、第 1 句和它的回复、你新说的话，第 2、3 句不在里面，模型不知道它们发生过。</p>
-</div>
+<p class="note">本章用的是 CLI 0.165.0 新建并保存到磁盘的会话。这个版本的回退接口支持这种分页存档（<code>paginated</code>）。旧格式的会话和退出后不留存档的临时会话，接口会拒绝回退。<sup><a href="#e6">6</a></sup></p>
+<div class="answer" id="a1"><p class="qh">回答问题 1</p>
+<p class="qq">回退到第 2 句之前，再发一句新话，模型还能看到哪几轮对话？</p>
+<p>模型看到第一轮的一问一答，接下来就是新消息。被撤回的两轮仍保存在旧会话文件里。</p></div>
 </section>
 
 <section id="s2">
-<h2><span class="sn">二、</span>回退不管你的文件：对话回到过去，磁盘还在现在</h2>
-<p><b>最朴素的做法是回退时顺手把项目文件也恢复。</b>这要在每一轮之前给文件存快照，而且 shell 命令改的文件很难全部追踪。Codex 没这样做：<code>thread/revert</code> 指令的协议注释写的是「只改保存下来的对话历史，不还原本地文件的改动」；实现代码只动管会话存档的那部分（thread-store），没有碰工作目录。以前有一个 <code>ghost_snapshot</code>（文件快照）配置，在源码 <code>76ed3b4</code> 里只留着兼容旧配置，注释写明「快照不再产生」。<sup><a href="#e7">7</a></sup></p>
-<p>后果是对话和磁盘对不上：模型的历史里没有第 2 轮，第 2 轮改过的文件却还是改过的样子，下一轮模型会按「没改过」去读和改。要把文件也恢复，只能靠 git。</p>
-
-<h3>动手看：对话和磁盘还一致吗</h3>
-<p>设定：第 2 轮里 agent 改了 <code>schema.sql</code>，现在回退到第 2 轮之前。Codex 的结果按源码和协议注释画，Claude Code 的按官方文档画，都没有实验（上面的实验没有执行命令）。<sup><a href="#e8">8</a></sup></p>
+<h2><span class="sn">二、</span>回退了改文件的那句话，打开文件会看到什么？</h2>
+<p>沿用刚才的三轮对话，只加一个条件。假设第二轮你让 Codex 改了项目里的 <code>schema.sql</code>，它已经把修改写进文件。现在回退到第二句之前。Codex 会按第一节的办法改用新的聊天存档，而这次回退操作只处理存档。你这时打开 <code>schema.sql</code>，看到的仍是改过的版本。这个例子用来说明源码里规定的行为，前面的对话实验没有实际改 SQL 文件。<sup><a href="#e7">7</a></sup></p>
+<p>假如你问「这段 SQL 为什么这样写」，模型从随请求送来的对话里找不到你当时的要求，也找不到它自己修改文件的经过。如果接下来让它读 <code>schema.sql</code>，它能看到现在的写法。文件告诉它代码现在是什么样，先前为什么这么改，却可能需要你重新交代。</p>
+<p>所以，如果你想从改动前的代码重新试，在回退对话之外，还要检查工作目录。在 Git 仓库里，例如可以先用 <code>git diff -- schema.sql</code> 看工作区里尚未暂存的差异，再决定要还原哪一处。尤其是同一个文件里还有你自己写的内容时，只想撤销第二轮，并不等于想撤销整份文件的修改。</p>
+<div class="compare"><h3>Claude Code 可以把对话和代码分开回退</h3>
+<p>按 Claude Code 官方文档，在输入框里打 <code>/rewind</code>，选定你先前的一句话，可以只回退对话、只还原代码，或两者一起做。这里的「还原代码」有范围。以同一个 SQL 文件为例，如果 Claude 用文件编辑工具改过它，就有相应的文件检查点可供还原。如果它从头到尾只通过 shell 命令改这个文件，检查点就不追踪这个文件。下面按这条文档规则对照，未运行 Claude Code 实测。<sup><a href="#e8">8</a></sup></p></div>
+<h3>同一处 SQL 改动，分别看对话和文件</h3>
+<p>先选一种回退方式，再选第二轮当时用什么方式修改文件。左栏显示下一次请求是否带着那段修改经过，右栏显示此时打开文件会看到的版本。</p>
 <div class="ctrl"><span>回退方式：</span>
   <button class="btn" data-m="codex" aria-pressed="true">Codex 回退</button>
   <button class="btn" data-m="cc-conv" aria-pressed="false">Claude Code：只回退对话</button>
@@ -129,138 +86,72 @@ if !replaced {                            // 指针已经被别处换过：删�
 </div>
 <div class="vs" id="v2"></div>
 <div class="panel" id="p2"></div>
-<p>在 Codex 里想要「代码和对话一起回去」，靠 git。另外，源码里 <code>/fork</code> 在 git 仓库里还会问你：分出来的会话在哪个目录里运行，用当前这份 worktree（git 的工作目录），还是新建一份（选项原话：Create a separate checkout of this repository in another directory，在另一个目录里再检出一份这个仓库）。这段只读了源码；本机 CLI 的 <code>codex features list</code> 把 <code>worktrees</code> 功能标成 removed，源码里却是 stable，所以 0.165.0 会不会问这一句【待核实】。<sup><a href="#e9">9</a></sup></p>
-
-<div class="compare">
-<h3>对照：Claude Code 的 /rewind 把「代码」和「对话」拆成两个选项</h3>
-<p>据官方文档（2026-11-02 查阅）：在 Claude Code 里打 <code>/rewind</code>，或在输入框为空时按 <code>Esc</code> 两下，菜单里列出你发过的每句话。每句话是一个检查点，文件快照只保留最近 100 个。选一句之后有四种动作：代码和对话都回退、只回退对话、只回退代码、把这里往后（或到这里为止）压缩成摘要。文档列出的限制：只追踪 Claude 用文件编辑工具做的改动，只被 shell 命令改过的文件要靠 git；子代理的改动一般不恢复；你在 Claude Code 之外手动改的文件不追踪。文档还写明，检查点不能代替版本控制。<sup><a href="#e8">8</a></sup></p>
-</div>
-
-<div class="answer" id="a2">
-<p class="qh">回答问题 2</p>
-<p class="qq">被撤回的那几轮里，agent 改过你项目里的文件。回退之后，这些文件会恢复原样吗？Claude Code 一样吗？</p>
-<p>Codex 不会：回退只换对话历史，工作目录不动，也没有文件快照可以还原，需要时用 git。Claude Code 不一样：<code>/rewind</code> 可以单独还原代码，也可以和对话一起还原，但只还原它用编辑工具改过的文件（以及这些文件之后被 shell 命令做的改动）；只被 shell 命令改过的文件不还原。</p>
-</div>
+<div class="answer" id="a2"><p class="qh">回答问题 2</p>
+<p class="qq">第 2 轮改过项目文件，回退对话以后，文件会是什么样？</p>
+<p>在 Codex 里，文件保留第二轮写入的内容。对话回退以后，模型若要了解文件现状，可以重新读取它。</p></div>
 </section>
 
 <section id="s3">
-<h2><span class="sn">三、</span>分叉：新线程，引用旧文件的前缀，原会话原样保留</h2>
-<p><b>最朴素的做法是把整个会话文件复制一份。</b>Codex 分叉也建新文件，但和回退一样不复制历史，只引用。实验：说完 3 句后，发 <code>thread/fork</code> 指令，以第 2 轮为终点分叉（参数 <code>lastTurnId</code> 填第 2 轮的编号，意思是「带到这一轮为止」），再在分出来的线程上说一句：<sup><a href="#e10">10</a></sup></p>
-<div class="tablewrap"><table>
-<tr><th>步骤</th><th>原线程的文件</th><th>分叉线程的文件</th></tr>
-<tr><td>说完 3 句</td><td class="num">36 行 / 99,888 字节</td><td>—</td></tr>
-<tr><td>分叉之后</td><td class="num">36 行 / 99,888 字节（没变）</td><td class="num">2 行 / 23,546 字节</td></tr>
-<tr><td>在分叉线程里说一句之后</td><td class="num">36 行 / 99,888 字节（没变）</td><td class="num">11 行 / 28,821 字节</td></tr>
-</table></div>
-<p>分叉文件的 <code>session_meta</code> 里有 <code>forked_from_id</code>（从哪个线程分出来的）和同样的 <code>history_base</code>，这次是旧文件的前 27 行（前 94,647 字节），正好是第 2 句说完的位置。和回退相比，最大的区别在线程编号：</p>
-<div class="tablewrap"><table>
-<tr><th>比较项</th><th>回退 <code>thread/revert</code></th><th>分叉 <code>thread/fork</code></th></tr>
-<tr><td>线程编号</td><td>不变</td><td>新编号，并用 <code>forked_from_id</code> 记着原线程</td></tr>
-<tr><td>原来那条历史</td><td>这个线程不再用它（旧记录留在旧文件里）</td><td>原样保留，之后还能接着用</td></tr>
-<tr><td>新文件</td><td>引用旧文件的前缀，文件名带 <code>_新文件编号</code></td><td>引用旧文件的前缀，文件名用新线程编号</td></tr>
-<tr><td><code>prompt_cache_key</code></td><td>不变</td><td>换成新线程编号</td></tr>
-<tr><td>能从哪里开始</td><td>你发过的某句话之前</td><td><code>/fork</code> 从当前末尾分叉；指令还接受 <code>lastTurnId</code>（带到某轮为止）和实验性的 <code>beforeTurnId</code></td></tr>
-</table></div>
-
-<h3>分叉后的第一次请求：内容接得上，prompt_cache_key 换了</h3>
-<p>在分叉线程里说一句话，请求有 11 条，前 10 条和原线程的第 3 次请求逐字相同（55,320 字节：固定开头、第 1 句、第 2 句和两条回复），只有最后一条你新说的话不同。但 <code>prompt_cache_key</code> 换成了分叉线程自己的编号。第 5 章讲过，这个字段是给服务器的分组提示：第 7 章的子代理和父会话用同一个，分叉不是。按第 5 章引的 OpenAI 文档，对 gpt-6.1-sol 这类模型它可有可无、命中只看开头是否一字不差，照这个说法前 10 条应该还能接上缓存【推测】；但文档没专门说这个字段不同时会怎样，也没有真实服务的用量可看【待核实】。<sup><a href="#e11">11</a></sup></p>
-
-<div class="compare">
-<h3>对照：Claude Code 的 /branch</h3>
-<p>据官方文档（2026-11-02 查阅）：在会话里打 <code>/branch 名字</code>（不写名字就用你的第一句话命名），或在命令行运行 <code>claude --continue --fork-session</code>。它把当前会话的记录文件复制一份，让正在运行的进程改写新文件；原会话留在磁盘上，用 <code>/resume</code> 能回去。「本会话允许」这类授权，<code>/branch</code> 会带过去，<code>--fork-session</code> 开的是新进程，要重新批准。文档在讲压缩摘要时写明：想保留原会话、换一条路试，用 <code>/branch</code> 或 <code>--fork-session</code>。<sup><a href="#e12">12</a></sup></p>
-</div>
-
-<div class="answer" id="a3">
-<p class="qh">回答问题 3</p>
-<p class="qq">输入 <code>/fork</code> 分叉和回退有什么不同？分叉之后，原来的会话变不变？分出来的会话第一次发请求，能和原会话共用缓存吗？</p>
-<p>回退保持线程编号，这个线程改用保留下来的那段前缀；分叉生成一个新线程，原线程的文件和历史一字不变，两条线各自往下走。分叉后第一次请求的前 10 条和原线程的请求逐字相同，但 <code>prompt_cache_key</code> 换成了新线程编号；按文档的说法前 10 条应该还能接上缓存【推测】，没有真实服务的数据验证【待核实】。</p>
-</div>
+<h2><span class="sn">三、</span>分叉以后，两段对话可以分别继续</h2>
+<p>回到最初聊完三轮的那个时刻。刚才你决定放弃后两轮，所以用了回退。现在换一个目的：原来的做法还想留着，又想沿另一种思路聊下去。在终端会话的输入框里输入 <code>/fork</code>，Codex 会另开一个会话，带上分叉时已有的对话。你在新会话里接着问，稍后也可以回到原会话，沿原来的思路继续。这里的「分叉」说的就是把一段对话分成两条可以各自继续的对话。</p>
+<p>为了看出两条对话从哪里分开，实验特意选了更早的分叉点。终端的 <code>/fork</code> 从当前末尾分叉。实验用后台接口指定「带到第二轮结束为止」。于是，同一段三轮对话有了下面两种读法。<sup><a href="#e10">10</a></sup></p>
+<div class="tablewrap"><table><tr><th>打开哪个会话</th><th>分叉后各自的对话</th></tr><tr><td>原会话</td><td>第一轮 → 第二轮 → 第三轮</td></tr><tr><td>新会话</td><td>第一轮 → 第二轮 → 你在这里另发的新话</td></tr></table></div>
+<p>还记得回退时那个只有两行的新文件吗？分叉时 Codex 也建了这样一份文件。这次它指向旧文件里前两轮的内容。区别在于，Codex 给这份新文件分配了<b>另一个会话编号</b>。原来的编号继续指向三轮都在的旧存档，所以两段对话才可以分别打开。一份聊天存档只记录对话；如果两个会话在同一工作目录里改代码，它们读写的仍是同一批项目文件。</p>
+<details><summary>分叉时会另外建工作目录吗？</summary><p>原文所查的源码里有选择当前工作目录或新建一份检出的界面，但本机 CLI 的功能列表与源码标注不同。0.165.0 实际是否弹出这个选择【待核实】。<sup><a href="#e9">9</a></sup></p></details>
+<details><summary>两段对话能共用请求缓存吗？</summary><p>请求缓存是服务端对相同请求开头的复用。实验能看到，在新会话里发的第一份请求，前十条与原会话发第三句时逐字相同，但标识缓存分组的 <code>prompt_cache_key</code> 已换成新会话的编号。本地实验没有真实服务的用量数据，能否命中原来的缓存【待核实】。<sup><a href="#e11">11</a></sup></p></details>
+<div class="compare"><h3>Claude Code 如何另开一条对话</h3><p>按官方文档，在当前会话里输入 <code>/branch</code> 可以复制出一个会话，接下来的话写进新会话。要回到原来那条对话，可以用 <code>/resume</code> 选回来。两种工具都能留住原来的路线，前面实验中 Codex 的新存档靠引用旧记录接上历史。<sup><a href="#e12">12</a></sup></p></div>
+<div class="answer" id="a3"><p class="qh">回答问题 3</p>
+<p class="qq">想试另一种做法，同时保留原来的对话，该怎么分叉？</p>
+<p>在当前对话里输入 <code>/fork</code>，沿新会话尝试另一种做法。原会话也可以从原来的位置继续。</p></div>
 </section>
 
 <section id="s4">
-<h2><span class="sn">四、</span>压缩也能被回退撤销：回到压缩之前，摘要就没了</h2>
-<p><b>最朴素的做法是把压缩当成不可逆：旧历史换成摘要，原话就丢了。</b>Codex 的会话文件只往后追加、不删旧行，压缩也只是追加一条 <code>compacted</code> 记录，里面写着压缩后的历史应该是什么样（源码叫 <code>replacement_history</code>，替换后的历史）。回退到压缩之前，新文件引用的前缀里没有这条记录，压缩就等于没发生过。<sup><a href="#e13">13</a></sup></p>
-<p>实验步骤：说 3 句 → 手动压缩（发 <code>thread/compact/start</code> 指令，假服务器回一句摘要）→ 再说第 4、5 句 → 回退到第 5 句之前，说第 6 句 → 再回退到压缩那一轮之前，说第 7 句。压缩本身也算一轮：用 <code>thread/turns/list</code> 指令列出这时的轮，一共 4 个，最后一个没有你的消息，里面的条目类型是 <code>contextCompaction</code>（上下文压缩）。所以「回退到压缩那一轮之前」可以像回退到一句话之前一样操作。<sup><a href="#e14">14</a></sup></p>
-
-<h3>动手看：回退到压缩之前还是之后</h3>
-<p>三组读数是实验里的第 6、7、8 次请求（第 4 次是压缩请求，第 5 次是发第 4 句时），条目和字节来自 <code>out/compact</code>。</p>
-<div class="ctrl"><span>请求：</span>
-  <button class="btn" data-c="6" aria-pressed="true">压缩后，发第 5 句时</button>
-  <button class="btn" data-c="7" aria-pressed="false">回退到第 5 句之前，发第 6 句</button>
-  <button class="btn" data-c="8" aria-pressed="false">回退到压缩之前，发第 7 句</button>
+<h2><span class="sn">四、</span>压缩过的回复，还能通过回退找回来吗？</h2>
+<p>前面三轮说过的话都还以原来的样子发给模型。现在做一组单独的实验，在第三轮答完后通过后台接口发起一次压缩（终端里的命令是 <code>/compact</code>）。Codex 让模型把较早的对话整理成摘要。在这次实验里，压缩后的请求仍带着我发的前三句话，三条对应的回复则由摘要代替。随后我又说了第四句和第五句。<sup><a href="#e13">13</a></sup></p>
+<p>把顺序写在一行就容易看出区别了：<b>前三轮对话 → 压缩 → 第四轮 → 第五轮</b>。压缩时，Codex 在存档里追加了一条记录，写下接下来该使用的摘要和保留的消息。原先那三条完整回复仍在更早的记录里。回退后会不会重新发出它们，取决于 Codex 会读到这行记录的前面，还是它的后面。<sup><a href="#e15">15</a></sup></p>
+<ul><li><b>先回到第五句之前。</b>此时第四轮刚结束，压缩早已发生。在这里另发一句，模型收到的是压缩后的历史，包括摘要和第四轮对话。</li><li><b>再往前，回到压缩开始之前。</b>此时第三轮刚结束，存档中保留下来的那一段到第三轮为止。再发一句，模型收到前三轮完整的一问一答，三条回复都以原文出现。</li></ul>
+<p>第二步是怎么选中的？后台把手动压缩也记成单独的一轮，脚本可以按这轮的编号指定「回到它之前」。终端里按两下 <kbd>Esc</kbd> 显示的是你发过的话；这次压缩是单独的后台操作，本身没有一条用户消息供你在那个菜单里选。<sup><a href="#e14">14</a></sup></p>
+<h3>对照三个时刻的下一次请求</h3>
+<p>第一个按钮显示刚压缩过、发第五句时的请求。后两个显示实验先后回到两个位置后，各发一句新话的结果。看摘要和前三轮的回复就能分清这三步。</p>
+<div class="ctrl"><span>查看哪一步</span>
+  <button class="btn" data-c="6" aria-pressed="true">尚未回退</button>
+  <button class="btn" data-c="7" aria-pressed="false">回到压缩之后</button>
+  <button class="btn" data-c="8" aria-pressed="false">回到压缩之前</button>
 </div>
-<div class="chips" id="c4"></div>
 <div class="panel" id="p4"></div>
-<div class="legend"><span><i style="background:var(--tools)"></i>固定开头</span><span><i style="background:var(--user)"></i>你的话</span><span><i style="background:var(--reply)"></i>回复</span><span><i style="background:var(--half)"></i>压缩摘要</span></div>
+<details><summary>展开这次请求里的全部条目（按发送顺序）</summary><div class="chips" id="c4"></div></details>
 
-<p>第 7 次请求里，摘要和第 4 句都还在，因为回退点（第 5 句）在压缩之后。第 8 次请求里摘要不见了，第 1、2、3 句的原话和回复一条不少，顺序回到压缩前的样子，前 11 条和压缩前那次请求（第 3 次）逐字相同。AGENTS.md 那一条也回到了开头：压缩后 Codex 把它挪到了第 2 句和第 3 句之间（第 4 章第二节讲过，压缩后 Codex 重新生成的几条设置，插在最后一条保留的原话前面）。<sup><a href="#e13">13</a></sup></p>
-<p>这和恢复会话用的是同一套重建规则：Codex 从后往前找最新一条带「替换后的历史」的压缩记录，从它开始，只回放它后面的记录；没有压缩记录，就从头回放。回退后新文件引用的前缀在压缩之前就结束了，重建时找不到这条记录。<sup><a href="#e15">15</a></sup></p>
-
-<div class="answer" id="a4">
-<p class="qh">回答问题 4</p>
-<p class="qq">会话已经压缩过一次，之后再回退：压缩会被撤销吗？这取决于回退到哪里吗？</p>
-<p>取决于回退到哪里。回退到压缩之后某句话之前，压缩还在（实验第 7 次请求仍有摘要）；回退到压缩那一轮之前，压缩被撤销，原话和回复逐字回来（第 8 次请求的前 11 条和压缩前相同）。原因是压缩只是会话文件里的一条记录：回退后保留的前缀里有没有它，决定它还生不生效。</p>
-</div>
+<div class="answer" id="a4"><p class="qh">回答问题 4</p>
+<p class="qq">对话已经压缩成摘要，回退到哪里才能再看到压缩前的回复？</p>
+<p>回到压缩发生之前，Codex 会再次读取压缩前的完整回复。只回到压缩之后的某句话之前，请求仍然沿用摘要。</p></div>
 </section>
 
 <section id="s5">
-<h2><span class="sn">五、</span>恢复：存档里最后的状态，加上你现在的 AGENTS.md</h2>
-<p><b>最朴素的做法是把会话文件从头到尾重放一遍。</b>这样压缩过的会话会回到压缩前的样子，被回退的轮次也会回来。Codex 的重建规则是：先找这个线程现在用的文件（回退过的就是新文件，连同它引用的旧文件前缀）；再从后往前找最新的压缩记录当起点，回放起点之后的记录；旧格式的「丢掉最近 N 轮」标记也在这一步生效。除了历史，Codex 还从文件里取出「上次给模型看过的环境状态」（含当时 AGENTS.md 的全文），作为比较的基线。<sup><a href="#e15">15</a></sup></p>
-
-<h3>实验：回退之后，改了 AGENTS.md，再恢复</h3>
-<p>接着第一节的实验：回退到第 2 句之前、又说完第 4 句后，关掉进程；把项目的 AGENTS.md 从 <code>OLD-RULE…</code> 改成 <code>NEW-RULE…</code>；起一个新进程，发 <code>thread/resume</code> 指令恢复同一个线程，再说一句。这次请求有 12 条：<sup><a href="#e16">16</a></sup></p>
-<ul>
-<li>被回退的第 2、3 句没有回来。历史是：固定开头、第 1 句、回复、第 4 句、回复。</li>
-<li>原来那条 AGENTS.md（763 字节，含 <code>OLD-RULE</code>）还在第 6 条，一字没改。</li>
-<li>在你新说的话前面，追加了一条 380 字节的消息：「These AGENTS.md instructions replace all previously provided AGENTS.md instructions.」（这些 AGENTS.md 指令替换之前提供的全部 AGENTS.md 指令），后面跟着新的全文（含 <code>NEW-RULE</code>）。会话文件里也追加了一行 <code>world_state</code>，其中 <code>full</code> 为 false，只记新的文本。</li>
-</ul>
-<p>规则在源码里：Codex 把现在读到的 AGENTS.md 和基线比，一样就什么都不加；不一样，就追加一条带「替换」前缀的新全文；文件被删了，就追加「之前的 AGENTS.md 不再适用」（这一条只读了源码，没做实验）。第 2 章说的是，同一个进程里项目的 AGENTS.md 只读一次；换一个新进程接着旧线程（恢复）时，Codex 会重新读。旧的那条不动，所以请求开头不变，缓存接得上（第 5 章）；代价是旧规则和新规则会同时留在这个线程的历史里，直到下一次压缩重新生成这些设置（第 4 章），才只剩新的。<sup><a href="#e17">17</a></sup></p>
-<p>隔一天再恢复，缓存早就过期了（第 5 章：缺省存 30 分钟），第一次请求要整份重新写进缓存（按规则推，没验证）。<sup><a href="#e18">18</a></sup></p>
-
-<div class="compare">
-<h3>对照：Claude Code 的恢复</h3>
-<p>据官方文档（2026-11-02 查阅）：<code>claude --continue</code> 接当前目录最近的会话，<code>claude --resume</code> 列出会话让你选，<code>/resume</code> 在会话里切换。恢复的有对话历史（压缩过的从最后一次压缩的摘要接上，被摘要掉的消息不再加载）、模型、权限模式（有例外）等。<code>settings.json</code> 这类设置文件每次启动都重新读，但 <code>--mcp-config</code>、<code>--settings</code>、<code>--add-dir</code> 这类启动参数要重新传。隔了很久再恢复，会弹出「Resume this conversation?」，并估算这段对话会用掉 5 小时用量上限的多少。<sup><a href="#e19">19</a></sup></p>
-</div>
-
-<div class="answer" id="a5">
-<p class="qh">回答问题 5</p>
-<p class="qq">关掉 Codex，过一天用 <code>codex resume</code> 接着聊。模型拿到的历史是什么样的？这期间你改过 AGENTS.md，它知道吗？</p>
-<p>模型拿到的是这个线程当前的历史：回退过的，就是回退后的样子，被撤回的轮次不会回来；压缩过的，从最新那条压缩记录接着。AGENTS.md 它会重新读，并和会话文件里记下的旧版本比较，不一样就在你新说的话前面追加一条「替换」消息加新全文，旧的那条原样保留（实验：追加 380 字节的消息加新全文，旧的 763 字节不动）。</p>
-</div>
-
-<h3>一张表：各自能撤销什么</h3>
-<div class="tablewrap"><table>
-<tr><th>操作</th><th>模型下一次看到的历史</th><th>磁盘上的会话记录</th><th>你的项目文件</th><th>线程编号 / <code>prompt_cache_key</code></th></tr>
-<tr><td>回退</td><td>少了选中那句和之后所有轮</td><td>旧文件不变，另存新文件引用前缀</td><td>不动</td><td>不变 / 不变</td></tr>
-<tr><td>分叉</td><td>带到分叉点为止，原线程不受影响</td><td>旧文件不变，新建文件引用前缀</td><td>不动（源码里可选新建一份 worktree）</td><td>新编号 / 换成新编号</td></tr>
-<tr><td>压缩</td><td>旧历史换成摘要加最近的原话（第 4 章）</td><td>追加一条压缩记录，不删旧行</td><td>不动</td><td>不变 / 不变</td></tr>
-<tr><td>恢复</td><td>存档里的当前状态，加上 AGENTS.md 和基线的差异</td><td>追加新记录</td><td>不动</td><td>不变 / 不变</td></tr>
-</table></div>
-<p>表里只有「回退到压缩之前」能撤销压缩，只有 git 能撤销文件改动。回退后的请求里，没有任何关于第 2、3 句的摘要或标记，模型不知道被放弃的那段发生过。<sup><a href="#e20">20</a></sup></p>
+<h2><span class="sn">五、</span>关掉后再恢复，旧对话和新项目规则怎么接起来？</h2>
+<p>现在接回第一节那段对话：原先说了三句，回退到第二句之前，又换了一句新话。至此，当前会话只有第一轮和刚换的那一轮。关掉 Codex 后，你可以在终端里运行 <code>codex resume</code>，从列表选中它继续聊。如果就是要接最近的会话，也可以用 <code>codex resume --last</code>。</p>
+<p>为什么恢复时没有把撤回的两轮也读回来？因为 Codex 按会话编号找到的是<b>上次离开时正在使用的那份存档</b>。这份存档让它先读旧文件里的第一轮，然后读回退后新写的一轮。若这段有效历史中还有压缩记录，它就用最近一次压缩留下的历史作起点，再接上后来聊的内容。这样接起来的，才是你上次离开时的对话。<sup><a href="#e15">15</a></sup><sup><a href="#e16">16</a></sup></p>
+<h3>恢复前改了 AGENTS.md 会怎样</h3>
+<p><code>AGENTS.md</code> 是项目里写给 Codex 的工作说明。实验又多做了一步：在关掉 Codex 之后、重新启动之前，把文件里用来辨认旧规则的文字 <code>OLD-RULE</code> 换成 <code>NEW-RULE</code>。这样，只看恢复后的第一份请求，就能认出模型收到的是哪个版本。</p>
+<p>结果是<b>两个版本都出现在这份请求里，而且顺序有意义</b>。先是旧规则，跟在原来的工具和环境说明中。再往后是留下来的两轮对话。到了我刚发的新问题前面，Codex 另加了一条说明，明确告诉模型「以下项目指令替换此前提供的所有项目指令」，随后给出新版全文。读到新问题时，模型就收到了该用哪份规则的明确指示。<sup><a href="#e16">16</a></sup></p>
+<p>Codex 怎么发现文件改了？它在存档里记下了上次发给模型的规则。新启动的进程重新读取当前文件，把两份文字作比较。内容相同就沿用原来的说明，有变化才追加替换说明。源码还处理了文件已删除的情况，会追加一句「之前的项目指令不再适用」；删除文件这一种只读了源码。<sup><a href="#e17">17</a></sup></p>
+<div class="compare"><h3>Claude Code 从哪里接着聊</h3><p>按官方文档，在终端运行 <code>claude --continue</code> 会接当前目录最近的会话，<code>claude --resume</code> 可以从列表里选。压缩过的对话从最近一次摘要接起。再次启动时，它也重新读取设置文件；若上次通过命令行额外指定了配置文件或目录，这次要再传相应参数。<sup><a href="#e19">19</a></sup></p></div>
+<div class="answer" id="a5"><p class="qh">回答问题 5</p>
+<p class="qq">关掉 Codex，改了项目规则再恢复会话，下一次请求里会出现什么？</p>
+<p>请求会带上次离开时有效的对话。如果关掉 Codex 后改过项目规则，旧规则仍位于历史中，新问题前面会出现一条明确替换它的新版说明。</p></div>
 </section>
 
-<section id="notes">
-<h2>设计笔记</h2>
-<ul>
-<li><b>会话文件只往后追加，要撤销，Codex 选了「新文件加指针」。</b>旧文件不再改动，回退之后还能查、还能重来，分叉和回退都不用复制历史。代价：多一个文件；换指针要靠 SQLite（没有 SQLite 时 <code>revert_thread</code> 直接返回「不支持」）；换的时候先确认「指针还是开始时读到的旧值」才换，防止两处同时改。</li>
-<li><b>新文件不能单独用。</b>回退和分叉的新文件只有 2 行，历史在旧文件里。只拷走新文件，或用 <code>codex delete</code> 删掉旧会话之后，新文件还能不能读，我没试过【推测：读不全，待核实】。</li>
-<li><b>不还原项目文件是个取舍。</b>文件改动交给沙箱、审批和 git，对话这一层只管对话；源码没写理由【推测：在大仓库里存快照太贵，或者会和你自己的 git 操作冲突】。代价就是第二节说的对话和磁盘对不上。</li>
-<li><b>回退和分叉都不给被放弃的那段写摘要。</b>历史干净，代价是你得自己告诉模型「上次试过 X，不行」；或者先分叉再回退，把旧的那条路留在分叉线程里。</li>
-<li><b>其他 agent 的做法，本机没有源码，没核对【待核实】。</b>据以前整理的资料（证据 #21）：Grok Build 往日志末尾追加回退标记，读取时按标记截断，可选全部回退、只回退文件或只回退对话；pi 和 oh-my-pi 在同一个文件里切换到另一个分支，离开一个分支时可以生成摘要。加上 Codex，一共三种办法：追加标记、新文件加指针、同一文件里换分支。<sup><a href="#e21">21</a></sup></li>
-<li><b>没做的实验：</b>在真实终端里按键；agent 正在运行时回退；带工具调用的轮次；改了文件之后回退；真实服务上能不能接上缓存。</li>
-</ul>
+<section id="notes"><h2>设计笔记</h2>
+<p>回退和分叉都能保留旧记录，又不用把相同的对话复制一遍，靠的是新文件能指回旧文件的某个位置。这也解释了为什么光看新文件里的行数，会低估这段会话实际有多长。单独拷走新文件，能否在缺少旧文件时恢复完整历史，本章没有做迁移实验【待核实】。</p>
+<p>这种设计也留下了一个实际问题。假如撤回的几轮里恰好有一条你还需要的结论，例如某个方案已经试过、会失败，回退不会替你把这个教训单独摘要出来。你可以在新消息里写明失败的原因。如果你想留着整个尝试过程以便再看，分叉给了你一条可以重新打开的对话。<sup><a href="#e20">20</a></sup></p>
 </section>
-
-<section id="summary">
-<h2>小结</h2>
-<ol>
-<li>回退一行都不删：旧文件仍是 36 行、99,888 字节，Codex 另建新文件引用旧文件的前 18 行，线程编号不变；下一次请求只剩第 1 句和它的回复，模型不知道有过被撤回的轮次。</li>
-<li>回退不还原你的项目文件，也没有快照可以还原，用 git 兜底；Claude Code 的 <code>/rewind</code> 能单独或一起还原代码，但只还原编辑工具改过的文件。</li>
-<li>分叉生成新线程，原线程的文件一字不变；分叉后第一次请求的前 10 条和原线程逐字相同，但 <code>prompt_cache_key</code> 换成了新线程编号，能不能接上缓存【待核实】。</li>
-<li>压缩只是会话文件里的一条记录：回退到压缩之后，它还在；回退到压缩之前，压缩就撤销了，原话逐字回来。</li>
-<li>恢复拿到这个线程当前的历史（回退过、压缩过的都按最新状态），并把现在的 AGENTS.md 和会话文件里的基线比较，不同就追加一条替换消息，旧的那条不动。</li>
-</ol>
-</section>
+<section id="summary"><h2>小结</h2>
+<div class="tablewrap"><table><tr><th>你做的事</th><th>接下来会看到什么</th></tr>
+<tr><td>回退到第二句之前</td><td>新话接在第一轮回复后面。旧存档里仍可查到其余两轮。</td></tr>
+<tr><td>回退改 SQL 的那一轮</td><td>聊天历史里少了修改经过，项目里的 SQL 仍是改过的版本。</td></tr>
+<tr><td>从当前会话分叉</td><td>多出一个可以单独继续的会话，你也能回到原来的对话。</td></tr>
+<tr><td>压缩后再回退</td><td>回到压缩之前可再见完整回复，停在压缩之后则继续用摘要。</td></tr>
+<tr><td>改了项目规则后恢复会话</td><td>对话从离开时的位置接起，下一份请求会在新问题前说明新规则取代旧规则。</td></tr>
+</table></div></section>
 
 <section id="evidence">
 <h2>证据表</h2>
@@ -299,33 +190,29 @@ const press = (sel, el) => $$(sel).forEach(x => x.setAttribute('aria-pressed', x
 const chip = (txt, cls, extra, style) => '<span class="chip ' + cls + (extra ? ' ' + extra : '') + '"' + (style ? ' style="' + style + '"' : '') + '>' + txt + '</span>';
 
 /* 第一节：回退到第 k 句之前（k=2 来自 out/default，k=1、3 各来自 out/revert-k1、out/revert-k3） */
-const TURN = [324, 289, 287];            // 第 k 轮（你的话 + 回复）字节：199+125、164+125、162+125
-const BASE = 54707, NEW = 180;
 const K = {
-  1: {items: 7,  bytes: 54887, same: '0 条（固定开头 6 条内容相同、只是条目 id 换了新的；id 会不会影响缓存匹配，第 5 章已记为未决）', hb: '无前缀，没有可引用的历史，固定开头 6 条重新写进新文件', born: '3 行 / 24,089 字节', after: '20 行 / 91,057 字节', old: '36 行 / 99,890 字节', run: 'out/revert-k1'},
-  2: {items: 9,  bytes: 55211, same: '8 条',  hb: '前 18 行 / 89,403 字节', born: '2 行 / 23,480 字节', after: '11 行 / 28,787 字节', old: '36 行 / 99,888 字节', run: 'out/default'},
-  3: {items: 11, bytes: 55500, same: '10 条', hb: '前 27 行 / 94,649 字节', born: '2 行 / 23,480 字节', after: '11 行 / 28,796 字节', old: '36 行 / 99,890 字节', run: 'out/revert-k3'}
+  1: {items: 7,  bytes: 54887, hb: '无前缀，没有可引用的历史，固定开头 6 条重新写进新文件', born: '3 行 / 24,089 字节', after: '20 行 / 91,057 字节', old: '36 行 / 99,890 字节'},
+  2: {items: 9,  bytes: 55211, hb: '前 18 行 / 89,403 字节', born: '2 行 / 23,480 字节', after: '11 行 / 28,787 字节', old: '36 行 / 99,888 字节'},
+  3: {items: 11, bytes: 55500, hb: '前 27 行 / 94,649 字节', born: '2 行 / 23,480 字节', after: '11 行 / 28,796 字节', old: '36 行 / 99,890 字节'}
 };
 let k1 = 2;
 function renderS1() {
   const d = K[k1];
-  let a = chip('固定开头 6 条 ' + fmt(BASE), 'k-tools');
-  let b = chip('固定开头 6 条 ' + fmt(BASE), 'k-tools');
-  TURN.forEach((t, i) => {
-    const gone = i + 1 >= k1;
-    a += chip('第 ' + (i + 1) + ' 轮 ' + t, 'k-user', gone ? 'gone dim' : '');
-    if (!gone) b += chip('第 ' + (i + 1) + ' 轮 ' + t, 'k-user');
-  });
-  b += chip('你新说的话 ' + NEW, 'k-user', 'new');
-  $('#c1a').innerHTML = a; $('#c1b').innerHTML = b;
-  $('#p1').innerHTML =
-    '<p><span class="tag lvl-h">实验 ' + d.run + '</span></p>' +
-    '<p>下一次请求 <b>' + d.items + '</b> 条，<b>' + fmt(d.bytes) + '</b> 字节 ≈ <b>' + fmt(Math.ceil(d.bytes / 4)) + ' token</b>；与回退前最后一次请求相同的开头：<b>' + d.same + '</b>。</p>' +
-    '<dl class="disk"><dt>旧文件</dt><dd>' + d.old + '（回退前后都一样）</dd>' +
-    '<dt>新文件的前缀</dt><dd>' + d.hb + '</dd>' +
-    '<dt>新文件刚建好</dt><dd>' + d.born + '</dd>' +
-    '<dt>再说一句之后</dt><dd>' + d.after + '</dd>' +
-    '<dt>线程编号</dt><dd>不变（<code>prompt_cache_key</code> 也不变）</dd></dl>';
+  let before = chip('工具和环境等说明', 'k-tools');
+  let after = before;
+  for (let turn = 1; turn <= 3; turn++) {
+    const label = '第' + turn + '轮问答';
+    if (turn < k1) after += chip(label, 'k-user');
+    before += chip(label, 'k-user', turn >= k1 ? 'gone dim' : '');
+  }
+  $('#c1a').innerHTML = before;
+  $('#c1b').innerHTML = after + chip('刚发的新话', 'k-user', 'new');
+  $('#p1').innerHTML = '<p>旧存档里仍有全部三轮对话。' +
+    (k1 === 1 ? '下一次请求从新话开始。' : '下一次请求接在第' + (k1 - 1) + '轮的回复之后。') + '</p>' +
+    '<details><summary>查看这个回退点的实验读数</summary><dl class="disk">' +
+    '<dt>旧存档</dt><dd>' + d.old + '</dd><dt>从旧存档读取的部分</dt><dd>' + d.hb +
+    '</dd><dt>回退时新建的存档</dt><dd>' + d.born + '</dd><dt>继续聊一轮后的新存档</dt><dd>' + d.after +
+    '</dd><dt>发给模型的请求</dt><dd>' + d.items + ' 条，共 ' + fmt(d.bytes) + ' 字节</dd></dl></details>';
 }
 $$('[data-k]').forEach(b => b.onclick = () => { k1 = +b.dataset.k; press('[data-k]', b); renderS1(); });
 renderS1();
@@ -337,23 +224,19 @@ function renderS2() {
   const convBack = codex || M2 === 'cc-conv' || M2 === 'cc-both';
   const codeBack = !codex && (M2 === 'cc-code' || M2 === 'cc-both') && W2 === 'edit';
   const shellSkip = !codex && (M2 === 'cc-code' || M2 === 'cc-both') && W2 === 'shell';
-  const model = convBack ? '第 2 轮没有发生，<code>schema.sql</code> 没被改过' : '第 2 轮发生过，<code>schema.sql</code> 已被改过';
-  const disk = codeBack ? '<code>schema.sql</code> 已还原' : (shellSkip ? '<code>schema.sql</code> 仍是改过的（只被 shell 命令改过的文件，不追踪）' : '<code>schema.sql</code> 仍是改过的');
-  const believedChanged = !convBack, actualChanged = !codeBack;
-  const same = believedChanged === actualChanged;
-  $('#v2').innerHTML =
-    '<div class="' + (same ? 'same' : 'diff') + '"><b>模型以为</b><br>' + model + '</div>' +
-    '<div class="' + (same ? 'same' : 'diff') + '"><b>磁盘上</b><br>' + disk + '</div>';
-  let t = '<p><span class="tag lvl-m">按规则画，未实验</span></p>';
-  t += same
-    ? '<p class="ok">对话和磁盘一致。</p>'
-    : '<p class="bad">对话和磁盘不一致：' + (believedChanged ? '模型以为改过，磁盘上其实是原样。' : '模型以为没改过，磁盘上其实已经改了。下一轮它会在「没改过」的前提下读写这个文件。') + '</p>';
-  if (codex) t += '<p>要还原文件，只能用 git（如 <code>git restore schema.sql</code>）。</p>';
-  if (M2 === 'cc-code') t += W2 === 'edit'
-    ? '<p>只回退代码、保留对话：模型记得第 2 轮改过，磁盘已还原，同样不一致，需要你告诉它。</p>'
-    : '<p>只被 shell 命令改过的文件不在 /rewind 的追踪里，代码这一半什么都没还原。</p>';
-  if (M2 === 'cc-both' && W2 === 'shell') t += '<p>对话回去了，但只被 shell 命令改过的文件没有还原。</p>';
-  $('#p2').innerHTML = t;
+  const record = convBack ? '保留到第一轮。第二轮修改 SQL 的经过已从这段对话中撤回。'
+    : '仍有第二轮修改 SQL 的经过。';
+  const disk = codeBack ? '打开文件，看到第二轮修改之前的内容。' : '打开文件，看到第二轮修改之后的内容。';
+  $('#v2').innerHTML = '<div><b>随请求发出的对话</b><br>' + record + '</div>' +
+    '<div><b>工作目录里的 schema.sql</b><br>' + disk + '</div>';
+  let explanation = 'Codex 回退时只处理聊天存档。';
+  if (!codex) {
+    if (shellSkip) explanation = '这个文件只通过 shell 命令改过，Claude Code 没有为它保存可还原的检查点。';
+    else if (M2 === 'cc-conv') explanation = '这次只选择了回退对话。';
+    else if (M2 === 'cc-code') explanation = '这次只还原了代码。对话仍记着当时做过的修改。';
+    else explanation = '文件由编辑工具修改过。这次对话和文件都回到了第二轮之前。';
+  }
+  $('#p2').textContent = explanation;
 }
 $$('[data-m]').forEach(b => b.onclick = () => { M2 = b.dataset.m; press('[data-m]', b); renderS2(); });
 $$('[data-w]').forEach(b => b.onclick = () => { W2 = b.dataset.w; press('[data-w]', b); renderS2(); });
@@ -365,13 +248,17 @@ const C4 = {
   7: [['工具定义',25347,'k-tools'],['系统提示词',22148,'k-tools'],['第 1 句',199,'k-user'],['第 2 句',164,'k-user'],['技能目录等',3464,'k-tools'],['子代理角色说明',2575,'k-tools'],['子代理开关说明',410,'k-tools'],['AGENTS.md + 环境',763,'k-tools'],['第 3 句',162,'k-user'],['压缩摘要',624,'k-half'],['第 4 句',171,'k-user'],['回复',139,'k-reply'],['第 6 句（新）',192,'k-user','new']],
   8: [['工具定义',25347,'k-tools'],['系统提示词',22148,'k-tools'],['技能目录等',3464,'k-tools'],['子代理角色说明',2575,'k-tools'],['子代理开关说明',410,'k-tools'],['AGENTS.md + 环境',763,'k-tools'],['第 1 句',199,'k-user'],['回复 1',125,'k-reply'],['第 2 句',164,'k-user'],['回复 2',125,'k-reply'],['第 3 句',162,'k-user'],['回复 3',125,'k-reply'],['第 7 句（新）',192,'k-user','new']]
 };
-const N4 = {6: '压缩之后发第 5 句时的请求（第 6 次请求）', 7: '回退到第 5 句之前，再发第 6 句（第 7 次请求）', 8: '回退到压缩那一轮之前，再发第 7 句（第 8 次请求）'};
+const resultByStep = {
+  6: '聊完第四轮，发出第五句。模型收到摘要和第四轮问答。前三句用户消息还在，前三轮的回复由摘要代替。',
+  7: '回到第五句之前，换一句新话。新话仍接在第四轮的回复后面，之前的三条回复仍由摘要代替。',
+  8: '回到压缩开始之前，再发一句新话。新话接在第三轮的回复后面，前三轮问答都以原文出现。'
+};
 function renderS4(n) {
-  const items = C4[n], total = items.reduce((s, x) => s + x[1], 0), hasSum = items.some(x => x[0] === '压缩摘要');
-  $('#c4').innerHTML = items.map(x => chip(x[0] + ' ' + fmt(x[1]), x[2] === 'k-half' ? '' : x[2], x[3], x[2] === 'k-half' ? 'background:var(--half)' : '')).join('');
-  let t = '<p><span class="tag lvl-h">实验 out/compact</span> ' + N4[n] + '</p>';
-  t += '<p><b>' + items.length + '</b> 条，<b>' + fmt(total) + '</b> 字节；' + (hasSum ? '<b>有</b>压缩摘要，压缩前的原话只剩第 1、2、3 句的用户消息（回复没了）。' : '<b>没有</b>摘要，第 1–3 句的原话和三条回复都回来了，顺序与压缩前一致。') + '</p>';
-  $('#p4').innerHTML = t;
+  const items = C4[n];
+  $('#p4').textContent = resultByStep[n];
+  $('#c4').innerHTML = items.map(([label, bytes, cls, state]) =>
+    chip(label + '（' + fmt(bytes) + ' 字节）', cls === 'k-half' ? '' : cls, state,
+      cls === 'k-half' ? 'background:var(--half)' : '')).join('');
 }
 $$('[data-c]').forEach(b => b.onclick = () => { press('[data-c]', b); renderS4(+b.dataset.c); });
 renderS4(6);

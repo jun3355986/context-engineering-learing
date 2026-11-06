@@ -160,7 +160,7 @@ pub(crate) fn multi_agent_version_for_model(
 <p><b>缓存上，<code>all</code> 和 <code>none</code> 差得很多。</b>按第 5 章的规则，<code>all</code> 的第一次请求里有 54,878 字节能从缓存读：父会话的第一次请求已经把这段写进了缓存，两边请求里的 <code>prompt_cache_key</code> 也相同，都是整个会话的编号。这次请求折合约 2,066 个 token 的全价。<code>none</code> 的开头接不上，要整份写进缓存，折合约 16,725 个 token 的全价。<sup><a href="#e9">9</a></sup><strong>省窗口的是 <code>none</code>，省钱的反而是缺省的 <code>all</code>。</strong>这是按规则推的，真实服务上能不能接上没测【待核实】。</p>
 
 <h3>fork 之后换模型</h3>
-<p><code>spawn_agent</code> 还有一个参数 <code>model</code>，可以让子代理用另一个模型。角色说明里写着「全量 fork 不接受模型覆盖」（意思是带走全部历史时，别给子代理另指定模型），但这只是写给模型看的话，代码没有拦。实验里 <code>fork_turns</code> 用缺省值，同时填 <code>model = "gpt-6-luna"</code>：子代理用 gpt-6-luna 发请求，请求里保留父会话的整个开头，再追加一条 18,535 字节的 <code>&lt;model_instructions&gt;</code>（gpt-6-luna 的指令），整份请求 78,777 字节，比同一个模型 fork 时的 59,292 字节多 19,485 字节。<sup><a href="#e13">13</a></sup></p>
+<p><code>spawn_agent</code> 还有一个参数 <code>model</code>，可以让子代理用另一个模型。角色说明里写着「全量 fork 不接受模型覆盖」（意思是带走全部历史时，别给子代理另指定模型），但这只是写给模型看的话，代码没有拦。实验里 <code>fork_turns</code> 用缺省值，同时填 <code>model = "gpt-6-luna"</code>：子代理用 gpt-6-luna 发请求，请求里保留父会话的整个开头，再追加一条 18,535 字节的 <code>&lt;model_instructions&gt;</code>（gpt-6-luna 的指令），整份请求 78,777 字节，比同一个模型 fork 时的 59,292 字节多 19,485 字节。<sup><a href="#e13">13</a></sup>这呼应了<a href="05-缓存省的是什么.html">第 5 章</a>讲过的做法：换模型时，Codex 把新模型的说明追加到后面，保留原来的请求开头；这里因此多带了一份模型指令。</p>
 
 <div class="compare">
 <h3>对照：Claude Code 的子代理缺省从空白开始</h3>

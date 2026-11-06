@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图解：Codex 会话文件的格式与回退</title>
+<style>
+:root{color-scheme:light;--ink:#202b39;--muted:#56677a;--blue:#245b98;--pale:#edf5ff;--line:#d8e2ee;--green:#e8f6ed;--red:#fff0ee;--gold:#fff6df}
+*{box-sizing:border-box}body{margin:0;background:#f6f8fb;color:var(--ink);font:17px/1.85 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}main{max-width:1000px;margin:auto;padding:48px 24px 80px}h1,h2,h3{line-height:1.4;color:#172c45}h1{font-size:clamp(27px,4vw,38px);margin:10px 0}h2{font-size:25px;margin:52px 0 16px}h3{font-size:19px;margin:26px 0 10px}p{margin:12px 0}a{color:var(--blue)}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;background:#edf1f5;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{overflow-x:auto;background:#162638;color:#e8f0fa;padding:20px;border-radius:10px;font:14px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}pre code{background:none;color:inherit;padding:0;white-space:pre}ul,ol{padding-left:1.5em}.meta,.small{font-size:14px;color:var(--muted)}.lead,.note{padding:16px 20px;border-radius:10px;background:var(--pale);border-left:4px solid #5785bd}.note{background:var(--gold);border-color:#c69332}.diagram{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.box{border:1px solid var(--line);border-radius:9px;padding:13px 15px;background:#fff}.box strong{display:block;margin-bottom:6px}.row{padding:5px 9px;margin:5px 0;border-radius:5px;background:#f0f3f7}.keep{background:var(--green)}.drop{background:var(--red)}.point{background:var(--pale)}.arrow{text-align:center;font-weight:700;color:var(--blue);padding:8px}.label{font-size:13px;color:var(--muted)}table{width:100%;border-collapse:collapse;background:white}th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}th{background:#edf3f9}.scroll{overflow:auto}footer{border-top:1px solid var(--line);margin-top:50px;padding-top:18px}.nowrap{white-space:nowrap}
+</style>
+</head>
+<body><main>
+<p class="meta">第 8 章补充图解 · 依据 Codex 0.165.0 的实验和源码 76ed3b4</p>
+<h1>回退后，会话的新文件里到底写了什么？</h1>
+<p class="lead"><b>先说结论：</b>回退时，Codex 保留原会话文件，另建一个文件。新文件不必复制要保留的全部对话，而是记下“原文件用到哪里”；接下来新说的话写进新文件。恢复时，Codex 把原文件中保留的部分和新文件里的后续记录接起来。</p>
+<p>这里的“新文件”是<b>回退后创建的会话存档文件</b>；“新格式”指会话历史的 <code>paginated</code> 格式。两者有关，但不是一回事：新格式的会话在回退前也已经有一个存档文件。</p>
+
+<h2>一、先看回退前：一份文件，三轮对话</h2>
+<p>下面用第 8 章的实验：用户依次说了 3 句话，假服务器每次回复一句。<b>一轮</b>在这个例子里指用户的一句话及其回复。图里的一格是为了帮助理解而画的逻辑分组，不代表文件中恰好一行。</p>
+<div class="diagram"><div class="grid">
+<div class="box"><strong>SQLite 中的记录</strong><div class="row point">线程 T → 原文件 A</div><span class="label">记录这个线程当前使用哪个会话文件</span></div>
+<div class="box"><strong>原文件 A（磁盘）</strong><div class="row">会话基本信息及其他记录</div><div class="row keep">第 1 轮：用户第 1 句 + 回复</div><div class="row drop">第 2 轮：用户第 2 句 + 回复</div><div class="row drop">第 3 轮：用户第 3 句 + 回复</div></div>
+</div></div>
+<p>实际会话文件是 <code>.jsonl</code>：<b>每一行是一个 JSON 对象</b>，既有消息，也有事件和其他记录。因此一轮通常包含多行，不能把“一轮”当成“一行”。实验中的原文件共 36 行。</p>
+
+<h2>二、回退到第 2 句之前：新建 B，指针改指向 B</h2>
+<p>用户选择“回到第 2 句之前”，意思是保留第 1 轮，从第 2 轮开始的对话不再属于这个线程当前的历史。实验里 Codex 做了下面两件事：</p>
+<div class="diagram"><div class="grid">
+<div class="box"><strong>① 原文件 A：内容没删</strong><div class="row keep">前 18 行：保留的前缀</div><div class="row drop">后 18 行：第 2、3 轮等记录仍在磁盘</div></div>
+<div class="box"><strong>② 新文件 B：记录引用范围</strong><div class="row point">引用 A 的前 18 行</div><div class="row">新文件自己的其他记录</div><span class="label">刚回退完时 B 有 2 行</span></div>
+<div class="box"><strong>③ SQLite：切换指向</strong><div class="row">回退前：线程 T → 文件 A</div><div class="row point">回退后：线程 T → 文件 B</div><span class="label">线程编号 T 没变</span></div>
+</div></div>
+<p>所以，“被回退”说的是<b>当前对话历史不再使用那部分记录</b>，不是说第 2、3 轮在磁盘上被物理删除了。这个实验里，原文件的内容保持不变。</p>
+
+<h2>三、新文件 B 里具体长什么样？</h2>
+<p>下面按实验文件的实际字段画出第一行的结构。为便于阅读，我把 JSON 拆成多行，缩短线程编号，并省略其他字段；实际 JSONL 文件中这是<b>一整行</b>。</p>
+<pre><code>{
+  "ordinal": 18,
+  "type": "session_meta",
+  "payload": {
+    "id": "线程 T 的编号",
+    "history_mode": "paginated",
+    "history_base": {
+      "thread_id": "线程 T 的编号",
+      "end_ordinal_exclusive": 18,
+      "end_byte_offset": 89403
+    }
+  }
+}</code></pre>
+<div class="scroll"><table><thead><tr><th>字段</th><th>在这个例子里的意思</th></tr></thead><tbody>
+<tr><td><code>session_meta</code></td><td>这一行是会话的基本信息。它还包含其他内容，比如系统提示词；图中省略了。</td></tr>
+<tr><td><code>history_mode: paginated</code></td><td>这个会话使用分页格式。它是格式标识，并不表示“每轮对话就是一页”，也不是上面图里的每个方框。</td></tr>
+<tr><td><code>history_base</code></td><td>新文件依赖的历史前缀在哪里、到哪里结束。</td></tr>
+<tr><td><code>thread_id</code></td><td>被引用历史所属的线程编号。这个回退实验前后线程编号相同。</td></tr>
+<tr><td><code>end_ordinal_exclusive: 18</code></td><td>保留序号小于 18 的记录，即序号 0～17；18 是不包含在旧前缀内的终点。新文件第一条记录的序号从 18 接着写。</td></tr>
+<tr><td><code>end_byte_offset: 89403</code></td><td>保留的前缀在原文件中到第 89,403 字节处结束，即使用原文件开头的 89,403 字节。它和上面的序号共同描述同一个边界。</td></tr>
+</tbody></table></div>
+<p>实验刚回退完，新文件第 1 行是上面的 <code>session_meta</code>，第 2 行是一条设置应用事件；这时新文件还没有用户回退后新说的话。第 1 行包含较长的系统提示词，所以文件虽然只有 2 行，也有 23,480 字节。</p>
+<div class="note"><b>两个位置的 18 不要混淆：</b>旧文件前缀包含序号 0～17，共 18 行；新文件的第一行自己的序号是 18。它属于新文件，不是旧文件前缀的第 19 行。</div>
+<p>这是一个具体回退点的例子，不是每次回退都有 <code>history_base</code>。第 8 章另一个实验回退到第 1 句之前时，没有可引用的历史前缀，新文件没有这个字段。</p>
+
+<h2>四、之后再说一句，恢复历史时怎么拼？</h2>
+<p>假设回退之后用户说了“新的一句话”，模型随后回复。新产生的记录追加到文件 B；原文件 A 还是原样。</p>
+<div class="diagram"><div class="grid">
+<div class="box"><strong>文件 A：只取前缀</strong><div class="row keep">第 1 轮及此前记录</div><div class="row drop">第 2、3 轮：仍在文件中，但不取</div></div>
+<div class="box"><strong>文件 B：取自己的后续记录</strong><div class="row point">history_base：指向 A 的前缀</div><div class="row keep">新的一句话及其回复等记录</div></div>
+</div><div class="arrow">↓ 按引用边界接起来 ↓</div><div class="box"><strong>当前会话历史</strong><div class="row keep">第 1 轮 → 新的一句话及其回复</div><span class="label">第 2、3 轮不在当前历史里</span></div></div>
+<p>在第 8 章实验中，回退后再发一次消息，发给模型的请求包含第 1 句和它的回复，以及新消息；不包含被回退的第 2、3 句。发给模型的请求还会包含系统提示词等内容，并不等于把 JSONL 每一行原封不动发送出去。</p>
+<p>新文件引用了旧文件的前缀，因此理解存档时要把两份文件一起看。<b>只拷贝新文件后能否完整恢复，这个实验没有验证。</b></p>
+
+<h2>五、原文里的“旧格式”和“旧回退标记”又是什么？</h2>
+<p><code>legacy</code> 和 <code>paginated</code> 是 <code>history_mode</code> 的两种取值。第 8 章实验里新建的会话使用 <code>paginated</code>；对于 <code>legacy</code> 会话，0.165.0 的 <code>thread/revert</code> 会拒绝。临时会话不保存会话文件，也不支持这个回退指令。这里说的是该版本的行为，不推断所有版本。</p>
+<p>原文接着提到的 <code>ThreadRolledBack</code>，是在讲<b>另一种历史回退记录</b>，不是上面新文件里 <code>history_base</code> 的另一个名字。它的含义可以这样理解：</p>
+<div class="diagram"><div class="box"><strong>旧回退标记的含义示意</strong><div class="row">第 1 轮</div><div class="row drop">第 2 轮</div><div class="row drop">第 3 轮</div><div class="row point">回退标记：丢掉最近 2 个用户轮</div></div><div class="arrow">↓ 恢复时识别标记 ↓</div><div class="box"><strong>重建出的历史</strong><div class="row keep">第 1 轮</div></div></div>
+<p>这张图是说明标记的作用，<b>不是实际 JSON 格式</b>。源码中的恢复逻辑会从后向前处理这种标记，跳过对应的用户轮。0.165.0 仍有读取和处理该标记的代码；原作者搜索时没有找到写入它的代码，但搜索没有穷尽，因此不能断言这个版本绝不可能写入。</p>
+<p>两种做法的直观区别：<b>标记写法</b>是在记录末尾表达“最近 N 轮不算”；本章实验中的 <b>分页格式回退</b>是建立新文件，引用要保留的前缀并切换线程的文件指针。两者都不能据此理解为会把项目代码文件恢复原样。</p>
+
+<footer><p><b>依据与范围：</b>第 8 章证据 1、2、4、6，以及 <code>自学单元/U07-实验/out/default</code> 的会话文件。实验使用 Codex CLI 0.165.0、<code>codex app-server</code> 和本机假服务器，模型名 <code>gpt-6.1-sol</code>、思考级别 low；源码版本 76ed3b4。示例中的对话文字是为讲解简化的，字段和数字来自该实验。</p><p><a href="08-回退分叉恢复.html">← 返回第 8 章</a></p></footer>
+</main></body></html>
